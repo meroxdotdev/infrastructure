@@ -1,0 +1,72 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: "e2e"
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    paths-ignore:
+      - kubernetes/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  configure:
+    if: ${{ github.repository == 'onedr0p/cluster-template' }}
+    name: configure
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config-files:
+          - public
+          - private
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup mise
+        uses: jdx/mise-action@13abe502c30c1559a5c37dff303831bab82c9402 # v2.2.3
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          cache: false
+
+      - name: Run init task
+        run: task init
+
+      - name: Prepare files
+        run: |
+          cp ./.github/tests/${{ matrix.config-files }}.yaml cluster.yaml
+          cp ./.github/tests/nodes.yaml nodes.yaml
+          echo '{"AccountTag":"fake","TunnelSecret":"fake","TunnelID":"fake"}' > cloudflare-tunnel.json
+          touch kubeconfig
+
+      - name: Run configure task
+        run: task configure --yes
+
+      - name: Run generate talconfig task
+        run: |
+          FILENAME=talos/talsecret.sops.yaml
+          talhelper gensecret | sops --filename-override $FILENAME --encrypt /dev/stdin > $FILENAME
+          task talos:generate-config
+
+      - name: Run flux-local test
+        uses: docker://ghcr.io/allenporter/flux-local:v7.5.4@sha256:72dbdeabca1eb4d1a053c78dfa0d1d8e2a4c4aee2c8d3938db1a382d22b0a6f9
+        with:
+          args: test --enable-helm --all-namespaces --path /github/workspace/kubernetes/flux/cluster -v
+
+      - name: Dry run bootstrap talos task
+        run: task bootstrap:talos --dry
+
+      - name: Dry run bootstrap apps task
+        run: task bootstrap:apps --dry
+
+      - name: Run reset task
+        run: task template:reset --yes
+
+      - name: Run cleanup task
+        run: task template:tidy --yes
