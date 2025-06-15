@@ -73,7 +73,7 @@ spec:
       app:
         hostnames: ["{{ .Release.Name }}.k8s.${SECRET_DOMAIN}"]
         parentRefs:
-          - name: intrernal
+          - name: internal
             namespace: kube-system
             sectionName: https
         rules:
