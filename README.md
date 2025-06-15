@@ -1,4 +1,4 @@
-# 🔗 More details soon on https://merox.dev
+# More details soon on https://merox.dev
 
 
 # ⛵ Cluster Template
