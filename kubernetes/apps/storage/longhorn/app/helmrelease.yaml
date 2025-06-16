@@ -34,7 +34,7 @@ spec:
       retries: 3
   values:
     defaultSettings:
-      createDefaultDiskLabeledNodes: true
+      createDefaultDiskLabeledNodes: false
       defaultDataLocality: best-effort
       defaultLonghornStaticStorageClass: longhorn
       defaultReplicaCount: 3
@@ -45,7 +45,7 @@ spec:
       replicaAutoBalance: true
       storageMinimalAvailablePercentage: 1
       storageReservedPercentageForDefaultDisk: 10
-#      taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
+      taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
       systemManagedComponentsNodeSelector:
         longhorn: "true"
 
