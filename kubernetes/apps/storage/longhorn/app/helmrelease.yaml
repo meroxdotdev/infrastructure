@@ -34,7 +34,7 @@ spec:
       retries: 3
   values:
     defaultSettings:
-      createDefaultDiskLabeledNodes: false
+      createDefaultDiskLabeledNodes: true
       defaultDataLocality: best-effort
       defaultLonghornStaticStorageClass: longhorn
       defaultReplicaCount: 3
@@ -45,9 +45,9 @@ spec:
       replicaAutoBalance: true
       storageMinimalAvailablePercentage: 1
       storageReservedPercentageForDefaultDisk: 10
-      taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
-      systemManagedComponentsNodeSelector:
-        longhorn: "true"
+#      taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
+#      systemManagedComponentsNodeSelector:
+#        longhorn: "true"
 
 
     persistence:
@@ -57,7 +57,7 @@ spec:
       migratable: false
 
     ingress:
-      enabled: false  # Vom folosi Gateway API
+      enabled: false
 
     longhornUI:
       replicas: 3
