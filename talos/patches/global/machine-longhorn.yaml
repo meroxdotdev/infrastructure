@@ -8,3 +8,5 @@ machine:
           - bind
           - rshared
           - rw
+    nodeLabels:
+      longhorn: "true"
