@@ -76,61 +76,12 @@ nodes:
         mtu: 1500
         vip:
           ip: "10.57.57.88"
-  - hostname: "kubernetes-worker-1"
-    ipAddress: "10.57.57.81"
-    installDisk: "/dev/sda"
-    machineSpec:
-      secureboot: false
-    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
-    controlPlane: false
-    networkInterfaces:
-      - deviceSelector:
-          hardwareAddr: "bc:24:11:af:6b:e6"
-        dhcp: false
-        addresses:
-          - "10.57.57.81/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "10.57.57.1"
-        mtu: 1500
-  - hostname: "kubernetes-worker-2"
-    ipAddress: "10.57.57.83"
-    installDisk: "/dev/sda"
-    machineSpec:
-      secureboot: false
-    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
-    controlPlane: false
-    networkInterfaces:
-      - deviceSelector:
-          hardwareAddr: "bc:24:11:89:22:f7"
-        dhcp: false
-        addresses:
-          - "10.57.57.83/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "10.57.57.1"
-        mtu: 1500
-  - hostname: "kubernetes-worker-3"
-    ipAddress: "10.57.57.85"
-    installDisk: "/dev/sda"
-    machineSpec:
-      secureboot: false
-    talosImageURL: factory.talos.dev/installer/613e1592b2da41ae5e265e8789429f22e121aab91cb4deb6bc3c0b6262961245
-    controlPlane: false
-    networkInterfaces:
-      - deviceSelector:
-          hardwareAddr: "bc:24:11:9f:50:01"
-        dhcp: false
-        addresses:
-          - "10.57.57.85/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "10.57.57.1"
-        mtu: 1500
+
 
 # Global patches
 patches:
   - "@./patches/global/machine-files.yaml"
+  - "@./patches/global/machine-longhorn.yaml"
   - "@./patches/global/machine-kubelet.yaml"
   - "@./patches/global/machine-network.yaml"
   - "@./patches/global/machine-sysctls.yaml"
@@ -143,6 +94,6 @@ controlPlane:
     - "@./patches/controller/cluster.yaml"
 
 # Worker patches
-worker:
-  patches:
-    - "@./patches/global/machine-longhorn-labels.yaml"
+#worker:
+#  patches:
+#    - "@./patches/global/machine-longhorn-labels.yaml"
