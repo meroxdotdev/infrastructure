@@ -145,4 +145,4 @@ controlPlane:
 # Worker patches
 worker:
   patches:
-    - "@./patches/global/machine-longhorn.yaml"
+    - "@./patches/global/machine-longhorn-labels.yaml"
