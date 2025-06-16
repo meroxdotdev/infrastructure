@@ -45,6 +45,7 @@ spec:
       replicaAutoBalance: true
       storageMinimalAvailablePercentage: 1
       storageReservedPercentageForDefaultDisk: 10
+      taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
 
     persistence:
       defaultClass: true
