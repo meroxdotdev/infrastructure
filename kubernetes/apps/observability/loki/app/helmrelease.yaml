@@ -75,8 +75,8 @@ spec:
       replicas: 1
       persistence:
         enabled: true
-        storageClass: ceph-block
-        size: 50Gi
+        storageClass: longhorn
+        size: 20Gi
     gateway:
       replicas: 0
     backend:
