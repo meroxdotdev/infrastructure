@@ -7,7 +7,6 @@
         widget:
           type: traefik
           url: https://traefik-cloud.${SECRET_DOMAIN}
-          key: "{{HOMEPAGE_VAR_TRAEFIK_CLOUD_KEY}}"
 
     - Grafana:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/grafana.svg
@@ -17,30 +16,10 @@
         widget:
           type: grafana
           url: http://192.168.57.2:3000
-          key: "{{HOMEPAGE_VAR_GRAFANA_API_KEY}}"
+          username: admin
+          password: "{{HOMEPAGE_VAR_GRAFANA_PASSWORD}}"
 
 - On-Premise:
-    - vsCode:
-        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/vscode.svg
-        href: https://vscode.${SECRET_DOMAIN}
-        description: Visual Studio Code
-        ping: 10.57.57.60
-
-    - MySpeed:
-        icon: https://camo.githubusercontent.com/4ccc83cf6b1f06e999c378bda264433ec83994031c156a5c88876b53eb57b201/68747470733a2f2f692e696d6775722e636f6d2f61436d413672482e706e67
-        href: https://speed.${SECRET_DOMAIN}
-        description: network speed test
-        ping: 10.57.57.62
-        widget:
-          type: myspeed
-          url: http://10.57.57.62:5216
-
-    - pFsense:
-        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/pfsense.svg
-        href: https://fw.${SECRET_DOMAIN}
-        description: network
-        ping: 10.57.57.1
-
     - Proxmox:
         icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/0eaf38572d4b8a2485228eb5da98d356ca47f653/svg/proxmox.svg
         href: https://proxmox.${SECRET_DOMAIN}
@@ -84,7 +63,27 @@
         widget:
           type: traefik
           url: https://traefik-dashboard.${SECRET_DOMAIN}
-          key: "{{HOMEPAGE_VAR_TRAEFIK_KEY}}"
+
+    - vsCode:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/vscode.svg
+        href: https://vscode.${SECRET_DOMAIN}
+        description: Visual Studio Code
+        ping: 10.57.57.60
+
+    - MySpeed:
+        icon: https://camo.githubusercontent.com/4ccc83cf6b1f06e999c378bda264433ec83994031c156a5c88876b53eb57b201/68747470733a2f2f692e696d6775722e636f6d2f61436d413672482e706e67
+        href: https://speed.${SECRET_DOMAIN}
+        description: network speed test
+        ping: 10.57.57.62
+        widget:
+          type: myspeed
+          url: http://10.57.57.62:5216
+
+    - pFsense:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/pfsense.svg
+        href: https://fw.${SECRET_DOMAIN}
+        description: network
+        ping: 10.57.57.1
 
     - Portainer:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/portainer.svg
@@ -102,6 +101,32 @@
         href: https://wifi.${SECRET_DOMAIN}
         description: wifi
         ping: 10.57.97.143
+
+- Kubernetes:
+    - Longhorn:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/longhorn.svg
+        href: https://longhorn.k8s.${SECRET_DOMAIN}
+        description: Persistent storage
+
+
+
+    - Grafana:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/grafana.svg
+        href: https://grafana.k8s.${SECRET_DOMAIN}
+        description: Monitoring (K8S)
+
+
+    - Alertmanager:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/alertmanager.svg
+        href: https://alertmanager.k8s.${SECRET_DOMAIN}
+        description: Alerting
+
+
+    - Prometheus:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/prometheus.svg
+        href: https://prometheus.k8s.${SECRET_DOMAIN}
+        description: Prometheus Metrics
+
 
 - Media:
     - Jellyseerr:
