@@ -3,10 +3,11 @@
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/traefik.svg
         href: https://traefik-cloud.${SECRET_DOMAIN}
         description: Ingress Controller/RP Cloud
-        siteMonitor: https://traefik-cloud.${SECRET_DOMAIN}
         widget:
           type: traefik
           url: https://traefik-cloud.${SECRET_DOMAIN}
+          username: "{{HOMEPAGE_VAR_TRAEFIK_CLOUD_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_TRAEFIK_CLOUD_PASSWORD}}"
 
     - Grafana:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/grafana.svg
