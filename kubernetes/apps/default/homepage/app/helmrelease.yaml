@@ -63,8 +63,8 @@ spec:
             sectionName: https
         rules:
           - backendRefs:
-              - identifier: app
-                port: http
+              - name: *app
+                port: 3000
     persistence:
       config:
         type: configMap
