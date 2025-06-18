@@ -34,6 +34,7 @@ spec:
               tag: v1.3.2
             env:
               TZ: ${TIMEZONE}
+              HOMEPAGE_ALLOWED_HOSTS: "dashboard.k8s.${SECRET_DOMAIN}"
             envFrom:
               - secretRef:
                   name: homepage-secret
