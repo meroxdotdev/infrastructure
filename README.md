@@ -2,6 +2,35 @@
 
 > Blog post coming soon on [merox.dev](https://merox.dev)
 
+# 🏠 Homelab Infrastructure
+
+## 🖥️ Hardware Inventory
+
+| Device | CPU | RAM | Storage | Role | Status |
+|--------|-----|-----|---------|------|--------|
+| **Dell PowerEdge R720** | 2x Intel Xeon E5-2697 v2<br>(24 cores / 48 threads) | 192GB DDR3 | 4x Intel D3-S4510 960GB SSD | Proxmox Backup Server | 🟢 Active |
+| **Dell OptiPlex 3050 #1** | Intel i5-6500T<br>(4 cores / 4 threads) | 16GB DDR4 | 128GB NVMe + 512GB SSD | Kubernetes Node<br>(Proxmox VM) | 🟢 Active |
+| **Dell OptiPlex 3050 #2** | Intel i5-6500T<br>(4 cores / 4 threads) | 16GB DDR4 | 128GB NVMe + 512GB SSD | Kubernetes Node<br>(Proxmox VM) | 🟢 Active |
+| **Beelink GTi 13 Pro** | Intel i9-13900H<br>(14 cores / 20 threads) | 64GB DDR5 | 2x 2TB NVMe | Kubernetes Node<br>(Proxmox VM) | 🟢 Active |
+| **Synology DS223+** | ARM Realtek RTD1619B | 2GB DDR4 | 2x 2TB HDD<br>(RAID 1) | NAS / Media Server<br>Backup Target | 🟢 Active |
+| **XCY X44** | Intel N100<br>(4 cores / 4 threads) | 8GB DDR4 | 128GB SSD | pfSense Firewall | 🟢 Active |
+| **Hetzner CX32** | 4 vCPU | 8GB | 80GB SSD | Remote VPS<br>Off-site Backup | ☁️ Cloud |
+
+## 🔌 Infrastructure Components
+
+### 🔋 Power Protection
+| Device | Model | Protected Equipment | Capacity |
+|--------|-------|-------------------|----------|
+| **UPS #1** | CyberPower | Dell R720 | 1500VA |
+| **UPS #2** | CyberPower | Mini PCs + Network | 1000VA |
+
+### 🌐 Network Equipment
+| Device | Model | Ports | Role |
+|--------|-------|-------|------|
+| **Switch** | TP-Link | 24x 1Gb | Core Network Switch |
+
+---
+
 A streamlined Kubernetes cluster deployment using [Talos Linux](https://github.com/siderolabs/talos) and [Flux](https://github.com/fluxcd/flux2). Based on [onedr0p/cluster-template](https://github.com/onedr0p/cluster-template).
 
 ## 📋 Prerequisites
