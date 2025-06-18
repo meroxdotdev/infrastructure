@@ -1,4 +1,3 @@
----
 - On-Cloud:
     - Traefik:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/traefik.svg
@@ -8,8 +7,7 @@
         widget:
           type: traefik
           url: https://traefik-cloud.${SECRET_DOMAIN}
-          username: "{{HOMEPAGE_VAR_TRAEFIK_CLOUD_USERNAME}}"
-          password: "{{HOMEPAGE_VAR_TRAEFIK_CLOUD_PASSWORD}}"
+          key: "{{HOMEPAGE_VAR_TRAEFIK_CLOUD_KEY}}"
 
     - Grafana:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/grafana.svg
@@ -19,8 +17,7 @@
         widget:
           type: grafana
           url: http://192.168.57.2:3000
-          username: admin
-          password: "{{HOMEPAGE_VAR_GRAFANA_PASSWORD}}"
+          key: "{{HOMEPAGE_VAR_GRAFANA_API_KEY}}"
 
 - On-Premise:
     - vsCode:
@@ -87,8 +84,7 @@
         widget:
           type: traefik
           url: https://traefik-dashboard.${SECRET_DOMAIN}
-          username: "{{HOMEPAGE_VAR_TRAEFIK_USERNAME}}"
-          password: "{{HOMEPAGE_VAR_TRAEFIK_PASSWORD}}"
+          key: "{{HOMEPAGE_VAR_TRAEFIK_KEY}}"
 
     - Portainer:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/portainer.svg
