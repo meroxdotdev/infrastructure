@@ -1,0 +1,170 @@
+---
+- On-Cloud:
+    - Traefik:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/traefik.svg
+        href: https://traefik-cloud.${SECRET_EXTERNAL_DOMAIN}
+        description: Ingress Controller/RP Cloud
+        siteMonitor: https://traefik-cloud.${SECRET_EXTERNAL_DOMAIN}
+        widget:
+          type: traefik
+          url: https://traefik-cloud.${SECRET_EXTERNAL_DOMAIN}
+          username: "{{HOMEPAGE_VAR_TRAEFIK_CLOUD_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_TRAEFIK_CLOUD_PASSWORD}}"
+
+    - Grafana:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/grafana.svg
+        href: http://192.168.57.2:3000
+        description: Monitoring Cloud + OnPrem infrastructure
+        ping: 192.168.57.2
+        widget:
+          type: grafana
+          url: http://192.168.57.2:3000
+          username: admin
+          password: "{{HOMEPAGE_VAR_GRAFANA_PASSWORD}}"
+
+- On-Premise:
+    - vsCode:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/vscode.svg
+        href: https://vscode.${SECRET_EXTERNAL_DOMAIN}
+        description: Visual Studio Code
+        ping: 10.57.57.60
+
+    - MySpeed:
+        icon: https://camo.githubusercontent.com/4ccc83cf6b1f06e999c378bda264433ec83994031c156a5c88876b53eb57b201/68747470733a2f2f692e696d6775722e636f6d2f61436d413672482e706e67
+        href: https://speed.${SECRET_EXTERNAL_DOMAIN}
+        description: network speed test
+        ping: 10.57.57.62
+        widget:
+          type: myspeed
+          url: http://10.57.57.62:5216
+
+    - pFsense:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/pfsense.svg
+        href: https://fw.${SECRET_EXTERNAL_DOMAIN}
+        description: network
+        ping: 10.57.57.1
+
+    - Proxmox:
+        icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/0eaf38572d4b8a2485228eb5da98d356ca47f653/svg/proxmox.svg
+        href: https://proxmox.${SECRET_EXTERNAL_DOMAIN}
+        description: PX-Cluster
+        ping: 10.57.57.254
+        widget:
+          type: proxmox
+          url: https://10.57.57.254:8006
+          username: "{{HOMEPAGE_VAR_PROXMOX_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_PROXMOX_PASSWORD}}"
+
+    - PBS:
+        icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/0eaf38572d4b8a2485228eb5da98d356ca47f653/svg/proxmox.svg
+        href: https://backup.${SECRET_EXTERNAL_DOMAIN}
+        description: Backup Central
+        ping: 10.57.57.253
+        widget:
+          type: proxmoxbackupserver
+          url: https://10.57.57.253:8007
+          username: "{{HOMEPAGE_VAR_PBS_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_PBS_PASSWORD}}"
+          fields: ["datastore_usage", "failed_tasks_24h", "cpu_usage", "memory_usage"]
+
+    - Synology:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/synology.svg
+        href: https://storage.${SECRET_EXTERNAL_DOMAIN}
+        description: nfs/smb/backup
+        ping: 10.57.57.201
+        widget:
+          type: diskstation
+          url: https://10.57.57.201:5001
+          username: "{{HOMEPAGE_VAR_SYNOLOGY_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_SYNOLOGY_PASSWORD}}"
+          volume: volume_1
+
+    - Traefik:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/traefik.svg
+        href: https://traefik-dashboard.${SECRET_EXTERNAL_DOMAIN}
+        description: Ingress Controller/RP
+        ping: 10.57.57.60
+        widget:
+          type: traefik
+          url: https://traefik-dashboard.${SECRET_EXTERNAL_DOMAIN}
+          username: "{{HOMEPAGE_VAR_TRAEFIK_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_TRAEFIK_PASSWORD}}"
+
+    - Portainer:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/portainer.svg
+        href: https://cloud.${SECRET_EXTERNAL_DOMAIN}
+        description: docker
+        ping: 192.168.57.2
+
+    - Rancher:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/rancher.svg
+        href: https://rancher.k8s.${SECRET_EXTERNAL_DOMAIN}
+        description: K3S MGMT
+
+    - TP-Link:
+        icon: https://www.svgrepo.com/show/102795/wifi.svg
+        href: https://wifi.${SECRET_EXTERNAL_DOMAIN}
+        description: wifi
+        ping: 10.57.97.143
+
+- Media:
+    - Jellyseerr:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/jellyseerr.svg
+        href: https://request.${SECRET_EXTERNAL_DOMAIN}
+        description: request media server
+        widget:
+          type: jellyseerr
+          url: https://request.${SECRET_EXTERNAL_DOMAIN}
+          key: "{{HOMEPAGE_VAR_JELLYSEERR_KEY}}"
+
+    - Jellyfin:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/jellyfin.svg
+        href: https://media.${SECRET_EXTERNAL_DOMAIN}
+        description: media server
+        widget:
+          type: jellyfin
+          url: https://media.${SECRET_EXTERNAL_DOMAIN}
+          key: "{{HOMEPAGE_VAR_JELLYFIN_KEY}}"
+
+    - Sonarr:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/sonarr.svg
+        href: https://tvs.${SECRET_EXTERNAL_DOMAIN}
+        description: TVs tracker
+        widget:
+          type: sonarr
+          url: https://tvs.${SECRET_EXTERNAL_DOMAIN}
+          key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+
+    - Radarr:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/radarr.svg
+        href: https://movies.${SECRET_EXTERNAL_DOMAIN}
+        description: Movies tracker
+        widget:
+          type: radarr
+          url: https://movies.${SECRET_EXTERNAL_DOMAIN}
+          key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
+
+    - qBittorrent:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/qbittorrent.svg
+        href: https://qbitt.${SECRET_EXTERNAL_DOMAIN}
+        description: Torrent
+        widget:
+          type: qbittorrent
+          url: https://qbitt.${SECRET_EXTERNAL_DOMAIN}
+          username: "{{HOMEPAGE_VAR_QBITTORRENT_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_QBITTORRENT_PASSWORD}}"
+
+    - Jackett:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/jackett.svg
+        href: https://jackett.${SECRET_EXTERNAL_DOMAIN}
+        description: Jackett
+        widget:
+          type: jackett
+          url: https://jackett.${SECRET_EXTERNAL_DOMAIN}
+          password: "{{HOMEPAGE_VAR_JACKETT_PASSWORD}}"
+
+- Remote:
+    - iDrac:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/idrac.svg
+        href: https://idrac.${SECRET_EXTERNAL_DOMAIN}
+        description: iDrac DELL R720
