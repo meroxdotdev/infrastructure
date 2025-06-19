@@ -1,4 +1,3 @@
-# httproute.yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -12,6 +11,11 @@ spec:
       namespace: kube-system
       sectionName: https
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
         - name: kubernetes-dashboard-kong-proxy
           port: 443
+          protocol: HTTPS
