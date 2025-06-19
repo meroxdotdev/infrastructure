@@ -9,7 +9,7 @@ spec:
   parentRefs:
     - name: internal
       namespace: flux-system
-      sectionName: websecure
+      sectionName: https
   rules:
     - backendRefs:
         - name: kubernetes-dashboard-kong-proxy
