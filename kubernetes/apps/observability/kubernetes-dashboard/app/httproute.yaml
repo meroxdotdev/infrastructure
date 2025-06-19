@@ -12,8 +12,10 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: kubernetes-dashboard-web
-          port: 9090  # Portul HTTP pe care l-ai configurat cu --insecure-port
+        - name: kubernetes-dashboard-kong-proxy
+          port: 443
+          # Adaugă protocol HTTPS
+          protocol: HTTPS
       matches:
         - path:
             type: PathPrefix
