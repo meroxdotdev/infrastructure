@@ -5,16 +5,17 @@ metadata:
   namespace: observability
 spec:
   hostnames:
-    - admin.k8s.merox.dev
+    - admin.k8s.${SECRET_DOMAIN}
   parentRefs:
     - name: internal
-      namespace: flux-system
+      namespace: kube-system
       sectionName: https
   rules:
-    - backendRefs:
-        - name: kubernetes-dashboard-kong-proxy
-          port: 443
-      matches:
+    - matches:
         - path:
             type: PathPrefix
             value: /
+      backendRefs:
+        - name: kubernetes-dashboard-kong-proxy
+          port: 443
+          protocol: HTTPS
