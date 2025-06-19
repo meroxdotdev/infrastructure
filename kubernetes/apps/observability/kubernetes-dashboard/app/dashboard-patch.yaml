@@ -1,0 +1,16 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-dashboard-web
+  namespace: observability
+spec:
+  template:
+    spec:
+      containers:
+      - name: kubernetes-dashboard-web
+        args:
+        - --namespace=observability
+        - --settings-config-map-name=kubernetes-dashboard-web-settings
+        - --enable-insecure-login
+        - --enable-skip-login
+        - --disable-settings-authorizer

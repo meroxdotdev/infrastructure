@@ -5,3 +5,5 @@ resources:
   - ./helmrelease.yaml
   - ./httproute.yaml
   - ./rbac.yaml
+patches:
+  - ./dashboard-patch.yaml
