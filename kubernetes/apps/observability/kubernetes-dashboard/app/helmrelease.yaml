@@ -23,13 +23,18 @@ spec:
   uninstall:
     keepHistory: false
   values:
-    # Argumentele trebuie puse la app.web
-    app:
-      web:
-        extraArgs:
-          - --enable-insecure-login
-          - --enable-skip-login
-          - --disable-settings-authorizer
+    # Încearcă direct la web
+    web:
+      extraArgs:
+        - --enable-insecure-login
+        - --enable-skip-login
+        - --disable-settings-authorizer
+    # Sau poate la api
+    api:
+      extraArgs:
+        - --enable-insecure-login
+        - --enable-skip-login
+        - --disable-settings-authorizer
     ingress:
       enabled: false
     metricsScraper:
