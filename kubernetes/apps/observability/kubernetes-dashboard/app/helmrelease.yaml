@@ -44,7 +44,7 @@ spec:
         rules:
           - backendRefs:
               - name: kubernetes-dashboard-kong-proxys
-                port: 8443
+                port: 443
     # Add homepage annotations to the service
     service:
       annotations:
