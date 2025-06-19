@@ -4,6 +4,9 @@ kind: HTTPRoute
 metadata:
   name: kubernetes-dashboard
   namespace: observability
+  annotations:
+    # Specific protocol HTTPS for backend
+    konghq.com/protocol: "https"
 spec:
   hostnames:
     - admin.k8s.${SECRET_DOMAIN}
@@ -14,4 +17,4 @@ spec:
   rules:
     - backendRefs:
         - name: kubernetes-dashboard-kong-proxy
-          port: 80
+          port: 443
