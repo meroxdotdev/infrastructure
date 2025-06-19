@@ -27,5 +27,17 @@ spec:
     app:
       image:
         pullPolicy: IfNotPresent
+      ingress:
+        enabled: false
+
     metricsScraper:
       enabled: true
+
+    # Dezactivează TLS pe Kong complet
+    kong:
+      proxy:
+        tls:
+          enabled: false  # <-- Asta e cheia! Dezactivăm TLS pe Kong
+        http:
+          enabled: true
+          servicePort: 80  # Schimbăm portul la 80 pentru HTTP
