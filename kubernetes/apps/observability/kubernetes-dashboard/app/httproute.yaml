@@ -1,3 +1,4 @@
+# httproute.yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -12,5 +13,5 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: kubernetes-dashboard-web
+        - name: kubernetes-dashboard-api
           port: 8000

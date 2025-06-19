@@ -1,3 +1,4 @@
+# helmrelease.yaml
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -23,25 +24,29 @@ spec:
   uninstall:
     keepHistory: false
   values:
-    # Încearcă direct la web
+    app:
+      ingress:
+        enabled: false
+
+    # Configurare pentru componenta web
     web:
-      extraArgs:
-        - --enable-insecure-login
-        - --enable-skip-login
-        - --disable-settings-authorizer
-    # Sau poate la api
+      role: web
+
+    # Configurare pentru componenta api
     api:
-      extraArgs:
-        - --enable-insecure-login
-        - --enable-skip-login
-        - --disable-settings-authorizer
-    ingress:
-      enabled: false
+      role: api
+      containers:
+        args:
+          - --enable-insecure-login
+          - --enable-skip-login
+          - --disable-settings-authorizer
+          - --system-banner="Welcome to Kubernetes Dashboard"
+
     metricsScraper:
       enabled: true
-    service:
-      annotations:
-        gethomepage.dev/enabled: "true"
-        gethomepage.dev/icon: kubernetes-dashboard.png
-        gethomepage.dev/name: Kubernetes Dashboard
-        gethomepage.dev/group: Observability
+
+    # Sau încearcă configurarea globală
+    extraArgs:
+      - --enable-insecure-login
+      - --enable-skip-login
+      - --disable-settings-authorizer
