@@ -1,7 +1,7 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: kubernetes-dashboard-direct
+  name: kubernetes-dashboard
   namespace: observability
 spec:
   hostnames:
@@ -13,8 +13,7 @@ spec:
   rules:
     - backendRefs:
         - name: kubernetes-dashboard-web
-          port: 8443
-          protocol: HTTPS
+          port: 9090  # Portul HTTP pe care l-ai configurat cu --insecure-port
       matches:
         - path:
             type: PathPrefix

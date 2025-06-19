@@ -27,5 +27,20 @@ spec:
     app:
       image:
         pullPolicy: IfNotPresent
+      # Configurare pentru HTTP în loc de HTTPS
+      protocolHttp: true
+      settings:
+        protocolHttp: true
+    # Sau dezactivează Kong și folosește direct web service
+    kong:
+      enabled: false
+    service:
+      type: ClusterIP
+      externalPort: 80
+    # Configurare alternativă pentru HTTP
+    extraArgs:
+      - --insecure-bind-address=0.0.0.0
+      - --insecure-port=9090
+      - --enable-insecure-login
     metricsScraper:
       enabled: true
