@@ -33,11 +33,20 @@ spec:
     metricsScraper:
       enabled: true
 
-    # Dezactivează TLS pe Kong complet
+    # Configurație Kong FĂRĂ TLS
     kong:
       proxy:
+        # Dezactivăm complet TLS
         tls:
-          enabled: false  # <-- Asta e cheia! Dezactivăm TLS pe Kong
+          enabled: false
         http:
           enabled: true
-          servicePort: 80  # Schimbăm portul la 80 pentru HTTP
+          containerPort: 8000
+          servicePort: 80  # Schimbăm serviciul la portul 80
+      # Override pentru service
+      service:
+        type: ClusterIP
+        ports:
+          proxy:
+            port: 80
+            targetPort: 8000
