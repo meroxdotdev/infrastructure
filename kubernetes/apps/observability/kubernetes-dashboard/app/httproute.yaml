@@ -3,6 +3,11 @@ kind: HTTPRoute
 metadata:
   name: kubernetes-dashboard
   namespace: observability
+  annotations:
+
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+
+    gateway.networking.k8s.io/backend-protocol: "HTTPS"
 spec:
   hostnames:
     - admin.k8s.${SECRET_DOMAIN}
@@ -11,11 +16,10 @@ spec:
       namespace: kube-system
       sectionName: https
   rules:
-    - matches:
+    - backendRefs:
+        - name: kubernetes-dashboard-kong-proxy
+          port: 443
+      matches:
         - path:
             type: PathPrefix
             value: /
-      backendRefs:
-        - name: kubernetes-dashboard-kong-proxy
-          port: 443
-          protocol: HTTPS
