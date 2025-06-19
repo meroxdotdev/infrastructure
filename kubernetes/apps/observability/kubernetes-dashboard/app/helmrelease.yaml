@@ -36,7 +36,7 @@ spec:
     # Add Gateway API route configuration
     route:
       app:
-        hostnames: ["dashboard.k8s.${SECRET_DOMAIN}"]
+        hostnames: ["admin.k8s.${SECRET_DOMAIN}"]
         parentRefs:
           - name: internal
             namespace: kube-system
