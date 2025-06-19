@@ -1,4 +1,3 @@
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -24,16 +23,17 @@ spec:
   uninstall:
     keepHistory: false
   values:
-    extraArgs:
-      - --enable-insecure-login
-      - --enable-skip-login
-      - --disable-settings-authorizer
-    # Disable the default ingress since we're using Gateway API
+    # Argumentele trebuie puse la app.web
+    app:
+      web:
+        extraArgs:
+          - --enable-insecure-login
+          - --enable-skip-login
+          - --disable-settings-authorizer
     ingress:
       enabled: false
     metricsScraper:
       enabled: true
-    # Add homepage annotations to the service
     service:
       annotations:
         gethomepage.dev/enabled: "true"
