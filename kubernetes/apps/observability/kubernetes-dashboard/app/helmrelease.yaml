@@ -3,7 +3,7 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: kubernetes-dashboard
-  namespace: default
+  namespace: observability
 spec:
   interval: 30m
   chart:
@@ -33,18 +33,6 @@ spec:
       enabled: false
     metricsScraper:
       enabled: true
-    # Add Gateway API route configuration
-    route:
-      app:
-        hostnames: ["admin.k8s.${SECRET_DOMAIN}"]
-        parentRefs:
-          - name: internal
-            namespace: kube-system
-            sectionName: https
-        rules:
-          - backendRefs:
-              - name: kubernetes-dashboard
-                port: 8443
     # Add homepage annotations to the service
     service:
       annotations:
