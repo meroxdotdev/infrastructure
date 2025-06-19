@@ -1,4 +1,3 @@
----
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -13,5 +12,5 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: kubernetes-dashboard
+        - name: kubernetes-dashboard-kong-proxy
           port: 443
