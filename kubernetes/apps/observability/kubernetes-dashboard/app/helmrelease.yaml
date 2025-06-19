@@ -2,7 +2,7 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: kubernetes-dashboard
+  name: &app kubernetes-dashboard
   namespace: default
 spec:
   interval: 30m
@@ -43,7 +43,7 @@ spec:
             sectionName: https
         rules:
           - backendRefs:
-              - name: kubernetes-dashboard-kong-proxys
+              - name: *app
                 port: 443
     # Add homepage annotations to the service
     service:
