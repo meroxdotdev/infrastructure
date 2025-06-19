@@ -23,6 +23,9 @@ spec:
   postBuild:
     substitute:
       APP: *app
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
   prune: true
   retryInterval: 2m
   sourceRef:
