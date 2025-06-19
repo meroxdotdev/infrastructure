@@ -27,26 +27,5 @@ spec:
     app:
       image:
         pullPolicy: IfNotPresent
-      ingress:
-        enabled: false
-
     metricsScraper:
       enabled: true
-
-    # Configurație Kong FĂRĂ TLS
-    kong:
-      proxy:
-        # Dezactivăm complet TLS
-        tls:
-          enabled: false
-        http:
-          enabled: true
-          containerPort: 8000
-          servicePort: 80  # Schimbăm serviciul la portul 80
-      # Override pentru service
-      service:
-        type: ClusterIP
-        ports:
-          proxy:
-            port: 80
-            targetPort: 8000
