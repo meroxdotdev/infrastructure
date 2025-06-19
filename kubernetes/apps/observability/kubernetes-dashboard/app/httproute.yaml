@@ -11,12 +11,11 @@ spec:
       namespace: kube-system
       sectionName: https
   rules:
-    - backendRefs:
-        - name: kubernetes-dashboard-kong-proxy
-          port: 443
-          # Adaugă protocol HTTPS
-          protocol: HTTPS
-      matches:
+    - matches:
         - path:
             type: PathPrefix
             value: /
+      backendRefs:
+        - name: kubernetes-dashboard-kong-proxy
+          port: 443
+
