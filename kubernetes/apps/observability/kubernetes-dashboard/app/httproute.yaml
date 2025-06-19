@@ -12,5 +12,5 @@ spec:
       sectionName: https
   rules:
     - backendRefs:
-        - name: kubernetes-dashboard-kong-proxy
-          port: 443
+        - name: kubernetes-dashboard-web
+          port: 8000
