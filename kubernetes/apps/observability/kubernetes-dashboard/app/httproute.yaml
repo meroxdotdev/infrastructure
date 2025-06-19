@@ -8,7 +8,7 @@ spec:
     - admin.k8s.merox.dev
   parentRefs:
     - name: internal
-      namespace: network
+      namespace: flux-system
       sectionName: websecure
   rules:
     - backendRefs:
