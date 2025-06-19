@@ -13,11 +13,11 @@ spec:
 #    provider: sops
 #    secretRef:
 #      name: sops-age
-  dependsOn:
-    - name: cert-manager
-      namespace: flux-system
-    - name: metrics-server
-      namespace: flux-system
+#  dependsOn:
+#    - name: cert-manager
+#      namespace: flux-system
+#    - name: metrics-server
+#      namespace: flux-system
   interval: 1h
   path: ./kubernetes/apps/observability/kubernetes-dashboard/app
   postBuild:
