@@ -133,6 +133,11 @@
         href: https://requests.k8s.${SECRET_DOMAIN}
         description: Media requests
 
+    - Prowlarr:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/prowlarr.svg
+        href: https://prowlarr.k8s.${SECRET_DOMAIN}
+        description: Media indexer
+
 
 - Media:
     - Jellyseerr:
