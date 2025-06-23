@@ -9,3 +9,4 @@ resources:
   - ./echo/ks.yaml
   - ./homepage/ks.yaml
   - ./jellyseerr/ks.yaml
+  - ./prowlarr/ks.yaml
