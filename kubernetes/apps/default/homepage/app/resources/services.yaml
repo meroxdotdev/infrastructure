@@ -128,6 +128,11 @@
         href: https://prometheus.k8s.${SECRET_DOMAIN}
         description: Prometheus Metrics
 
+    - Jellyseerr:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/jellyseerr.svg
+        href: https://requests.k8s.${SECRET_DOMAIN}
+        description: Media requests
+
 
 - Media:
     - Jellyseerr:
