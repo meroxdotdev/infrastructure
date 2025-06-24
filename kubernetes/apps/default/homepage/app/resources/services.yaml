@@ -109,24 +109,25 @@
         href: https://longhorn.k8s.${SECRET_DOMAIN}
         description: Persistent storage
 
-
-
     - Grafana:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/grafana.svg
         href: https://grafana.k8s.${SECRET_DOMAIN}
         description: Monitoring (K8S)
-
 
     - Alertmanager:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/alertmanager.svg
         href: https://alertmanager.k8s.${SECRET_DOMAIN}
         description: Alerting
 
-
     - Prometheus:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/prometheus.svg
         href: https://prometheus.k8s.${SECRET_DOMAIN}
         description: Prometheus Metrics
+
+    - Jellyfin:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/jellyfin.svg
+        href: https://jellyfin.k8s.${SECRET_DOMAIN}
+        description: Media Streaming
 
     - Jellyseerr:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/jellyseerr.svg
