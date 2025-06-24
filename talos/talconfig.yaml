@@ -22,6 +22,9 @@ nodes:
   - hostname: "kubernetes-controlplane-1"
     ipAddress: "10.57.57.80"
     installDisk: "/dev/sda"
+    nodeLabels:
+      node.kubernetes.io/exclude-from-external-load-balancers: ""
+      intel.feature.node.kubernetes.io/gpu: "true"
     machineSpec:
       secureboot: false
     talosImageURL: factory.talos.dev/installer/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510
