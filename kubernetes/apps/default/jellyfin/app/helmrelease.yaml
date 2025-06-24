@@ -87,8 +87,8 @@ spec:
           - path: /config/metadata
       media:
         type: nfs
-        server: expanse.internal
-        path: /mnt/eros/Media
+        server: storage.merox.dev
+        path: /mnt/mnt/Media
         globalMounts:
           - path: /media
             readOnly: true
