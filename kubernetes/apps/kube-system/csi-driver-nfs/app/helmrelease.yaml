@@ -38,7 +38,7 @@ spec:
       name: nfs-slow
       parameters:
         server: 10.57.57.201
-        share: /volume1/Server/Kubernetes
+        share: /volume1/Server/Kubernetes/Media
       mountOptions:
         - nfsvers=4.1
         - nconnect=8
