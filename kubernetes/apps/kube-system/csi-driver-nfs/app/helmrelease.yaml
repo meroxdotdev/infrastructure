@@ -37,7 +37,7 @@ spec:
       create: true
       name: nfs-slow
       parameters:
-        server: storage.merox.dev
+        server: 10.57.57.201
         share: /volume1/Server/Kubernetes
       mountOptions:
         - nfsvers=4.1
