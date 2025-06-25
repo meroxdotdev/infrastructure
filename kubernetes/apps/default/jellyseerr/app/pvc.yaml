@@ -8,7 +8,7 @@ spec:
   accessModes: ["ReadWriteOnce"]
   resources:
     requests:
-      storage: 10Gi  # Ajustează dimensiunea după nevoie
+      storage: 2Gi  # Ajustează dimensiunea după nevoie
   storageClassName: longhorn
 ---
 apiVersion: v1
@@ -20,5 +20,5 @@ spec:
   accessModes: ["ReadWriteOnce"]
   resources:
     requests:
-      storage: 15Gi
+      storage: 5Gi
   storageClassName: longhorn

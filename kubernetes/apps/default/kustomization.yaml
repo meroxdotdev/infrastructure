@@ -13,4 +13,5 @@ resources:
   - ./radarr/ks.yaml
   - ./sonarr/ks.yaml
   - ./jellyfin/ks.yaml
+  - ./qbittorrent/ks.yaml
 
