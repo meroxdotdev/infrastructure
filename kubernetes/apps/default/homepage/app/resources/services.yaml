@@ -149,6 +149,11 @@
         href: https://radarr.k8s.${SECRET_DOMAIN}
         description: Media Movies Download
 
+    - qBittorrent:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/qbittorrent.svg
+        href: https://qbittorrent.k8s.${SECRET_DOMAIN}
+        description: qbittorrent
+
 
 - Media:
     - Jellyseerr:
