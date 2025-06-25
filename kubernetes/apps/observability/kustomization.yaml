@@ -6,14 +6,8 @@ namespace: observability
 components:
   - ../../components/common
 resources:
-#  - ./blackbox-exporter/ks.yaml
-#  - ./gatus/ks.yaml
   - ./grafana/ks.yaml
-#  - ./keda/ks.yaml
-#  - ./kromgo/ks.yaml
   - ./kube-prometheus-stack/ks.yaml
   - ./loki/ks.yaml
   - ./promtail/ks.yaml
-#  - ./kubernetes-dashboard/ks.yaml
-#  - ./smartctl-exporter/ks.yaml
-#  - ./snmp-exporter/ks.yaml
+
