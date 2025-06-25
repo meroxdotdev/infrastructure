@@ -139,6 +139,16 @@
         href: https://prowlarr.k8s.${SECRET_DOMAIN}
         description: Media indexer
 
+    - Sonarr:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/sonarr.svg
+        href: https://sonarr.k8s.${SECRET_DOMAIN}
+        description: Media TVs Download
+
+    - Radarr:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/radarr.svg
+        href: https://radarr.k8s.${SECRET_DOMAIN}
+        description: Media Movies Download
+
 
 - Media:
     - Jellyseerr:

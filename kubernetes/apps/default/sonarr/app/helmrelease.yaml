@@ -35,10 +35,10 @@ spec:
               SONARR__LOG__LEVEL: info
               SONARR__SERVER__PORT: &port 80
               SONARR__UPDATE__BRANCH: develop
-              TZ: America/New_York
-            envFrom:
-              - secretRef:
-                  name: sonarr-secret
+              TZ: Europe/Bucharest
+ #           envFrom:
+ #             - secretRef:
+ #                 name: sonarr-secret
             probes:
               liveness: &probes
                 enabled: true
@@ -89,8 +89,8 @@ spec:
           - path: /config/MediaCover
       media:
         type: nfs
-        server: expanse.internal
-        path: /mnt/eros/Media
+        server: 10.57.57.201
+        path: /volume1/Server/Kubernetes/Media/Shows
         globalMounts:
           - path: /media
       tmp:
