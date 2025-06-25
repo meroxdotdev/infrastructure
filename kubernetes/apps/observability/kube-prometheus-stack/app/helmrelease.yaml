@@ -101,7 +101,7 @@ spec:
               storageClassName: longhorn
               resources:
                 requests:
-                  storage: 25Gi
+                  storage: 15Gi
     prometheus-node-exporter:
       fullnameOverride: node-exporter
       prometheus:
