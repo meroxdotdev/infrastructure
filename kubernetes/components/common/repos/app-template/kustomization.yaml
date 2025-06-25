@@ -5,4 +5,3 @@ kind: Kustomization
 resources:
   - ./ocirepository.yaml
   - ./bjw-s.yaml
-  - ./kubernetes-dashboard-repo.yaml
