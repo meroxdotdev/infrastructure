@@ -10,5 +10,6 @@ resources:
   - ./homepage/ks.yaml
   - ./jellyseerr/ks.yaml
   - ./prowlarr/ks.yaml
+  - ./radarr/ks.yaml
   - ./jellyfin/ks.yaml
 

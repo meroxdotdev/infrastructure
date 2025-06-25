@@ -89,8 +89,8 @@ spec:
           - path: /config/MediaCover
       media:
         type: nfs
-        server: expanse.internal
-        path: /mnt/eros/Media
+        server: 10.57.57.201
+        path: /volume1/Server/Kubernetes/Media/Shows
         globalMounts:
           - path: /media
       tmp:
