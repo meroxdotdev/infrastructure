@@ -70,7 +70,7 @@ spec:
           - "{{ .Release.Name }}.k8s.merox.dev"
           - requests.k8s.merox.dev
         parentRefs:
-          - name: external
+          - name: internal
             namespace: kube-system
             sectionName: https
     persistence:
