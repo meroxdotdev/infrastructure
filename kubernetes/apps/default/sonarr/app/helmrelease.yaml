@@ -92,6 +92,6 @@ spec:
         server: 10.57.57.201
         path: /volume1/Server/Kubernetes/Media/Shows
         globalMounts:
-          - path: /media
+          - path: /shows
       tmp:
         type: emptyDir
