@@ -95,8 +95,8 @@ spec:
         existingClaim: qbittorrent
       media:
         type: nfs
-        server: expanse.internal
-        path: /mnt/eros/Media
+        server: 10.57.57.201
+        path: /volume1/Server/Kubernetes/Download
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: Downloads/qbittorrent

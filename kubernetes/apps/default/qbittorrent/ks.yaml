@@ -10,14 +10,14 @@ spec:
     labels:
       app.kubernetes.io/name: *app
   components:
-    - ../../../../components/gatus/guarded
-    - ../../../../components/keda/nfs-scaler
-    - ../../../../components/volsync
+#    - ../../../../components/gatus/guarded
+#    - ../../../../components/keda/nfs-scaler
+#    - ../../../../components/volsync
   dependsOn:
-    - name: keda
-      namespace: observability
-    - name: rook-ceph-cluster
-      namespace: rook-ceph
+#    - name: keda
+#      namespace: observability
+    - name: longhorn
+      namespace: longhorn-system
   interval: 1h
   path: ./kubernetes/apps/default/qbittorrent/app
   postBuild:
