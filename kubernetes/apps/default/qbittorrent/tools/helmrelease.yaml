@@ -38,8 +38,8 @@ spec:
             env:
               QBITTORRENT_HOST: qbittorrent.default.svc.cluster.local
               QBITTORRENT_PORT: 80
-              SABNZBD_HOST: sabnzbd.default.svc.cluster.local
-              SABNZBD_PORT: 80
+#              SABNZBD_HOST: sabnzbd.default.svc.cluster.local
+#              SABNZBD_PORT: 80
             envFrom:
               - secretRef:
                   name: qbtools-secret
@@ -136,8 +136,8 @@ spec:
             readOnly: true
       media:
         type: nfs
-        server: expanse.internal
-        path: /mnt/eros/Media
+        server: 10.57.57.201
+        path: /volume1/Server/Kubernetes/Media/Download
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: Downloads/qbittorrent
