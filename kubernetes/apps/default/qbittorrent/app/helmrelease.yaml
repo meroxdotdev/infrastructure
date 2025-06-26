@@ -102,13 +102,13 @@ spec:
       media:
         type: nfs
         server: 10.57.57.201
-        path: /volume1/Server/Kubernetes/Media/Download
+        path: /volume1/Server/Kubernetes/Media
         globalMounts:
-          - path: /media/Downloads/qbittorrent
-            subPath: Downloads/qbittorrent
+          - path: /media
+
       tmp:
         type: emptyDir
-      # ADAUGĂ ȘI ACESTE VOLUME-URI TEMPORARE
+
       cache:
         type: emptyDir
         globalMounts:
