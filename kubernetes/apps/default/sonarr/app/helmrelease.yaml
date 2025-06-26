@@ -93,7 +93,7 @@ spec:
         path: /volume1/Server/Kubernetes/Media
         globalMounts:
           - path: /shows
-            subPath: Movies
+            subPath: Shows
           - path: /downloads
             subPath: Download/Downloads/qbittorrent
             readOnly: false
