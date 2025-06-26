@@ -20,7 +20,7 @@ spec:
       namespace: *namespace
     - apiVersion: cert-manager.io/v1
       kind: ClusterIssuer
-      name: letsencrypt-staging
+      name: letsencrypt-production
   healthCheckExprs:
     - apiVersion: cert-manager.io/v1
       kind: ClusterIssuer
