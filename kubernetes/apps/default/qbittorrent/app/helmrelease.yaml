@@ -1,4 +1,3 @@
----
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
@@ -92,6 +91,12 @@ spec:
     persistence:
       config:
         existingClaim: qbittorrent
+      config-file:
+        type: secret
+        name: qbittorrent-config
+        globalMounts:
+          - path: /config/qBittorrent/config/qBittorrent.conf
+            subPath: qBittorrent.conf
       media:
         type: nfs
         server: 10.57.57.201
