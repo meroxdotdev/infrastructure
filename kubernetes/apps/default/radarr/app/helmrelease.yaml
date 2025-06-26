@@ -90,8 +90,13 @@ spec:
       media:
         type: nfs
         server: 10.57.57.201
-        path: /volume1/Server/Kubernetes/Media/Movies
+        path: /volume1/Server/Kubernetes/Media
         globalMounts:
           - path: /media
+            subpath: Movies
+          - path: /downloads
+            subPath: Download/Downloads/qbittorrent
+            readOnly: false
+
       tmp:
         type: emptyDir
