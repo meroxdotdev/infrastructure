@@ -33,19 +33,21 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /api/v2/app/version
+                  tcpSocket:
                     port: *port
-                  initialDelaySeconds: 60
+                  initialDelaySeconds: 10
                   periodSeconds: 10
-                  timeoutSeconds: 1
+                  timeoutSeconds: 5
                   failureThreshold: 3
               readiness: *probes
               startup:
                 enabled: true
                 spec:
+                  tcpSocket:
+                    port: *port
+                  initialDelaySeconds: 5
                   failureThreshold: 30
-                  periodSeconds: 10
+                  periodSeconds: 5
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
