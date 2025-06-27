@@ -37,12 +37,12 @@
         href: https://backup.${SECRET_DOMAIN}
         description: Backup Central
         ping: 10.57.57.253
-        widget:
-          type: proxmoxbackupserver
-          url: https://10.57.57.253:8007
-          username: "{{HOMEPAGE_VAR_PBS_USERNAME}}"
-          password: "{{HOMEPAGE_VAR_PBS_PASSWORD}}"
-          fields: ["datastore_usage", "failed_tasks_24h", "cpu_usage", "memory_usage"]
+#        widget:
+#          type: proxmoxbackupserver
+#          url: https://10.57.57.253:8007
+#          username: "{{HOMEPAGE_VAR_PBS_USERNAME}}"
+#          password: "{{HOMEPAGE_VAR_PBS_PASSWORD}}"
+#          fields: ["datastore_usage", "failed_tasks_24h", "cpu_usage", "memory_usage"]
 
     - Synology:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/synology.svg
