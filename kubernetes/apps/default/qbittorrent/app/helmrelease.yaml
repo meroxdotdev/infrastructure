@@ -99,7 +99,7 @@ spec:
         type: nfs
         server: 10.57.57.201
         path: /volume1/Server/Kubernetes/Media
-        globalMounts:
+        gkubectl exec -it qbittorrent-688c659dbd-bv679 -n default -- ls -la /configbalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: Downloads/qbittorrent
       tmp:

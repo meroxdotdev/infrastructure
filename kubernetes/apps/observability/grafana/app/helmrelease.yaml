@@ -269,9 +269,9 @@ spec:
     route:
       main:
         enabled: true
-        hostnames: ["grafana.merox.dev"]
+        hostnames: ["grafana.k8s.merox.dev"]
         parentRefs:
-          - name: external
+          - name: internal
             namespace: kube-system
             sectionName: https
     persistence:
