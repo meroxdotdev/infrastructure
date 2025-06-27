@@ -23,7 +23,7 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/qbittorrent
-              tag: 5.1.0@sha256:37aefd713ba31d51255995261616f1144378887bc5f21665a0ebf851fb85f69a
+              tag: 4.6.0
             env:
               TZ: Europe/Bucharest
               QBT_WEBUI_PORT: &port 80
@@ -90,23 +90,9 @@ spec:
           - backendRefs:
               - identifier: app
                 port: *port
-    configMaps:
-      qbconfig:
-        enabled: true
-        data:
-          qBittorrent.conf: |
-            [Preferences]
-            WebUI\Username=admin
-            WebUI\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8NR1Gur2hmQCvCDpm39Q+PsJRJPaCU51dEiz+dTzh8qbPsL8WkFljQYFQ==)"
     persistence:
       config:
         existingClaim: qbittorrent
-      qbconfig:
-        type: configMap
-        name: qbittorrent-qbconfig
-        globalMounts:
-          - path: /config/qBittorrent.conf
-            subPath: qBittorrent.conf
       media:
         type: nfs
         server: 10.57.57.201
