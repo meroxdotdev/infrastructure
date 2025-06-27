@@ -56,15 +56,6 @@
           password: "{{HOMEPAGE_VAR_SYNOLOGY_PASSWORD}}"
           volume: volume_1
 
-    - Traefik:
-        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/traefik.svg
-        href: https://traefik-dashboard.${SECRET_DOMAIN}
-        description: Ingress Controller/RP
-        ping: 10.57.57.60
-        # widget:
-        #   type: traefik
-        #   url: https://traefik-dashboard.${SECRET_DOMAIN}
-
     - vsCode:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/vscode.svg
         href: https://vscode.${SECRET_DOMAIN}
@@ -91,11 +82,6 @@
         href: https://cloud.${SECRET_DOMAIN}
         description: docker
         ping: 192.168.57.2
-
-    - Rancher:
-        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/rancher.svg
-        href: https://rancher.k8s.${SECRET_DOMAIN}
-        description: K3S MGMT
 
     - TP-Link:
         icon: https://www.svgrepo.com/show/102795/wifi.svg
