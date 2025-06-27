@@ -23,7 +23,7 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/qbittorrent
-              tag: 5.1.1@sha256:539688bd5de1d3d7e9b5b91e306635ce2ae3d9aa423cd5fea4d47eebd5c46356
+              tag: 5.1.0@sha256:37aefd713ba31d51255995261616f1144378887bc5f21665a0ebf851fb85f69a
             env:
               TZ: Europe/Bucharest
               QBT_WEBUI_PORT: &port 80
@@ -33,7 +33,8 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
+                  httpGet:
+                    path: /api/v2/app/version
                     port: *port
                   initialDelaySeconds: 0
                   periodSeconds: 10
@@ -53,7 +54,7 @@ spec:
               requests:
                 cpu: 100m
               limits:
-                memory: 2Gi
+                memory: 12Gi
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
@@ -71,7 +72,7 @@ spec:
       bittorrent:
         type: LoadBalancer
         annotations:
-          lbipam.cilium.io/ips: 10.57.57.102
+          lbipam.cilium.io/ips: 10.57.57.201
         ports:
           bittorrent-tcp:
             port: *torrentPort
@@ -80,7 +81,7 @@ spec:
       app:
         hostnames:
           - "{{ .Release.Name }}.k8s.merox.dev"
-          - qb.merox.dev
+          - qb.k8s.merox.dev
         parentRefs:
           - name: internal
             namespace: kube-system
@@ -89,31 +90,29 @@ spec:
           - backendRefs:
               - identifier: app
                 port: *port
+    configMaps:
+      qbconfig:
+        enabled: true
+        data:
+          qBittorrent.conf: |
+            [Preferences]
+            WebUI\Username=admin
+            WebUI\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8NR1Gur2hmQCvCDpm39Q+PsJRJPaCU51dEiz+dTzh8qbPsL8WkFljQYFQ==)"
     persistence:
       config:
         existingClaim: qbittorrent
-      # ADAUGĂ ACEASTĂ SECȚIUNE PENTRU CONFIGMAP
-      config-file:
+      qbconfig:
         type: configMap
-        name: qbittorrent-config
+        name: qbittorrent-qbconfig
         globalMounts:
-          - path: /config/qBittorrent/qBittorrent.conf
+          - path: /config/qBittorrent.conf
             subPath: qBittorrent.conf
       media:
         type: nfs
         server: 10.57.57.201
         path: /volume1/Server/Kubernetes/Media
         globalMounts:
-          - path: /media
-
+          - path: /media/Downloads/qbittorrent
+            subPath: Downloads/qbittorrent
       tmp:
         type: emptyDir
-
-      cache:
-        type: emptyDir
-        globalMounts:
-          - path: /tmp/.cache
-      local:
-        type: emptyDir
-        globalMounts:
-          - path: /tmp/.local

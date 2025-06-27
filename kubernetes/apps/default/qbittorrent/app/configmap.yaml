@@ -5,15 +5,4 @@ metadata:
 data:
   qBittorrent.conf: |
     [Preferences]
-    # This sets the password to "changeme" - you should change this!
     WebUI\Password_PBKDF2="@ByteArray(ARQ77eY1NUZaQsuDHbIMCA==:0WMRkYTUWVT9wVvdDtHAjU9b3b7uB8NR1Gur2hmQCvCDpm39Q+PsJRJPaCU51dEiz+dTzh8qbPsL8WkFljQYFQ==)"
-    WebUI\Username=admin
-    WebUI\Port=80
-    Downloads\SavePath=/media/Downloads/qbittorrent
-    Downloads\TempPath=/media/Downloads/qbittorrent/incomplete
-    Downloads\PreAllocation=false
-    Downloads\UseIncompleteExtension=true
-
-    [BitTorrent]
-    Session\DefaultSavePath=/media/Downloads/qbittorrent
-    Session\TempPath=/media/Downloads/qbittorrent/incomplete
