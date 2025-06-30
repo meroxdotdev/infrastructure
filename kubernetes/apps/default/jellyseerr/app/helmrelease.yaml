@@ -67,7 +67,7 @@ spec:
     route:
       app:
         hostnames:
-          - "{{ .Release.Name }}.k8s.merox.dev"
+          - "{{ .Release.Name }}.k8ss.merox.dev"
           - download.merox.dev
         parentRefs:
           - name: external
