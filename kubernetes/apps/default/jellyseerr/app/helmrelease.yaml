@@ -68,9 +68,9 @@ spec:
       app:
         hostnames:
           - "{{ .Release.Name }}.k8s.merox.dev"
-          - requests.k8s.merox.dev
+          - download.merox.dev
         parentRefs:
-          - name: internal
+          - name: external
             namespace: kube-system
             sectionName: https
     persistence:
