@@ -45,10 +45,11 @@ spec:
       replicaAutoBalance: true
       storageMinimalAvailablePercentage: 1
       storageReservedPercentageForDefaultDisk: 10
-#      taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
-#      systemManagedComponentsNodeSelector:
-#        longhorn: "true"
-
+      # Setări pentru backup MinIO
+      backupTarget: "s3://longhorn-backups@us-east-1/"
+      backupTargetCredentialSecret: "minio-secret"
+      backupstorePollInterval: 300
+      backupConcurrentLimit: 2
 
     persistence:
       defaultClass: true
@@ -65,10 +66,3 @@ spec:
     metrics:
       serviceMonitor:
         enabled: true
-
-#    resources:
-#      limits:
-#        memory: 1500Mi
-#      requests:
-#        cpu: 100m
-#        memory: 500Mi
