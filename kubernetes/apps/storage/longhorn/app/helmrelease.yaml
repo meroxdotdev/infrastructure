@@ -49,7 +49,7 @@ spec:
     defaultBackupStore:
       backupTarget: "s3://longhorn-backups@us-east-1/"
       backupTargetCredentialSecret: "minio-secret"
-      pollInterval: 300
+      pollInterval: 250
 
     persistence:
       defaultClass: true
