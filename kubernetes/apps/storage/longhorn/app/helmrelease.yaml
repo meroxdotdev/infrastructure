@@ -45,11 +45,11 @@ spec:
       replicaAutoBalance: true
       storageMinimalAvailablePercentage: 1
       storageReservedPercentageForDefaultDisk: 10
-      # Setări pentru backup MinIO
+
+    defaultBackupStore:
       backupTarget: "s3://longhorn-backups@us-east-1/"
       backupTargetCredentialSecret: "minio-secret"
-      backupstorePollInterval: 300
-      backupConcurrentLimit: 2
+      pollInterval: 300
 
     persistence:
       defaultClass: true
