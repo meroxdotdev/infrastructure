@@ -1,6 +1,5 @@
-# ⛵ Cluster Template
 
-> Blog post coming soon on [merox.dev](https://merox.dev)
+> Blog post https://merox.dev/blog/homelab-tour/
 
 # 🏠 Homelab Infrastructure
 
