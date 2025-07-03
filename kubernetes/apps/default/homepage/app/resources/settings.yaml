@@ -1,23 +1,33 @@
 ---
-title: Dashboard
+title: HomeLab Dashboard
 theme: dark
 color: zinc
-headerStyle: clean
+headerStyle: boxedWidgets
+favicon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/homepage.svg
+target: _blank
 layout:
   Infrastructure:
     style: row
     columns: 3
     icon: mdi-server
-  Media:
+  Cloud Services:
+    style: row
+    columns: 2
+    icon: mdi-cloud
+  Kubernetes:
+    style: row
+    columns: 4
+    icon: mdi-kubernetes
+  Media Center:
     style: row
     columns: 3
-    icon: mdi-movie
+    icon: mdi-multimedia
+  Monitoring:
+    style: column
+    icon: mdi-monitor-dashboard
   Network:
     style: column
     icon: mdi-network
-  Development:
-    style: column
-    icon: mdi-code-braces
 quicklaunch:
   searchDescriptions: true
   hideInternetSearch: false
