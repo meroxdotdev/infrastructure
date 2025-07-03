@@ -2,25 +2,22 @@
 title: Dashboard
 theme: dark
 color: zinc
-headerStyle: boxedWidgets
+headerStyle: clean
 layout:
-  Services:
+  Infrastructure:
     style: row
     columns: 3
-    icon: mdi-kubernetes
-  Home:
+    icon: mdi-server
+  Media:
     style: row
-    columns: 2
-    icon: mdi-home
+    columns: 3
+    icon: mdi-movie
   Network:
     style: column
     icon: mdi-network
-  Personal:
+  Development:
     style: column
-    icon: mdi-desktop-classic
-  Work:
-    style: column
-    icon: mdi-briefcase
+    icon: mdi-code-braces
 quicklaunch:
   searchDescriptions: true
   hideInternetSearch: false
