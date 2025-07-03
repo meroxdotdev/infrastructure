@@ -65,7 +65,7 @@
 
     - Storage Cloud:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/minio.svg
-        href: https://192.168.57.2:9001
+        href: http://192.168.57.2:9001
         description: MinIO Backup Storage
 
 # ⚙️ KUBERNETES CLUSTER
