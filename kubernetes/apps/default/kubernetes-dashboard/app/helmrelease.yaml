@@ -40,6 +40,8 @@ spec:
               - --namespace=default
               - --bind-address=0.0.0.0
               - --port=9090
+              - --authentication-mode=basic
+              - --token-ttl=0
             env:
               TZ: ${TIMEZONE}
             probes:
