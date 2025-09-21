@@ -2,8 +2,7 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: &app kubernetes-dashboard
-  namespace: default
+  name: kubernetes-dashboard
 spec:
   interval: 30m
   chart:
@@ -28,27 +27,18 @@ spec:
       - --enable-insecure-login
       - --enable-skip-login
       - --disable-settings-authorizer
-    # Disable the default ingress since we're using Gateway API
     ingress:
-      enabled: false
-    metricsScraper:
       enabled: true
-    # Add Gateway API route configuration
-    route:
-      app:
-        hostnames: ["admin.k8s.${SECRET_DOMAIN}"]
-        parentRefs:
-          - name: internal
-            namespace: kube-system
-            sectionName: https
-        rules:
-          - backendRefs:
-              - name: *app
-                port: 443
-    # Add homepage annotations to the service
-    service:
+      className: internal
       annotations:
         gethomepage.dev/enabled: "true"
         gethomepage.dev/icon: kubernetes-dashboard.png
         gethomepage.dev/name: Kubernetes Dashboard
         gethomepage.dev/group: Observability
+      hosts:
+        - &host "panel.k8s.${SECRET_DOMAIN}"
+      tls:
+        - hosts:
+            - *host
+    metricsScraper:
+      enabled: true
