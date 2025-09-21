@@ -128,7 +128,7 @@ spec:
             port: 8000
     route:
       app:
-        hostnames: ["k8s-dashboard.${SECRET_DOMAIN}"]
+        hostnames: ["k8s-dashboard.k8s.${SECRET_DOMAIN}"]
         parentRefs:
           - name: internal
             namespace: kube-system
