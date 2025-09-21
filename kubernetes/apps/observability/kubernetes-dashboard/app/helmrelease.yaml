@@ -36,7 +36,7 @@ spec:
         gethomepage.dev/name: Kubernetes Dashboard
         gethomepage.dev/group: Observability
       hosts:
-        - &host "panel.k8s.${SECRET_DOMAIN}"
+        - &host "kd.k8s.${SECRET_DOMAIN}"
       tls:
         - hosts:
             - *host
