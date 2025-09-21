@@ -1,1 +1,0 @@
-find /srv/kubernetes/infrastructure -name "ks.yaml" -exec grep -l "repositories" {} \;
