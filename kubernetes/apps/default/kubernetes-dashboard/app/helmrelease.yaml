@@ -38,6 +38,8 @@ spec:
               - --disable-settings-authorizer
               - --auto-generate-certificates=false
               - --namespace=default
+              - --bind-address=0.0.0.0
+              - --port=9090
             env:
               TZ: ${TIMEZONE}
             probes:
@@ -67,6 +69,15 @@ spec:
                 memory: 200Mi
               limits:
                 memory: 400Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: false
+              runAsNonRoot: true
+              runAsUser: 1001
+              runAsGroup: 2001
           metrics-scraper:
             image:
               repository: kubernetesui/metrics-scraper
@@ -98,6 +109,15 @@ spec:
                 memory: 64Mi
               limits:
                 memory: 128Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1001
+              runAsGroup: 2001
     service:
       app:
         controller: *app
@@ -108,7 +128,7 @@ spec:
             port: 8000
     route:
       app:
-        hostnames: ["k8s-dashboard.k8s.${SECRET_DOMAIN}"]
+        hostnames: ["k8s-dashboard.${SECRET_DOMAIN}"]
         parentRefs:
           - name: internal
             namespace: kube-system
@@ -120,3 +140,12 @@ spec:
     serviceAccount:
       create: true
       name: kubernetes-dashboard
+    persistence:
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+      certs:
+        type: emptyDir
+        globalMounts:
+          - path: /certs
