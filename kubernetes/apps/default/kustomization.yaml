@@ -13,5 +13,4 @@ resources:
   - ./sonarr/ks.yaml
   - ./jellyfin/ks.yaml
   - ./qbittorrent/ks.yaml
-  - ./kubernetes-dashboard/ks.yaml
 

@@ -11,3 +11,4 @@ resources:
   - ./loki/ks.yaml
   - ./promtail/ks.yaml
 
+  - ./kubernetes-dashboard/ks.yaml
