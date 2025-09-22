@@ -1,8 +1,8 @@
----
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: kubernetes-dashboard
+
 spec:
   interval: 30m
   chart:
@@ -27,18 +27,21 @@ spec:
       - --enable-insecure-login
       - --enable-skip-login
       - --disable-settings-authorizer
+
     ingress:
-      enabled: true
-      className: internal
-      annotations:
-        gethomepage.dev/enabled: "true"
-        gethomepage.dev/icon: kubernetes-dashboard.png
-        gethomepage.dev/name: Kubernetes Dashboard
-        gethomepage.dev/group: Observability
-      hosts:
-        - &host "kubernetes.k8s.${SECRET_DOMAIN}"
-      tls:
-        - hosts:
-            - *host
+      enabled: false
     metricsScraper:
       enabled: true
+
+
+    route:
+      kubernetes-dashboard:
+        hostnames: ["kubernetes.k8s.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - name: kubernetes-dashboard
+                port: 443
