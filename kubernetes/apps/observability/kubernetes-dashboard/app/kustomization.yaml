@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - ./rbac.yaml
   - ./helmrelease.yaml
+  - ./httproute.yaml
