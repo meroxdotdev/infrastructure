@@ -4,7 +4,7 @@ metadata:
   name: kubernetes-dashboard
 spec:
   hostnames:
-    - kubernetes.${SECRET_DOMAIN}
+    - kubernetes.k8s.merox.dev
   parentRefs:
     - name: internal
       namespace: kube-system
