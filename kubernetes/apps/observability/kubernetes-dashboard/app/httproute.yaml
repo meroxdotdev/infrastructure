@@ -14,11 +14,3 @@ spec:
     - backendRefs:
         - name: kubernetes-dashboard-kong-proxy
           port: 443
-          namespace: observability
-      filters:
-      - type: RequestHeaderModifier
-        requestHeaderModifier:
-          set:
-          - name: X-Forwarded-Proto
-            value: https
-          - name: X-Forwarded-Host
