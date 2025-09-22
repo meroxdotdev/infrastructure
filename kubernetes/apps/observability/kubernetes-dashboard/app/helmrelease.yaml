@@ -34,3 +34,14 @@ spec:
       enabled: true
 
 
+    route:
+      kubernetes-dashboard:
+        hostnames: ["kubernetes.k8s.${SECRET_DOMAIN}"]
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+        rules:
+          - backendRefs:
+              - name: kubernetes-dashboard
+                port: 8443
