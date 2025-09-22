@@ -13,4 +13,4 @@ spec:
   rules:
     - backendRefs:
         - name: kubernetes-dashboard-web
-          port: 8445
+          port: 8002
