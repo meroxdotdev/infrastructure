@@ -15,11 +15,11 @@
         href: https://kubernetes.${SECRET_DOMAIN}
         description: Kubernetes Dashboard
 
-    - Backup Server:
-        icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/proxmox.svg
-        href: https://backup.${SECRET_DOMAIN}
-        description: Proxmox Backup Server
-        ping: 10.57.57.253
+    # - Backup Server:
+    #     icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/proxmox.svg
+    #     href: https://backup.${SECRET_DOMAIN}
+    #     description: Proxmox Backup Server
+    #     ping: 10.57.57.253
 
     - Synology NAS:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/synology.svg
@@ -33,11 +33,11 @@
           password: "{{HOMEPAGE_VAR_SYNOLOGY_PASSWORD}}"
           volume: volume_1
 
-    - Visual Studio Code:
-        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/vscode.svg
-        href: https://vscode.${SECRET_DOMAIN}
-        description: Code Editor
-        ping: 10.57.57.60
+#   - Visual Studio Code:
+#         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/vscode.svg
+#         href: https://vscode.${SECRET_DOMAIN}
+#         description: Code Editor
+#         ping: 10.57.57.60
 
     - Docker Management:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/portainer.svg
