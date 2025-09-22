@@ -13,5 +13,5 @@ spec:
   rules:
     - backendRefs:
         - name: kubernetes-dashboard-kong-proxy
-          port: 8443
+          port: 443
           protocol: HTTPS
