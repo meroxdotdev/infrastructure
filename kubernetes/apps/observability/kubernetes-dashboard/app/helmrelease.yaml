@@ -44,4 +44,4 @@ spec:
         rules:
           - backendRefs:
               - name: kubernetes-dashboard
-                port: 443
+                port: 8443
