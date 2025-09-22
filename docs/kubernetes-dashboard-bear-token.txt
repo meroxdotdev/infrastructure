@@ -1,0 +1,2 @@
+How to generate:
+kubectl -n observability get secret kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d
