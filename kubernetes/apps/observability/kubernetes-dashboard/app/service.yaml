@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes-dashboard-kong-nodeport
+  namespace: observability
+spec:
+  ports:
+  - name: kong-proxy-tls
+    nodePort: 32001 # Your desired port
+    port: 443
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app.kubernetes.io/component: app
+    app.kubernetes.io/instance: kubernetes-dashboard
+    app.kubernetes.io/name: kong
+  type: NodePort
