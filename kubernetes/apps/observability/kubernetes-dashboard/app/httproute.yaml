@@ -2,7 +2,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: kubernetes-dashboard
-  namespace: default
+  namespace: observability
 spec:
   hostnames:
     - kubernetes.k8s.merox.dev
