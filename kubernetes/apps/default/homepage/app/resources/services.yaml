@@ -10,6 +10,11 @@
           username: "{{HOMEPAGE_VAR_PROXMOX_USERNAME}}"
           password: "{{HOMEPAGE_VAR_PROXMOX_PASSWORD}}"
 
+    - Kubernetes Dashboard:
+        icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/kubernetes.svg
+        href: https://kubernetes.${SECRET_DOMAIN}
+        description: Kubernetes Dashboard
+
     - Backup Server:
         icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/proxmox.svg
         href: https://backup.${SECRET_DOMAIN}
@@ -70,6 +75,7 @@
 
 # ⚙️ KUBERNETES CLUSTER
 - Kubernetes:
+
     - Longhorn Storage:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/longhorn.svg
         href: https://longhorn.k8s.${SECRET_DOMAIN}
