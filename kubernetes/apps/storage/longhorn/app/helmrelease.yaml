@@ -44,7 +44,7 @@ spec:
       orphanAutoDeletion: true
       replicaAutoBalance: "true"
       storageMinimalAvailablePercentage: "1"
-      storageReservedPercentageForDefaultDisk: 10
+      storageReservedPercentageForDefaultDisk: "10"
 
     defaultBackupStore:
       backupTarget: "s3://longhorn-backups@us-east-1/"
