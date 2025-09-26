@@ -42,7 +42,7 @@ spec:
       guaranteedReplicaManagerCPU: 20
       nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
       orphanAutoDeletion: true
-      replicaAutoBalance: true
+      replicaAutoBalance: "true"
       storageMinimalAvailablePercentage: 1
       storageReservedPercentageForDefaultDisk: 10
 
