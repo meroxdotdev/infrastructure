@@ -137,6 +137,12 @@
       matchDatasources: ["github-releases"],
       addLabels: ["renovate/github-release"],
     },
+    {
+      description: "Disable qbtools monitoring",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/buroa/qbtools"],
+      enabled: false,
+    },
   ],
   customManagers: [
     {
