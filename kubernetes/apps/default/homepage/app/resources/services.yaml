@@ -2,7 +2,7 @@
     - Proxmox Cluster:
         icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/proxmox.svg
         href: https://proxmox.${SECRET_DOMAIN}
-        description: Virtualization Platform
+        description: Virtualization Center
         ping: 10.57.57.254
         widget:
           type: proxmox
