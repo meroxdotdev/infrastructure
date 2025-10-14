@@ -47,7 +47,7 @@ spec:
       storageReservedPercentageForDefaultDisk: "10"
 
     defaultBackupStore:
-      backupTarget: "s3://longhorn-backups@us-east-1/"
+      backupTarget: "s3://longhorn@us-east-1/"
       backupTargetCredentialSecret: "minio-secret"
       pollInterval: 300
 
