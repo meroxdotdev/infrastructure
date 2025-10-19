@@ -1,4 +1,4 @@
-- Infrastructure:
+- Infra:
     - Proxmox Cluster:
         icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/proxmox.svg
         href: https://proxmox.${SECRET_DOMAIN}
