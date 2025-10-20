@@ -10,3 +10,4 @@ spec:
     requests:
       storage: 5Gi
   storageClassName: longhorn
+  volumeName: qbittorrent-restored-pv 
