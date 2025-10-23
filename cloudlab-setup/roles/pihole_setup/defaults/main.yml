@@ -1,0 +1,12 @@
+---
+pihole_docker_dir: /srv/docker/pihole
+pihole_compose_version: "3.8"
+pihole_image: "pihole/pihole:latest"
+pihole_container_ip: 172.25.10.53
+pihole_domain: "pihole.cloud.merox.dev"
+pihole_timezone: "Europe/Bucharest"
+pihole_dns_upstreams: "1.1.1.1;8.8.8.8"
+pihole_dns_listening_mode: "all"
+pihole_ipv6_enabled: "false"
+pihole_web_port: 8078
+traefik_network_name: network-cloud-merox

@@ -1,0 +1,18 @@
+http:
+  routers:
+    portainer:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ portainer_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: portainer
+
+  services:
+    portainer:
+      loadBalancer:
+        servers:
+          - url: "http://{{ portainer_container_ip }}:9000"
+        passHostHeader: true

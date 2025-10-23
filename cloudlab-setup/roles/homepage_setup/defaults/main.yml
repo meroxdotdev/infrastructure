@@ -1,0 +1,10 @@
+---
+homepage_docker_dir: /srv/docker/homepage
+homepage_compose_version: "3.8"
+homepage_image: "ghcr.io/gethomepage/homepage:latest"
+homepage_container_ip: 172.25.10.10
+homepage_domain: "homepage.cloud.merox.dev"
+homepage_port: 3000
+homepage_puid: 1000
+homepage_pgid: 1000
+traefik_network_name: network-cloud-merox

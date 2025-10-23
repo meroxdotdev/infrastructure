@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  author: CloudLab Merox
+  description: Install and configure Docker CE with Docker Compose V2
+  license: MIT
+  min_ansible_version: '2.17'
+  platforms:
+    - name: Ubuntu
+      versions:
+        - '22.04'
+        - '24.04'
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+
+dependencies: []

@@ -1,0 +1,41 @@
+---
+- name: Create Portainer directory structure
+  file:
+    path: "{{ portainer_docker_dir }}"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Deploy Portainer docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ portainer_docker_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart portainer
+
+- name: Start Portainer container
+  community.docker.docker_compose_v2:
+    project_src: "{{ portainer_docker_dir }}"
+    state: present
+
+- name: Wait for Portainer to be ready
+  wait_for:
+    port: "{{ portainer_http_port }}"
+    host: "{{ portainer_container_ip }}"
+    delay: 5
+    timeout: 60
+
+- name: Create Traefik dynamic config for Portainer
+  template:
+    src: traefik-portainer-config.yml.j2
+    dest: /srv/docker/traefik/config/portainer.yml
+    mode: '0644'
+  notify: Reload traefik
+
+- name: Display Portainer access information
+  debug:
+    msg:
+      - "Portainer deployed successfully!"
+      - "Web Interface: https://{{ portainer_domain }}"
+      - "Container IP: {{ portainer_container_ip }}"
+      - "First login: Set admin password in UI"

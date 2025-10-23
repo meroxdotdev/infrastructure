@@ -1,0 +1,10 @@
+---
+- name: Quick VPS Recovery Setup
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+  roles:
+    - role: initial_setup
+      tags: ['initial']
+    - role: tailscale_exit_node
+      tags: ['tailscale']

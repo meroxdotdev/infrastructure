@@ -1,0 +1,88 @@
+---
+- name: Detect Tailscale IP address
+  shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
+  register: tailscale_ip_result
+  changed_when: false
+  failed_when: tailscale_ip_result.stdout == ""
+
+- name: Set Tailscale IP as fact
+  set_fact:
+    tailscale_ip: "{{ tailscale_ip_result.stdout }}"
+
+- name: Display detected Tailscale IP
+  debug:
+    msg: "Detected Tailscale IP for Homepage: {{ tailscale_ip }}"
+
+- name: Create Homepage directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  become: yes
+  loop:
+    - "{{ homepage_docker_dir }}"
+    - "{{ homepage_docker_dir }}/config"
+
+- name: Deploy Homepage docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ homepage_docker_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart homepage
+
+- name: Create default Homepage settings.yaml
+  template:
+    src: settings.yaml.j2
+    dest: "{{ homepage_docker_dir }}/config/settings.yaml"
+    mode: '0644'
+    force: no
+
+- name: Create default Homepage services.yaml
+  template:
+    src: services.yaml.j2
+    dest: "{{ homepage_docker_dir }}/config/services.yaml"
+    mode: '0644'
+    force: no
+
+- name: Create default Homepage widgets.yaml
+  template:
+    src: widgets.yaml.j2
+    dest: "{{ homepage_docker_dir }}/config/widgets.yaml"
+    mode: '0644'
+    force: no
+
+- name: Create default Homepage bookmarks.yaml
+  template:
+    src: bookmarks.yaml.j2
+    dest: "{{ homepage_docker_dir }}/config/bookmarks.yaml"
+    mode: '0644'
+    force: no
+
+- name: Start Homepage container
+  community.docker.docker_compose_v2:
+    project_src: "{{ homepage_docker_dir }}"
+    state: present
+
+- name: Wait for Homepage to be ready
+  wait_for:
+    port: "{{ homepage_port }}"
+    host: "{{ homepage_container_ip }}"
+    delay: 5
+    timeout: 60
+
+- name: Create Traefik dynamic config for Homepage
+  template:
+    src: traefik-homepage-config.yml.j2
+    dest: /srv/docker/traefik/config/homepage.yml
+    mode: '0644'
+  notify: Reload traefik
+
+- name: Display Homepage access information
+  debug:
+    msg:
+      - "Homepage deployed successfully!"
+      - "Web Interface: https://{{ homepage_domain }}"
+      - "Container IP: {{ homepage_container_ip }}"
+      - "Tailscale IP: {{ tailscale_ip }}"
+      - "Config location: {{ homepage_docker_dir }}/config/"
+      - "Customize dashboards by editing YAML files in config/"

@@ -1,0 +1,10 @@
+---
+traefik_docker_dir: /srv/docker/traefik
+traefik_compose_version: "3.8"
+traefik_image: "traefik:latest"
+traefik_network_name: network-cloud-merox
+traefik_network_subnet: 172.25.0.0/16
+traefik_network_gateway: 172.25.0.1
+traefik_container_ip: 172.25.10.2
+traefik_domain: "traefik.cloud.merox.dev"
+traefik_wildcard_domain: "cloud.merox.dev"

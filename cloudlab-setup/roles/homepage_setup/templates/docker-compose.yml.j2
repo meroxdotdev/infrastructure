@@ -1,0 +1,37 @@
+version: '{{ homepage_compose_version }}'
+
+services:
+  homepage:
+    image: {{ homepage_image }}
+    container_name: homepage
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+      - {{ tailscale_ip }}
+    extra_hosts:
+      - "traefik.cloud.merox.dev:{{ tailscale_ip }}"
+      - "pihole.cloud.merox.dev:{{ tailscale_ip }}"
+      - "portainer.cloud.merox.dev:{{ tailscale_ip }}"
+    ports:
+      - "{{ homepage_port }}:3000"
+    volumes:
+      - {{ homepage_docker_dir }}/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      PUID: {{ homepage_puid }}
+      PGID: {{ homepage_pgid }}
+      HOMEPAGE_ALLOWED_HOSTS: "*"
+    networks:
+      {{ traefik_network_name }}:
+        ipv4_address: {{ homepage_container_ip }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage.rule=Host(`{{ homepage_domain }}`)"
+      - "traefik.http.routers.homepage.entrypoints=https"
+      - "traefik.http.routers.homepage.tls.certresolver=cloudflare"
+      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+
+networks:
+  {{ traefik_network_name }}:
+    external: true

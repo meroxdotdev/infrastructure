@@ -1,0 +1,54 @@
+---
+- name: Check if systemd-resolved is active
+  systemd:
+    name: systemd-resolved
+  register: resolved_status
+  failed_when: false
+
+- name: Stop and disable systemd-resolved
+  systemd:
+    name: systemd-resolved
+    state: stopped
+    enabled: false
+  when: resolved_status.status.ActiveState == "active"
+
+- name: Remove immutable flag from /etc/resolv.conf
+  command: chattr -i /etc/resolv.conf
+  changed_when: false
+  failed_when: false
+
+- name: Remove existing /etc/resolv.conf
+  file:
+    path: /etc/resolv.conf
+    state: absent
+
+- name: Create new /etc/resolv.conf with Cloudflare DNS
+  copy:
+    dest: /etc/resolv.conf
+    content: |
+      nameserver 1.1.1.1
+      nameserver 8.8.8.8
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Make /etc/resolv.conf immutable
+  command: chattr +i /etc/resolv.conf
+  changed_when: false
+  ignore_errors: yes
+
+- name: Verify port 53 is available
+  wait_for:
+    port: 53
+    state: stopped
+    timeout: 5
+  ignore_errors: yes
+
+- name: Display port 53 status
+  shell: ss -tulpn | grep :53 || echo "Port 53 is free"
+  register: port_check
+  changed_when: false
+
+- name: Show port status
+  debug:
+    var: port_check.stdout_lines

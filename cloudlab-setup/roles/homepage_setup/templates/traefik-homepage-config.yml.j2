@@ -1,0 +1,18 @@
+http:
+  routers:
+    homepage:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ homepage_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: homepage
+
+  services:
+    homepage:
+      loadBalancer:
+        servers:
+          - url: "http://{{ homepage_container_ip }}:3000"
+        passHostHeader: true

@@ -1,0 +1,83 @@
+---
+# Install and configure Tailscale as exit node
+
+- name: Install curl if not present
+  ansible.builtin.apt:
+    name: curl
+    state: present
+  tags: ['tailscale', 'setup']
+
+- name: Download Tailscale GPG key
+  ansible.builtin.shell: |
+    curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_distribution_release }}.noarmor.gpg -o /usr/share/keyrings/tailscale-archive-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/tailscale-archive-keyring.gpg
+  tags: ['tailscale', 'setup']
+
+- name: Add Tailscale repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu {{ ansible_distribution_release }} main"
+    state: present
+    filename: tailscale
+  tags: ['tailscale', 'setup']
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+  tags: ['tailscale', 'setup']
+
+- name: Install Tailscale
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+  tags: ['tailscale', 'setup']
+
+- name: Enable IPv4 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: yes
+  tags: ['tailscale', 'network']
+
+- name: Enable IPv6 forwarding
+  ansible.posix.sysctl:
+    name: net.ipv6.conf.all.forwarding
+    value: '1'
+    state: present
+    reload: yes
+  tags: ['tailscale', 'network']
+
+- name: Apply sysctl settings
+  ansible.builtin.command: sysctl -p
+  changed_when: false
+  tags: ['tailscale', 'network']
+
+- name: Check if Tailscale is already connected
+  ansible.builtin.command: tailscale status
+  register: tailscale_status
+  changed_when: false
+  failed_when: false
+  tags: ['tailscale', 'config']
+
+- name: Authenticate Tailscale as exit node
+  ansible.builtin.command: >
+    tailscale up --reset
+    --authkey={{ tailscale_auth_key }}
+    {% if tailscale_advertise_exit_node %}--advertise-exit-node{% endif %}
+    {% if tailscale_accept_routes %}--accept-routes{% endif %}
+    {% if tailscale_accept_dns %}--accept-dns{% endif %}
+  when: "'Logged out' in tailscale_status.stdout or tailscale_status.rc != 0"
+  tags: ['tailscale', 'config']
+
+- name: Verify Tailscale connection
+  ansible.builtin.command: tailscale status
+  register: final_status
+  changed_when: false
+  tags: ['tailscale', 'verify']
+
+- name: Display Tailscale status
+  ansible.builtin.debug:
+    msg: "✅ Tailscale connected successfully"
+  when: final_status.rc == 0
+  tags: ['tailscale', 'verify']

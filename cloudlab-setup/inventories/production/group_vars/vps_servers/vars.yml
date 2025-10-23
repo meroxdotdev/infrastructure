@@ -1,0 +1,19 @@
+---
+# Non-sensitive variables for VPS servers
+timezone: "Europe/Bucharest"
+enable_ntp: true
+enable_ufw: true
+allowed_ssh_port: 22
+
+system_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - ufw
+  - unattended-upgrades
+
+# Reference vault variables
+tailscale_auth_key: "{{ vault_tailscale_auth_key }}"

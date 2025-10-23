@@ -1,0 +1,8 @@
+---
+- name: Setup Homepage dashboard
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - homepage_setup

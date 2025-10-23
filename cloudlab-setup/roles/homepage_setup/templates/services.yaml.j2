@@ -1,0 +1,33 @@
+---
+- Infrastructure:
+    - Traefik:
+        icon: traefik.png
+        href: https://traefik.cloud.merox.dev
+        description: Reverse Proxy & SSL
+        widget:
+          type: traefik
+          url: http://{{ tailscale_ip }}
+
+    - Pi-hole:
+        icon: pi-hole.png
+        href: https://pihole.cloud.merox.dev/admin
+        description: Network-wide Ad Blocking
+        widget:
+          type: pihole
+          url: http://{{ tailscale_ip }}:8078
+          key: {{ pihole_webpassword }}
+
+    - Portainer:
+        icon: portainer.png
+        href: https://portainer.cloud.merox.dev
+        description: Container Management
+        widget:
+          type: portainer
+          url: http://{{ tailscale_ip }}:9000
+          env: 1
+
+- Services:
+    - Tailscale:
+        icon: tailscale.png
+        href: https://login.tailscale.com/admin/machines
+        description: VPN Mesh Network
