@@ -1,0 +1,11 @@
+---
+- name: Restart nextcloud
+  community.docker.docker_compose_v2:
+    project_src: "{{ nextcloud_docker_dir }}"
+    state: restarted
+
+- name: Reload traefik
+  community.docker.docker_container:
+    name: traefik
+    state: started
+    restart: yes

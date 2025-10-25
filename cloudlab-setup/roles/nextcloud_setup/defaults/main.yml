@@ -1,0 +1,18 @@
+---
+nextcloud_docker_dir: /srv/docker/nextcloud
+nextcloud_compose_version: "3.8"
+nextcloud_image: "nextcloud:latest"
+nextcloud_domain: "nextcloud.cloud.merox.dev"
+nextcloud_port: 80
+nextcloud_container_ip: 172.25.10.60
+traefik_network_name: network-cloud-merox
+
+# Database settings
+nextcloud_db_image: "postgres:16-alpine"
+nextcloud_db_name: nextcloud
+nextcloud_db_user: nextcloud
+nextcloud_db_container_ip: 172.25.10.61
+
+# Redis settings
+nextcloud_redis_image: "redis:alpine"
+nextcloud_redis_container_ip: 172.25.10.62

@@ -1,0 +1,51 @@
+---
+- name: Detect Tailscale IP address
+  shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
+  register: tailscale_ip_result
+  changed_when: false
+  failed_when: tailscale_ip_result.stdout == ""
+
+- name: Set Tailscale IP as fact
+  set_fact:
+    tailscale_ip: "{{ tailscale_ip_result.stdout }}"
+
+- name: Create Dozzle directory structure
+  file:
+    path: "{{ dozzle_docker_dir }}"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Deploy Dozzle docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ dozzle_docker_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart dozzle
+
+- name: Start Dozzle container
+  community.docker.docker_compose_v2:
+    project_src: "{{ dozzle_docker_dir }}"
+    state: present
+
+- name: Wait for Dozzle to be ready
+  wait_for:
+    port: "{{ dozzle_port }}"
+    host: "{{ dozzle_container_ip }}"
+    delay: 5
+    timeout: 60
+
+- name: Create Traefik dynamic config for Dozzle
+  template:
+    src: traefik-dozzle-config.yml.j2
+    dest: /srv/docker/traefik/config/dozzle.yml
+    mode: '0644'
+  notify: Reload traefik
+
+- name: Display Dozzle access information
+  debug:
+    msg:
+      - "Dozzle deployed successfully!"
+      - "Web Interface: https://{{ dozzle_domain }}"
+      - "Container IP: {{ dozzle_container_ip }}"
+      - "Real-time Docker log viewer"

@@ -1,0 +1,25 @@
+http:
+  routers:
+    nextcloud:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ nextcloud_domain }}`)"
+      middlewares:
+        - default-headers
+        - nextcloud-redirect
+      tls:
+        certResolver: cloudflare
+      service: nextcloud
+
+  middlewares:
+    nextcloud-redirect:
+      redirectRegex:
+        regex: "https://(.*)/.well-known/(card|cal)dav"
+        replacement: "https://$1/remote.php/dav/"
+
+  services:
+    nextcloud:
+      loadBalancer:
+        servers:
+          - url: "http://{{ nextcloud_container_ip }}:80"
+        passHostHeader: true

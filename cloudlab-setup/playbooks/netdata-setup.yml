@@ -1,0 +1,8 @@
+---
+- name: Setup Netdata monitoring
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - netdata_setup

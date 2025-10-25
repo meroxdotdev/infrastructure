@@ -1,0 +1,18 @@
+http:
+  routers:
+    beszel:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ beszel_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: beszel
+
+  services:
+    beszel:
+      loadBalancer:
+        servers:
+          - url: "http://{{ beszel_container_ip }}:8090"
+        passHostHeader: true

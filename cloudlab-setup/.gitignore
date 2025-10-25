@@ -40,3 +40,6 @@ Thumbs.db
 # Temporary files
 .tmp/
 tmp/
+
+# Help
+help.txt

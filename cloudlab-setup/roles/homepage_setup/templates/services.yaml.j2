@@ -4,9 +4,6 @@
         icon: traefik.png
         href: https://traefik.cloud.merox.dev
         description: Reverse Proxy & SSL
-        widget:
-          type: traefik
-          url: http://{{ tailscale_ip }}
 
     - Pi-hole:
         icon: pi-hole.png
@@ -21,12 +18,35 @@
         icon: portainer.png
         href: https://portainer.cloud.merox.dev
         description: Container Management
+
+- Monitoring:
+    - Netdata:
+        icon: netdata.png
+        href: https://netdata.cloud.merox.dev
+        description: Real-time System Monitoring
         widget:
-          type: portainer
-          url: http://{{ tailscale_ip }}:9000
-          env: 1
+          type: customapi
+          url: http://{{ tailscale_ip }}:19999/api/v1/info
+          mappings:
+            - field: version
+              label: Version
+
+    - Beszel:
+        icon: https://raw.githubusercontent.com/henrygd/beszel/main/beszel/site/static/favicon.png
+        href: https://beszel.cloud.merox.dev
+        description: Lightweight Server Monitoring
+
+    - Dozzle:
+        icon: dozzle.png
+        href: https://dozzle.cloud.merox.dev
+        description: Real-time Docker Logs
 
 - Services:
+    - Nextcloud:
+        icon: nextcloud.png
+        href: https://nextcloud.cloud.merox.dev
+        description: Private Cloud Storage
+
     - Tailscale:
         icon: tailscale.png
         href: https://login.tailscale.com/admin/machines

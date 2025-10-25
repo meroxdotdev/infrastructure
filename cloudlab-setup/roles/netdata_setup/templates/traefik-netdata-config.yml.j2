@@ -1,0 +1,18 @@
+http:
+  routers:
+    netdata:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ netdata_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: netdata
+
+  services:
+    netdata:
+      loadBalancer:
+        servers:
+          - url: "http://localhost:19999"
+        passHostHeader: true

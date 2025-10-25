@@ -1,0 +1,43 @@
+---
+- name: Post-deployment health check
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Check all containers are running
+      shell: docker ps --filter "status=running" --format "{{.Names}}" | wc -l
+      register: running_containers
+      changed_when: false
+
+    - name: Check Traefik health
+      uri:
+        url: "http://localhost:8080/ping"
+        status_code: 200
+      register: traefik_health
+      ignore_errors: yes
+
+    - name: Check Pi-hole DNS
+      shell: dig @localhost google.com +short
+      register: pihole_dns
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Check disk space percentage
+      shell: df -h / | awk 'NR==2 {print $5}' | sed 's/%//'
+      register: disk_usage
+      changed_when: false
+
+    - name: Warn if disk usage > 80%
+      debug:
+        msg: "⚠️  WARNING: Disk usage is {{ disk_usage.stdout }}% - consider cleanup!"
+      when: disk_usage.stdout | int > 80
+
+    - name: Display health summary
+      debug:
+        msg:
+          - "✅ Health Check Summary"
+          - "Running containers: {{ running_containers.stdout }}"
+          - "Traefik status: {{ 'OK' if traefik_health is success else 'FAIL' }}"
+          - "Pi-hole DNS: {{ 'OK' if pihole_dns.rc == 0 else 'FAIL' }}"
+          - "Disk usage: {{ disk_usage.stdout }}%"

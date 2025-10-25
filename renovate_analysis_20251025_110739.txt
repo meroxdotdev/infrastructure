@@ -1,0 +1,340 @@
+REPOSITORY ANALYSIS FOR RENOVATE CONFIG
+Generated: Sat Oct 25 11:07:39 UTC 2025
+==========================================
+
+1. DIRECTORY STRUCTURE
+----------------------
+.
+├── LICENSE
+├── README.md
+├── Taskfile.yaml
+├── age.key
+├── bootstrap
+│   └── helmfile.yaml
+├── check_renovate.sh
+├── cloudflare-tunnel.json
+├── cloudlab-setup
+│   ├── Makefile
+│   ├── README.md
+│   ├── ansible.cfg
+│   ├── inventories
+│   │   └── production
+│   ├── logs
+│   ├── playbooks
+│   │   ├── docker-setup.yml
+│   │   ├── homepage-setup.yml
+│   │   ├── pihole-setup.yml
+│   │   ├── portainer-setup.yml
+│   │   ├── quick-setup.yml
+│   │   ├── site.yml
+│   │   ├── traefik-setup.yml
+│   │   └── update.yml
+│   ├── requirements-dev.txt
+│   ├── requirements.yml
+│   └── roles
+│       ├── docker_setup
+│       ├── homepage_setup
+│       ├── initial_setup
+│       ├── pihole_prereqs
+│       ├── pihole_setup
+│       ├── portainer_setup
+│       ├── tailscale_exit_node
+│       └── traefik_setup
+├── docs
+│   └── kubernetes-dashboard-bear-token.txt
+├── github-deploy.key
+├── github-deploy.key.pub
+├── github-push-token.txt
+├── kubeconfig
+├── kubernetes
+│   ├── apps
+│   │   ├── cert-manager
+│   │   ├── default
+│   │   ├── flux-system
+│   │   ├── kube-system
+│   │   ├── network
+│   │   ├── observability
+│   │   └── storage
+│   ├── components
+│   │   └── common
+│   └── flux
+│       ├── cluster
+│       └── meta
+├── renovate_analysis_20251025_110739.txt
+├── scripts
+│   ├── bootstrap-apps.sh
+│   ├── create-proxmox-talos-vms.sh
+│   └── lib
+│       └── common.sh
+├── talos
+│   ├── clusterconfig
+│   │   ├── kubernetes-kubernetes-controlplane-1.yaml
+│   │   ├── kubernetes-kubernetes-controlplane-2.yaml
+│   │   ├── kubernetes-kubernetes-controlplane-3.yaml
+│   │   └── talosconfig
+│   ├── patches
+│   │   ├── README.md
+│   │   ├── controller
+│   │   └── global
+│   ├── talconfig.yaml
+│   ├── talenv.yaml
+│   └── talsecret.sops.yaml
+└── templates
+    ├── config
+    │   ├── bootstrap
+    │   ├── kubernetes
+    │   └── talos
+    ├── overrides
+    └── scripts
+
+45 directories, 37 files
+
+2. KUBERNETES YAML FILES
+------------------------
+./.private/1750165415/templates/config/kubernetes/components/common/repos/kustomization.yaml
+./kubernetes/apps/observability/kube-prometheus-stack/ks.yaml
+./kubernetes/apps/observability/kube-prometheus-stack/app/externalsecret.yaml
+./kubernetes/apps/observability/kube-prometheus-stack/app/alertmanagerconfig.yaml
+./kubernetes/apps/observability/kube-prometheus-stack/app/kustomization.yaml
+./kubernetes/apps/observability/kube-prometheus-stack/app/helmrelease.yaml
+./kubernetes/apps/observability/kube-prometheus-stack/app/scrapeconfig.yaml
+./kubernetes/apps/observability/promtail/ks.yaml
+./kubernetes/apps/observability/promtail/app/kustomization.yaml
+./kubernetes/apps/observability/promtail/app/helmrelease.yaml
+./kubernetes/apps/observability/loki/ks.yaml
+./kubernetes/apps/observability/loki/app/kustomization.yaml
+./kubernetes/apps/observability/loki/app/helmrelease.yaml
+./kubernetes/apps/observability/grafana/ks.yaml
+./kubernetes/apps/observability/grafana/app/externalsecret.yaml
+./kubernetes/apps/observability/grafana/app/kustomization.yaml
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml
+./kubernetes/apps/observability/grafana/app/grafana-admin-secret.sops.yaml
+./kubernetes/apps/observability/kustomization.yaml
+./kubernetes/apps/observability/kubernetes-dashboard/ks.yaml
+
+3. HELMFILE CONFIGURATION
+-------------------------
+./bootstrap/helmfile.yaml
+
+4. KUSTOMIZATION FILES
+----------------------
+./.private/1750165415/templates/config/kubernetes/components/common/repos/kustomization.yaml
+./kubernetes/apps/observability/kube-prometheus-stack/app/kustomization.yaml
+./kubernetes/apps/observability/promtail/app/kustomization.yaml
+./kubernetes/apps/observability/loki/app/kustomization.yaml
+./kubernetes/apps/observability/grafana/app/kustomization.yaml
+./kubernetes/apps/observability/kustomization.yaml
+./kubernetes/apps/observability/kubernetes-dashboard/app/kustomization.yaml
+./kubernetes/apps/default/jellyseerr/app/kustomization.yaml
+./kubernetes/apps/default/radarr/app/kustomization.yaml
+./kubernetes/apps/default/kustomization.yaml
+./kubernetes/apps/default/homepage/app/kustomization.yaml
+./kubernetes/apps/default/qbittorrent/tools/kustomization.yaml
+./kubernetes/apps/default/qbittorrent/app/kustomization.yaml
+./kubernetes/apps/default/jellyfin/tools/kustomization.yaml
+./kubernetes/apps/default/jellyfin/tools/sync/kustomization.yaml
+./kubernetes/apps/default/jellyfin/app/kustomization.yaml
+./kubernetes/apps/default/prowlarr/app/kustomization.yaml
+./kubernetes/apps/default/sonarr/app/kustomization.yaml
+./kubernetes/apps/storage/longhorn/app/kustomization.yaml
+./kubernetes/apps/storage/kustomization.yaml
+./kubernetes/apps/kube-system/spegel/app/kustomization.yaml
+./kubernetes/apps/kube-system/reloader/app/kustomization.yaml
+./kubernetes/apps/kube-system/coredns/app/kustomization.yaml
+./kubernetes/apps/kube-system/cilium/gateway/kustomization.yaml
+./kubernetes/apps/kube-system/cilium/app/kustomization.yaml
+./kubernetes/apps/kube-system/kustomization.yaml
+./kubernetes/apps/kube-system/metrics-server/app/kustomization.yaml
+./kubernetes/apps/kube-system/intel-device-plugin-operator/gpu/kustomization.yaml
+./kubernetes/apps/kube-system/intel-device-plugin-operator/app/kustomization.yaml
+./kubernetes/apps/kube-system/csi-driver-nfs/app/kustomization.yaml
+./kubernetes/apps/cert-manager/cert-manager/app/kustomization.yaml
+./kubernetes/apps/cert-manager/kustomization.yaml
+./kubernetes/apps/flux-system/flux-instance/app/kustomization.yaml
+./kubernetes/apps/flux-system/kustomization.yaml
+./kubernetes/apps/flux-system/flux-operator/app/kustomization.yaml
+./kubernetes/apps/network/cloudflare-tunnel/app/kustomization.yaml
+./kubernetes/apps/network/k8s-gateway/app/kustomization.yaml
+./kubernetes/apps/network/kustomization.yaml
+./kubernetes/apps/network/cloudflare-dns/app/kustomization.yaml
+./kubernetes/components/common/sops/kustomization.yaml
+./kubernetes/components/common/repos/kustomization.yaml
+./kubernetes/components/common/repos/app-template/kustomization.yaml
+./kubernetes/components/common/kustomization.yaml
+./kubernetes/flux/meta/repos/kustomization.yaml
+./kubernetes/flux/meta/kustomization.yaml
+
+5. GITHUB ACTIONS WORKFLOWS
+---------------------------
+.github/workflows/label-sync.yaml
+.github/workflows/labeler.yaml
+.github/workflows/flux-local.yaml
+
+6. DOCKER IMAGES (sample from files)
+-------------------------------------
+./cloudlab-setup/playbooks/docker-setup.yml:        image: hello-world
+./cloudlab-setup/roles/traefik_setup/defaults/main.yml:traefik_image: "traefik:latest"
+./cloudlab-setup/roles/pihole_setup/defaults/main.yml:pihole_image: "pihole/pihole:latest"
+./cloudlab-setup/roles/portainer_setup/defaults/main.yml:portainer_image: "portainer/portainer-ee:latest"
+./cloudlab-setup/roles/docker_setup/tasks/main.yml:    image: hello-world
+./cloudlab-setup/roles/homepage_setup/defaults/main.yml:homepage_image: "ghcr.io/gethomepage/homepage:latest"
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-2.yaml:    image: ghcr.io/siderolabs/kubelet:v1.34.0
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-2.yaml:    image: factory.talos.dev/installer/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510:v1.11.1
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-2.yaml:    image: registry.k8s.io/kube-apiserver:v1.34.0
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-2.yaml:    image: registry.k8s.io/kube-controller-manager:v1.34.0
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-2.yaml:    image: registry.k8s.io/kube-proxy:v1.34.0
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-2.yaml:    image: registry.k8s.io/kube-scheduler:v1.34.0
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-3.yaml:    image: ghcr.io/siderolabs/kubelet:v1.34.0
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-3.yaml:    image: factory.talos.dev/installer/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510:v1.11.1
+./talos/clusterconfig/kubernetes-kubernetes-controlplane-3.yaml:    image: registry.k8s.io/kube-apiserver:v1.34.0
+
+7. HELM CHART REFERENCES
+------------------------
+./bootstrap/helmfile.yaml:    chart: cilium/cilium
+./bootstrap/helmfile.yaml:    chart: oci://ghcr.io/coredns/charts/coredns
+./bootstrap/helmfile.yaml:    chart: oci://ghcr.io/spegel-org/helm-charts/spegel
+./bootstrap/helmfile.yaml:    chart: oci://quay.io/jetstack/charts/cert-manager
+./bootstrap/helmfile.yaml:    chart: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator
+./bootstrap/helmfile.yaml:    chart: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-instance
+./kubernetes/apps/observability/kubernetes-dashboard/app/helmrelease.yaml:  chart:
+./kubernetes/apps/observability/kubernetes-dashboard/app/helmrelease.yaml:      chart: kubernetes-dashboard
+./kubernetes/apps/default/homepage/app/helmrelease.yaml:  chart:
+./kubernetes/apps/default/homepage/app/helmrelease.yaml:      chart: app-template
+./kubernetes/apps/storage/longhorn/app/helmrelease.yaml:  chart:
+./kubernetes/apps/storage/longhorn/app/helmrelease.yaml:      chart: longhorn
+./kubernetes/apps/kube-system/metrics-server/app/helmrelease.yaml:  chart:
+./kubernetes/apps/kube-system/metrics-server/app/helmrelease.yaml:      chart: metrics-server
+./kubernetes/apps/network/cloudflare-dns/app/helmrelease.yaml:  chart:
+
+8. MISE/ASDF TOOL VERSIONS
+--------------------------
+Found .mise.toml:
+[env]
+_.python.venv = { path = "{{config_root}}/.venv", create = true }
+KUBECONFIG = "{{config_root}}/kubeconfig"
+SOPS_AGE_KEY_FILE = "{{config_root}}/age.key"
+TALOSCONFIG = "{{config_root}}/talos/clusterconfig/talosconfig"
+
+[tools]
+"python" = "3.14.0"
+"pipx:makejinja" = "2.8.1"
+"aqua:budimanjojo/talhelper" = "3.0.38"
+"aqua:cilium/cilium-cli" = "0.18.8"
+"aqua:cli/cli" = "2.82.1"
+"aqua:cloudflare/cloudflared" = "2025.10.0"
+"aqua:cue-lang/cue" = "0.14.2"
+"aqua:FiloSottile/age" = "1.2.1"
+"aqua:fluxcd/flux2" = "2.7.2"
+"aqua:getsops/sops" = "3.11.0"
+"aqua:go-task/task" = "3.45.4"
+"aqua:helm/helm" = "3.19.0"
+"aqua:helmfile/helmfile" = "1.1.7"
+"aqua:jqlang/jq" = "1.7.1"
+"aqua:kubernetes-sigs/kustomize" = "5.7.1"
+"aqua:kubernetes/kubectl" = "1.34.0"
+"aqua:mikefarah/yq" = "4.48.1"
+"aqua:siderolabs/talos" = "1.11.3"
+"aqua:yannh/kubeconform" = "0.7.0"
+
+9. FILES WITH RENOVATE ANNOTATIONS
+-----------------------------------
+./talos/talenv.yaml:# renovate: datasource=docker depName=ghcr.io/siderolabs/installer
+./talos/talenv.yaml:# renovate: datasource=docker depName=ghcr.io/siderolabs/kubelet
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:        #   # renovate: depName="APC UPS (SNMP)"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:        #   # renovate: depName="Ceph Cluster"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:        #   # renovate: depName="Ceph - OSD (Single)"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:        #   # renovate: depName="Ceph - Pools"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Cert-manager-Kubernetes"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Cloudflare Tunnels (cloudflared)"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:        #    # renovate: depName="Envoy Proxy Monitoring gRPC"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="External-dns"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Kubernetes / System / API Server"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Kubernetes / System / CoreDNS"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Kubernetes / Views / Global"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Kubernetes / Views / Namespaces"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Kubernetes / Views / Nodes"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Kubernetes / Views / Pods"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="K8s / Storage / Volumes / Cluster"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Longhorn"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Node Exporter Full"
+./kubernetes/apps/observability/grafana/app/helmrelease.yaml:          # renovate: depName="Prometheus"
+
+10. FLUX OPERATOR USAGE
+----------------------
+./bootstrap/helmfile.yaml:  - name: flux-operator
+./bootstrap/helmfile.yaml:    chart: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator
+./bootstrap/helmfile.yaml:    values: ['../kubernetes/apps/flux-system/flux-operator/app/helm/values.yaml']
+./bootstrap/helmfile.yaml:  - name: flux-instance
+./bootstrap/helmfile.yaml:    chart: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-instance
+./bootstrap/helmfile.yaml:    values: ['../kubernetes/apps/flux-system/flux-instance/app/helm/values.yaml']
+./bootstrap/helmfile.yaml:    needs: ['flux-system/flux-operator']
+./kubernetes/apps/flux-system/flux-instance/ks.yaml:  name: &app flux-instance
+./kubernetes/apps/flux-system/flux-instance/ks.yaml:    - name: flux-operator
+./kubernetes/apps/flux-system/flux-instance/ks.yaml:  path: ./kubernetes/apps/flux-system/flux-instance/app
+
+11. SOPS ENCRYPTED FILES
+------------------------
+./.private/1750165415/templates/config/bootstrap/github-deploy-key.sops.yaml.j2
+./.private/1750165415/templates/config/kubernetes/apps/cert-manager/cert-manager/app/secret.sops.yaml.j2
+./.private/1750165415/templates/config/kubernetes/apps/flux-system/flux-instance/app/secret.sops.yaml.j2
+./.private/1750165415/templates/config/kubernetes/apps/network/cloudflare-tunnel/app/secret.sops.yaml.j2
+./.private/1750165415/templates/config/kubernetes/apps/network/cloudflare-dns/app/secret.sops.yaml.j2
+./.private/1750165415/templates/config/kubernetes/components/common/sops/cluster-secrets.sops.yaml.j2
+./.private/1750165415/templates/config/kubernetes/components/common/sops/sops-age.sops.yaml.j2
+./.private/1750165415/templates/config/.sops.yaml.j2
+./talos/talsecret.sops.yaml
+./kubernetes/apps/observability/grafana/app/grafana-admin-secret.sops.yaml
+
+12. SAMPLE KUBERNETES MANIFEST (first found)
+---------------------------------------------
+File: ./.private/1750165415/templates/config/kubernetes/components/common/repos/kustomization.yaml
+---
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./app-template
+
+13. SAMPLE HELMFILE (if exists)
+-------------------------------
+File: ./bootstrap/helmfile.yaml
+---
+---
+# yaml-language-server: $schema=https://json.schemastore.org/helmfile
+
+helmDefaults:
+  cleanupOnFail: true
+  wait: true
+  waitForJobs: true
+
+repositories:
+  - name: cilium
+    url: https://helm.cilium.io
+
+releases:
+  - name: cilium
+    namespace: kube-system
+    atomic: true
+    chart: cilium/cilium
+    version: 1.18.3
+    values: ['../kubernetes/apps/kube-system/cilium/app/helm/values.yaml']
+
+  - name: coredns
+    namespace: kube-system
+    atomic: true
+    chart: oci://ghcr.io/coredns/charts/coredns
+    version: 1.45.0
+    values: ['../kubernetes/apps/kube-system/coredns/app/helm/values.yaml']
+    needs: ['kube-system/cilium']
+
+  - name: spegel
+    namespace: kube-system
+
+14. DETECTED PACKAGE MANAGERS
+-----------------------------
+
+15. CURRENT RENOVATE CONFIGURATION
+-----------------------------------
+No renovate config found
+

@@ -1,0 +1,51 @@
+---
+- name: Detect Tailscale IP address
+  shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
+  register: tailscale_ip_result
+  changed_when: false
+  failed_when: tailscale_ip_result.stdout == ""
+
+- name: Set Tailscale IP as fact
+  set_fact:
+    tailscale_ip: "{{ tailscale_ip_result.stdout }}"
+
+- name: Create Netdata directory structure
+  file:
+    path: "{{ netdata_docker_dir }}"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Deploy Netdata docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ netdata_docker_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart netdata
+
+- name: Start Netdata container
+  community.docker.docker_compose_v2:
+    project_src: "{{ netdata_docker_dir }}"
+    state: present
+
+- name: Wait for Netdata to be ready
+  wait_for:
+    port: "{{ netdata_port }}"
+    host: localhost
+    delay: 5
+    timeout: 60
+
+- name: Create Traefik dynamic config for Netdata
+  template:
+    src: traefik-netdata-config.yml.j2
+    dest: /srv/docker/traefik/config/netdata.yml
+    mode: '0644'
+  notify: Reload traefik
+
+- name: Display Netdata access information
+  debug:
+    msg:
+      - "Netdata deployed successfully!"
+      - "Web Interface: https://{{ netdata_domain }}"
+      - "Real-time monitoring with Docker integration"
+      - "Hostname: {{ netdata_hostname }}"

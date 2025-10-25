@@ -1,0 +1,8 @@
+---
+- name: Setup Beszel monitoring
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - beszel_setup

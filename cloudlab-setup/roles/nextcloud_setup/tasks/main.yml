@@ -1,0 +1,57 @@
+---
+- name: Detect Tailscale IP address
+  shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
+  register: tailscale_ip_result
+  changed_when: false
+  failed_when: tailscale_ip_result.stdout == ""
+
+- name: Set Tailscale IP as fact
+  set_fact:
+    tailscale_ip: "{{ tailscale_ip_result.stdout }}"
+
+- name: Create Nextcloud directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  become: yes
+  loop:
+    - "{{ nextcloud_docker_dir }}"
+    - "{{ nextcloud_docker_dir }}/data"
+
+- name: Deploy Nextcloud docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ nextcloud_docker_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart nextcloud
+
+- name: Start Nextcloud stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ nextcloud_docker_dir }}"
+    state: present
+
+- name: Wait for Nextcloud to be ready
+  wait_for:
+    port: "{{ nextcloud_port }}"
+    host: "{{ nextcloud_container_ip }}"
+    delay: 10
+    timeout: 120
+
+- name: Create Traefik dynamic config for Nextcloud
+  template:
+    src: traefik-nextcloud-config.yml.j2
+    dest: /srv/docker/traefik/config/nextcloud.yml
+    mode: '0644'
+  notify: Reload traefik
+
+- name: Display Nextcloud access information
+  debug:
+    msg:
+      - "Nextcloud deployed successfully!"
+      - "Web Interface: https://{{ nextcloud_domain }}"
+      - "Container IP: {{ nextcloud_container_ip }}"
+      - "Database: PostgreSQL"
+      - "Cache: Redis"
+      - "Admin user will be created on first login"
+      - "Data directory: {{ nextcloud_docker_dir }}/data"

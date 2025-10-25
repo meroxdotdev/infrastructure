@@ -1,0 +1,8 @@
+---
+dozzle_docker_dir: /srv/docker/dozzle
+dozzle_compose_version: "3.8"
+dozzle_image: "amir20/dozzle:latest"
+dozzle_domain: "dozzle.cloud.merox.dev"
+dozzle_port: 8080
+dozzle_container_ip: 172.25.10.50
+traefik_network_name: network-cloud-merox

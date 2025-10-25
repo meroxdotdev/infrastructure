@@ -1,0 +1,8 @@
+---
+- name: Setup Nextcloud
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - nextcloud_setup
