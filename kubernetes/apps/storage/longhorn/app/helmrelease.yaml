@@ -1,5 +1,4 @@
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrepository-source-v1.json
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
@@ -9,7 +8,6 @@ spec:
   interval: 1h
   url: https://charts.longhorn.io
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -45,11 +43,9 @@ spec:
       replicaAutoBalance: "true"
       storageMinimalAvailablePercentage: "1"
       storageReservedPercentageForDefaultDisk: "10"
-
-    defaultBackupStore:
       backupTarget: "s3://longhorn@us-east-1/"
       backupTargetCredentialSecret: "minio-secret"
-      pollInterval: 300
+      backupstorePollInterval: "300"
 
     persistence:
       defaultClass: true
