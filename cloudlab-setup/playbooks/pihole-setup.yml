@@ -1,8 +1,0 @@
----
-- name: Setup Pi-hole DNS server
-  hosts: vps_servers
-  become: yes
-  gather_facts: yes
-
-  roles:
-    - pihole_setup

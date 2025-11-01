@@ -1,9 +1,0 @@
----
-- name: Setup Traefik reverse proxy
-  hosts: vps_servers
-  become: yes
-  gather_facts: yes
-
-  roles:
-    - pihole_prereqs
-    - traefik_setup
