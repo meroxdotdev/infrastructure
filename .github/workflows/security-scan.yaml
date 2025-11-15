@@ -61,7 +61,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Dependency Review
-        uses: actions/dependency-review-action@v4.3.1
+        uses: actions/dependency-review-action@v4.8.2
         with:
           fail-on-severity: moderate
 
