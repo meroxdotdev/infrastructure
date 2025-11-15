@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Security scanning workflows (Trivy, Gitleaks)
 - Dependabot configuration for security updates
 - Stale issue/PR management workflow
 - SECURITY.md policy document
@@ -32,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Comprehensive repository analysis
 - Best practices documentation
-- Security scanning automation
 - Code quality tooling
 
 ---

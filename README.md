@@ -168,7 +168,6 @@ git add -A && git commit -m "chore: cleanup" && git push
 This repository follows security best practices:
 
 - **Secrets**: All secrets encrypted with SOPS (AGE keys)
-- **Security Scanning**: Automated Trivy and Gitleaks scans via GitHub Actions
 - **Dependency Updates**: Renovate + Dependabot for automated updates
 - **Security Policy**: See [SECURITY.md](SECURITY.md) for vulnerability reporting
 

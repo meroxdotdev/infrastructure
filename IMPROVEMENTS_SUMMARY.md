@@ -18,15 +18,6 @@ This document summarizes all improvements made to align the repository with 2025
 
 ### 2. Security Enhancements
 
-#### Security Scanning Workflows
-- **Added**: `.github/workflows/security-scan.yaml`
-- **Features**:
-  - Trivy vulnerability scanning (filesystem)
-  - Gitleaks secret scanning
-  - Dependency review for PRs
-  - SARIF upload to GitHub Security
-  - Weekly scheduled scans
-
 #### Dependabot Configuration
 - **Added**: `.github/dependabot.yml`
 - **Features**:
@@ -120,18 +111,16 @@ This document summarizes all improvements made to align the repository with 2025
 
 ## 📊 Statistics
 
-- **Files Created**: 8 new files
+- **Files Created**: 7 new files
 - **Files Updated**: 30+ files improved
-- **Workflows Added**: 2 new GitHub Actions workflows
+- **Workflows Added**: 1 new GitHub Actions workflow (stale management)
 - **Documentation**: 5 new documentation files
-- **Security**: 3 security enhancements
+- **Security**: 2 security enhancements (Dependabot, Security Policy)
 
 ## 🎯 Alignment with 2025 Best Practices
 
 ### ✅ Security
-- [x] Automated security scanning
-- [x] Secret scanning
-- [x] Dependency vulnerability checking
+- [x] Dependency vulnerability checking (Dependabot)
 - [x] Security policy documentation
 - [x] SOPS encryption (already in place)
 
@@ -142,7 +131,6 @@ This document summarizes all improvements made to align the repository with 2025
 
 ### ✅ Automation
 - [x] Dependency updates (Renovate + Dependabot)
-- [x] Security scanning automation
 - [x] Stale issue management
 - [x] CI/CD workflows
 
@@ -170,18 +158,19 @@ This document summarizes all improvements made to align the repository with 2025
 
 ## 📝 Usage Instructions
 
-### Run Security Scans Locally
+### Manual Security Checks
+You can run security checks locally if needed:
 ```bash
-# Trivy scan
-trivy fs .
-
-# Gitleaks scan
+# Check for secrets (requires gitleaks)
 gitleaks detect --source . --verbose
+
+# Check dependencies (requires trivy)
+trivy fs .
 ```
 
 ## ✨ Benefits
 
-1. **Improved Security**: Automated vulnerability detection
+1. **Improved Security**: Dependency vulnerability checking via Dependabot
 2. **Better Code Quality**: Consistent standards and linting
 3. **Enhanced Documentation**: Clear guidelines for contributors
 4. **Automated Maintenance**: Less manual work for updates
@@ -189,7 +178,6 @@ gitleaks detect --source . --verbose
 
 ## 📅 Maintenance
 
-- **Security Scans**: Run weekly automatically
 - **Dependency Updates**: Handled by Renovate and Dependabot
 - **Stale Issues**: Managed automatically
 - **Documentation**: Update as practices evolve
