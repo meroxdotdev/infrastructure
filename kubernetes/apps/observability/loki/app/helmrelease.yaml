@@ -107,3 +107,7 @@ spec:
         env:
           - name: TMPDIR
             value: /rules
+          - name: TEMP
+            value: /rules
+          - name: TMP
+            value: /rules
