@@ -10,7 +10,7 @@ spec:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
   ref:
-    tag: 6.46.0
+    tag: 6.45.2
   url: oci://ghcr.io/grafana/helm-charts/loki
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
@@ -81,14 +81,6 @@ spec:
         enabled: true
         storageClass: longhorn
         size: 20Gi
-      # Add extraVolumes for the tmp directory
-      extraVolumes:
-        - name: sc-tmp
-          emptyDir: {}
-      # Add extraVolumeMounts for the sidecar container
-      extraVolumeMounts:
-        - name: sc-tmp
-          mountPath: /tmp
     gateway:
       replicas: 0
     backend:
@@ -111,3 +103,7 @@ spec:
         tag: 2.1.2@sha256:d9e169add4e71fd5931a24e11696853f3d804ebc2022cd81f038e7ef22f4d626
       rules:
         searchNamespace: ALL
+        # Add environment variables to point temp directory to /rules
+        env:
+          - name: TMPDIR
+            value: /rules
