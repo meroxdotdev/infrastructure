@@ -6,6 +6,8 @@ namespace: network
 components:
   - ../../components/common
 resources:
-  - ./cloudflare-dns/ks.yaml
-  - ./cloudflare-tunnel/ks.yaml
+  # DNS & Gateway
   - ./k8s-gateway/ks.yaml
+  - ./cloudflare-dns/ks.yaml
+  # Tunneling
+  - ./cloudflare-tunnel/ks.yaml

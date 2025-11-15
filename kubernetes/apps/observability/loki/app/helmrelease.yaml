@@ -81,6 +81,14 @@ spec:
         enabled: true
         storageClass: longhorn
         size: 20Gi
+      # Add extraVolumes for the tmp directory
+      extraVolumes:
+        - name: sc-tmp
+          emptyDir: {}
+      # Add extraVolumeMounts for the sidecar container
+      extraVolumeMounts:
+        - name: sc-tmp
+          mountPath: /tmp
     gateway:
       replicas: 0
     backend:

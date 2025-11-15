@@ -163,6 +163,23 @@ git add -A && git commit -m "chore: cleanup" && git push
 - **Secret Management**: Explore [External Secrets](https://external-secrets.io)
 - **Storage Options**: rook-ceph, longhorn, openebs, democratic-csi
 
+## 🔒 Security & Quality
+
+This repository follows security best practices:
+
+- **Secrets**: All secrets encrypted with SOPS (AGE keys)
+- **Security Scanning**: Automated Trivy and Gitleaks scans via GitHub Actions
+- **Dependency Updates**: Renovate + Dependabot for automated updates
+- **Security Policy**: See [SECURITY.md](SECURITY.md) for vulnerability reporting
+
+## 📚 Documentation
+
+- [Repository Analysis](REPOSITORY_ANALYSIS.md) - Comprehensive repository review
+- [Contributing Guidelines](CONTRIBUTING.md) - How to contribute
+- [Security Policy](SECURITY.md) - Security reporting and practices
+- [Changelog](CHANGELOG.md) - Version history and changes
+- [Apps Directory](kubernetes/apps/README.md) - Application organization guide
+
 ## 🙋 Support
 
 - [GitHub Discussions](https://github.com/onedr0p/cluster-template/discussions)

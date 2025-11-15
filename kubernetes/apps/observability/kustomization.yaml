@@ -6,8 +6,11 @@ namespace: observability
 components:
   - ../../components/common
 resources:
-  - ./grafana/ks.yaml
+  # Monitoring Stack
   - ./kube-prometheus-stack/ks.yaml
+  - ./grafana/ks.yaml
+  # Logging Stack
   - ./loki/ks.yaml
   - ./promtail/ks.yaml
+  # Dashboards
   - ./kubernetes-dashboard/ks.yaml

@@ -47,6 +47,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write # For OIDC if needed
     strategy:
       matrix:
         resources: ["helmrelease", "kustomization"]

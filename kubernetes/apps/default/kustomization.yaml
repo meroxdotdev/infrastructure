@@ -6,11 +6,13 @@ namespace: default
 components:
   - ../../components/common
 resources:
+  # Dashboard
   - ./homepage/ks.yaml
+  # Media Stack
+  - ./jellyfin/ks.yaml
   - ./jellyseerr/ks.yaml
   - ./prowlarr/ks.yaml
+  - ./qbittorrent/ks.yaml
   - ./radarr/ks.yaml
   - ./sonarr/ks.yaml
-  - ./jellyfin/ks.yaml
-  - ./qbittorrent/ks.yaml
 

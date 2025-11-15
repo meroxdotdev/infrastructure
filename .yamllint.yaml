@@ -1,0 +1,45 @@
+---
+# YAML Lint Configuration
+extends: default
+
+rules:
+  # Line length - allow longer lines for Kubernetes manifests
+  line-length:
+    max: 200
+    level: warning
+
+  # Comments - allow inline comments
+  comments:
+    disable: true
+
+  # Document start - allow documents without ---
+  document-start:
+    disable: true
+
+  # Indentation - 2 spaces for YAML
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Key ordering - disable for flexibility
+  key-ordering:
+    disable: true
+
+  # Braces - allow inline JSON in YAML
+  braces:
+    max-spaces-inside: 1
+    min-spaces-inside: 0
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+    \.git/|
+    \.venv/|
+    \.task/|
+    node_modules/|
+    \.sops\.yaml$|
+    \.j2$|
+    renovate_analysis.*\.txt
+  )
+

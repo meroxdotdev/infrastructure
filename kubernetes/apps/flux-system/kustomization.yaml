@@ -6,5 +6,7 @@ namespace: flux-system
 components:
   - ../../components/common
 resources:
-  - ./flux-instance/ks.yaml
+  # Flux Operator (manages Flux instances)
   - ./flux-operator/ks.yaml
+  # Flux Instance (this cluster's Flux instance)
+  - ./flux-instance/ks.yaml

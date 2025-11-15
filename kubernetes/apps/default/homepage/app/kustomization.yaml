@@ -5,11 +5,6 @@ kind: Kustomization
 resources:
   - ./secret.sops.yaml
   - ./helmrelease.yaml
-#  - ./rbac.yaml
-#  - ../../../media/radarr/app/secret.sops.yaml
-#  - ../../../media/sonarr/app/secret.sops.yaml
-#  - ../../../media/sabnzbd/app/secret.sops.yaml
-#  - ../../../../templates/gatus/internal
 configMapGenerator:
   - name: homepage-config
     files:
