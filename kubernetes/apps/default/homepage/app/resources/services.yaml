@@ -51,7 +51,7 @@
         description: Dell R720 iDRAC
 
 # ☁️ CLOUD SERVICE
-- Cloud Service:
+- Cloud Services:
     - Traefik Cloud:
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/traefik.svg
         href: https://traefik-cloud.${SECRET_DOMAIN}
