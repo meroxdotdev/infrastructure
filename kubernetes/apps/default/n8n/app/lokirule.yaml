@@ -1,0 +1,34 @@
+---
+groups:
+  - name: n8n
+    rules:
+      - alert: N8nExecutionFailed
+        expr: |
+          sum by (app) (count_over_time({app=~"n8n"} |~ "(?i)execution.*failed|error.*execution"[5m])) > 10
+        for: 5m
+        annotations:
+          summary: >-
+            {{ $labels.app }} has multiple failed executions
+        labels:
+          severity: warning
+
+      - alert: N8nDatabaseError
+        expr: |
+          sum by (app) (count_over_time({app=~"n8n"} |~ "(?i)database.*error|sqlite.*error"[5m])) > 0
+        for: 5m
+        annotations:
+          summary: >-
+            {{ $labels.app }} is experiencing database issues
+        labels:
+          severity: critical
+
+      - alert: N8nWorkflowError
+        expr: |
+          sum by (app) (count_over_time({app=~"n8n"} |~ "(?i)workflow.*error|workflow.*failed"[5m])) > 5
+        for: 5m
+        annotations:
+          summary: >-
+            {{ $labels.app }} has workflow errors
+        labels:
+          severity: warning
+
