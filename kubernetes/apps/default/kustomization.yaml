@@ -15,4 +15,6 @@ resources:
   - ./qbittorrent/ks.yaml
   - ./radarr/ks.yaml
   - ./sonarr/ks.yaml
+  # Automation
+  - ./n8n/ks.yaml
 
