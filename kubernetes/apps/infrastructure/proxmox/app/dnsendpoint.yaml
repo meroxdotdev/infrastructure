@@ -7,6 +7,6 @@ metadata:
   namespace: default
 spec:
   endpoints:
-    - dnsName: "proxmox.onsite.merox.dev"
+    - dnsName: "proxmox.k8s.merox.dev"
       recordType: A
       targets: ["10.57.57.254"]

@@ -7,7 +7,7 @@ metadata:
   namespace: default
 spec:
   hostnames:
-    - "proxmox.onsite.merox.dev"
+    - "proxmox.k8s.merox.dev"
   parentRefs:
     - name: external
       namespace: kube-system
