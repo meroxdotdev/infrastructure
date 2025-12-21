@@ -74,6 +74,7 @@ spec:
         hostnames:
           - "{{ .Release.Name }}.k8s.merox.dev"
           - "media.merox.dev"
+          - "jm.external.merox.dev"
         parentRefs:
           - name: internal
             namespace: kube-system
