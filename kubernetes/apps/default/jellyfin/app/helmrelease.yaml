@@ -72,6 +72,7 @@ spec:
     route:
       app:
         hostnames:
+          - "jm.external.merox.dev"
           - "{{ .Release.Name }}.k8s.merox.dev"
           - "media.merox.dev"
         parentRefs:
