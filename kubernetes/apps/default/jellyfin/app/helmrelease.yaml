@@ -72,10 +72,10 @@ spec:
     route:
       app:
         hostnames:
-          - "{{ .Release.Name }}.k8s.merox.dev"
+#          - "{{ .Release.Name }}.k8s.merox.dev"
           - "media.merox.dev"
         parentRefs:
-          - name: internal
+          - name: external
             namespace: kube-system
             sectionName: https
     persistence:
