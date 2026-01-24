@@ -104,9 +104,15 @@ kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 kubectl get pods -A -o wide | grep <node-name>
 
 # 3. In Proxmox: shutdown VM, swap physical disk, boot VM
+# VM will boot to maintenance mode (no config)
 
-# 4. Re-provision Talos (if needed - VM will auto-rejoin if config intact)
-task talos:apply-node IP=<node-ip>
+# 4. Re-provision Talos with fresh config (INSECURE mode for first boot)
+talosctl apply-config --insecure \
+  --nodes <node-ip> \
+  --file talos/clusterconfig/<node-config-file>.yaml
+
+# Wait for node to join cluster (~2-5 min)
+kubectl get nodes -w
 
 # 5. Uncordon node
 kubectl uncordon <node-name>
