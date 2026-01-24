@@ -1,128 +1,86 @@
-
-> Blog post https://merox.dev/blog/homelab-tour/
-
 # 🏠 Homelab Infrastructure
 
-## 🖥️ Hardware Inventory
+> Blog post: https://merox.dev/blog/homelab-tour/
 
-| Device | CPU | RAM | Storage | Role | Status |
-|--------|-----|-----|---------|------|--------|
-| **Dell PowerEdge R720** | 2x Intel Xeon E5-2697 v2<br>(24 cores / 48 threads) | 192GB DDR3 | 4x Intel D3-S4510 960GB SSD | Proxmox Backup Server | 🟢 Active |
-| **Dell OptiPlex 3050 #1** | Intel i5-6500T<br>(4 cores / 4 threads) | 16GB DDR4 | 128GB NVMe + 512GB SSD | Kubernetes Node<br>(Proxmox VM) | 🟢 Active |
-| **Dell OptiPlex 3050 #2** | Intel i5-6500T<br>(4 cores / 4 threads) | 16GB DDR4 | 128GB NVMe + 512GB SSD | Kubernetes Node<br>(Proxmox VM) | 🟢 Active |
-| **Beelink GTi 13 Pro** | Intel i9-13900H<br>(14 cores / 20 threads) | 64GB DDR5 | 2x 2TB NVMe | Kubernetes Node<br>(Proxmox VM) | 🟢 Active |
-| **Synology DS223+** | ARM Realtek RTD1619B | 2GB DDR4 | 2x 2TB HDD<br>(RAID 1) | NAS / Media Server<br>Backup Target | 🟢 Active |
-| **XCY X44** | Intel N100<br>(4 cores / 4 threads) | 8GB DDR4 | 128GB SSD | pfSense Firewall | 🟢 Active |
-| **Hetzner CX32** | 4 vCPU | 8GB | 80GB SSD | Remote VPS<br>Off-site Backup | ☁️ Cloud |
+GitOps-managed Kubernetes cluster using Talos Linux + Flux. Based on [onedr0p/cluster-template](https://github.com/onedr0p/cluster-template).
 
-## 🔌 Infrastructure Components
+## 🖥️ Hardware
 
-### 🔋 Power Protection
-| Device | Model | Protected Equipment | Capacity |
-|--------|-------|-------------------|----------|
-| **UPS #1** | CyberPower | Dell R720 | 1500VA |
-| **UPS #2** | CyberPower | Mini PCs + Network | 1000VA |
+| Device | CPU | RAM | Storage | Role |
+|--------|-----|-----|---------|------|
+| Dell PowerEdge R720 | 2x Xeon E5-2697 v2 (48T) | 192GB | 4x Intel D3-S4510 960GB | Proxmox Backup Server |
+| Dell OptiPlex 3050 #1 | i5-6500T (4T) | 16GB | 128GB NVMe + Intel D3-S4510 | K8s Node (Proxmox VM) |
+| Dell OptiPlex 3050 #2 | i5-6500T (4T) | 16GB | 128GB NVMe + Intel D3-S4510 | K8s Node (Proxmox VM) |
+| Beelink GTi 13 Pro | i9-13900H (20T) | 64GB | 2x 2TB NVMe | K8s Node (Proxmox VM) |
+| Synology DS223+ | Realtek RTD1619B | 2GB | 2x 2TB HDD (RAID1) | NAS / Backup |
+| XCY X44 | Intel N100 | 8GB | 128GB SSD | pfSense Firewall |
+| Hetzner CX32 | 4 vCPU | 8GB | 80GB SSD | Off-site Backup (Cloud) |
 
-### 🌐 Network Equipment
-| Device | Model | Ports | Role |
-|--------|-------|-------|------|
-| **Switch** | TP-Link | 24x 1Gb | Core Network Switch |
+**Power**: 2x CyberPower UPS (1500VA + 1000VA)  
+**Network**: TP-Link 24-port Gigabit Switch
 
 ---
 
-A streamlined Kubernetes cluster deployment using [Talos Linux](https://github.com/siderolabs/talos) and [Flux](https://github.com/fluxcd/flux2). Based on [onedr0p/cluster-template](https://github.com/onedr0p/cluster-template).
-
-## 📋 Prerequisites
-
-- Knowledge of: Containers, YAML, Git
-- **Cloudflare account** with a **domain**
-- **Hardware**: 4 cores, 16GB RAM, 256GB SSD per node (3+ nodes recommended)
-
-## 🛠️ Stack
-
-- **OS**: Talos Linux
-- **GitOps**: Flux (GitHub provider)
-- **Secrets**: SOPS
-- **Networking**: Cilium, Cloudflared
-- **Core Apps**: cert-manager, spegel, reloader, external-dns
-- **Automation**: Renovate, GitHub Actions
-- **Dev Tools**: Mise
-
 ## 🚀 Quick Start
 
-### 1️⃣ Prepare Nodes
+### Prerequisites
+- Cloudflare account + domain
+- 3+ nodes: 4 cores, 16GB RAM, 256GB storage each
 
-1. Create Talos image at [factory.talos.dev](https://factory.talos.dev) (note the **schematic ID**)
-2. Flash ISO/RAW to USB and boot nodes
-3. Verify nodes: `nmap -Pn -n -p 50000 192.168.1.0/24 -vv | grep 'Discovered'`
-
-### 2️⃣ Setup Workstation
+### 1. Bootstrap Talos Cluster
 
 ```bash
-# Create repo from template
-export REPONAME="home-ops"
-gh repo create $REPONAME --template onedr0p/cluster-template --public --clone && cd $REPONAME
+# Clone repo
+git clone <your-repo> && cd infrastructure
 
 # Install tools
-mise trust && pip install pipx && mise install
+mise trust && mise install
 
-# Logout registries
-docker logout ghcr.io && helm registry logout ghcr.io
+# Generate configs
+task init
+# Edit: bootstrap/vars/cluster.yaml, talos/nodes.yaml
+
+# Template configs
+task configure
+git add -A && git commit -m "initial setup" && git push
+
+# Install Talos (10-15 min)
+task bootstrap:talos
+git add -A && git commit -m "add secrets" && git push
+
+# Deploy apps
+task bootstrap:apps
+kubectl get pods -A --watch
 ```
 
-### 3️⃣ Configure Cloudflare
-
-1. Create API token with permissions:
-   - `Zone - DNS - Edit`
-   - `Account - Cloudflare Tunnel - Read`
-2. Create tunnel:
-   ```bash
-   cloudflared tunnel login
-   cloudflared tunnel create --credentials-file cloudflare-tunnel.json kubernetes
-   ```
-
-### 4️⃣ Configure Cluster
+### 2. Verify Deployment
 
 ```bash
-task init                    # Generate config files
-# Edit cluster.yaml and nodes.yaml
-task configure              # Template configurations
-git add -A && git commit -m "chore: initial commit" && git push
+kubectl get nodes                    # All nodes Ready
+flux check                          # Flux healthy
+cilium status                       # Cilium running
+kubectl -n longhorn-system get nodes.longhorn.io  # Storage ready
 ```
 
-### 5️⃣ Bootstrap
+---
 
+## 🔧 Common Operations
+
+### Force Flux Sync
 ```bash
-task bootstrap:talos        # Install Talos (10+ min)
-git add -A && git commit -m "chore: add secrets" && git push
-task bootstrap:apps         # Deploy Cilium, Flux, etc.
-kubectl get pods --all-namespaces --watch
+task reconcile
 ```
 
-## ✅ Post-Install Verification
-
+### Apply Talos Config to Node
 ```bash
-cilium status                                    # Check Cilium
-flux check                                       # Check Flux
-flux get sources git flux-system                # Git sync status
-nmap -Pn -n -p 443 ${gateway_addrs} -vv        # Gateway connectivity
-dig @${dns_gateway} echo.${domain}              # DNS resolution
-kubectl -n kube-system describe certificates     # SSL certs
+task talos:apply-node IP=10.57.57.80
 ```
 
-## 🔧 Maintenance
-
-### Update Talos Config
-```bash
-task talos:generate-config
-task talos:apply-node IP=10.10.10.10 MODE=auto
-```
-
-### Upgrade Versions
+### Upgrade Talos/K8s
 ```bash
 # Update talenv.yaml first
-task talos:upgrade-node IP=10.10.10.10    # Talos upgrade
-task talos:upgrade-k8s                     # Kubernetes upgrade
+task talos:upgrade-node IP=10.57.57.80
+task talos:upgrade-k8s
 ```
 
 ### Reset Cluster
@@ -130,60 +88,103 @@ task talos:upgrade-k8s                     # Kubernetes upgrade
 task talos:reset
 ```
 
-## 🌐 DNS Setup
+---
 
-- **External**: Use `external` gateway in HTTPRoutes for public access
-- **Internal**: Configure home DNS to forward `${domain}` → `${cluster_dns_gateway}`
+## 💾 Hardware Maintenance
 
-## 🪝 GitHub Webhook
+### Replacing Disk on Proxmox Node
 
-1. Get webhook path: `kubectl -n flux-system get receiver github-webhook --output=jsonpath='{.status.webhookPath}'`
-2. Add to GitHub: `https://flux-webhook.${domain}${webhook_path}`
+**Example**: Swapping failed SSD on OptiPlex K8s node
+
+```bash
+# 1. Drain K8s node
+kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+
+# 2. Verify pods migrated
+kubectl get pods -A -o wide | grep <node-name>
+
+# 3. In Proxmox: shutdown VM, swap physical disk, boot VM
+
+# 4. Re-provision Talos (if needed - VM will auto-rejoin if config intact)
+task talos:apply-node IP=<node-ip>
+
+# 5. Uncordon node
+kubectl uncordon <node-name>
+
+# 6. Fix Longhorn storage (if disk UUID changed):
+kubectl -n longhorn-system patch node.longhorn.io <node-name> \
+  --type merge -p '{"spec":{"allowScheduling":false}}'
+
+kubectl -n longhorn-system patch node.longhorn.io <node-name> \
+  --type merge -p '{"spec":{"evictionRequested":true}}'
+
+# Wait for replicas to evacuate (~1-2 min)
+kubectl -n longhorn-system get replicas -o wide | grep <node-name>
+
+# Disable old disk
+kubectl -n longhorn-system patch node.longhorn.io <node-name> \
+  --type merge \
+  -p='{"spec":{"disks":{"default-disk-OLDID":{"allowScheduling":false}}}}'
+
+# Remove old disk (get ID from: kubectl -n longhorn-system get node.longhorn.io <node-name> -o yaml)
+kubectl -n longhorn-system patch node.longhorn.io <node-name> \
+  --type json -p='[{"op":"remove","path":"/spec/disks/default-disk-OLDID"}]'
+
+# Cancel eviction and re-enable
+kubectl -n longhorn-system patch node.longhorn.io <node-name> \
+  --type merge -p '{"spec":{"evictionRequested":false,"allowScheduling":true}}'
+
+# Add new disk
+kubectl -n longhorn-system patch node.longhorn.io <node-name> \
+  --type merge \
+  -p='{"spec":{"disks":{"default-disk":{"allowScheduling":true,"path":"/var/lib/longhorn/","storageReserved":0,"tags":[]}}}}'
+
+# 7. Verify storage ready (wait ~30 sec)
+kubectl -n longhorn-system get node.longhorn.io <node-name>
+# Should show: READY=True, ALLOWSCHEDULING=true, SCHEDULABLE=True
+
+# 8. Monitor replica rebuild
+kubectl -n longhorn-system get replicas | grep <node-name>
+```
+
+**Wait 1-2 hours between disk swaps** to allow Longhorn replica rebuild.
+
+---
 
 ## 🐛 Troubleshooting
 
 ```bash
-task reconcile                                   # Force Flux sync
-flux get sources git -A                          # Check sources
-kubectl -n <namespace> logs <pod> -f            # Pod logs
-kubectl -n <namespace> describe <resource>       # Resource details
-kubectl -n <namespace> get events --sort-by='.metadata.creationTimestamp'
+# Flux issues
+flux get kustomizations -A
+flux logs
+
+# Pod issues
+kubectl -n <namespace> logs <pod> -f
+kubectl -n <namespace> describe pod <pod>
+
+# Node issues
+kubectl describe node <node-name>
+talosctl -n <node-ip> dmesg
+
+# Longhorn issues
+kubectl -n longhorn-system get volumes
+kubectl -n longhorn-system describe node.longhorn.io <node-name>
 ```
-
-## 🧹 Cleanup
-
-```bash
-task template:tidy          # Remove template files
-git add -A && git commit -m "chore: cleanup" && git push
-```
-
-## 💡 Next Steps
-
-- **Alternative DNS**: Consider [external-dns](https://github.com/kubernetes-sigs/external-dns) providers
-- **Secret Management**: Explore [External Secrets](https://external-secrets.io)
-- **Storage Options**: rook-ceph, longhorn, openebs, democratic-csi
-
-## 🔒 Security & Quality
-
-This repository follows security best practices:
-
-- **Secrets**: All secrets encrypted with SOPS (AGE keys)
-- **Dependency Updates**: Renovate + Dependabot for automated updates
-- **Security Policy**: See [SECURITY.md](SECURITY.md) for vulnerability reporting
-
-## 📚 Documentation
-
-- [Repository Analysis](REPOSITORY_ANALYSIS.md) - Comprehensive repository review
-- [Contributing Guidelines](CONTRIBUTING.md) - How to contribute
-- [Security Policy](SECURITY.md) - Security reporting and practices
-- [Changelog](CHANGELOG.md) - Version history and changes
-- [Apps Directory](kubernetes/apps/README.md) - Application organization guide
-
-## 🙋 Support
-
-- [GitHub Discussions](https://github.com/onedr0p/cluster-template/discussions)
-- [Home Operations Discord](https://discord.gg/home-operations) (#support, #cluster-template)
 
 ---
 
-*For detailed documentation, refer to the [original template](https://github.com/onedr0p/cluster-template)*
+## 📚 Documentation
+
+- [Repository Analysis](REPOSITORY_ANALYSIS.md)
+- [Security Policy](SECURITY.md)
+- [Changelog](CHANGELOG.md)
+
+## 🔒 Security
+
+- Secrets encrypted with SOPS (AGE keys)
+- Auto-updates via Renovate + Dependabot
+- Report vulnerabilities: See [SECURITY.md](SECURITY.md)
+
+---
+
+**Support**: [GitHub Discussions](https://github.com/onedr0p/cluster-template/discussions) | [Home Operations Discord](https://discord.gg/home-operations)
