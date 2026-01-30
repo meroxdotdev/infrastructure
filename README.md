@@ -177,6 +177,23 @@ kubectl -n longhorn-system get volumes
 kubectl -n longhorn-system describe node.longhorn.io <node-name>
 ```
 
+### Longhorn Storage Full
+```bash
+# 1. Check for orphaned replicas
+kubectl get orphan -n longhorn-system
+
+# 2. Delete orphans (can free 50-200GB)
+kubectl get orphan -n longhorn-system -o name | xargs kubectl delete -n longhorn-system
+
+# 3. Restart Longhorn managers
+kubectl delete pod -n longhorn-system -l app=longhorn-manager
+
+# 4. Delete old snapshots
+kubectl get snapshots -n longhorn-system | grep -E "testback-|snap-" | awk '{print $1}' | xargs kubectl delete snapshot -n longhorn-system
+
+# 5. Verify space freed (wait 2-5 min)
+kubectl get nodes.longhorn.io -n longhorn-system
+
 ---
 
 ## 📚 Documentation
