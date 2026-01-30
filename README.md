@@ -177,21 +177,51 @@ kubectl -n longhorn-system get volumes
 kubectl -n longhorn-system describe node.longhorn.io <node-name>
 ```
 
-### Longhorn Storage Full
+### Longhorn Storage Cleanup
+
+**Clean orphaned replicas** (stale data from deleted volumes):
 ```bash
-# 1. Check for orphaned replicas
+# Check for orphaned replicas
 kubectl get orphan -n longhorn-system
 
-# 2. Delete orphans (can free 50-200GB)
-kubectl get orphan -n longhorn-system -o name | xargs kubectl delete -n longhorn-system
+# Count orphans per node
+kubectl get orphan -n longhorn-system -o json | \
+  jq -r '.items[] | .spec.nodeID' | sort | uniq -c
 
-# 3. Restart Longhorn managers
+# Delete all orphaned replicas
+kubectl get orphan -n longhorn-system -o name | \
+  xargs kubectl delete -n longhorn-system
+
+# Restart Longhorn managers to trigger cleanup
 kubectl delete pod -n longhorn-system -l app=longhorn-manager
 
-# 4. Delete old snapshots
-kubectl get snapshots -n longhorn-system | grep -E "testback-|snap-" | awk '{print $1}' | xargs kubectl delete snapshot -n longhorn-system
+# Wait for cleanup (2-5 min), then verify space freed
+kubectl get nodes -o wide
+```
 
-# 5. Verify space freed (wait 2-5 min)
+**Clean old snapshots** (backups older than 30 days):
+```bash
+# List snapshots
+kubectl get snapshots -n longhorn-system
+
+# Delete snapshots by pattern (testback, snap-, etc.)
+kubectl get snapshots -n longhorn-system | \
+  grep -E "testback-|snap-" | \
+  awk '{print $1}' | \
+  xargs kubectl delete snapshot -n longhorn-system
+
+# Or delete snapshots older than specific date
+kubectl get snapshots -n longhorn-system -o json | \
+  jq -r '.items[] | select(.status.creationTime < "2025-11-01") | .metadata.name' | \
+  xargs kubectl delete snapshot -n longhorn-system
+```
+
+**Check disk usage** (Talos nodes):
+```bash
+# View replica directories on node
+talosctl -n <node-ip> ls /var/lib/longhorn/replicas/
+
+# Check Longhorn storage status
 kubectl get nodes.longhorn.io -n longhorn-system
 ```
 ---
