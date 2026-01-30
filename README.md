@@ -193,7 +193,7 @@ kubectl get snapshots -n longhorn-system | grep -E "testback-|snap-" | awk '{pri
 
 # 5. Verify space freed (wait 2-5 min)
 kubectl get nodes.longhorn.io -n longhorn-system
-
+```
 ---
 
 ## 📚 Documentation
