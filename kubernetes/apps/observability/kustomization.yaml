@@ -12,5 +12,4 @@ resources:
   # Logging Stack
   - ./loki/ks.yaml
   - ./promtail/ks.yaml
-  # Dashboards
-  - ./kubernetes-dashboard/ks.yaml
+

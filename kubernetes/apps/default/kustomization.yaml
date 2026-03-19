@@ -17,4 +17,8 @@ resources:
   - ./sonarr/ks.yaml
   # Automation
   - ./n8n/ks.yaml
+  # Monitoring
+  - ./netdata/ks.yaml
+  # Management
+  - ./portainer-agent/ks.yaml
 

@@ -1,0 +1,13 @@
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: backup-homelab-k8s
+  namespace: longhorn-system
+spec:
+  cron: "00 02 * * *"
+  task: backup
+  groups:
+    - default
+  retain: 3
+  concurrency: 1

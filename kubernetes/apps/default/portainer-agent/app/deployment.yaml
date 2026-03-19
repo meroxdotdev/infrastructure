@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portainer-agent
+  namespace: portainer
+spec:
+  selector:
+    matchLabels:
+      app: portainer-agent
+  template:
+    metadata:
+      labels:
+        app: portainer-agent
+    spec:
+      serviceAccountName: portainer-sa-clusteradmin
+      containers:
+        - name: portainer-agent
+          # renovate: datasource=docker depName=portainer/agent
+          image: portainer/agent:2.33.2
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9001
+              protocol: TCP
+          env:
+            - name: LOG_LEVEL
+              value: INFO
+            - name: AGENT_CLUSTER_ADDR
+              value: portainer-agent-headless
+            - name: KUBERNETES_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portainer-agent
+  namespace: portainer
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 10.57.57.103
+  selector:
+    app: portainer-agent
+  ports:
+    - name: agent
+      port: 9001
+      targetPort: 9001
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portainer-agent-headless
+  namespace: portainer
+spec:
+  clusterIP: None
+  selector:
+    app: portainer-agent

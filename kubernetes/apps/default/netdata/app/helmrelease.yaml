@@ -1,0 +1,65 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: netdata
+  namespace: default
+spec:
+  interval: 1h
+  url: https://netdata.github.io/helmchart
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: netdata
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: netdata
+      version: 3.7.149
+      sourceRef:
+        kind: HelmRepository
+        name: netdata
+        namespace: default
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  valuesFrom:
+    - kind: Secret
+      name: netdata-secret
+      valuesKey: CLAIMING_TOKEN
+      targetPath: child.claiming.token
+    - kind: Secret
+      name: netdata-secret
+      valuesKey: CLAIMING_TOKEN
+      targetPath: parent.claiming.token
+  values:
+    image:
+      tag: edge
+
+    child:
+      claiming:
+        enabled: true
+        rooms: 536268ca-8879-4dbc-bb5c-2a776a70a5a2
+
+    parent:
+      claiming:
+        enabled: true
+        rooms: 536268ca-8879-4dbc-bb5c-2a776a70a5a2
+      database:
+        storageclass: longhorn
+        volumesize: 5Gi
+      alarms:
+        storageclass: longhorn
+        volumesize: 1Gi
+
+    k8sState:
+      persistence:
+        storageclass: longhorn
+        volumesize: 1Gi

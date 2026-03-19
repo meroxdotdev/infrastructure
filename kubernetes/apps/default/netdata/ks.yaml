@@ -3,19 +3,25 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: &app kubernetes-dashboard
-  namespace: &namespace observability
+  name: &app netdata
+  namespace: &namespace default
 spec:
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
   dependsOn:
-    - name: cert-manager
-      namespace: cert-manager
-    - name: metrics-server
-      namespace: kube-system
+    - name: longhorn
+      namespace: longhorn-system
   interval: 1h
-  path: ./kubernetes/apps/observability/kubernetes-dashboard/app
+  path: ./kubernetes/apps/default/netdata/app
+  postBuild:
+    substituteFrom:
+      - name: cluster-secrets
+        kind: Secret
   prune: true
   retryInterval: 2m
   sourceRef:
