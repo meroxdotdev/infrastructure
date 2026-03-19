@@ -89,5 +89,5 @@ spec:
             path: /app/config/bookmarks.yaml
             readOnly: true
     serviceAccount:
-      create: true
-      name: homepage
+      homepage:
+        enabled: true
