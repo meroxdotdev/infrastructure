@@ -1,0 +1,159 @@
+---
+# PersistentVolumes pointing to named Longhorn volumes.
+# These are created AFTER running: task restore:longhorn
+# which restores each volume from S3 backup with the exact name in volumeHandle.
+#
+# Cache volumes (jellyfin-cache, sonarr-cache, etc.) are NOT here
+# because they are ephemeral and recreated empty automatically.
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jellyfin-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: jellyfin-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jellyseerr-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 2Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: jellyseerr-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prowlarr-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 2Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: prowlarr-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: qbittorrent-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: qbittorrent-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: radarr-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: radarr-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sonarr-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: sonarr-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: loki-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 20Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: loki-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prometheus-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 15Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: prometheus-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn

@@ -21,6 +21,7 @@ env:
 includes:
   bootstrap: .taskfiles/bootstrap
   talos: .taskfiles/talos
+  longhorn: .taskfiles/longhorn
 
 tasks:
 

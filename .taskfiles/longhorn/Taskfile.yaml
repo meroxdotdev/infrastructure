@@ -1,0 +1,83 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  restore:
+    desc: Restore Longhorn volumes from S3 backup after a new cluster bootstrap
+    summary: |
+      Restores all named Longhorn volumes from the latest S3 backup.
+      Run this ONCE after bootstrap:talos + bootstrap:apps, before Flux reconciles apps.
+
+      Prerequisites:
+        - Longhorn must be running (wait for helmrelease longhorn to be Ready)
+        - minio-secret must exist in longhorn-system (deployed by Flux)
+        - Backup target must be reachable (Tailscale/Garage S3)
+
+      After this task completes:
+        - Apply the PV manifests: kubectl apply -f kubernetes/apps/storage/restore-pvs/pvs.yaml
+        - Flux will bind PVCs to PVs automatically
+    cmds:
+      - task: restore-volume
+        vars: { NAME: jellyfin-restored, BACKUP: "{{.BACKUP_PREFIX}}/jellyfin-restored" }
+      - task: restore-volume
+        vars: { NAME: jellyseerr-restored, BACKUP: "{{.BACKUP_PREFIX}}/jellyseerr-restored" }
+      - task: restore-volume
+        vars: { NAME: prowlarr-restored, BACKUP: "{{.BACKUP_PREFIX}}/prowlarr-restored" }
+      - task: restore-volume
+        vars: { NAME: qbittorrent-restored, BACKUP: "{{.BACKUP_PREFIX}}/qbittorrent-restored" }
+      - task: restore-volume
+        vars: { NAME: radarr-restored, BACKUP: "{{.BACKUP_PREFIX}}/radarr-restored" }
+      - task: restore-volume
+        vars: { NAME: sonarr-restored, BACKUP: "{{.BACKUP_PREFIX}}/sonarr-restored" }
+      - task: restore-volume
+        vars: { NAME: loki-restored, BACKUP: "{{.BACKUP_PREFIX}}/loki-restored" }
+      - task: restore-volume
+        vars: { NAME: prometheus-restored, BACKUP: "{{.BACKUP_PREFIX}}/prometheus-restored" }
+      - task: restore-volume
+        vars: { NAME: n8n-restored, BACKUP: "{{.BACKUP_PREFIX}}/n8n-restored" }
+      - task: restore-volume
+        vars: { NAME: grafana-restored, BACKUP: "{{.BACKUP_PREFIX}}/grafana-restored" }
+      - echo "All volumes restored. Applying PV manifests..."
+      - kubectl apply -f kubernetes/apps/storage/restore-pvs/pvs.yaml
+      - echo "Done. PVCs will bind automatically within 30s."
+
+  restore-volume:
+    internal: true
+    desc: Restore a single Longhorn volume from latest backup
+    vars:
+      NAME: '{{.NAME}}'
+      BACKUP: '{{.BACKUP}}'
+      BACKUP_PREFIX: "s3://longhorn@us-east-1/"
+    cmds:
+      - |
+        echo "Restoring volume: {{.NAME}}"
+        LATEST_BACKUP=$(kubectl -n longhorn-system exec -it \
+          $(kubectl -n longhorn-system get pod -l app=longhorn-manager -o jsonpath='{.items[0].metadata.name}') \
+          -- longhorn-manager backup list --volume-name {{.NAME}} 2>/dev/null \
+          | grep {{.NAME}} | sort | tail -1 | awk '{print $1}')
+
+        if [ -z "$LATEST_BACKUP" ]; then
+          echo "  WARNING: No backup found for {{.NAME}}, skipping"
+          exit 0
+        fi
+
+        echo "  Using backup: $LATEST_BACKUP"
+        kubectl apply -f - <<EOF
+        apiVersion: longhorn.io/v1beta2
+        kind: Volume
+        metadata:
+          name: {{.NAME}}
+          namespace: longhorn-system
+        spec:
+          numberOfReplicas: 3
+          frontend: blockdev
+          fromBackup: "$LATEST_BACKUP"
+          restoreVolumeRecurringJob: enabled
+        EOF
+        echo "  Volume {{.NAME}} restore initiated"
+
+  status:
+    desc: Check status of all Longhorn volumes being restored
+    cmds:
+      - kubectl get volumes.longhorn.io -n longhorn-system 2>&1
