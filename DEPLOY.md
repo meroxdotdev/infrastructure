@@ -16,7 +16,8 @@ Before starting, have these ready:
 | Cloudflare API token | Cloudflare dashboard |
 | Portainer EE license | Portainer account |
 | Telegram bot token + user ID | BotFather / Telegram |
-| Server `.env` for merox-agent | Backed up separately |
+| Anthropic API key | console.anthropic.com |
+| OpenClaw `.env` (`~/.openclaw/.env`) | Backed up separately |
 
 ---
 
@@ -110,36 +111,97 @@ kubectl -n longhorn-system get secret garage-backup-secret
 
 ---
 
-## Phase 3 — Agent
+## Phase 3 — Agent (OpenClaw)
 
-> ~5 min. [merox-agent](https://github.com/meroxdotdev/merox-agent) as systemd service (Telegram bot + CLI).
+> ~10 min. [OpenClaw](https://openclaw.ai) as systemd daemon (Telegram bot → Claude API → kubectl/docker).
+> Config template + infra skill live in `agent/` in this repo.
+
+### 3a — Install Node.js 24 + OpenClaw
 
 ```bash
-# On the new server:
-sudo git clone https://github.com/meroxdotdev/merox-agent /srv/merox-agent
-cd /srv/merox-agent
-
-# Configure
-sudo cp .env.example .env
-sudo nano .env
-# Fill: SERVER_TS_IP, INFRA_REPO, WEBSITE_REPO, TELEGRAM_BOT_TOKEN, TELEGRAM_USER_ID
-
-# Claude Code (must be authenticated before running install.sh)
-# If not installed:
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Node.js 24 (required: 22.16+ minimum, 24 recommended)
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
-sudo npm install -g @anthropic-ai/claude-code
-claude   # Complete browser OAuth
 
-# Install + start service
-sudo bash install.sh
+# Verify
+node --version   # must be >= 22.16
+
+# Install OpenClaw globally
+sudo npm install -g openclaw@latest
+
+# Verify
+openclaw --version
+```
+
+### 3b — Configure secrets
+
+```bash
+# Create config directory with strict permissions
+mkdir -p ~/.openclaw
+chmod 700 ~/.openclaw
+
+# Create .env with secrets (never commit this file)
+cat > ~/.openclaw/.env << 'EOF'
+ANTHROPIC_API_KEY=sk-ant-...        # console.anthropic.com
+TELEGRAM_BOT_TOKEN=123456:AAAA...   # @BotFather on Telegram
+TELEGRAM_USER_ID=123456789          # your numeric Telegram ID
+EOF
+chmod 600 ~/.openclaw/.env
+```
+
+> **Finding your Telegram user ID:** after setting the bot token, start openclaw,
+> send a message to your bot, then run `openclaw logs --follow` and look for `from.id`.
+
+### 3c — Install config + skill from repo
+
+```bash
+# Copy config template
+cp /srv/kubernetes/infrastructure/agent/openclaw.json ~/.openclaw/openclaw.json
+chmod 600 ~/.openclaw/openclaw.json
+
+# Create workspace and install infra skill
+mkdir -p ~/.openclaw/workspace/skills
+cp -r /srv/kubernetes/infrastructure/agent/skills/infra \
+      ~/.openclaw/workspace/skills/infra
+```
+
+### 3d — Install systemd daemon
+
+```bash
+# Onboard + install as systemd user service
+openclaw onboard --install-daemon
+
+# Verify daemon is running
+systemctl --user status openclaw-gateway
+journalctl --user -u openclaw-gateway -f
+```
+
+### 3e — Tailscale Serve (optional but recommended)
+
+Exposes the OpenClaw Control UI on your tailnet only (no public internet):
+
+```bash
+# Tailscale Serve routes tailnet HTTPS → local gateway
+tailscale serve https / proxy 18789
+
+# Verify
+tailscale serve status
+# Access Control UI at: https://<hostname>.<tailnet>.ts.net
+```
+
+### 3f — Security audit
+
+```bash
+openclaw security audit
+# Fix any warnings before proceeding
+openclaw doctor
 ```
 
 **Verify:**
 ```bash
-systemctl status merox-agent
-journalctl -u merox-agent -f
-# Then message @meroxagentbot on Telegram
+# Telegram: send a message to your bot — it should respond
+# Control UI: https://<hostname>.<tailnet>.ts.net (if Tailscale Serve enabled)
+systemctl --user status openclaw-gateway
 ```
 
 ---
@@ -155,8 +217,11 @@ journalctl -u merox-agent -f
 [ ] AGE key placed at /srv/kubernetes/infrastructure/age.key
 [ ] Phase 2 complete — all nodes Ready, Flux healthy
 [ ] Longhorn backup target working (test a manual backup)
-[ ] merox-agent .env configured with new SERVER_TS_IP
-[ ] Phase 3 complete — Telegram bot responds
+[ ] ~/.openclaw/.env created with ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_USER_ID
+[ ] ~/.openclaw/openclaw.json installed from agent/openclaw.json
+[ ] infra skill installed at ~/.openclaw/workspace/skills/infra/
+[ ] Phase 3 complete — openclaw-gateway daemon running, Telegram bot responds
+[ ] openclaw security audit — no warnings
 [ ] Old server decommissioned / Tailscale node removed
 ```
 
@@ -171,11 +236,11 @@ journalctl -u merox-agent -f
 | AGE encryption key | `age.key` (gitignored) | ⚠️ Back up manually |
 | Vault password | Password manager | ⚠️ Stored externally |
 | Ansible vault secrets | `cloudlab-infrastructure/inventories/production/group_vars/all/vault.yml` (encrypted) | ✅ in git |
-| Agent code | [github.com/meroxdotdev/merox-agent](https://github.com/meroxdotdev/merox-agent) | ✅ |
-| Agent `.env` (tokens, IPs) | Only on server | ⚠️ Back up manually |
+| Agent config template + skill | `agent/` in this repo | ✅ |
+| Agent secrets (`~/.openclaw/.env`) | Only on server | ⚠️ Back up manually |
 | Longhorn volumes | Backed up to Garage S3 | ✅ if configured |
 | Garage S3 data | Only on VPS disk | ⚠️ No off-site backup |
 
 **The two things to back up manually before decommissioning:**
 1. `age.key` — losing this = losing all SOPS-encrypted secrets
-2. `/srv/merox-agent/.env` — Telegram tokens, IPs
+2. `~/.openclaw/.env` — Anthropic API key, Telegram tokens

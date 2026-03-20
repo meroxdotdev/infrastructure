@@ -1,0 +1,37 @@
+{
+  // OpenClaw config for merox.dev infrastructure agent
+  // Secrets are loaded from ~/.openclaw/.env — never hardcode tokens here
+  // Docs: https://docs.openclaw.ai/configuration
+
+  agents: {
+    defaults: {
+      // Use Sonnet for speed/cost; switch to opus-4-6 for complex multi-step tasks
+      model: {
+        primary: "anthropic/claude-sonnet-4-6",
+      },
+
+      // Workspace root — agent reads AGENTS.md and skills/ from here
+      workspace: "/root/.openclaw/workspace",
+    },
+  },
+
+  // Telegram: only your user ID can send DMs to the bot
+  channels: {
+    telegram: {
+      botToken: "${TELEGRAM_BOT_TOKEN}",
+      dmPolicy: "allowlist",
+      allowFrom: ["${TELEGRAM_USER_ID}"],
+    },
+  },
+
+  // Gateway: loopback-only, exposed via Tailscale Serve (not public internet)
+  gateway: {
+    bind: "loopback",
+    auth: {
+      mode: "token",
+    },
+    tailscale: {
+      mode: "serve",
+    },
+  },
+}

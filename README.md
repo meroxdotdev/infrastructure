@@ -28,8 +28,9 @@ GitOps-managed homelab: Kubernetes cluster (Talos + Flux) + VPS services + Infra
 └─────────────────────────────────────────────────────────┘
                      │
 ┌────────────────────▼────────────────────────────────────┐
-│  merox-agent — github.com/meroxdotdev/merox-agent       │
-│  Telegram bot + CLI → Claude Code → kubectl/docker      │
+│  OpenClaw — openclaw.ai                                 │
+│  Telegram bot → Claude API → kubectl/docker             │
+│  Config: agent/openclaw.json  Skill: agent/skills/infra │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -60,6 +61,10 @@ infrastructure/
 │   └── components/             # Shared Helm release templates
 ├── talos/                      # Talos node configs + patches
 ├── bootstrap/                  # Cluster bootstrap vars + tasks
+├── agent/                      # OpenClaw config template + infra skill
+│   ├── openclaw.json           # Gateway config (no secrets — use .env)
+│   ├── env.example             # Template for ~/.openclaw/.env
+│   └── skills/infra/SKILL.md  # kubectl/docker context for the agent
 ├── DEPLOY.md                   # Full rebuild guide (start here)
 └── Taskfile.yaml               # Task runner (talosctl, flux, etc.)
 ```
