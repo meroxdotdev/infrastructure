@@ -1,0 +1,181 @@
+# Infrastructure Deploy Guide
+
+Complete rebuild procedure for a new server: VPS → Kubernetes cluster → Agent.
+
+---
+
+## Prerequisites
+
+Before starting, have these ready:
+
+| Item | Where to find it |
+|------|-----------------|
+| Vault password | Password manager |
+| AGE key (`age.key`) | Backed up separately — **critical** |
+| Tailscale reusable auth key | Tailscale admin console |
+| Cloudflare API token | Cloudflare dashboard |
+| Portainer EE license | Portainer account |
+| Telegram bot token + user ID | BotFather / Telegram |
+| Server `.env` for merox-agent | Backed up separately |
+
+---
+
+## Phase 1 — VPS
+
+> ~10 min. Sets up Docker, Tailscale, Traefik, Pi-hole, Portainer, Homepage, Netdata, Garage S3.
+
+**On the new server**, create a root SSH key if not already present, then from your machine:
+
+```bash
+cd cloudlab-infrastructure/
+
+# 1. Update inventory with new server IP
+nano inventories/production/hosts
+# Change: ansible_host=<NEW_IP>
+
+# 2. Update Cloudflare DNS A records for *.cloud.merox.dev → <NEW_IP>
+#    (Do this first so Let's Encrypt ACME can complete during deploy)
+
+# 3. Install Ansible collections
+make install
+
+# 4. Test connectivity
+make ping
+
+# 5. Full deploy (~10 min)
+make setup
+# Enter vault password when prompted
+```
+
+**Post-deploy manual steps:**
+
+```bash
+# Portainer: set admin password at https://portainer.cloud.merox.dev
+# Pi-hole: verify DNS at https://pihole.cloud.merox.dev/admin
+
+# Retrieve Garage S3 credentials and save to vault:
+ssh root@<NEW_IP> "docker exec garage /garage key info longhorn-key --show-secret"
+ansible-vault edit inventories/production/group_vars/all/vault.yml
+# Add: garage_access_key_id and garage_secret_access_key
+```
+
+**Verify:**
+```bash
+make health-check
+```
+
+---
+
+## Phase 2 — Kubernetes Cluster
+
+> ~20 min. Talos Linux + FluxCD + all apps via GitOps.
+
+```bash
+cd /srv/kubernetes/infrastructure/
+
+# 1. Install tools (mise manages talosctl, kubectl, flux, task, etc.)
+mise trust && mise install
+
+# 2. Place AGE key
+cp /path/to/age.key ./age.key
+
+# 3. Configure cluster (only needed if changing IPs/nodes)
+# Edit: bootstrap/vars/cluster.yaml, talos/nodes.yaml
+
+# 4. Bootstrap Talos on all nodes (~10 min)
+task bootstrap:talos
+git add -A && git commit -m "add secrets" && git push
+
+# 5. Deploy all apps via Flux (~10 min, pods come up gradually)
+task bootstrap:apps
+kubectl get pods -A --watch
+```
+
+**Verify:**
+```bash
+kubectl get nodes                                    # All Ready
+flux check                                          # Healthy
+cilium status                                       # Running
+kubectl -n longhorn-system get nodes.longhorn.io   # Storage ready
+```
+
+**Reconnect Longhorn → Garage S3 backup target:**
+
+```bash
+# In kubernetes/apps/longhorn-system/longhorn/app/helmrelease.yaml
+# Verify backupTarget points to: s3://longhorn@us-east-1/
+# and garage-backup-secret has the new credentials from Phase 1
+kubectl -n longhorn-system get secret garage-backup-secret
+```
+
+---
+
+## Phase 3 — Agent
+
+> ~5 min. [merox-agent](https://github.com/meroxdotdev/merox-agent) as systemd service (Telegram bot + CLI).
+
+```bash
+# On the new server:
+sudo git clone https://github.com/meroxdotdev/merox-agent /srv/merox-agent
+cd /srv/merox-agent
+
+# Configure
+sudo cp .env.example .env
+sudo nano .env
+# Fill: SERVER_TS_IP, INFRA_REPO, WEBSITE_REPO, TELEGRAM_BOT_TOKEN, TELEGRAM_USER_ID
+
+# Claude Code (must be authenticated before running install.sh)
+# If not installed:
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g @anthropic-ai/claude-code
+claude   # Complete browser OAuth
+
+# Install + start service
+sudo bash install.sh
+```
+
+**Verify:**
+```bash
+systemctl status merox-agent
+journalctl -u merox-agent -f
+# Then message @meroxagentbot on Telegram
+```
+
+---
+
+## Migration Checklist
+
+```
+[ ] New server IP updated in: cloudlab-infrastructure/inventories/production/hosts
+[ ] Cloudflare DNS A records updated (*.cloud.merox.dev → new IP)
+[ ] Phase 1 complete — make health-check passes
+[ ] Portainer admin password set
+[ ] Garage S3 credentials saved to vault
+[ ] AGE key placed at /srv/kubernetes/infrastructure/age.key
+[ ] Phase 2 complete — all nodes Ready, Flux healthy
+[ ] Longhorn backup target working (test a manual backup)
+[ ] merox-agent .env configured with new SERVER_TS_IP
+[ ] Phase 3 complete — Telegram bot responds
+[ ] Old server decommissioned / Tailscale node removed
+```
+
+---
+
+## What lives where
+
+| Asset | Location | Backed up? |
+|-------|----------|------------|
+| K8s manifests + Ansible roles | This git repo | ✅ |
+| Kubernetes secrets (SOPS) | Git-encrypted with AGE | ✅ |
+| AGE encryption key | `age.key` (gitignored) | ⚠️ Back up manually |
+| Vault password | Password manager | ⚠️ Stored externally |
+| Ansible vault secrets | `cloudlab-infrastructure/inventories/production/group_vars/all/vault.yml` (encrypted) | ✅ in git |
+| Agent code | [github.com/meroxdotdev/merox-agent](https://github.com/meroxdotdev/merox-agent) | ✅ |
+| Agent `.env` (tokens, IPs) | Only on server | ⚠️ Back up manually |
+| Longhorn volumes | Backed up to Garage S3 | ✅ if configured |
+| Garage S3 data | Only on VPS disk | ⚠️ No off-site backup |
+
+**The two things to back up manually before decommissioning:**
+1. `age.key` — losing this = losing all SOPS-encrypted secrets
+2. `/srv/merox-agent/.env` — Telegram tokens, IPs
