@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ./helmrelease.yaml
   - ./pvc.yaml
+  - ./gluetun-secret.sops.yaml
 configMapGenerator:
   - name: qbittorrent-loki-rules
     files:

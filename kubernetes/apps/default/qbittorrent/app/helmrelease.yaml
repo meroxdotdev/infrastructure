@@ -20,6 +20,38 @@ spec:
     controllers:
       qbittorrent:
         containers:
+          gluetun:
+            image:
+              repository: ghcr.io/qdm12/gluetun
+              tag: v3.40.0
+            env:
+              TZ: Europe/Bucharest
+              VPN_SERVICE_PROVIDER: surfshark
+              VPN_TYPE: wireguard
+              # SurfShark server selection — change country as needed
+              SERVER_COUNTRIES: Netherlands
+              # Allow inbound bittorrent connections through Gluetun firewall
+              FIREWALL_INPUT_PORTS: "50413"
+              # Bypass VPN for Kubernetes internal traffic (services, NFS, probes)
+              FIREWALL_OUTBOUND_SUBNETS: "10.0.0.0/8"
+              # Use cluster DNS instead of Gluetun's own resolver
+              DNS_KEEP_NAMESERVER: "on"
+              DOT: "off"
+            envFrom:
+              - secretRef:
+                  name: qbittorrent-gluetun-secret
+            securityContext:
+              runAsNonRoot: false
+              runAsUser: 0
+              capabilities:
+                add: ["NET_ADMIN"]
+              allowPrivilegeEscalation: false
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                memory: 128Mi
           app:
             image:
               repository: ghcr.io/home-operations/qbittorrent
@@ -102,5 +134,12 @@ spec:
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: Downloads/qbittorrent
+      tun:
+        type: hostPath
+        hostPath: /dev/net/tun
+        advancedMounts:
+          qbittorrent:
+            gluetun:
+              - path: /dev/net/tun
       tmp:
         type: emptyDir
