@@ -30,6 +30,7 @@ spec:
               VPN_TYPE: wireguard
               # SurfShark server selection — change country as needed
               SERVER_COUNTRIES: Netherlands
+              WIREGUARD_ADDRESSES: "10.14.0.2/16"
               # Allow inbound bittorrent connections through Gluetun firewall
               FIREWALL_INPUT_PORTS: "50413"
               # Bypass VPN for Kubernetes internal traffic (services, NFS, probes)
