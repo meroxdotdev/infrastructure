@@ -32,7 +32,7 @@ spec:
               SERVER_COUNTRIES: Netherlands
               WIREGUARD_ADDRESSES: "10.14.0.2/16"
               # Allow inbound bittorrent connections through Gluetun firewall
-              FIREWALL_INPUT_PORTS: "50413"
+              FIREWALL_INPUT_PORTS: "50413,80"
               # Bypass VPN for Kubernetes internal traffic (services, NFS, probes)
               FIREWALL_OUTBOUND_SUBNETS: "10.0.0.0/8"
               # Use cluster DNS instead of Gluetun's own resolver
