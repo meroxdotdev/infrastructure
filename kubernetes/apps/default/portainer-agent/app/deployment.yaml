@@ -17,7 +17,7 @@ spec:
       containers:
         - name: portainer-agent
           # renovate: datasource=docker depName=portainer/agent
-          image: portainer/agent:2.33.2
+          image: portainer/agent:2.39.1
           imagePullPolicy: Always
           ports:
             - containerPort: 9001
