@@ -87,26 +87,39 @@ cp /path/to/age.key ./age.key
 task bootstrap:talos
 git add -A && git commit -m "add secrets" && git push
 
-# 5. Deploy all apps via Flux (~10 min, pods come up gradually)
+# 5. Bootstrap Flux and wait for Longhorn to be ready (do NOT let Flux reconcile apps yet)
 task bootstrap:apps
+# Wait until Longhorn is fully running before proceeding:
+kubectl -n longhorn-system wait helmrelease/longhorn --for=condition=Ready --timeout=5m
+kubectl -n longhorn-system get nodes.longhorn.io   # All nodes should appear
+
+# 6. Restore all Longhorn volumes from S3 backup (CRITICAL — run BEFORE apps start)
+#    This restores: jellyfin, jellyseerr, prowlarr, qbittorrent, radarr, sonarr,
+#                   loki, prometheus, n8n, grafana
+task restore:longhorn
+# Wait for all volumes to finish restoring (~5-10 min):
+kubectl get volumes.longhorn.io -n longhorn-system --watch
+
+# 7. Flux reconciles all apps — PVCs will auto-bind to restored PVs
 kubectl get pods -A --watch
 ```
 
 **Verify:**
 ```bash
 kubectl get nodes                                    # All Ready
-flux check                                          # Healthy
-cilium status                                       # Running
-kubectl -n longhorn-system get nodes.longhorn.io   # Storage ready
+kubectl get kustomizations -A                        # All True
+kubectl get pvc -A | grep restored                   # All Bound to *-restored-pv
+kubectl -n longhorn-system get nodes.longhorn.io     # Storage ready
 ```
 
 **Reconnect Longhorn → Garage S3 backup target:**
 
 ```bash
-# In kubernetes/apps/longhorn-system/longhorn/app/helmrelease.yaml
 # Verify backupTarget points to: s3://longhorn@us-east-1/
 # and garage-backup-secret has the new credentials from Phase 1
 kubectl -n longhorn-system get secret garage-backup-secret
+# Trigger a manual backup to verify connectivity:
+# Longhorn UI → Backup → Create Backup (any volume)
 ```
 
 ---
@@ -216,6 +229,8 @@ systemctl --user status openclaw-gateway
 [ ] Garage S3 credentials saved to vault
 [ ] AGE key placed at /srv/kubernetes/infrastructure/age.key
 [ ] Phase 2 complete — all nodes Ready, Flux healthy
+[ ] Longhorn volumes restored (`task restore:longhorn` ran successfully)
+[ ] All PVCs bound to restored PVs (`kubectl get pvc -A | grep restored`)
 [ ] Longhorn backup target working (test a manual backup)
 [ ] ~/.openclaw/.env created with ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_USER_ID
 [ ] ~/.openclaw/openclaw.json installed from agent/openclaw.json
