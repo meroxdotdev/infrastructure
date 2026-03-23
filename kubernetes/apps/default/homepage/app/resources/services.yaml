@@ -3,10 +3,10 @@
         icon: https://raw.githubusercontent.com/walkxcode/dashboard-icons/main/svg/proxmox.svg
         href: https://proxmox.${SECRET_DOMAIN}
         description: Virtualization
-        ping: 10.57.57.254
+        ping: ${HOMEPAGE_PROXMOX_IP}
         widget:
           type: proxmox
-          url: https://10.57.57.254:8006
+          url: https://${HOMEPAGE_PROXMOX_IP}:8006
           username: "{{HOMEPAGE_VAR_PROXMOX_USERNAME}}"
           password: "{{HOMEPAGE_VAR_PROXMOX_PASSWORD}}"
 
@@ -25,10 +25,10 @@
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/synology.svg
         href: https://storage.${SECRET_DOMAIN}
         description: Network Storage & Backup
-        ping: 10.57.57.201
+        ping: ${NFS_SERVER}
         widget:
           type: diskstation
-          url: https://10.57.57.201:5001
+          url: https://${NFS_SERVER}:5001
           username: "{{HOMEPAGE_VAR_SYNOLOGY_USERNAME}}"
           password: "{{HOMEPAGE_VAR_SYNOLOGY_PASSWORD}}"
           volume: volume_1
@@ -136,7 +136,7 @@
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/pfsense.svg
         href: https://fw.${SECRET_DOMAIN}
         description: Firewall & Router
-        ping: 10.57.57.1
+        ping: ${HOMEPAGE_ROUTER_IP}
 
     - WiFi Controller:
         icon: https://www.svgrepo.com/show/102795/wifi.svg
@@ -148,7 +148,7 @@
         icon: https://camo.githubusercontent.com/4ccc83cf6b1f06e999c378bda264433ec83994031c156a5c88876b53eb57b201/68747470733a2f2f692e696d6775722e636f6d2f61436d413672482e706e67
         href: https://speed.${SECRET_DOMAIN}
         description: Network Speed Testing
-        ping: 10.57.57.62
+        ping: ${HOMEPAGE_MYSPEED_IP}
         widget:
           type: myspeed
-          url: http://10.57.57.62:5216
+          url: http://${HOMEPAGE_MYSPEED_IP}:5216

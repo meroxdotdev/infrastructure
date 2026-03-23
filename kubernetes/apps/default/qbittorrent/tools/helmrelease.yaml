@@ -136,7 +136,7 @@ spec:
             readOnly: true
       media:
         type: nfs
-        server: 10.57.57.201
+        server: ${NFS_SERVER}
         path: /volume1/Server/Kubernetes/Media/Download
         globalMounts:
           - path: /media/Downloads/qbittorrent

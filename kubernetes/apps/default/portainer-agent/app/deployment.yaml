@@ -45,7 +45,7 @@ metadata:
   namespace: portainer
 spec:
   type: LoadBalancer
-  loadBalancerIP: 10.57.57.103
+  loadBalancerIP: ${LB_IP_PORTAINER}
   selector:
     app: portainer-agent
   ports:

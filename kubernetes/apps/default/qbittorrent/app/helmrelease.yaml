@@ -107,7 +107,7 @@ spec:
       bittorrent:
         type: LoadBalancer
         annotations:
-          lbipam.cilium.io/ips: 10.57.57.102
+          lbipam.cilium.io/ips: ${LB_IP_QBITTORRENT}
         ports:
           bittorrent-tcp:
             port: *torrentPort
@@ -130,7 +130,7 @@ spec:
         existingClaim: qbittorrent
       media:
         type: nfs
-        server: 10.57.57.201
+        server: ${NFS_SERVER}
         path: /volume1/Server/Kubernetes/Media
         globalMounts:
           - path: /media/Downloads/qbittorrent

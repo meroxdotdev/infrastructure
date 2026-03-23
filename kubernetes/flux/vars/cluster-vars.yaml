@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/configmap.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-vars
+  namespace: flux-system
+data:
+  # -- Network infrastructure IPs
+  # Update these when deploying on new hardware
+  NFS_SERVER: "10.57.57.201"
+  HOMEPAGE_PROXMOX_IP: "10.57.57.254"
+  HOMEPAGE_ROUTER_IP: "10.57.57.1"
+  HOMEPAGE_MYSPEED_IP: "10.57.57.62"
+
+  # -- Cilium LoadBalancer IPs (must be within Cilium LB pool in networks.yaml)
+  LB_IP_GATEWAY_INTERNAL: "10.57.57.101"
+  LB_IP_QBITTORRENT: "10.57.57.102"
+  LB_IP_PORTAINER: "10.57.57.103"
+  LB_IP_K8S_GATEWAY: "10.57.57.111"
+  LB_IP_GATEWAY_EXTERNAL: "10.57.57.112"
