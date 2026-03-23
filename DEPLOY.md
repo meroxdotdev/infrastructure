@@ -80,8 +80,35 @@ mise trust && mise install
 # 2. Place AGE key
 cp /path/to/age.key ./age.key
 
-# 3. Configure cluster (only needed if changing IPs/nodes)
-# Edit: bootstrap/vars/cluster.yaml, talos/nodes.yaml
+# 3. Adapt config for new hardware (update ALL of these before bootstrapping)
+
+# --- a) Node IPs, VIP, install disk ---
+# Edit: talos/talconfig.yaml
+#   nodes[*].ipAddress       → new node IPs
+#   endpoint                 → new VIP (e.g. https://10.x.x.88:6443)
+#   nodes[*].installDisk     → check disk name on new hardware:
+#                              /dev/sda (SATA/SAS) or /dev/nvme0n1 (NVMe)
+#   controlPlane.ingressAddress → new VIP
+#
+# NOTE: if you add/remove Talos extensions (GPU, iSCSI, etc.) you must
+# generate a new image ID at https://factory.talos.dev and update talosImageURL
+
+# --- b) Network infrastructure IPs ---
+# Edit: kubernetes/components/common/cluster-vars.yaml
+#   NFS_SERVER              → NAS/NFS server IP
+#   HOMEPAGE_PROXMOX_IP     → Proxmox host IP
+#   HOMEPAGE_ROUTER_IP      → Router/pfSense IP
+#   HOMEPAGE_MYSPEED_IP     → MySpeed service IP
+#   LB_IP_GATEWAY_INTERNAL  → Cilium internal gateway LB IP
+#   LB_IP_QBITTORRENT       → qBittorrent LB IP
+#   LB_IP_PORTAINER         → Portainer agent LB IP
+#   LB_IP_K8S_GATEWAY       → k8s-gateway LB IP
+#   LB_IP_GATEWAY_EXTERNAL  → Cilium external gateway LB IP
+#
+# --- c) Cilium LB pool subnet ---
+# Edit: kubernetes/apps/kube-system/cilium/app/networks.yaml
+#   blocks[0].cidr           → new subnet (e.g. "10.x.x.0/24")
+#   (must contain all LB_IP_* values above)
 
 # 4. Bootstrap Talos on all nodes (~10 min)
 task bootstrap:talos
@@ -228,6 +255,9 @@ systemctl --user status openclaw-gateway
 [ ] Portainer admin password set
 [ ] Garage S3 credentials saved to vault
 [ ] AGE key placed at /srv/kubernetes/infrastructure/age.key
+[ ] talos/talconfig.yaml updated (node IPs, VIP, installDisk, talosImageURL if changed)
+[ ] kubernetes/components/common/cluster-vars.yaml updated (NFS, LB IPs)
+[ ] kubernetes/apps/kube-system/cilium/app/networks.yaml updated (subnet cidr)
 [ ] Phase 2 complete — all nodes Ready, Flux healthy
 [ ] Longhorn volumes restored (`task restore:longhorn` ran successfully)
 [ ] All PVCs bound to restored PVs (`kubectl get pvc -A | grep restored`)
