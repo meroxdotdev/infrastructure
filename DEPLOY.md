@@ -260,6 +260,8 @@ systemctl --user status openclaw-gateway
 [ ] talos/talconfig.yaml updated (node IPs, VIP, installDisk, talosImageURL if changed)
 [ ] kubernetes/components/common/cluster-vars.yaml updated (all infrastructure IPs — NFS, router, LB IPs)
 [ ] kubernetes/apps/kube-system/cilium/app/networks.yaml updated (subnet cidr, must contain all LB IPs)
+[ ] Intel iGPU (i915) present on new hardware — required for Jellyfin HW transcoding
+    (if no Intel iGPU: remove gpu.intel.com/i915 limit from jellyfin helmrelease + disable intel-device-plugin-operator)
 [ ] Phase 2 complete — all nodes Ready, Flux healthy
 [ ] Longhorn volumes restored (`task restore:longhorn` ran successfully)
 [ ] All PVCs bound to restored PVs (`kubectl get pvc -A | grep restored`)
