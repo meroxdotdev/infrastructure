@@ -5,16 +5,32 @@ kind: ConfigMap
 metadata:
   name: cluster-vars
 data:
-  # -- Network infrastructure IPs
-  # Update these when deploying on new hardware
+  # -----------------------------------------------------------------------
+  # Flux postBuild substitution variables — update ALL of these when
+  # deploying on new hardware. They are injected into every namespace via
+  # the 'common' Kustomize component.
+  #
+  # Values marked with (cluster.yaml) also exist in .private/*/cluster.yaml
+  # (the original cluster-template source). Keep them in sync.
+  # -----------------------------------------------------------------------
+
+  # -- NAS / NFS server (app-specific, not in cluster.yaml)
   NFS_SERVER: "10.57.57.201"
+
+  # -- Homepage widget IPs (app-specific, not in cluster.yaml)
   HOMEPAGE_PROXMOX_IP: "10.57.57.254"
-  HOMEPAGE_ROUTER_IP: "10.57.57.1"
   HOMEPAGE_MYSPEED_IP: "10.57.57.62"
 
-  # -- Cilium LoadBalancer IPs (must be within Cilium LB pool in networks.yaml)
+  # -- Router IP (cluster.yaml: node_default_gateway)
+  HOMEPAGE_ROUTER_IP: "10.57.57.1"
+
+  # -- Cilium LoadBalancer IPs (must be within the pool in cilium/app/networks.yaml)
+  # LB_IP_GATEWAY_INTERNAL = cluster.yaml: cluster_gateway_addr
   LB_IP_GATEWAY_INTERNAL: "10.57.57.101"
+  # LB_IP_QBITTORRENT / LB_IP_PORTAINER — app-specific, not in cluster.yaml
   LB_IP_QBITTORRENT: "10.57.57.102"
   LB_IP_PORTAINER: "10.57.57.103"
+  # LB_IP_K8S_GATEWAY = cluster.yaml: cluster_dns_gateway_addr
   LB_IP_K8S_GATEWAY: "10.57.57.111"
+  # LB_IP_GATEWAY_EXTERNAL = cluster.yaml: cloudflare_gateway_addr
   LB_IP_GATEWAY_EXTERNAL: "10.57.57.112"
