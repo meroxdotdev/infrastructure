@@ -148,6 +148,9 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 15Gi
+  claimRef:
+    name: prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0
+    namespace: observability
   csi:
     driver: driver.longhorn.io
     fsType: ext4
