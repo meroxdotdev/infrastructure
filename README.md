@@ -75,7 +75,7 @@ infrastructure/
 | Scenario | Where to look |
 |----------|--------------|
 | Full rebuild (new server + new cluster) | [DEPLOY.md — Phase 1 (VPS)](DEPLOY.md#phase-1--vps) → [Phase 2 (K8s)](DEPLOY.md#phase-2--kubernetes-cluster) → [Phase 3 (Agent)](DEPLOY.md#phase-3--agent-openclaw) |
-| Restore Longhorn volumes from S3 backup | [DEPLOY.md — Phase 2, step 6](DEPLOY.md#phase-2--kubernetes-cluster): `task restore:longhorn` |
+| Restore Longhorn volumes from S3 backup | [DEPLOY.md — Phase 2, step 7](DEPLOY.md#phase-2--kubernetes-cluster): `task restore:longhorn` |
 | New hardware (different IPs/disks) | [DEPLOY.md — Phase 2, step 3](DEPLOY.md#phase-2--kubernetes-cluster): update `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
 | Intel iGPU absent on new hardware | Remove `gpu.intel.com/i915` from `kubernetes/apps/default/jellyfin/app/helmrelease.yaml` and disable `intel-device-plugin-operator` |
 | Re-install OpenClaw agent only | [DEPLOY.md — Phase 3](DEPLOY.md#phase-3--agent-openclaw) |
@@ -95,11 +95,15 @@ infrastructure/
 kubectl get nodes
 kubectl get kustomizations -A
 kubectl get helmreleases -A
+cilium status
 
 # Force Flux sync
 task reconcile
 
-# Apply Talos config to a node
+# Regenerate Talos config (after editing talconfig.yaml)
+task talos:generate-config
+
+# Apply updated config to a node
 task talos:apply-node IP=10.57.57.80
 
 # Upgrade Talos on a node (update talenv.yaml version first)
@@ -130,8 +134,9 @@ make cleanup          # Remove unused Docker images/volumes
 ### Flux not reconciling
 
 ```bash
-flux get kustomizations -A          # Find which ks is failing
-flux logs --level=error             # See error messages
+flux get sources git -A                              # Check git source is reachable
+flux get kustomizations -A                           # Find which ks is failing
+flux logs --level=error                              # See error messages
 flux reconcile kustomization cluster-apps --with-source  # Force sync
 ```
 
@@ -141,7 +146,7 @@ flux reconcile kustomization cluster-apps --with-source  # Force sync
 kubectl get helmreleases -A | grep -v True
 flux logs --kind HelmRelease --name <name> -n <namespace>
 flux reconcile helmrelease <name> -n <namespace> --with-source
-# If values changed and Helm refuses: suspend + resume
+# If values changed and Helm refuses — suspend + resume:
 flux suspend helmrelease <name> -n <namespace>
 flux resume helmrelease <name> -n <namespace>
 ```
@@ -149,10 +154,11 @@ flux resume helmrelease <name> -n <namespace>
 ### Pod issues
 
 ```bash
-kubectl -n <namespace> get pods
+kubectl -n <namespace> get pods -o wide
 kubectl -n <namespace> describe pod <pod>
 kubectl -n <namespace> logs <pod> -f
-kubectl -n <namespace> logs <pod> --previous   # crashed container
+kubectl -n <namespace> logs <pod> --previous            # crashed container
+kubectl -n <namespace> get events --sort-by='.metadata.creationTimestamp'
 ```
 
 ### Longhorn storage
@@ -183,7 +189,8 @@ kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
 
 # 2. In Proxmox: shutdown VM, swap physical disk, boot VM
 
-# 3. Re-provision Talos
+# 3. Regenerate and re-apply Talos config
+task talos:generate-config
 talosctl apply-config --insecure --nodes <ip> \
   --file talos/clusterconfig/<node>.yaml
 
@@ -220,6 +227,35 @@ kubectl -n longhorn-system get secret minio-secret
 ---
 
 ## Maintenance
+
+### Adding a node
+
+> Keep an odd number of control plane nodes (1, 3, 5) for quorum.
+
+```bash
+# 1. Boot new node from Talos ISO — same schematic ID as existing nodes
+#    Get disk and MAC from the node in maintenance mode:
+talosctl get disks -n <new-node-ip> --insecure
+talosctl get links -n <new-node-ip> --insecure
+
+# 2. Add node entry to talos/talconfig.yaml with the disk and MAC above
+
+# 3. Regenerate config and apply to new node
+task talos:generate-config
+task talos:apply-node IP=<new-node-ip>
+
+# 4. Node joins automatically — watch it become Ready:
+kubectl get nodes --watch
+```
+
+### Talos config changes
+
+```bash
+# After editing talos/talconfig.yaml or any patch:
+task talos:generate-config
+task talos:apply-node IP=<node-ip> MODE=auto
+# MODE=auto applies without reboot if possible, reboots if required
+```
 
 ### Dependency updates
 

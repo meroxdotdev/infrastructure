@@ -91,6 +91,10 @@ cp /path/to/age.key ./age.key
 #
 # NOTE: if you add/remove Talos extensions (GPU, iSCSI, etc.) generate a new
 # image ID at https://factory.talos.dev and update talosImageURL
+#
+# To get disk and MAC info from a node booted in maintenance mode:
+#   talosctl get disks -n <ip> --insecure
+#   talosctl get links -n <ip> --insecure
 
 # --- b) All infrastructure IPs used by apps (Flux postBuild substitution) ---
 # Edit: kubernetes/components/common/cluster-vars.yaml
@@ -112,43 +116,75 @@ cp /path/to/age.key ./age.key
 #   blocks[0].cidr           → new subnet (e.g. "10.x.x.0/24")
 #   Must contain all LB_IP_* values above.
 
-# 4. Bootstrap Talos on all nodes (~10 min)
-task bootstrap:talos
-git add -A && git commit -m "add secrets" && git push
+# 4. Verify nodes are booted into Talos maintenance mode and reachable
+#    (replace with your subnet)
+nmap -Pn -n -p 50000 10.57.57.0/24 -vv | grep 'Discovered'
 
-# 5. Bootstrap Flux and wait for Longhorn to be ready (do NOT let Flux reconcile apps yet)
+# 5. Bootstrap Talos on all nodes (~10 min)
+task bootstrap:talos
+git add -A && git commit -m "chore: add secrets" && git push
+
+# 6. Bootstrap Flux and wait for Longhorn to be ready (do NOT let Flux reconcile apps yet)
 task bootstrap:apps
 # Wait until Longhorn is fully running before proceeding:
 kubectl -n longhorn-system wait helmrelease/longhorn --for=condition=Ready --timeout=5m
 kubectl -n longhorn-system get nodes.longhorn.io   # All nodes should appear
 
-# 6. Restore all Longhorn volumes from S3 backup (CRITICAL — run BEFORE apps start)
+# 7. Restore all Longhorn volumes from S3 backup (CRITICAL — run BEFORE apps start)
 #    This restores: jellyfin, jellyseerr, prowlarr, qbittorrent, radarr, sonarr,
 #                   loki, prometheus, n8n, grafana
 task restore:longhorn
 # Wait for all volumes to finish restoring (~5-10 min):
 kubectl get volumes.longhorn.io -n longhorn-system --watch
 
-# 7. Flux reconciles all apps — PVCs will auto-bind to restored PVs
+# 8. Flux reconciles all apps — PVCs will auto-bind to restored PVs
 kubectl get pods -A --watch
 ```
 
 **Verify:**
 ```bash
+# Nodes and Flux
 kubectl get nodes                                    # All Ready
 kubectl get kustomizations -A                        # All True
-kubectl get pvc -A | grep restored                   # All Bound to *-restored-pv
-kubectl -n longhorn-system get nodes.longhorn.io     # Storage ready
+flux get sources git flux-system                     # READY True
+
+# Storage
+kubectl get pvc -A | grep -v Bound                   # Should be empty (all Bound)
+kubectl -n longhorn-system get nodes.longhorn.io     # All nodes present
+
+# Networking
+cilium status                                        # All OK
+nmap -Pn -n -p 443 10.57.57.101 10.57.57.112 -vv   # Both gateways reachable
+dig @10.57.57.111 echo.merox.dev                    # Should resolve to 10.57.57.112
+kubectl -n network describe certificates            # Certificate Ready
 ```
 
 **Reconnect Longhorn → Garage S3 backup target:**
 
 ```bash
 # Verify backupTarget points to: s3://longhorn@us-east-1/
-# and garage-backup-secret has the new credentials from Phase 1
-kubectl -n longhorn-system get secret garage-backup-secret
+# and minio-secret has the new credentials from Phase 1
+kubectl -n longhorn-system get secret minio-secret
 # Trigger a manual backup to verify connectivity:
 # Longhorn UI → Backup → Create Backup (any volume)
+```
+
+**GitHub Webhook (optional — enables instant Flux sync on git push):**
+
+```bash
+# Get the webhook path
+kubectl -n flux-system get receiver github-webhook \
+  --output=jsonpath='{.status.webhookPath}'
+# Output looks like: /hook/12ebd1e363c641dc3c2e430ecf3cee2b3c7a5ac9e1234506f6f5f3ce1230e123
+
+# Full webhook URL:
+# https://flux-webhook.merox.dev/hook/<path-from-above>
+
+# In GitHub repo → Settings → Webhooks → Add webhook:
+#   Payload URL: https://flux-webhook.merox.dev/hook/<path>
+#   Content type: application/json
+#   Secret: contents of github-push-token.txt
+#   Events: Just the push event
 ```
 
 ---
@@ -261,11 +297,16 @@ systemctl --user status openclaw-gateway
 [ ] kubernetes/components/common/cluster-vars.yaml updated (all infrastructure IPs — NFS, router, LB IPs)
 [ ] kubernetes/apps/kube-system/cilium/app/networks.yaml updated (subnet cidr, must contain all LB IPs)
 [ ] Intel iGPU (i915) present on new hardware — required for Jellyfin HW transcoding
-    (if no Intel iGPU: remove gpu.intel.com/i915 limit from jellyfin helmrelease + disable intel-device-plugin-operator)
-[ ] Phase 2 complete — all nodes Ready, Flux healthy
-[ ] Longhorn volumes restored (`task restore:longhorn` ran successfully)
-[ ] All PVCs bound to restored PVs (`kubectl get pvc -A | grep restored`)
+    (if no Intel iGPU: remove gpu.intel.com/i915 from jellyfin helmrelease + disable intel-device-plugin-operator)
+[ ] Nodes reachable on port 50000 (nmap verification)
+[ ] Phase 2 complete — all nodes Ready, Flux healthy, cilium status OK
+[ ] Longhorn volumes restored (task restore:longhorn ran successfully)
+[ ] All PVCs bound (kubectl get pvc -A | grep -v Bound → empty)
+[ ] Gateway TCP connectivity OK (nmap -p 443 on LB_IP_GATEWAY_INTERNAL + LB_IP_GATEWAY_EXTERNAL)
+[ ] DNS resolution OK (dig @LB_IP_K8S_GATEWAY echo.merox.dev)
+[ ] Wildcard certificate Ready (kubectl -n network describe certificates)
 [ ] Longhorn backup target working (test a manual backup)
+[ ] GitHub Webhook configured (optional — for instant Flux sync on git push)
 [ ] ~/.openclaw/.env created with ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_USER_ID
 [ ] ~/.openclaw/openclaw.json installed from agent/openclaw.json
 [ ] infra skill installed at ~/.openclaw/workspace/skills/infra/
