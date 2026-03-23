@@ -6,3 +6,4 @@ resources:
   - ./namespace.yaml
   - ./repos
   - ./sops
+  - ./cluster-vars.yaml
