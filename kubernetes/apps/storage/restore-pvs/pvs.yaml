@@ -161,6 +161,25 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
+  name: n8n-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: n8n-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
   name: grafana-restored-pv
 spec:
   accessModes:
