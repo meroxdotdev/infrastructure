@@ -21,6 +21,9 @@ spec:
   postBuild:
     substitute:
       APP: *app
+    substituteFrom:
+      - name: cluster-vars
+        kind: ConfigMap
   prune: true
   retryInterval: 2m
   sourceRef:

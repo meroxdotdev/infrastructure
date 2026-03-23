@@ -11,6 +11,10 @@ spec:
       app.kubernetes.io/name: *app
   interval: 1h
   path: ./kubernetes/apps/default/portainer-agent/app
+  postBuild:
+    substituteFrom:
+      - name: cluster-vars
+        kind: ConfigMap
   prune: true
   retryInterval: 2m
   sourceRef:

@@ -19,6 +19,8 @@ spec:
     substituteFrom:
       - name: cluster-secrets
         kind: Secret
+      - name: cluster-vars
+        kind: ConfigMap
   prune: true
   retryInterval: 2m
   sourceRef:
@@ -52,6 +54,8 @@ spec:
     substituteFrom:
       - name: cluster-secrets
         kind: Secret
+      - name: cluster-vars
+        kind: ConfigMap
   prune: true
   sourceRef:
     kind: GitRepository
