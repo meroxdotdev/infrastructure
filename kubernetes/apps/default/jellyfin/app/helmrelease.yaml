@@ -28,7 +28,7 @@ spec:
               tag: 10.11.6@sha256:25db4eb10143c1c12adb79ed978e31d94fc98dc499fbae2d38b2c935089ced3e
             env:
               TZ: Europe/Bucharest
-              JELLYFIN_PublishedServerUrl: https://media.merox.dev
+              JELLYFIN_PublishedServerUris: all=https://media.merox.dev
             probes:
               liveness: &probes
                 enabled: true
