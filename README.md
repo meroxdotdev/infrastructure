@@ -78,6 +78,7 @@ infrastructure/
 | Restore Longhorn volumes from S3 backup | [DEPLOY.md — Phase 2, step 7](DEPLOY.md#phase-2--kubernetes-cluster): `task restore:longhorn` |
 | New hardware (different IPs/disks) | [DEPLOY.md — Phase 2, step 3](DEPLOY.md#phase-2--kubernetes-cluster): update `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
 | Intel iGPU absent on new hardware | Remove `gpu.intel.com/i915` from `kubernetes/apps/default/jellyfin/app/helmrelease.yaml` and disable `intel-device-plugin-operator` |
+| Jellyfin restored but streaming slow / Tailscale broken | See **[docs/jellyfin-post-restore.md](docs/jellyfin-post-restore.md)** — manual UI steps required after every restore |
 | Re-install OpenClaw agent only | [DEPLOY.md — Phase 3](DEPLOY.md#phase-3--agent-openclaw) |
 
 **The two things to back up before decommissioning a server:**
