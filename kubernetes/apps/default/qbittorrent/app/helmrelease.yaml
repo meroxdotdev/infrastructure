@@ -38,6 +38,8 @@ spec:
               # Use cluster DNS instead of Gluetun's own resolver
               DNS_KEEP_NAMESERVER: "on"
               DOT: "off"
+              # Fix for Kubernetes: IPv6 ip rule already exists on pod restart
+              IP6TABLES_ENABLED: "off"
             envFrom:
               - secretRef:
                   name: qbittorrent-gluetun-secret
