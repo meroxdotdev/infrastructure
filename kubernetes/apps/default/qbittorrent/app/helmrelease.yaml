@@ -48,9 +48,8 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /v1/publicip/ip
-                    port: 8000
+                  exec:
+                    command: ["/bin/sh", "-c", "wget -qO /dev/null http://127.0.0.1:9999"]
                   initialDelaySeconds: 30
                   periodSeconds: 30
                   failureThreshold: 3
