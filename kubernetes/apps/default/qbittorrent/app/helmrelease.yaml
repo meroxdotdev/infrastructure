@@ -45,6 +45,17 @@ spec:
             envFrom:
               - secretRef:
                   name: qbittorrent-gluetun-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: 9999
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  failureThreshold: 3
             securityContext:
               runAsNonRoot: false
               runAsUser: 0
