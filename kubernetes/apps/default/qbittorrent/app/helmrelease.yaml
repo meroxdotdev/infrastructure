@@ -40,6 +40,8 @@ spec:
               DOT: "off"
               # Fix for Kubernetes: IPv6 ip rule already exists on pod restart
               IP6TABLES_ENABLED: "off"
+              # Use userspace WireGuard to avoid kernel ip rule conflicts on pod restart
+              WIREGUARD_IMPLEMENTATION: userspace
             envFrom:
               - secretRef:
                   name: qbittorrent-gluetun-secret
