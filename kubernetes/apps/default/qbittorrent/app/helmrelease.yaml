@@ -38,9 +38,7 @@ spec:
               # Use cluster DNS instead of Gluetun's own resolver
               DNS_KEEP_NAMESERVER: "on"
               DOT: "off"
-              # Fix for Kubernetes: IPv6 ip rule already exists on pod restart
-              IP6TABLES_ENABLED: "off"
-              # Use userspace WireGuard to avoid kernel ip rule conflicts on pod restart
+              # Userspace WireGuard: avoids kernel ip rule/ip6tables conflicts on Kubernetes pod restarts
               WIREGUARD_IMPLEMENTATION: userspace
             envFrom:
               - secretRef:
@@ -51,8 +49,8 @@ spec:
                 custom: true
                 spec:
                   httpGet:
-                    path: /
-                    port: 9999
+                    path: /v1/publicip/ip
+                    port: 8000
                   initialDelaySeconds: 30
                   periodSeconds: 30
                   failureThreshold: 3
@@ -150,12 +148,5 @@ spec:
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: Downloads/qbittorrent
-      tun:
-        type: hostPath
-        hostPath: /dev/net/tun
-        advancedMounts:
-          qbittorrent:
-            gluetun:
-              - path: /dev/net/tun
       tmp:
         type: emptyDir
