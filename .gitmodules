@@ -1,3 +1,6 @@
 [submodule "cloudlab-infrastructure"]
 	path = cloudlab-infrastructure
 	url = https://github.com/meroxdotdev/cloudlab-merox.git
+[submodule "nixos"]
+	path = nixos
+	url = https://github.com/meroxdotdev/nixos.git
