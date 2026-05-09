@@ -15,8 +15,8 @@ resources:
   - ./qbittorrent/ks.yaml
   - ./radarr/ks.yaml
   - ./sonarr/ks.yaml
-  # Automation
-  - ./n8n/ks.yaml
+  # Automation (disabled - uncomment to re-enable)
+  # - ./n8n/ks.yaml
   # Monitoring
   - ./netdata/ks.yaml
   # Management

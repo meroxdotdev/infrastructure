@@ -1,15 +1,14 @@
----
-# yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - ./helmrelease.yaml
-  - ./secret.sops.yaml
-  - ./httproute.yaml
-  - ./receiver.yaml
 configMapGenerator:
-  - name: flux-instance-values
-    files:
-      - values.yaml=./helm/values.yaml
+- files:
+  - values.yaml=./helm/values.yaml
+  name: flux-instance-values
 configurations:
-  - ./helm/kustomizeconfig.yaml
+- ./helm/kustomizeconfig.yaml
+kind: Kustomization
+namespace: flux-system
+resources:
+- ./helmrelease.yaml
+- ./secret.sops.yaml
+- ./httproute.yaml
+- ./receiver.yaml

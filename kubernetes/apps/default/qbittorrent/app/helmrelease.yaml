@@ -28,18 +28,19 @@ spec:
               TZ: Europe/Bucharest
               VPN_SERVICE_PROVIDER: surfshark
               VPN_TYPE: wireguard
-              # SurfShark server selection — change country as needed
-              SERVER_COUNTRIES: Netherlands
+              SERVER_COUNTRIES: Netherlands,Germany,Sweden,Switzerland
               WIREGUARD_ADDRESSES: "10.14.0.2/16"
-              # Allow inbound bittorrent connections through Gluetun firewall
               FIREWALL_INPUT_PORTS: "50413,80"
-              # Bypass VPN for Kubernetes internal traffic (services, NFS, probes)
               FIREWALL_OUTBOUND_SUBNETS: "10.0.0.0/8"
-              # Use cluster DNS instead of Gluetun's own resolver
               DNS_KEEP_NAMESERVER: "on"
               DOT: "off"
-              # Userspace WireGuard: avoids kernel ip rule/ip6tables conflicts on Kubernetes pod restarts
               WIREGUARD_IMPLEMENTATION: userspace
+              VPN_IPV6_DISABLED: "on"
+              # Refresh server list every 24h so Gluetun picks healthy servers
+              UPDATER_PERIOD: 24h
+              # Don't let Gluetun's blocker interfere with tracker/peer traffic
+              BLOCK_MALICIOUS: "off"
+              BLOCK_SURVEILLANCE: "off"
             envFrom:
               - secretRef:
                   name: qbittorrent-gluetun-secret
