@@ -11,7 +11,7 @@ spec:
     operation: copy
   ref:
     tag: 1.21.1
-  url: oci://ghcr.io/kubernetes-sigs/external-dns/charts/external-dns
+  url: oci://ghcr.io/home-operations/charts-mirror/external-dns
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
