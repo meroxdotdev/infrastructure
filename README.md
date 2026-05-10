@@ -9,11 +9,14 @@ GitOps-managed homelab: Kubernetes cluster (Talos + Flux) + VPS services + Infra
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  VPS (Oracle/Hetzner)   cloudlab-infrastructure/        │
-│  ├── Traefik (reverse proxy + SSL)                      │
+│  ├── Traefik (reverse proxy + Cloudflare Tunnel)        │
 │  ├── Pi-hole (DNS)                                      │
-│  ├── Portainer (container management)                   │
+│  ├── Portainer EE (container management)                │
 │  ├── Homepage (dashboard)                               │
-│  ├── Netdata (monitoring)                               │
+│  ├── Joplin Server + Postgres (notes)                   │
+│  ├── Uptime Kuma (monitoring)                           │
+│  ├── Guacamole (remote desktop gateway)                 │
+│  ├── Glances (system monitoring)                        │
 │  └── Garage S3 (Longhorn backup target)                 │
 └────────────────────┬────────────────────────────────────┘
                      │ Tailscale mesh VPN
@@ -44,7 +47,8 @@ GitOps-managed homelab: Kubernetes cluster (Talos + Flux) + VPS services + Infra
 | Dell PowerEdge R720 | Proxmox Backup Server | 2x Xeon E5-2697v2, 192GB |
 | Synology DS223+ | NAS / NFS + Backup | 2x2TB HDD RAID1 |
 | XCY X44 | pfSense Firewall | N100, 8GB |
-| Oracle/Hetzner VPS | Off-site services | 4 vCPU, 8GB |
+| Oracle Cloud ARM VPS | Off-site services (primary) | 4 vCPU ARM, 24GB RAM, 200GB |
+| Hetzner CAX21 (DR) | Standby — `make dr-full` | 4 vCPU ARM, 8GB RAM, €5.39/mo |
 
 ---
 
@@ -74,6 +78,7 @@ infrastructure/
 
 | Scenario | Where to look |
 |----------|--------------|
+| **VPS lost (Oracle reclaimed / provider down)** | `cd cloudlab-infrastructure && make dr-full` — provisions Hetzner server + deploys all services in ~15 min |
 | Full rebuild (new server + new cluster) | [DEPLOY.md — Phase 1 (VPS)](DEPLOY.md#phase-1--vps) → [Phase 2 (K8s)](DEPLOY.md#phase-2--kubernetes-cluster) → [Phase 3 (Agent)](DEPLOY.md#phase-3--agent-openclaw) |
 | Restore Longhorn volumes from S3 backup | [DEPLOY.md — Phase 2, step 7](DEPLOY.md#phase-2--kubernetes-cluster): `task restore:longhorn` |
 | New hardware (different IPs/disks) | [DEPLOY.md — Phase 2, step 3](DEPLOY.md#phase-2--kubernetes-cluster): update `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
@@ -120,12 +125,17 @@ task talos:reset
 ```bash
 cd cloudlab-infrastructure/
 
-make health-check     # Verify all services running
-make setup            # Full redeploy (idempotent)
-make update           # OS package updates only
-make check            # Dry-run (--check --diff)
-make check-resources  # Disk, memory, Docker usage
-make cleanup          # Remove unused Docker images/volumes
+make health-check       # Verify all services running
+make setup              # Full redeploy (idempotent)
+make update             # OS package updates only
+make check              # Dry-run (--check --diff)
+make check-resources    # Disk, memory, Docker usage
+make cleanup            # Remove unused Docker images/volumes
+
+# Disaster recovery — provision on Hetzner + deploy everything
+make terraform-init     # first time only
+make dr-full            # ~15 min: new server + full stack
+make terraform-plan     # preview what Terraform will create
 ```
 
 ---
