@@ -23,36 +23,55 @@ Before starting, have these ready:
 
 ## Phase 1 — VPS
 
-> ~10 min. Sets up Docker, Tailscale, Traefik, Pi-hole, Portainer, Homepage, Netdata, Garage S3.
+> ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Pi-hole, Portainer EE,
+> Homepage, Joplin + Postgres, Uptime Kuma, Guacamole, Glances, Garage S3.
 
-**On the new server**, create a root SSH key if not already present, then from your machine:
+### Option A — Terraform + Ansible (recommended, fully automated)
 
 ```bash
 cd cloudlab-infrastructure/
 
-# 1. Update inventory with new server IP
-nano inventories/production/hosts
-# Change: ansible_host=<NEW_IP>
+# First time only
+make terraform-init
 
-# 2. Update Cloudflare DNS A records for *.cloud.merox.dev → <NEW_IP>
-#    (Do this first so Let's Encrypt ACME can complete during deploy)
+# Provisions Hetzner server, updates inventory automatically, then runs full Ansible deploy
+make dr-full
+# Enter vault password when prompted
+```
 
-# 3. Install Ansible collections
+`dr-full` = `terraform apply` (creates server, writes IP to inventory) + 45s wait + `make setup`.
+Cloudflare Tunnel and Tailscale reconnect automatically with existing tokens — no DNS changes needed.
+
+### Option B — Existing server / manual provisioning
+
+```bash
+cd cloudlab-infrastructure/
+
+# 1. Update inventory with server IP
+nano inventories/production/hosts   # ansible_host=<NEW_IP>
+
+# 2. Install Ansible collections (first time)
 make install
 
-# 4. Test connectivity
+# 3. Test connectivity
 make ping
 
-# 5. Full deploy (~10 min)
+# 4. Full deploy
 make setup
 # Enter vault password when prompted
 ```
+
+> **DNS note:** all web traffic goes through Cloudflare Tunnel — no A records to update.
+> The tunnel reconnects automatically with the same token on the new server.
+> Tailscale also reconnects automatically via the auth key in vault.
 
 **Post-deploy manual steps:**
 
 ```bash
 # Portainer: set admin password at https://portainer.cloud.merox.dev
+# Guacamole: change default credentials (guacadmin / guacadmin) immediately
 # Pi-hole: verify DNS at https://pihole.cloud.merox.dev/admin
+# Joplin: clients will sync automatically once server is up
 
 # Retrieve Garage S3 credentials and save to vault:
 ssh root@<NEW_IP> "docker exec garage /garage key info longhorn-key --show-secret"
@@ -287,10 +306,13 @@ systemctl --user status openclaw-gateway
 ## Migration Checklist
 
 ```
-[ ] New server IP updated in: cloudlab-infrastructure/inventories/production/hosts
-[ ] Cloudflare DNS A records updated (*.cloud.merox.dev → new IP)
-[ ] Phase 1 complete — make health-check passes
+[ ] Phase 1 complete via: make dr-full  (Terraform) OR make setup (manual)
+[ ] New server IP in inventory — auto-updated by terraform-apply, or edit hosts manually
+[ ] Cloudflare Tunnel reconnected automatically (verify: docker logs cloudflared)
+[ ] Tailscale connected automatically (verify: tailscale status)
 [ ] Portainer admin password set
+[ ] Guacamole default credentials changed (guacadmin / guacadmin → new password)
+[ ] Joplin clients syncing to new server
 [ ] Garage S3 credentials saved to vault
 [ ] AGE key placed at /srv/kubernetes/infrastructure/age.key
 [ ] talos/talconfig.yaml updated (node IPs, VIP, installDisk, talosImageURL if changed)
