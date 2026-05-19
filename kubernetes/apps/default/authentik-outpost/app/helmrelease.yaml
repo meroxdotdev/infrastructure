@@ -3,7 +3,7 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: jellyseerr
+  name: authentik-outpost
 spec:
   interval: 1h
   chartRef:
@@ -18,31 +18,46 @@ spec:
       retries: 3
   values:
     controllers:
-      jellyseerr:
+      authentik-outpost:
+        replicas: 1
+        strategy: RollingUpdate
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
-              repository: ghcr.io/fallenbagel/jellyseerr
-              tag: 2.7.3@sha256:9cc9e9ee6cd5cf5a23feb45c37742ba34cfd6314d81d259cddb373a97ac92cdd
+              repository: ghcr.io/goauthentik/proxy
+              tag: 2026.2.3
             env:
-              TZ: Europe/Bucharest
-              LOG_LEVEL: "info"
-              PORT: &port 80
+              AUTHENTIK_HOST: "https://sso.merox.dev"
+              AUTHENTIK_INSECURE: "false"
+              AUTHENTIK_HOST_BROWSER: "https://sso.merox.dev"
+            envFrom:
+              - secretRef:
+                  name: authentik-outpost-secret
             probes:
-              liveness: &probes
+              liveness:
                 enabled: true
                 custom: true
                 spec:
                   httpGet:
-                    path: /api/v1/status
-                    port: *port
-                  initialDelaySeconds: 0
+                    path: /outpost.goauthentik.io/ping
+                    port: &port 9000
+                  initialDelaySeconds: 10
                   periodSeconds: 10
                   timeoutSeconds: 1
                   failureThreshold: 3
-              readiness: *probes
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /outpost.goauthentik.io/ping
+                    port: *port
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -51,42 +66,22 @@ spec:
               requests:
                 cpu: 10m
               limits:
-                memory: 2Gi
+                memory: 256Mi
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
-        fsGroup: 1000
-        fsGroupChangePolicy: OnRootMismatch
     service:
       app:
         ports:
           http:
             port: *port
-    route:
-      app:
-        hostnames:
-          - "{{ .Release.Name }}.k8s.merox.dev"
-        parentRefs:
-          - name: internal
-            namespace: kube-system
-            sectionName: https
     persistence:
-      config:
-        existingClaim: jellyseerr
-        globalMounts:
-          - path: /app/config
-      config-cache:
-        existingClaim: jellyseerr-cache
-        globalMounts:
-          - path: /app/config/cache
       tmpfs:
         type: emptyDir
         advancedMounts:
-          jellyseerr:
+          authentik-outpost:
             app:
-              - path: /app/config/logs
-                subPath: logs
               - path: /tmp
                 subPath: tmp

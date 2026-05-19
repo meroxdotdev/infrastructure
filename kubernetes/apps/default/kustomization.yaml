@@ -21,4 +21,6 @@ resources:
   - ./netdata/ks.yaml
   # Management
   - ./portainer-agent/ks.yaml
+  # Auth
+  - ./authentik-outpost/ks.yaml
 
