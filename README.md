@@ -78,7 +78,7 @@ infrastructure/
 
 | Scenario | Where to look |
 |----------|--------------|
-| **VPS lost (Oracle reclaimed / provider down)** | `cd cloudlab-infrastructure && make dr-full` — provisions Hetzner server + deploys all services in ~15 min |
+| **VPS lost (Oracle reclaimed / provider down)** | `cd cloudlab-infrastructure && make dr-full` — provisions Hetzner server + cloud-init deploys all services autonomously (~15 min), then `make restore` for Joplin/Authentik data |
 | Full rebuild (new server + new cluster) | [DEPLOY.md — Phase 1 (VPS)](DEPLOY.md#phase-1--vps) → [Phase 2 (K8s)](DEPLOY.md#phase-2--kubernetes-cluster) → [Phase 3 (Agent)](DEPLOY.md#phase-3--agent-openclaw) |
 | Restore Longhorn volumes from S3 backup | [DEPLOY.md — Phase 2, step 7](DEPLOY.md#phase-2--kubernetes-cluster): `task restore:longhorn` |
 | New hardware (different IPs/disks) | [DEPLOY.md — Phase 2, step 3](DEPLOY.md#phase-2--kubernetes-cluster): update `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
@@ -125,18 +125,20 @@ task talos:reset
 ```bash
 cd cloudlab-infrastructure/
 
-make health-check       # Verify all services running
-make setup              # Full redeploy (idempotent)
+make health-check       # verify all services running
+make setup              # full redeploy (idempotent)
 make update             # OS package updates only
-make check              # Dry-run (--check --diff)
-make check-resources    # Disk, memory, Docker usage
-make cleanup            # Remove unused Docker images/volumes
+make check              # dry-run (--check --diff)
+make restore            # interactive restore wizard (Joplin / Authentik / all)
+make cleanup            # remove unused Docker images/volumes
 
-# Disaster recovery — provision on Hetzner + deploy everything
+# Disaster recovery
 make terraform-init     # first time only
-make dr-full            # ~15 min: new server + full stack
+make dr-full            # provisions Hetzner + cloud-init deploys everything (~15 min)
 make terraform-plan     # preview what Terraform will create
 ```
+
+> Full VPS reference: [cloudlab-infrastructure/README.md](cloudlab-infrastructure/README.md)
 
 ---
 

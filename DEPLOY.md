@@ -23,10 +23,18 @@ Before starting, have these ready:
 
 ## Phase 1 — VPS
 
-> ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Pi-hole, Portainer EE,
-> Homepage, Joplin + Postgres, Uptime Kuma, Guacamole, Glances, Garage S3.
+> ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Pi-hole + Unbound,
+> Portainer, Homepage, Joplin + Postgres, Uptime Kuma, Guacamole, Glances, Authentik SSO,
+> Garage S3, Netdata, Beszel, Dozzle. Ansible runs **autonomously on the server via cloud-init** — no external runner needed.
 
-### Option A — Terraform + Ansible (recommended, fully automated)
+### Option A — Terraform + cloud-init (recommended, fully automated)
+
+> **Prerequisite:** `vault_tailscale_auth_key` must be valid (Tailscale keys expire).
+> Generate a new one at `tailscale.com/admin/settings/keys` (Reusable, Ephemeral OFF), then:
+> ```bash
+> cd cloudlab-infrastructure/ && make vault-edit   # update vault_tailscale_auth_key
+> git add inventories/production/group_vars/all/vault.yml && git commit -m "fix: update tailscale auth key" && git push
+> ```
 
 ```bash
 cd cloudlab-infrastructure/
@@ -34,31 +42,41 @@ cd cloudlab-infrastructure/
 # First time only
 make terraform-init
 
-# Provisions Hetzner server, updates inventory automatically, then runs full Ansible deploy
+# Provision Hetzner server — cloud-init deploys everything autonomously on the server
 make dr-full
-# Enter vault password when prompted
 ```
 
-`dr-full` = `terraform apply` (creates server, writes IP to inventory) + 45s wait + `make setup`.
-Cloudflare Tunnel and Tailscale reconnect automatically with existing tokens — no DNS changes needed.
+Reads vault password from `.vault_pass` automatically — no prompt.
+`dr-full` = `terraform apply` (provisions server) → cloud-init clones repo + runs full Ansible on the server (~15 min).
+Tailscale and Let's Encrypt certs reconnect automatically.
+
+Monitor progress:
+```bash
+ssh -i ~/.ssh/cloudlab_dr_test root@<IP> 'tail -f /var/log/cloudlab-setup.log'
+```
+
+After deploy completes, restore Joplin and Authentik data:
+```bash
+make restore
+# Interactive: asks which service, optional remote backup host (IP/SSH key), then restores
+```
 
 ### Option B — Existing server / manual provisioning
 
+> **Note:** The inventory uses `ansible_connection=local` — Ansible must run **on the server itself**, not from a remote machine.
+
 ```bash
-cd cloudlab-infrastructure/
+# 1. SSH into the server, then clone the repo there
+ssh root@<SERVER_IP>
+git clone https://github.com/meroxdotdev/cloudlab-merox /opt/cloudlab-merox
+cd /opt/cloudlab-merox
+echo "<vault-password>" > .vault_pass && chmod 600 .vault_pass
 
-# 1. Update inventory with server IP
-nano inventories/production/hosts   # ansible_host=<NEW_IP>
-
-# 2. Install Ansible collections (first time)
+# 2. Install Ansible collections
 make install
 
-# 3. Test connectivity
-make ping
-
-# 4. Full deploy
+# 3. Full deploy
 make setup
-# Enter vault password when prompted
 ```
 
 > **DNS note:** all web traffic goes through Cloudflare Tunnel — no A records to update.
@@ -306,10 +324,10 @@ systemctl --user status openclaw-gateway
 ## Migration Checklist
 
 ```
-[ ] Phase 1 complete via: make dr-full  (Terraform) OR make setup (manual)
-[ ] New server IP in inventory — auto-updated by terraform-apply, or edit hosts manually
-[ ] Cloudflare Tunnel reconnected automatically (verify: docker logs cloudflared)
-[ ] Tailscale connected automatically (verify: tailscale status)
+[ ] vault_tailscale_auth_key valid and pushed before dr-full
+[ ] Phase 1 complete — make dr-full finished, all containers up (make health-check)
+[ ] Joplin + Authentik data restored — make restore
+[ ] Tailscale connected (verify: ssh root@<IP> tailscale status)
 [ ] Portainer admin password set
 [ ] Guacamole default credentials changed (guacadmin / guacadmin → new password)
 [ ] Joplin clients syncing to new server
