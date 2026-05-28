@@ -269,30 +269,57 @@ sudo chown openclaw:openclaw /home/openclaw/.kube/config /home/openclaw/.talos/c
 sudo chmod 600 /home/openclaw/.kube/config /home/openclaw/.talos/config
 ```
 
-### 3d — Configure secrets (openclaw.json)
+### 3d — Authenticate Claude Code + configure OpenClaw auth
+
+This step sets up Claude Pro subscription access (no separate API key needed) and generates the gateway auth token.
 
 ```bash
-sudo -u openclaw mkdir -p /home/openclaw/.openclaw
-sudo cp /srv/kubernetes/infrastructure/agent/openclaw.json.example \
-        /home/openclaw/.openclaw/openclaw.json
-sudo chown openclaw:openclaw /home/openclaw/.openclaw/openclaw.json
-sudo chmod 600 /home/openclaw/.openclaw/openclaw.json
-
-# Edit: fill in Telegram bot token + your Telegram user ID
-sudo nano /home/openclaw/.openclaw/openclaw.json
-# Replace: YOUR_TELEGRAM_BOT_TOKEN, YOUR_TELEGRAM_USER_ID
-```
-
-> **Finding your Telegram user ID:** send any message to your bot, then check
-> `journalctl --user -u openclaw-gateway -f | grep from.id`
-
-### 3e — Authenticate Claude Code as openclaw user
-
-```bash
-# Claude Code CLI is used for model access (Claude Pro subscription)
+# 1. Authenticate Claude Code CLI as openclaw user
 sudo -u openclaw claude login
-# Follow OAuth flow in browser
+# Follow the OAuth flow in browser
+
+# 2. Run OpenClaw onboard to wire up Claude CLI auth and generate gateway token
+sudo -u openclaw XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) \
+  openclaw onboard --non-interactive \
+  --mode local \
+  --auth-choice anthropic-cli \
+  --skip-bootstrap \
+  --skip-skills \
+  --skip-daemon \
+  --accept-risk
+
+# This writes agentRuntime: { id: "claude-cli" } and a gateway.auth.token to openclaw.json
 ```
+
+> **What this does:** Configures OpenClaw to use Claude Code's OAuth session (Claude Pro subscription) instead of an Anthropic API key. No per-token billing.
+
+### 3e — Configure Telegram secrets
+
+The onboard generated `~/.openclaw/openclaw.json`. Overlay it with the repo template (keeping the generated auth token):
+
+```bash
+# Copy Telegram config into the generated file
+sudo -u openclaw python3 << 'EOF'
+import json
+
+with open('/home/openclaw/.openclaw/openclaw.json') as f:
+    cfg = json.load(f)
+
+# Set Telegram channel (fill in your values)
+cfg['channels'] = {
+    'telegram': {
+        'botToken': 'YOUR_TELEGRAM_BOT_TOKEN',   # from @BotFather
+        'allowFrom': ['YOUR_TELEGRAM_USER_ID']    # from @userinfobot
+    }
+}
+
+with open('/home/openclaw/.openclaw/openclaw.json', 'w') as f:
+    json.dump(cfg, f, indent=2)
+print('Done')
+EOF
+```
+
+> **Finding your Telegram user ID:** send `/start` to **@userinfobot** on Telegram.
 
 ### 3f — Install agent workspaces
 

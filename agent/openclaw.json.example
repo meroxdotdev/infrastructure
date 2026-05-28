@@ -5,8 +5,10 @@
     "port": 18789,
     "bind": "loopback",
     "auth": {
-      "mode": "token"
-    }
+      "mode": "token",
+      "token": "GENERATED_BY_ONBOARD_DO_NOT_SET_MANUALLY"
+    },
+    "tailscale": { "mode": "off", "resetOnExit": false }
   },
   "agents": {
     "defaults": {
@@ -14,35 +16,21 @@
       "thinkingDefault": "low",
       "timeoutSeconds": 1800,
       "heartbeat": { "every": "0m" },
-      "skipBootstrap": false
+      "skipBootstrap": true,
+      "workspace": "/home/openclaw/.openclaw/workspace",
+      "agentRuntime": { "id": "claude-cli" },
+      "models": {
+        "anthropic/claude-opus-4-7": { "agentRuntime": { "id": "claude-cli" } },
+        "anthropic/claude-sonnet-4-6": { "agentRuntime": { "id": "claude-cli" } },
+        "anthropic/claude-opus-4-6": { "agentRuntime": { "id": "claude-cli" } }
+      }
     },
     "list": [
-      {
-        "id": "news",
-        "default": true,
-        "workspace": "/home/openclaw/.openclaw/workspace",
-        "heartbeat": { "every": "0m" }
-      },
-      {
-        "id": "blog",
-        "workspace": "/home/openclaw/.openclaw/workspace-blog",
-        "heartbeat": { "every": "0m" }
-      },
-      {
-        "id": "design",
-        "workspace": "/home/openclaw/.openclaw/workspace-design",
-        "heartbeat": { "every": "0m" }
-      },
-      {
-        "id": "infra",
-        "workspace": "/home/openclaw/.openclaw/workspace-infra",
-        "heartbeat": { "every": "0m" }
-      },
-      {
-        "id": "costs",
-        "workspace": "/home/openclaw/.openclaw/workspace-costs",
-        "heartbeat": { "every": "0m" }
-      }
+      { "id": "news",   "default": true, "workspace": "/home/openclaw/.openclaw/workspace",        "heartbeat": { "every": "0m" } },
+      { "id": "blog",                    "workspace": "/home/openclaw/.openclaw/workspace-blog",    "heartbeat": { "every": "0m" } },
+      { "id": "design",                  "workspace": "/home/openclaw/.openclaw/workspace-design",  "heartbeat": { "every": "0m" } },
+      { "id": "infra",                   "workspace": "/home/openclaw/.openclaw/workspace-infra",   "heartbeat": { "every": "0m" } },
+      { "id": "costs",                   "workspace": "/home/openclaw/.openclaw/workspace-costs",   "heartbeat": { "every": "0m" } }
     ]
   },
   "channels": {
@@ -54,16 +42,16 @@
   "session": {
     "scope": "per-sender",
     "resetTriggers": ["/new", "/reset"],
-    "reset": {
-      "mode": "daily",
-      "atHour": 4,
-      "idleMinutes": 10080
-    }
+    "reset": { "mode": "daily", "atHour": 4, "idleMinutes": 10080 },
+    "dmScope": "per-channel-peer"
   },
   "tools": {
     "profile": "coding",
-    "fs": {
-      "workspaceOnly": false
+    "fs": { "workspaceOnly": false }
+  },
+  "plugins": {
+    "entries": {
+      "anthropic": { "enabled": true }
     }
   }
 }
