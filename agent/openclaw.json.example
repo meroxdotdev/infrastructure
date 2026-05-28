@@ -47,7 +47,11 @@
   },
   "tools": {
     "profile": "coding",
-    "fs": { "workspaceOnly": false }
+    "fs": { "workspaceOnly": false },
+    "agentToAgent": {
+      "enabled": true,
+      "allow": ["news", "blog", "design", "infra", "costs"]
+    }
   },
   "plugins": {
     "entries": {
