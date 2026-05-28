@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merox Agents — Command Center</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --border: #2a2a3a;
+      --text: #e8e8f0;
+      --text-muted: #8888a8;
+      --accent: #6366f1;
+      --accent-dim: #6366f120;
+      --green: #22c55e;
+      --green-dim: #22c55e18;
+      --yellow: #f59e0b;
+      --yellow-dim: #f59e0b18;
+      --red: #ef4444;
+      --red-dim: #ef444418;
+      --blue: #3b82f6;
+      --blue-dim: #3b82f618;
+      --purple: #a855f7;
+      --purple-dim: #a855f718;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --mono: 'Fira Code', 'Cascadia Code', 'SF Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .header-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .live-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .last-refresh {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    /* Main layout */
+    .main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    /* Section headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      margin-top: 32px;
+    }
+
+    .section-header:first-child {
+      margin-top: 0;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .section-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Agent grid */
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: border-color 0.2s, transform 0.1s;
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .agent-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--agent-color, var(--accent));
+      opacity: 0.8;
+    }
+
+    .agent-card:hover {
+      border-color: var(--agent-color, var(--accent));
+      transform: translateY(-1px);
+    }
+
+    .agent-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .agent-icon-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .agent-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--agent-color-dim, var(--accent-dim));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .agent-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .agent-role {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 100px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+
+    .status-ok {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid var(--green)40;
+    }
+
+    .status-warn {
+      background: var(--yellow-dim);
+      color: var(--yellow);
+      border: 1px solid var(--yellow)40;
+    }
+
+    .status-error {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid var(--red)40;
+    }
+
+    .status-pending {
+      background: var(--surface2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .agent-summary {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 14px;
+      min-height: 40px;
+    }
+
+    .agent-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .agent-last-run {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    .agent-link {
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+
+    .agent-link:hover {
+      opacity: 1;
+    }
+
+    /* News section */
+    .news-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .news-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .news-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .news-items {
+      padding: 0;
+    }
+
+    .news-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: background 0.15s;
+    }
+
+    .news-item:last-child {
+      border-bottom: none;
+    }
+
+    .news-item:hover {
+      background: var(--surface2);
+    }
+
+    .news-priority {
+      font-size: 12px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .news-content {
+      flex: 1;
+    }
+
+    .news-title {
+      font-size: 13px;
+      color: var(--text);
+      text-decoration: none;
+      line-height: 1.4;
+    }
+
+    .news-title:hover {
+      color: var(--accent);
+    }
+
+    .news-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      font-family: var(--mono);
+    }
+
+    .news-empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* Infra status */
+    .infra-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .infra-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .infra-stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .infra-stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--text);
+    }
+
+    .infra-stat-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Quick links */
+    .links-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .quick-link {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-decoration: none;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: border-color 0.2s, background 0.2s;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .quick-link:hover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .quick-link-icon {
+      font-size: 18px;
+    }
+
+    /* Backup status */
+    .backup-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .backup-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .backup-name {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .backup-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    .backup-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .dot-green { background: var(--green); }
+    .dot-yellow { background: var(--yellow); }
+    .dot-red { background: var(--red); }
+    .dot-gray { background: var(--text-muted); }
+
+    /* Loading state */
+    .loading {
+      color: var(--text-muted);
+      font-size: 12px;
+      font-family: var(--mono);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .main { padding: 16px; }
+      .header { padding: 16px; }
+      .agents-grid { grid-template-columns: 1fr; }
+      .links-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">🤖</div>
+    <div>
+      <h1>Merox Command Center</h1>
+      <div class="header-sub">merox.dev · cloud.merox.dev</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-indicator">
+      <div class="live-dot"></div>
+      <span>Live</span>
+    </div>
+    <div class="last-refresh" id="lastRefresh">—</div>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- AGENTS STATUS -->
+  <div class="section-header">
+    <span class="section-title">Agenți</span>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="agents-grid" id="agentsGrid">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- NEWS -->
+  <div class="section-header">
+    <span class="section-title">Ultimul Briefing</span>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="news-card">
+    <div class="news-card-header">
+      <div class="news-card-title">
+        📰 Morning News
+        <span class="status-badge status-pending" id="newsBadge">Loading</span>
+      </div>
+      <a href="/news.html" class="agent-link">Dashboard complet →</a>
+    </div>
+    <div class="news-items" id="newsItems">
+      <div class="news-empty loading">Se încarcă știrile...</div>
+    </div>
+  </div>
+
+  <!-- INFRA STATUS -->
+  <div class="section-header">
+    <span class="section-title">Infrastructură</span>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="infra-grid" id="infraGrid">
+    <div class="infra-stat">
+      <div class="infra-stat-label">K8s Nodes</div>
+      <div class="infra-stat-value" id="infraNodes">—</div>
+      <div class="infra-stat-sub" id="infraNodesSub">Nu există date</div>
+    </div>
+    <div class="infra-stat">
+      <div class="infra-stat-label">Pods Unhealthy</div>
+      <div class="infra-stat-value" id="infraPods">—</div>
+      <div class="infra-stat-sub" id="infraPodsSub">Nu există date</div>
+    </div>
+    <div class="infra-stat">
+      <div class="infra-stat-label">Disk VPS</div>
+      <div class="infra-stat-value" id="infraDisk">—</div>
+      <div class="infra-stat-sub" id="infraDiskSub">Nu există date</div>
+    </div>
+    <div class="infra-stat">
+      <div class="infra-stat-label">Docker Containers</div>
+      <div class="infra-stat-value" id="infraDocker">—</div>
+      <div class="infra-stat-sub" id="infraDockerSub">Nu există date</div>
+    </div>
+    <div class="infra-stat">
+      <div class="infra-stat-label">FluxCD Status</div>
+      <div class="infra-stat-value" id="infraFlux">—</div>
+      <div class="infra-stat-sub" id="infraFluxSub">Nu există date</div>
+    </div>
+    <div class="infra-stat">
+      <div class="infra-stat-label">Cert Expiry</div>
+      <div class="infra-stat-value" id="infraCert">—</div>
+      <div class="infra-stat-sub" id="infraCertSub">Nu există date</div>
+    </div>
+  </div>
+
+  <!-- BACKUP STATUS -->
+  <div class="section-header">
+    <span class="section-title">Backup Status</span>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="backup-list" id="backupList">
+    <div class="backup-item">
+      <span class="backup-name loading">Se încarcă status backup...</span>
+    </div>
+  </div>
+
+  <!-- QUICK LINKS -->
+  <div class="section-header">
+    <span class="section-title">Quick Access</span>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="links-grid">
+    <a href="https://homepage.cloud.merox.dev" class="quick-link" target="_blank">
+      <span class="quick-link-icon">🏠</span>Homepage
+    </a>
+    <a href="https://portainer.cloud.merox.dev" class="quick-link" target="_blank">
+      <span class="quick-link-icon">🐳</span>Portainer
+    </a>
+    <a href="https://files.merox.dev" class="quick-link" target="_blank">
+      <span class="quick-link-icon">📁</span>Filebrowser
+    </a>
+    <a href="https://kuma.cloud.merox.dev" class="quick-link" target="_blank">
+      <span class="quick-link-icon">📊</span>Uptime Kuma
+    </a>
+    <a href="https://glances.cloud.merox.dev" class="quick-link" target="_blank">
+      <span class="quick-link-icon">📈</span>Glances
+    </a>
+    <a href="https://merox.dev" class="quick-link" target="_blank">
+      <span class="quick-link-icon">🌐</span>merox.dev
+    </a>
+    <a href="/news.html" class="quick-link">
+      <span class="quick-link-icon">📰</span>News Dashboard
+    </a>
+    <a href="https://github.com/meroxdotdev" class="quick-link" target="_blank">
+      <span class="quick-link-icon">⚙️</span>GitHub
+    </a>
+  </div>
+
+</main>
+
+<script>
+  const AGENTS_CONFIG = [
+    {
+      id: 'news',
+      name: 'MeroxNews',
+      role: 'Morning briefing & știri tehnice',
+      icon: '📰',
+      color: '#6366f1',
+      colorDim: '#6366f120',
+      reportLink: '/news.html',
+      reportLabel: 'Deschide briefing'
+    },
+    {
+      id: 'blog',
+      name: 'BlogAgent',
+      role: 'Content & blog merox.dev',
+      icon: '✍️',
+      color: '#22c55e',
+      colorDim: '#22c55e20',
+      reportLink: null,
+      reportLabel: null
+    },
+    {
+      id: 'design',
+      name: 'DesignAgent',
+      role: 'UX & design recomandări merox.dev',
+      icon: '🎨',
+      color: '#a855f7',
+      colorDim: '#a855f720',
+      reportLink: null,
+      reportLabel: null
+    },
+    {
+      id: 'infra',
+      name: 'InfraAgent',
+      role: 'K8s, VPS, securitate & stabilitate',
+      icon: '🔧',
+      color: '#f59e0b',
+      colorDim: '#f59e0b20',
+      reportLink: null,
+      reportLabel: null
+    },
+    {
+      id: 'costs',
+      name: 'BackupAgent',
+      role: 'Backup verification & resource tracking',
+      icon: '📦',
+      color: '#3b82f6',
+      colorDim: '#3b82f620',
+      reportLink: null,
+      reportLabel: null
+    }
+  ];
+
+  function formatDate(iso) {
+    if (!iso) return 'niciodată';
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffH = Math.floor(diffMs / 3600000);
+    const diffM = Math.floor(diffMs / 60000);
+    if (diffM < 1) return 'acum';
+    if (diffM < 60) return `acum ${diffM}m`;
+    if (diffH < 24) return `acum ${diffH}h`;
+    return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function statusClass(status) {
+    if (status === 'ok') return 'status-ok';
+    if (status === 'warn') return 'status-warn';
+    if (status === 'error') return 'status-error';
+    return 'status-pending';
+  }
+
+  function statusLabel(status) {
+    if (status === 'ok') return 'OK';
+    if (status === 'warn') return 'Warn';
+    if (status === 'error') return 'Error';
+    return 'Pending';
+  }
+
+  function renderAgents(data) {
+    const grid = document.getElementById('agentsGrid');
+    grid.innerHTML = AGENTS_CONFIG.map(agent => {
+      const agentData = (data && data[agent.id]) || {};
+      const status = agentData.status || 'pending';
+      const summary = agentData.summary || 'Nu a rulat încă';
+      const lastRun = agentData.lastRun;
+
+      return `
+        <div class="agent-card" style="--agent-color: ${agent.color}; --agent-color-dim: ${agent.colorDim};">
+          <div class="agent-header">
+            <div class="agent-icon-name">
+              <div class="agent-icon">${agent.icon}</div>
+              <div>
+                <div class="agent-name">${agent.name}</div>
+                <div class="agent-role">${agent.role}</div>
+              </div>
+            </div>
+            <span class="status-badge ${statusClass(status)}">${statusLabel(status)}</span>
+          </div>
+          <div class="agent-summary">${summary}</div>
+          <div class="agent-meta">
+            <div class="agent-last-run">Ultima rulare: ${formatDate(lastRun)}</div>
+            ${agent.reportLink ? `<a href="${agent.reportLink}" class="agent-link">${agent.reportLabel} →</a>` : '<span></span>'}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderNews(data) {
+    const container = document.getElementById('newsItems');
+    const badge = document.getElementById('newsBadge');
+
+    if (!data || !data.items || data.items.length === 0) {
+      badge.className = 'status-badge status-pending';
+      badge.textContent = 'No data';
+      container.innerHTML = '<div class="news-empty">Niciun briefing generat încă. Agentul rulează la 07:00.</div>';
+      return;
+    }
+
+    badge.className = 'status-badge status-ok';
+    badge.textContent = data.date || 'Azi';
+
+    const items = data.items.slice(0, 6);
+    container.innerHTML = items.map(item => {
+      const priorityIcon = item.priority === 'critical' ? '🔴' :
+                           item.priority === 'warn' ? '🟡' : '🟢';
+      return `
+        <div class="news-item">
+          <span class="news-priority">${priorityIcon}</span>
+          <div class="news-content">
+            ${item.url ? `<a href="${item.url}" class="news-title" target="_blank">${item.title}</a>` :
+                         `<span class="news-title">${item.title}</span>`}
+            <div class="news-meta">${item.source || ''} ${item.date ? '· ' + item.date : ''}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderInfra(data) {
+    if (!data) return;
+    const set = (id, val, sub) => {
+      const el = document.getElementById(id);
+      const subEl = document.getElementById(id + 'Sub');
+      if (el && val !== undefined) el.textContent = val;
+      if (subEl && sub !== undefined) subEl.textContent = sub;
+    };
+    set('infraNodes', data.nodes?.ready ?? '—', data.nodes?.status ?? 'Nu există date');
+    set('infraPods', data.pods?.unhealthy ?? '—', data.pods?.details ?? 'Nu există date');
+    set('infraDisk', data.disk?.usage ?? '—', data.disk?.path ?? 'Nu există date');
+    set('infraDocker', data.docker?.running ?? '—', data.docker?.stopped ? `${data.docker.stopped} oprite` : 'Nu există date');
+    set('infraFlux', data.flux?.status ?? '—', data.flux?.details ?? 'Nu există date');
+    set('infraCert', data.cert?.days ?? '—', data.cert?.domain ?? 'Nu există date');
+  }
+
+  function renderBackup(data) {
+    const container = document.getElementById('backupList');
+    if (!data || !data.services) {
+      container.innerHTML = '<div class="backup-item"><span class="backup-name" style="color:var(--text-muted)">Nicio verificare backup efectuată încă.</span></div>';
+      return;
+    }
+    container.innerHTML = data.services.map(svc => {
+      const dotClass = svc.status === 'ok' ? 'dot-green' :
+                       svc.status === 'warn' ? 'dot-yellow' :
+                       svc.status === 'error' ? 'dot-red' : 'dot-gray';
+      return `
+        <div class="backup-item">
+          <span class="backup-name">${svc.name}</span>
+          <div class="backup-status">
+            <div class="backup-dot ${dotClass}"></div>
+            ${svc.lastBackup ? `Ultimul: ${svc.lastBackup}` : 'Necunoscut'}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function updateTimestamp() {
+    document.getElementById('lastRefresh').textContent =
+      new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  async function loadData() {
+    try {
+      const [agents, news, infra, backup] = await Promise.allSettled([
+        fetch('/data/agents.json?t=' + Date.now()).then(r => r.json()),
+        fetch('/data/news.json?t=' + Date.now()).then(r => r.json()),
+        fetch('/data/infra.json?t=' + Date.now()).then(r => r.json()),
+        fetch('/data/backup.json?t=' + Date.now()).then(r => r.json()),
+      ]);
+
+      renderAgents(agents.status === 'fulfilled' ? agents.value : null);
+      renderNews(news.status === 'fulfilled' ? news.value : null);
+      renderInfra(infra.status === 'fulfilled' ? infra.value : null);
+      renderBackup(backup.status === 'fulfilled' ? backup.value : null);
+      updateTimestamp();
+    } catch(e) {
+      console.error('Load error:', e);
+    }
+  }
+
+  // Initial load
+  loadData();
+
+  // Auto-refresh every 60 seconds
+  setInterval(loadData, 60000);
+</script>
+
+</body>
+</html>

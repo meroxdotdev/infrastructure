@@ -226,10 +226,11 @@ kubectl -n flux-system get receiver github-webhook \
 
 ---
 
-## Phase 3 — Agent (OpenClaw)
+## Phase 3 — Agents (OpenClaw)
 
-> ~10 min. [OpenClaw](https://openclaw.ai) as systemd daemon (Telegram bot → Claude API → kubectl/docker).
-> Config template + infra skill live in `agent/` in this repo.
+> ~15 min. [OpenClaw](https://openclaw.ai) running as dedicated `openclaw` user (non-root).
+> 5 specialized agents: news briefing, blog, design, infra, backup/costs.
+> All config templates live in `agent/` in this repo.
 
 ### 3a — Install Node.js 24 + OpenClaw
 
@@ -238,85 +239,125 @@ kubectl -n flux-system get receiver github-webhook \
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
 
-# Verify
 node --version   # must be >= 22.16
-
-# Install OpenClaw globally
 sudo npm install -g openclaw@latest
-
-# Verify
 openclaw --version
 ```
 
-### 3b — Configure secrets
+### 3b — Create dedicated openclaw user
 
 ```bash
-# Create config directory with strict permissions
-mkdir -p ~/.openclaw
-chmod 700 ~/.openclaw
+sudo useradd -m -s /bin/bash -d /home/openclaw -c "OpenClaw Service Account" openclaw
+sudo usermod -aG docker openclaw
+sudo loginctl enable-linger openclaw
 
-# Create .env with secrets (never commit this file)
-cat > ~/.openclaw/.env << 'EOF'
-ANTHROPIC_API_KEY=sk-ant-...        # console.anthropic.com
-TELEGRAM_BOT_TOKEN=123456:AAAA...   # @BotFather on Telegram
-TELEGRAM_USER_ID=123456789          # your numeric Telegram ID
-EOF
-chmod 600 ~/.openclaw/.env
+# Sudoers — specific commands only, no full sudo
+sudo cp /srv/kubernetes/infrastructure/agent/scripts/sudoers-openclaw /etc/sudoers.d/openclaw
+sudo chmod 440 /etc/sudoers.d/openclaw
+sudo visudo -c  # verify
 ```
 
-> **Finding your Telegram user ID:** after setting the bot token, start openclaw,
-> send a message to your bot, then run `openclaw logs --follow` and look for `from.id`.
-
-### 3c — Install config + skill from repo
+### 3c — Set up infra access for openclaw user
 
 ```bash
-# Copy config template
-cp /srv/kubernetes/infrastructure/agent/openclaw.json ~/.openclaw/openclaw.json
-chmod 600 ~/.openclaw/openclaw.json
+sudo -u openclaw mkdir -p /home/openclaw/.kube /home/openclaw/.talos
 
-# Create workspace and install infra skill
-mkdir -p ~/.openclaw/workspace/skills
-cp -r /srv/kubernetes/infrastructure/agent/skills/infra \
-      ~/.openclaw/workspace/skills/infra
+sudo cp /srv/kubernetes/infrastructure/kubeconfig /home/openclaw/.kube/config
+sudo cp /srv/kubernetes/infrastructure/talos/clusterconfig/talosconfig /home/openclaw/.talos/config
+
+sudo chown openclaw:openclaw /home/openclaw/.kube/config /home/openclaw/.talos/config
+sudo chmod 600 /home/openclaw/.kube/config /home/openclaw/.talos/config
 ```
 
-### 3d — Install systemd daemon
+### 3d — Configure secrets (openclaw.json)
 
 ```bash
-# Onboard + install as systemd user service
-openclaw onboard --install-daemon
+sudo -u openclaw mkdir -p /home/openclaw/.openclaw
+sudo cp /srv/kubernetes/infrastructure/agent/openclaw.json.example \
+        /home/openclaw/.openclaw/openclaw.json
+sudo chown openclaw:openclaw /home/openclaw/.openclaw/openclaw.json
+sudo chmod 600 /home/openclaw/.openclaw/openclaw.json
 
-# Verify daemon is running
-systemctl --user status openclaw-gateway
-journalctl --user -u openclaw-gateway -f
+# Edit: fill in Telegram bot token + your Telegram user ID
+sudo nano /home/openclaw/.openclaw/openclaw.json
+# Replace: YOUR_TELEGRAM_BOT_TOKEN, YOUR_TELEGRAM_USER_ID
 ```
 
-### 3e — Tailscale Serve (optional but recommended)
+> **Finding your Telegram user ID:** send any message to your bot, then check
+> `journalctl --user -u openclaw-gateway -f | grep from.id`
 
-Exposes the OpenClaw Control UI on your tailnet only (no public internet):
+### 3e — Authenticate Claude Code as openclaw user
 
 ```bash
-# Tailscale Serve routes tailnet HTTPS → local gateway
-tailscale serve https / proxy 18789
+# Claude Code CLI is used for model access (Claude Pro subscription)
+sudo -u openclaw claude login
+# Follow OAuth flow in browser
+```
+
+### 3f — Install agent workspaces
+
+```bash
+AGENT_DIR=/srv/kubernetes/infrastructure/agent/workspaces
+
+sudo -u openclaw cp -r $AGENT_DIR/news /home/openclaw/.openclaw/workspace
+sudo -u openclaw cp -r $AGENT_DIR/blog /home/openclaw/.openclaw/workspace-blog
+sudo -u openclaw cp -r $AGENT_DIR/design /home/openclaw/.openclaw/workspace-design
+sudo -u openclaw cp -r $AGENT_DIR/infra /home/openclaw/.openclaw/workspace-infra
+sudo -u openclaw cp -r $AGENT_DIR/costs /home/openclaw/.openclaw/workspace-costs
+
+# Create runtime memory dirs
+sudo -u openclaw mkdir -p /home/openclaw/.openclaw/workspace/memory
+sudo -u openclaw mkdir -p /home/openclaw/.openclaw/workspace-infra/memory
+```
+
+### 3g — Set up dashboard
+
+```bash
+# Create dashboard directory
+sudo mkdir -p /srv/dashboard/data
+sudo chown openclaw:openclaw /srv/dashboard /srv/dashboard/data
+
+# Initialize empty data files
+echo '{"news":{"lastRun":null,"status":"pending","summary":"Not yet run"},"blog":{"lastRun":null,"status":"pending","summary":"Not yet run"},"design":{"lastRun":null,"status":"pending","summary":"Not yet run"},"infra":{"lastRun":null,"status":"pending","summary":"Not yet run"},"costs":{"lastRun":null,"status":"pending","summary":"Not yet run"}}' \
+  | sudo -u openclaw tee /srv/dashboard/data/agents.json > /dev/null
+
+# Copy dashboard HTML (from this repo)
+sudo cp /srv/kubernetes/infrastructure/agent/dashboard/index.html /srv/dashboard/
+sudo cp /srv/kubernetes/infrastructure/agent/dashboard/news.html /srv/dashboard/ 2>/dev/null || true
+sudo chown -R openclaw:openclaw /srv/dashboard
+
+# Start nginx container
+cd /srv/docker/agents-dashboard && docker compose up -d
+# Dashboard available at: https://agents.cloud.merox.dev
+```
+
+### 3h — Install systemd user service
+
+```bash
+sudo -u openclaw mkdir -p /home/openclaw/.config/systemd/user
+sudo cp /srv/kubernetes/infrastructure/agent/scripts/openclaw-gateway.service \
+        /home/openclaw/.config/systemd/user/
+sudo chown openclaw:openclaw /home/openclaw/.config/systemd/user/openclaw-gateway.service
+
+XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) sudo -u openclaw systemctl --user daemon-reload
+XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) sudo -u openclaw systemctl --user enable --now openclaw-gateway.service
 
 # Verify
-tailscale serve status
-# Access Control UI at: https://<hostname>.<tailnet>.ts.net
+XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) sudo -u openclaw systemctl --user status openclaw-gateway
 ```
 
-### 3f — Security audit
+### 3i — Security audit
 
 ```bash
-openclaw security audit
-# Fix any warnings before proceeding
-openclaw doctor
+sudo -u openclaw openclaw doctor
+sudo -u openclaw openclaw status
 ```
 
 **Verify:**
 ```bash
-# Telegram: send a message to your bot — it should respond
-# Control UI: https://<hostname>.<tailnet>.ts.net (if Tailscale Serve enabled)
-systemctl --user status openclaw-gateway
+# Telegram: send "hello" to your bot — news agent should respond
+# Dashboard: https://agents.cloud.merox.dev
+XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) sudo -u openclaw systemctl --user status openclaw-gateway
 ```
 
 ---
@@ -347,11 +388,18 @@ systemctl --user status openclaw-gateway
 [ ] Wildcard certificate Ready (kubectl -n network describe certificates)
 [ ] Longhorn backup target working (test a manual backup)
 [ ] GitHub Webhook configured (optional — for instant Flux sync on git push)
-[ ] ~/.openclaw/.env created with ANTHROPIC_API_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_USER_ID
-[ ] ~/.openclaw/openclaw.json installed from agent/openclaw.json
-[ ] infra skill installed at ~/.openclaw/workspace/skills/infra/
-[ ] Phase 3 complete — openclaw-gateway daemon running, Telegram bot responds
-[ ] openclaw security audit — no warnings
+[ ] openclaw user created, in docker group, linger enabled
+[ ] sudoers-openclaw installed at /etc/sudoers.d/openclaw
+[ ] kubeconfig + talosconfig copied to /home/openclaw/.kube/ and /home/openclaw/.talos/
+[ ] /home/openclaw/.openclaw/openclaw.json configured (Telegram token + user ID filled in)
+[ ] claude login done as openclaw user (Claude Pro OAuth)
+[ ] All 5 workspaces installed (news, blog, design, infra, costs)
+[ ] /srv/dashboard/ created with data/ subdirectory, agents.json initialized
+[ ] agents-dashboard nginx container running (docker ps | grep agents-dashboard)
+[ ] openclaw-gateway systemd user service enabled + running as openclaw user
+[ ] https://agents.cloud.merox.dev accessible and showing command center
+[ ] Telegram bot responds to messages
+[ ] openclaw doctor — no warnings
 [ ] Old server decommissioned / Tailscale node removed
 ```
 

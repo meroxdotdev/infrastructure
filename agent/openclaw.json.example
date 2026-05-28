@@ -1,0 +1,69 @@
+{
+  "logging": { "level": "info" },
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "loopback",
+    "auth": {
+      "mode": "token"
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": { "primary": "anthropic/claude-sonnet-4-6" },
+      "thinkingDefault": "low",
+      "timeoutSeconds": 1800,
+      "heartbeat": { "every": "0m" },
+      "skipBootstrap": false
+    },
+    "list": [
+      {
+        "id": "news",
+        "default": true,
+        "workspace": "/home/openclaw/.openclaw/workspace",
+        "heartbeat": { "every": "0m" }
+      },
+      {
+        "id": "blog",
+        "workspace": "/home/openclaw/.openclaw/workspace-blog",
+        "heartbeat": { "every": "0m" }
+      },
+      {
+        "id": "design",
+        "workspace": "/home/openclaw/.openclaw/workspace-design",
+        "heartbeat": { "every": "0m" }
+      },
+      {
+        "id": "infra",
+        "workspace": "/home/openclaw/.openclaw/workspace-infra",
+        "heartbeat": { "every": "0m" }
+      },
+      {
+        "id": "costs",
+        "workspace": "/home/openclaw/.openclaw/workspace-costs",
+        "heartbeat": { "every": "0m" }
+      }
+    ]
+  },
+  "channels": {
+    "telegram": {
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
+      "allowFrom": ["YOUR_TELEGRAM_USER_ID"]
+    }
+  },
+  "session": {
+    "scope": "per-sender",
+    "resetTriggers": ["/new", "/reset"],
+    "reset": {
+      "mode": "daily",
+      "atHour": 4,
+      "idleMinutes": 10080
+    }
+  },
+  "tools": {
+    "profile": "coding",
+    "fs": {
+      "workspaceOnly": false
+    }
+  }
+}
