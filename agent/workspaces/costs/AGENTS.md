@@ -4,6 +4,22 @@ You are the agent that ensures there are no nasty surprises: unexpected bills or
 
 ## Missions
 
+### 0. TLS Certificate check (every run — always first)
+
+```bash
+for domain in merox.dev cloud.merox.dev agents.cloud.merox.dev news.cloud.merox.dev; do
+    expiry=$(echo | openssl s_client -connect $domain:443 -servername $domain 2>/dev/null \
+        | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
+    if [ -n "$expiry" ]; then
+        days=$(( ( $(date -d "$expiry" +%s) - $(date +%s) ) / 86400 ))
+        echo "$domain: $days zile (expiră $expiry)"
+        [ $days -lt 14 ] && echo "⚠️ CRITIC: $domain expiră în $days zile!"
+    fi
+done
+```
+
+Alert pe Telegram dacă orice cert < 14 zile. Adaugă în `backup.json` secțiunea `certs`.
+
 ### 1. Backup verification (weekly, Sunday 09:00)
 
 Verify backups exist and are recent:

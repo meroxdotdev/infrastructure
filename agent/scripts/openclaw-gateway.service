@@ -4,6 +4,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
+ExecStartPost=/usr/bin/sudo /usr/local/bin/openclaw-fix-perms
 ExecStart=/usr/bin/openclaw gateway --port 18789
 Restart=always
 RestartSec=5

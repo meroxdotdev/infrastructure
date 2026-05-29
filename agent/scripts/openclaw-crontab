@@ -1,0 +1,30 @@
+SHELL=/bin/bash
+HOME=/home/openclaw
+XDG_RUNTIME_DIR=/run/user/1003
+
+# news — morning briefing, every day at 07:00 UTC
+0 7 * * * /usr/bin/openclaw agent --agent news --message "HEARTBEAT" >> /home/openclaw/.openclaw/logs/heartbeat-news.log 2>&1
+
+# infra — cluster + VPS health check at 08:00 and 20:00 UTC
+0 8  * * * /usr/bin/openclaw agent --agent infra --message "HEARTBEAT" >> /home/openclaw/.openclaw/logs/heartbeat-infra.log 2>&1
+0 20 * * * /usr/bin/openclaw agent --agent infra --message "HEARTBEAT" >> /home/openclaw/.openclaw/logs/heartbeat-infra.log 2>&1
+
+# costs — backup verification every Sunday at 09:00 UTC
+0 9 * * 0 /usr/bin/openclaw agent --agent costs --message "HEARTBEAT" >> /home/openclaw/.openclaw/logs/heartbeat-costs.log 2>&1
+
+# dashboard — nightly improvement at 23:00 UTC
+0 23 * * * /usr/bin/openclaw agent --agent dashboard --message "HEARTBEAT" >> /home/openclaw/.openclaw/logs/heartbeat-dashboard.log 2>&1
+
+# orchestrator — daily audit + proposals at 12:00 UTC (15:00 EEST)
+0 12 * * * /usr/bin/openclaw agent --agent orchestrator --message "HEARTBEAT" >> /home/openclaw/.openclaw/logs/heartbeat-orchestrator.log 2>&1
+
+# blog — weekly content pulse, every Monday at 09:00 UTC (12:00 EEST)
+0 9 * * 1 /usr/bin/openclaw agent --agent blog --message "HEARTBEAT" >> /home/openclaw/.openclaw/logs/heartbeat-blog.log 2>&1
+
+# ── Dashboard data — zero AI tokens ──
+# infra-data: K8s nodes/pods/docker/longhorn/namespaces — every 5 minutes
+*/5 * * * * /srv/dashboard/update-infra.sh >> /home/openclaw/.openclaw/logs/update-infra.log 2>&1
+# backup-data: NAS/Garage S3/Longhorn backups — every 30 minutes
+*/30 * * * * /srv/dashboard/update-backup.sh >> /home/openclaw/.openclaw/logs/update-backup.log 2>&1
+# news-data: GitHub releases for tracked projects — every 6 hours
+0 */6 * * * /srv/dashboard/update-news.sh >> /home/openclaw/.openclaw/logs/update-news.log 2>&1

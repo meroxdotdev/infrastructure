@@ -1,5 +1,8 @@
 {
-  "logging": { "level": "info" },
+  "logging": {
+    "level": "info",
+    "redactSensitive": "tools"
+  },
   "gateway": {
     "mode": "local",
     "port": 18789,
@@ -12,11 +15,15 @@
   },
   "agents": {
     "defaults": {
-      "model": { "primary": "anthropic/claude-sonnet-4-6" },
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-6",
+        "fallbacks": ["openai/gpt-5.5"]
+      },
       "thinkingDefault": "low",
       "timeoutSeconds": 1800,
       "heartbeat": { "every": "0m" },
       "skipBootstrap": true,
+      "contextPruning": { "mode": "cache-ttl", "ttl": "5m" },
       "workspace": "/home/openclaw/.openclaw/workspace",
       "agentRuntime": { "id": "claude-cli" },
       "models": {
@@ -26,32 +33,41 @@
       }
     },
     "list": [
-      { "id": "news",   "default": true, "workspace": "/home/openclaw/.openclaw/workspace",        "heartbeat": { "every": "0m" } },
-      { "id": "blog",                    "workspace": "/home/openclaw/.openclaw/workspace-blog",    "heartbeat": { "every": "0m" } },
-      { "id": "design",                  "workspace": "/home/openclaw/.openclaw/workspace-design",  "heartbeat": { "every": "0m" } },
-      { "id": "infra",                   "workspace": "/home/openclaw/.openclaw/workspace-infra",   "heartbeat": { "every": "0m" } },
-      { "id": "costs",                   "workspace": "/home/openclaw/.openclaw/workspace-costs",   "heartbeat": { "every": "0m" } }
+      { "id": "news",         "default": true, "workspace": "/home/openclaw/.openclaw/workspace",             "heartbeat": { "every": "0m" } },
+      { "id": "blog",                          "workspace": "/home/openclaw/.openclaw/workspace-blog",        "heartbeat": { "every": "0m" } },
+      { "id": "design",                        "workspace": "/home/openclaw/.openclaw/workspace-design",      "heartbeat": { "every": "0m" } },
+      { "id": "infra",                         "workspace": "/home/openclaw/.openclaw/workspace-infra",       "heartbeat": { "every": "0m" } },
+      { "id": "costs",                         "workspace": "/home/openclaw/.openclaw/workspace-costs",       "heartbeat": { "every": "0m" } },
+      { "id": "dashboard",                     "workspace": "/home/openclaw/.openclaw/workspace-dashboard",   "heartbeat": { "every": "0m" } },
+      { "id": "orchestrator",                  "workspace": "/home/openclaw/.openclaw/workspace-orchestrator","heartbeat": { "every": "0m" } }
     ]
   },
   "channels": {
     "telegram": {
       "botToken": "YOUR_TELEGRAM_BOT_TOKEN",
-      "allowFrom": ["YOUR_TELEGRAM_USER_ID"]
+      "allowFrom": ["YOUR_TELEGRAM_NUMERIC_ID"],
+      "dmPolicy": "allowlist"
     }
+  },
+  "commands": {
+    "ownerAllowFrom": ["telegram:YOUR_TELEGRAM_NUMERIC_ID"]
   },
   "session": {
     "scope": "per-sender",
+    "dmScope": "per-channel-peer",
     "resetTriggers": ["/new", "/reset"],
     "reset": { "mode": "daily", "atHour": 4, "idleMinutes": 10080 },
-    "dmScope": "per-channel-peer"
+    "threadBindings": { "enabled": true, "idleHours": 24 }
   },
   "tools": {
     "profile": "coding",
     "fs": { "workspaceOnly": false },
+    "elevated": { "enabled": false },
     "agentToAgent": {
       "enabled": true,
-      "allow": ["news", "blog", "design", "infra", "costs"]
-    }
+      "allow": ["news", "blog", "design", "infra", "costs", "dashboard", "orchestrator"]
+    },
+    "sessions": { "visibility": "all" }
   },
   "plugins": {
     "entries": {
