@@ -1,854 +1,772 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Merox Agents — Command Center</title>
-  <style>
-    :root {
-      --bg: #0a0a0f;
-      --surface: #111118;
-      --surface2: #1a1a24;
-      --border: #2a2a3a;
-      --text: #e8e8f0;
-      --text-muted: #8888a8;
-      --accent: #6366f1;
-      --accent-dim: #6366f120;
-      --green: #22c55e;
-      --green-dim: #22c55e18;
-      --yellow: #f59e0b;
-      --yellow-dim: #f59e0b18;
-      --red: #ef4444;
-      --red-dim: #ef444418;
-      --blue: #3b82f6;
-      --blue-dim: #3b82f618;
-      --purple: #a855f7;
-      --purple-dim: #a855f718;
-      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      --mono: 'Fira Code', 'Cascadia Code', 'SF Mono', monospace;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 14px;
-      line-height: 1.6;
-      min-height: 100vh;
-    }
-
-    /* Header */
-    .header {
-      border-bottom: 1px solid var(--border);
-      padding: 20px 32px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--surface);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(10px);
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .logo {
-      width: 32px;
-      height: 32px;
-      background: var(--accent);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-    }
-
-    .header h1 {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .header-sub {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .live-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .live-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--green);
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    .last-refresh {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--mono);
-    }
-
-    /* Main layout */
-    .main {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 32px;
-    }
-
-    /* Section headers */
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      margin-top: 32px;
-    }
-
-    .section-header:first-child {
-      margin-top: 0;
-    }
-
-    .section-title {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
-    }
-
-    .section-line {
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
-    /* Agent grid */
-    .agents-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 16px;
-    }
-
-    .agent-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      transition: border-color 0.2s, transform 0.1s;
-      cursor: default;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .agent-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--agent-color, var(--accent));
-      opacity: 0.8;
-    }
-
-    .agent-card:hover {
-      border-color: var(--agent-color, var(--accent));
-      transform: translateY(-1px);
-    }
-
-    .agent-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .agent-icon-name {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .agent-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      background: var(--agent-color-dim, var(--accent-dim));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-
-    .agent-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .agent-role {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 1px;
-    }
-
-    .status-badge {
-      font-size: 10px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 100px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      flex-shrink: 0;
-    }
-
-    .status-ok {
-      background: var(--green-dim);
-      color: var(--green);
-      border: 1px solid var(--green)40;
-    }
-
-    .status-warn {
-      background: var(--yellow-dim);
-      color: var(--yellow);
-      border: 1px solid var(--yellow)40;
-    }
-
-    .status-error {
-      background: var(--red-dim);
-      color: var(--red);
-      border: 1px solid var(--red)40;
-    }
-
-    .status-pending {
-      background: var(--surface2);
-      color: var(--text-muted);
-      border: 1px solid var(--border);
-    }
-
-    .agent-summary {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.5;
-      margin-bottom: 14px;
-      min-height: 40px;
-    }
-
-    .agent-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-    }
-
-    .agent-last-run {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-family: var(--mono);
-    }
-
-    .agent-link {
-      font-size: 11px;
-      color: var(--accent);
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      opacity: 0.8;
-      transition: opacity 0.2s;
-    }
-
-    .agent-link:hover {
-      opacity: 1;
-    }
-
-    /* News section */
-    .news-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .news-card-header {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .news-card-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .news-items {
-      padding: 0;
-    }
-
-    .news-item {
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      transition: background 0.15s;
-    }
-
-    .news-item:last-child {
-      border-bottom: none;
-    }
-
-    .news-item:hover {
-      background: var(--surface2);
-    }
-
-    .news-priority {
-      font-size: 12px;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .news-content {
-      flex: 1;
-    }
-
-    .news-title {
-      font-size: 13px;
-      color: var(--text);
-      text-decoration: none;
-      line-height: 1.4;
-    }
-
-    .news-title:hover {
-      color: var(--accent);
-    }
-
-    .news-meta {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 3px;
-      font-family: var(--mono);
-    }
-
-    .news-empty {
-      padding: 40px 20px;
-      text-align: center;
-      color: var(--text-muted);
-      font-size: 13px;
-    }
-
-    /* Infra status */
-    .infra-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
-    }
-
-    .infra-stat {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 16px;
-    }
-
-    .infra-stat-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 6px;
-    }
-
-    .infra-stat-value {
-      font-size: 20px;
-      font-weight: 700;
-      font-family: var(--mono);
-      color: var(--text);
-    }
-
-    .infra-stat-sub {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    /* Quick links */
-    .links-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 10px;
-    }
-
-    .quick-link {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 16px;
-      text-decoration: none;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      transition: border-color 0.2s, background 0.2s;
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .quick-link:hover {
-      border-color: var(--accent);
-      background: var(--accent-dim);
-      color: var(--accent);
-    }
-
-    .quick-link-icon {
-      font-size: 18px;
-    }
-
-    /* Backup status */
-    .backup-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .backup-item {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .backup-name {
-      font-size: 13px;
-      color: var(--text);
-      font-weight: 500;
-    }
-
-    .backup-status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--text-muted);
-      font-family: var(--mono);
-    }
-
-    .backup-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-    }
-
-    .dot-green { background: var(--green); }
-    .dot-yellow { background: var(--yellow); }
-    .dot-red { background: var(--red); }
-    .dot-gray { background: var(--text-muted); }
-
-    /* Loading state */
-    .loading {
-      color: var(--text-muted);
-      font-size: 12px;
-      font-family: var(--mono);
-      animation: blink 1.5s ease-in-out infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .main { padding: 16px; }
-      .header { padding: 16px; }
-      .agents-grid { grid-template-columns: 1fr; }
-      .links-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Merox — Command Center</title>
+<style>
+:root {
+  --bg0: #08090c;
+  --bg1: #0f1117;
+  --bg2: #161b27;
+  --bg3: #1e2535;
+  --border: #1e2535;
+  --border2: #252d40;
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --text3: #475569;
+  --green: #22c55e;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+  --blue: #3b82f6;
+  --accent: #6366f1;
+  --purple: #8b5cf6;
+  --r: 8px;
+  --r2: 5px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{overflow-x:hidden;}
+body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5;min-height:100vh;overflow-x:hidden;}
+
+/* HEADER */
+.header{background:var(--bg1);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;}
+.header-left{display:flex;align-items:center;gap:12px;min-width:0;}
+.logo{font-size:16px;font-weight:700;letter-spacing:-0.5px;flex-shrink:0;}
+.logo em{color:var(--accent);font-style:normal;}
+.badge{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--text2);white-space:nowrap;}
+.header-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.btn-refresh{background:var(--bg2);border:1px solid var(--border2);color:var(--text2);padding:5px 12px;border-radius:var(--r2);cursor:pointer;font-size:12px;font-family:inherit;transition:border-color .15s,color .15s;}
+.btn-refresh:hover{border-color:var(--accent);color:var(--text);}
+.clock{font-size:12px;color:var(--text3);font-variant-numeric:tabular-nums;}
+
+/* QUICKLINKS */
+.quicklinks{background:var(--bg1);border-bottom:1px solid var(--border);padding:0 20px;height:36px;display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;}
+.quicklinks::-webkit-scrollbar{display:none;}
+.ql{display:flex;align-items:center;gap:5px;background:transparent;border:1px solid transparent;border-radius:var(--r2);padding:4px 10px;font-size:11px;font-weight:500;color:var(--text3);text-decoration:none;transition:all .15s;white-space:nowrap;flex-shrink:0;}
+.ql:hover{border-color:var(--border2);color:var(--text2);background:var(--bg2);}
+.ql-sep{width:1px;height:16px;background:var(--border);flex-shrink:0;margin:0 4px;}
+
+/* LAYOUT */
+.main{padding:16px 20px;display:flex;flex-direction:column;gap:14px;max-width:1600px;margin:0 auto;}
+
+/* CARDS */
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text3);display:flex;align-items:center;gap:6px;}
+.tag{background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--text2);font-weight:500;white-space:nowrap;}
+
+/* ALERTS */
+.alerts{display:flex;flex-direction:column;gap:6px;}
+.alert{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border-radius:var(--r);border:1px solid;text-decoration:none;color:inherit;transition:filter .15s;}
+.alert:hover{filter:brightness(1.08);}
+.alert-crit{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.28);}
+.alert-warn{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.24);}
+.alert-ok{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2);}
+.alert-body{flex:1;min-width:0;}
+.alert-title{font-weight:500;font-size:13px;}
+.alert-meta{font-size:11px;color:var(--text3);margin-top:2px;}
+.alert-badge{flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:3px;align-self:flex-start;margin-top:1px;}
+.b-crit{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.24);}
+.b-warn{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.22);}
+.b-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.18);}
+
+/* TILES */
+.tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.tile{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;}
+.tile-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
+.tile-value{font-size:24px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;}
+.tile-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+.t-green .tile-value{color:var(--green);}
+.t-yellow .tile-value{color:var(--yellow);}
+.t-red .tile-value{color:var(--red);}
+.t-blue .tile-value{color:var(--blue);}
+.t-accent .tile-value{color:var(--accent);}
+.t-purple .tile-value{color:var(--purple);}
+
+/* 2-COL GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:1024px){.g2{grid-template-columns:1fr;}}
+
+/* STATUS DOTS */
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block;}
+.dot-ok{background:var(--green);box-shadow:0 0 5px rgba(34,197,94,.45);}
+.dot-warn{background:var(--yellow);}
+.dot-err{background:var(--red);box-shadow:0 0 5px rgba(239,68,68,.45);}
+.dot-idle{background:var(--bg3);border:1px solid var(--border2);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pulse{animation:pulse 2.5s ease-in-out infinite;}
+
+/* NODES */
+.node-list{display:flex;flex-direction:column;}
+.node{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.node:last-child{border-bottom:none;}
+.node-info{flex:1;min-width:0;}
+.node-name{font-weight:500;font-size:13px;}
+.node-meta{font-size:11px;color:var(--text3);}
+.node-bars{display:flex;flex-direction:column;gap:5px;width:150px;flex-shrink:0;}
+.bar-row{display:flex;align-items:center;gap:7px;font-size:11px;}
+.bar-lbl{width:28px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
+.bar-track{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;transition:width .5s;}
+.bar-pct{width:28px;text-align:right;color:var(--text2);font-variant-numeric:tabular-nums;}
+
+/* RESOURCE BARS */
+.res-list{display:flex;flex-direction:column;gap:9px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.res-item{display:flex;flex-direction:column;gap:4px;}
+.res-hdr{display:flex;justify-content:space-between;font-size:11px;}
+.res-name{color:var(--text2);}
+.res-val{color:var(--text3);font-variant-numeric:tabular-nums;}
+.res-track{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.res-fill{height:100%;border-radius:2px;transition:width .5s;}
+
+/* AGENT NETWORK */
+.agent-hub{padding:10px 12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);margin-bottom:6px;display:flex;align-items:center;gap:10px;}
+.agent-hub-body{flex:1;min-width:0;}
+.agent-hub-name{font-size:13px;font-weight:600;}
+.agent-hub-meta{font-size:11px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.agent-connector{padding:4px 0 4px 15px;color:var(--text3);font-size:10px;display:flex;align-items:center;gap:6px;}
+.agent-connector::before{content:'';width:1px;height:12px;background:var(--border2);}
+.agent-rows{display:flex;flex-direction:column;gap:1px;}
+.agent-row{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--r2);transition:background .1s;}
+.agent-row:hover{background:var(--bg2);}
+.agent-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center;margin-top:1px;}
+.agent-info{flex:1;min-width:0;}
+.agent-name{font-size:12px;font-weight:600;}
+.agent-sum{font-size:11px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.agent-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.agent-time{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums;}
+.sbadge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 6px;border-radius:3px;}
+.sb-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.18);}
+.sb-err{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.18);}
+.sb-idle{background:rgba(71,85,105,.12);color:var(--text3);border:1px solid var(--border2);}
+
+/* LONGHORN */
+.lh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.lh-stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:10px 12px;}
+.lh-stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;}
+.lh-stat-val{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;margin:3px 0 1px;}
+.lh-stat-sub{font-size:10px;color:var(--text3);}
+.lh-nodes{display:flex;flex-direction:column;gap:9px;}
+.lh-node{display:flex;flex-direction:column;gap:4px;}
+.lh-node-hdr{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);}
+.lh-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.lh-fill{height:100%;border-radius:2px;}
+
+/* BACKUP */
+.bkp-rows{display:flex;flex-direction:column;gap:7px;}
+.bkp-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);}
+.bkp-name{font-weight:500;font-size:12px;flex-shrink:0;min-width:90px;max-width:130px;}
+.bkp-detail{font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* DOCKER */
+.docker-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.chip{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:5px 9px;font-size:11px;color:var(--text2);}
+.chip-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;}
+
+/* NAMESPACES */
+.ns-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.ns-chip{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:6px 10px;display:flex;align-items:center;gap:8px;font-size:11px;}
+.ns-name{color:var(--text2);font-weight:500;}
+.ns-count{color:var(--text3);}
+
+/* NEWS */
+.news-hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.news-pills{display:flex;gap:5px;flex-wrap:wrap;}
+.pill{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;}
+.pill-crit{background:rgba(239,68,68,.12);color:#fca5a5;}
+.pill-warn{background:rgba(245,158,11,.1);color:#fcd34d;}
+.pill-info{background:rgba(71,85,105,.14);color:var(--text3);}
+.news-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.news-col-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:8px;}
+.news-scroll{max-height:300px;overflow-y:auto;}
+.news-item{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;border-radius:var(--r2);transition:background .1s;}
+.news-item:last-child{border-bottom:none;}
+.news-item:hover{background:var(--bg2);}
+.news-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.nd-crit{background:var(--red);box-shadow:0 0 4px rgba(239,68,68,.5);}
+.nd-warn{background:var(--yellow);}
+.nd-info{background:var(--text3);}
+.news-body{flex:1;min-width:0;}
+.news-title{font-size:12px;line-height:1.3;}
+.news-item:hover .news-title{color:#818cf8;}
+.news-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+.news-arr{color:var(--text3);font-size:11px;flex-shrink:0;margin-top:3px;}
+
+.empty{color:var(--text3);font-size:12px;padding:14px 0;text-align:center;}
+
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* RESPONSIVE */
+@media(max-width:1200px){.tiles{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:768px){
+  .header{padding:0 14px;}
+  .main{padding:12px 14px;gap:12px;}
+  .tiles{grid-template-columns:repeat(2,1fr);}
+  .news-2col{grid-template-columns:1fr;}
+  .node-bars{display:none;}
+  .lh-stats{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:480px){
+  .header{padding:0 12px;}
+  .main{padding:10px 12px;gap:10px;}
+  .tile-value{font-size:20px;}
+  .btn-refresh span{display:none;}
+  #countdown{display:none;}
+  .badge.hide-xs{display:none;}
+}
+</style>
 </head>
 <body>
 
 <header class="header">
   <div class="header-left">
-    <div class="logo">🤖</div>
-    <div>
-      <h1>Merox Command Center</h1>
-      <div class="header-sub">merox.dev · cloud.merox.dev</div>
-    </div>
+    <div class="logo">merox<em>.</em>dev</div>
+    <div class="badge" id="cluster-badge">☸ Loading…</div>
   </div>
   <div class="header-right">
-    <div class="live-indicator">
-      <div class="live-dot"></div>
-      <span>Live</span>
-    </div>
-    <div class="last-refresh" id="lastRefresh">—</div>
+    <span class="clock" id="countdown">↻ 5:00</span>
+    <button class="btn-refresh" onclick="loadAll()">↻ <span>Refresh</span></button>
+    <span class="clock" id="clock">--:--:--</span>
   </div>
 </header>
 
+<nav class="quicklinks">
+  <a class="ql" href="https://sso.merox.dev" target="_blank">SSO</a>
+  <a class="ql" href="https://media.merox.dev" target="_blank">Media</a>
+  <div class="ql-sep"></div>
+  <a class="ql" href="https://longhorn.k8s.merox.dev" target="_blank">Longhorn</a>
+  <a class="ql" href="https://traefik.cloud.merox.dev" target="_blank">Traefik</a>
+  <a class="ql" href="https://pihole.cloud.merox.dev" target="_blank">Pi-hole</a>
+  <a class="ql" href="https://portainer.cloud.merox.dev" target="_blank">Portainer</a>
+  <a class="ql" href="https://glances.cloud.merox.dev" target="_blank">Glances</a>
+  <div class="ql-sep"></div>
+  <a class="ql" href="https://homepage.cloud.merox.dev" target="_blank">Homepage</a>
+  <a class="ql" href="https://news.cloud.merox.dev" target="_blank">News</a>
+</nav>
+
 <main class="main">
 
-  <!-- AGENTS STATUS -->
-  <div class="section-header">
-    <span class="section-title">Agenți</span>
-    <div class="section-line"></div>
+  <!-- ALERTS -->
+  <div class="alerts" id="alerts"><div class="empty">Se încarcă…</div></div>
+
+  <!-- TILES -->
+  <div class="tiles">
+    <div class="tile t-green" id="tile-nodes">
+      <div class="tile-label">K8s Nodes</div>
+      <div class="tile-value" id="tv-nodes">—</div>
+      <div class="tile-sub" id="ts-nodes">Ready</div>
+    </div>
+    <div class="tile t-green" id="tile-pods">
+      <div class="tile-label">Unhealthy Pods</div>
+      <div class="tile-value" id="tv-pods">—</div>
+      <div class="tile-sub" id="ts-pods">of total</div>
+    </div>
+    <div class="tile t-blue">
+      <div class="tile-label">Docker</div>
+      <div class="tile-value" id="tv-docker">—</div>
+      <div class="tile-sub" id="ts-docker">running</div>
+    </div>
+    <div class="tile t-green" id="tile-disk">
+      <div class="tile-label">Disk VPS</div>
+      <div class="tile-value" id="tv-disk">—</div>
+      <div class="tile-sub" id="ts-disk">/ root</div>
+    </div>
+    <div class="tile t-accent" id="tile-agents">
+      <div class="tile-label">AI Agents</div>
+      <div class="tile-value" id="tv-agents">—</div>
+      <div class="tile-sub" id="ts-agents">active</div>
+    </div>
+    <div class="tile" id="tile-flux">
+      <div class="tile-label">Flux CD</div>
+      <div class="tile-value" id="tv-flux" style="color:var(--green)">—</div>
+      <div class="tile-sub" id="ts-flux">synced</div>
+    </div>
   </div>
 
-  <div class="agents-grid" id="agentsGrid">
-    <!-- Populated by JS -->
+  <!-- INFRA + AGENTS -->
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">Kubernetes Nodes</div>
+        <span class="tag" id="nodes-tag">3/3 Ready</span>
+      </div>
+      <div class="node-list" id="nodes-list"><div class="empty">Se încarcă…</div></div>
+      <div class="res-list" id="res-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">AI Agent Network</div>
+        <span class="tag" id="agents-tag">—</span>
+      </div>
+      <div id="agent-network"><div class="empty">Se încarcă…</div></div>
+    </div>
+  </div>
+
+  <!-- STORAGE -->
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">Longhorn Storage</div>
+        <span class="tag" id="lh-tag">—</span>
+      </div>
+      <div class="lh-stats">
+        <div class="lh-stat">
+          <div class="lh-stat-lbl">Volumes</div>
+          <div class="lh-stat-val" id="lh-vol" style="color:var(--green)">—</div>
+          <div class="lh-stat-sub" id="lh-vol-sub">healthy</div>
+        </div>
+        <div class="lh-stat">
+          <div class="lh-stat-lbl">Used</div>
+          <div class="lh-stat-val" id="lh-used" style="color:var(--blue)">—</div>
+          <div class="lh-stat-sub" id="lh-used-sub">/ total</div>
+        </div>
+        <div class="lh-stat">
+          <div class="lh-stat-lbl">Replicas</div>
+          <div class="lh-stat-val" style="color:var(--purple)">3×</div>
+          <div class="lh-stat-sub">per volume</div>
+        </div>
+      </div>
+      <div class="lh-nodes" id="lh-nodes"></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">Backup &amp; Storage</div>
+        <span class="tag" id="bkp-tag">—</span>
+      </div>
+      <div class="lh-stats" id="bkp-stats">
+        <div class="lh-stat">
+          <div class="lh-stat-lbl">Garage S3</div>
+          <div class="lh-stat-val" id="bkp-s3-val" style="color:var(--blue)">—</div>
+          <div class="lh-stat-sub" id="bkp-s3-sub">free</div>
+        </div>
+        <div class="lh-stat">
+          <div class="lh-stat-lbl">NAS (Synology)</div>
+          <div class="lh-stat-val" id="bkp-nas-val" style="color:var(--green)">—</div>
+          <div class="lh-stat-sub" id="bkp-nas-sub">free</div>
+        </div>
+        <div class="lh-stat">
+          <div class="lh-stat-lbl">Longhorn PVCs</div>
+          <div class="lh-stat-val" id="bkp-lh-val" style="color:var(--green)">—</div>
+          <div class="lh-stat-sub" id="bkp-lh-sub">last backup</div>
+        </div>
+      </div>
+      <div class="bkp-rows" id="bkp-rows" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- DOCKER + NAMESPACES -->
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">Docker Containers</div>
+        <span class="tag" id="docker-tag">—</span>
+      </div>
+      <div class="docker-chips" id="docker-chips"><div class="empty">Se încarcă…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">K8s Namespaces</div>
+        <span class="tag" id="ns-tag">—</span>
+      </div>
+      <div class="ns-chips" id="ns-chips"><div class="empty">Se încarcă…</div></div>
+    </div>
   </div>
 
   <!-- NEWS -->
-  <div class="section-header">
-    <span class="section-title">Ultimul Briefing</span>
-    <div class="section-line"></div>
-  </div>
-
-  <div class="news-card">
-    <div class="news-card-header">
-      <div class="news-card-title">
-        📰 Morning News
-        <span class="status-badge status-pending" id="newsBadge">Loading</span>
+  <div class="card">
+    <div class="news-hdr">
+      <div class="card-title" style="margin-bottom:0;text-transform:uppercase;letter-spacing:.9px;">News Stack</div>
+      <div class="news-pills" id="news-pills"></div>
+      <span class="tag" id="news-date">—</span>
+      <span class="tag" id="news-total" style="margin-left:auto">—</span>
+    </div>
+    <div class="news-2col">
+      <div>
+        <div class="news-col-title">Stack Updates</div>
+        <div class="news-scroll"><div id="news-stack"><div class="empty">Se încarcă…</div></div></div>
       </div>
-      <a href="/news.html" class="agent-link">Dashboard complet →</a>
+      <div>
+        <div class="news-col-title">Tech &amp; Community</div>
+        <div class="news-scroll"><div id="news-tech"><div class="empty">Se încarcă…</div></div></div>
+      </div>
     </div>
-    <div class="news-items" id="newsItems">
-      <div class="news-empty loading">Se încarcă știrile...</div>
-    </div>
-  </div>
-
-  <!-- INFRA STATUS -->
-  <div class="section-header">
-    <span class="section-title">Infrastructură</span>
-    <div class="section-line"></div>
-  </div>
-
-  <div class="infra-grid" id="infraGrid">
-    <div class="infra-stat">
-      <div class="infra-stat-label">K8s Nodes</div>
-      <div class="infra-stat-value" id="infraNodes">—</div>
-      <div class="infra-stat-sub" id="infraNodesSub">Nu există date</div>
-    </div>
-    <div class="infra-stat">
-      <div class="infra-stat-label">Pods Unhealthy</div>
-      <div class="infra-stat-value" id="infraPods">—</div>
-      <div class="infra-stat-sub" id="infraPodsSub">Nu există date</div>
-    </div>
-    <div class="infra-stat">
-      <div class="infra-stat-label">Disk VPS</div>
-      <div class="infra-stat-value" id="infraDisk">—</div>
-      <div class="infra-stat-sub" id="infraDiskSub">Nu există date</div>
-    </div>
-    <div class="infra-stat">
-      <div class="infra-stat-label">Docker Containers</div>
-      <div class="infra-stat-value" id="infraDocker">—</div>
-      <div class="infra-stat-sub" id="infraDockerSub">Nu există date</div>
-    </div>
-    <div class="infra-stat">
-      <div class="infra-stat-label">FluxCD Status</div>
-      <div class="infra-stat-value" id="infraFlux">—</div>
-      <div class="infra-stat-sub" id="infraFluxSub">Nu există date</div>
-    </div>
-    <div class="infra-stat">
-      <div class="infra-stat-label">Cert Expiry</div>
-      <div class="infra-stat-value" id="infraCert">—</div>
-      <div class="infra-stat-sub" id="infraCertSub">Nu există date</div>
-    </div>
-  </div>
-
-  <!-- BACKUP STATUS -->
-  <div class="section-header">
-    <span class="section-title">Backup Status</span>
-    <div class="section-line"></div>
-  </div>
-
-  <div class="backup-list" id="backupList">
-    <div class="backup-item">
-      <span class="backup-name loading">Se încarcă status backup...</span>
-    </div>
-  </div>
-
-  <!-- QUICK LINKS -->
-  <div class="section-header">
-    <span class="section-title">Quick Access</span>
-    <div class="section-line"></div>
-  </div>
-
-  <div class="links-grid">
-    <a href="https://homepage.cloud.merox.dev" class="quick-link" target="_blank">
-      <span class="quick-link-icon">🏠</span>Homepage
-    </a>
-    <a href="https://portainer.cloud.merox.dev" class="quick-link" target="_blank">
-      <span class="quick-link-icon">🐳</span>Portainer
-    </a>
-    <a href="https://files.merox.dev" class="quick-link" target="_blank">
-      <span class="quick-link-icon">📁</span>Filebrowser
-    </a>
-    <a href="https://kuma.cloud.merox.dev" class="quick-link" target="_blank">
-      <span class="quick-link-icon">📊</span>Uptime Kuma
-    </a>
-    <a href="https://glances.cloud.merox.dev" class="quick-link" target="_blank">
-      <span class="quick-link-icon">📈</span>Glances
-    </a>
-    <a href="https://merox.dev" class="quick-link" target="_blank">
-      <span class="quick-link-icon">🌐</span>merox.dev
-    </a>
-    <a href="/news.html" class="quick-link">
-      <span class="quick-link-icon">📰</span>News Dashboard
-    </a>
-    <a href="https://github.com/meroxdotdev" class="quick-link" target="_blank">
-      <span class="quick-link-icon">⚙️</span>GitHub
-    </a>
   </div>
 
 </main>
 
 <script>
-  const AGENTS_CONFIG = [
-    {
-      id: 'news',
-      name: 'MeroxNews',
-      role: 'Morning briefing & știri tehnice',
-      icon: '📰',
-      color: '#6366f1',
-      colorDim: '#6366f120',
-      reportLink: '/news.html',
-      reportLabel: 'Deschide briefing'
-    },
-    {
-      id: 'blog',
-      name: 'BlogAgent',
-      role: 'Content & blog merox.dev',
-      icon: '✍️',
-      color: '#22c55e',
-      colorDim: '#22c55e20',
-      reportLink: null,
-      reportLabel: null
-    },
-    {
-      id: 'design',
-      name: 'DesignAgent',
-      role: 'UX & design recomandări merox.dev',
-      icon: '🎨',
-      color: '#a855f7',
-      colorDim: '#a855f720',
-      reportLink: null,
-      reportLabel: null
-    },
-    {
-      id: 'infra',
-      name: 'InfraAgent',
-      role: 'K8s, VPS, securitate & stabilitate',
-      icon: '🔧',
-      color: '#f59e0b',
-      colorDim: '#f59e0b20',
-      reportLink: null,
-      reportLabel: null
-    },
-    {
-      id: 'costs',
-      name: 'BackupAgent',
-      role: 'Backup verification & resource tracking',
-      icon: '📦',
-      color: '#3b82f6',
-      colorDim: '#3b82f620',
-      reportLink: null,
-      reportLabel: null
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function fmtTime(iso){
+  if(!iso)return'Never run';
+  try{
+    const d=new Date(iso);
+    const now=new Date();
+    const diff=now-d;
+    const mins=Math.floor(diff/60000);
+    const hrs=Math.floor(diff/3600000);
+    if(mins<2)return'just now';
+    if(mins<60)return mins+'m ago';
+    const hhmm=d.toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false,hour:'2-digit',minute:'2-digit'});
+    if(hrs<24)return'today '+hhmm;
+    if(hrs<48)return'yesterday '+hhmm;
+    return d.toLocaleDateString('ro-RO',{timeZone:'Europe/Bucharest',day:'2-digit',month:'2-digit'})+' '+hhmm;
+  }catch(e){return iso;}
+}
+
+function barColor(p){return p<60?'#22c55e':p<80?'#f59e0b':'#ef4444';}
+
+function fmtKB(kb){
+  if(!kb||isNaN(+kb))return'?';
+  const g=+kb/1024/1024;
+  return g>=1?(Math.round(g*10)/10)+'G':Math.round(+kb/1024)+'M';
+}
+
+// Clock
+function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false});}
+setInterval(tick,1000);tick();
+
+// Countdown
+const REFRESH=300;
+let cd=REFRESH;
+function fmtCD(s){const m=Math.floor(s/60),sec=s%60;return'↻ '+m+':'+(sec<10?'0':'')+sec;}
+setInterval(()=>{cd--;const el=document.getElementById('countdown');if(el)el.textContent=fmtCD(cd);if(cd<=0){cd=REFRESH;loadAll();}},1000);
+
+async function fetchJ(url){const r=await fetch(url+'?_='+Date.now());if(!r.ok)throw new Error(r.status);return r.json();}
+
+const NODE_IPS={
+  'kubernetes-controlplane-1':'10.57.57.80',
+  'kubernetes-controlplane-2':'10.57.57.82',
+  'kubernetes-controlplane-3':'10.57.57.84',
+};
+
+// Ordered agent definitions — orchestrator first as hub, rest as supervised agents
+const AGENT_DEFS=[
+  {key:'orchestrator', icon:'🎛️', name:'Orchestrator',  role:'supervises all agents'},
+  {key:'news',         icon:'📰', name:'News Agent',     role:'stack updates & tech news'},
+  {key:'infra',        icon:'☸️', name:'Infra Agent',    role:'cluster health monitoring'},
+  {key:'costs',        icon:'💰', name:'Costs Agent',    role:'storage & backup checks'},
+  {key:'dashboard',    icon:'🖥️', name:'Dashboard Agent',role:'updates this page'},
+  {key:'blog',         icon:'✍️', name:'Blog Agent',     role:'content generation'},
+  {key:'design',       icon:'🎨', name:'Design Agent',   role:'UI/UX suggestions'},
+];
+
+function renderAlerts(news){
+  const items=(news&&news.items)||[];
+  const crits=items.filter(i=>i.priority==='critical');
+  const warns=items.filter(i=>i.priority==='warn');
+  const el=document.getElementById('alerts');
+  if(!crits.length&&!warns.length){
+    el.innerHTML='<div class="alert alert-ok"><div class="alert-body"><div class="alert-title" style="color:var(--green)">Stack OK — no critical alerts today</div></div><span class="alert-badge b-ok">OK</span></div>';
+    return;
+  }
+  el.innerHTML=[...crits,...warns].map(item=>{
+    const isc=item.priority==='critical';
+    const tag=item.url?'a':'div';
+    const href=item.url?` href="${esc(item.url)}" target="_blank" rel="noopener"`:'';
+    return `<${tag}${href} class="alert ${isc?'alert-crit':'alert-warn'}">
+      <div class="alert-body">
+        <div class="alert-title">${esc(item.title)}</div>
+        <div class="alert-meta">${esc(item.source)} · ${esc(item.date)}</div>
+      </div>
+      <span class="alert-badge ${isc?'b-crit':'b-warn'}">${isc?'CRITICAL':'WARN'}</span>
+    </${tag}>`;
+  }).join('');
+}
+
+function renderTiles(infra,agents){
+  if(infra){
+    if(infra.nodes){
+      document.getElementById('tv-nodes').textContent=infra.nodes.ready||'3/3';
+      document.getElementById('ts-nodes').textContent=infra.nodes.status||'Ready';
+      document.getElementById('cluster-badge').textContent='☸ Cluster '+(infra.nodes.ready||'3/3');
     }
-  ];
-
-  function formatDate(iso) {
-    if (!iso) return 'niciodată';
-    const d = new Date(iso);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffH = Math.floor(diffMs / 3600000);
-    const diffM = Math.floor(diffMs / 60000);
-    if (diffM < 1) return 'acum';
-    if (diffM < 60) return `acum ${diffM}m`;
-    if (diffH < 24) return `acum ${diffH}h`;
-    return d.toLocaleDateString('ro-RO', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    if(infra.pods){
+      const u=typeof infra.pods==='object'?infra.pods.unhealthy:infra.pods;
+      const total=typeof infra.pods==='object'?infra.pods.total:107;
+      document.getElementById('tv-pods').textContent=u;
+      document.getElementById('ts-pods').textContent='of '+total+' total';
+      document.getElementById('tile-pods').className='tile '+(u===0?'t-green':'t-red');
+    }
+    if(infra.docker){
+      document.getElementById('tv-docker').textContent=infra.docker.running||0;
+      document.getElementById('ts-docker').textContent=infra.docker.stopped>0?'running, '+infra.docker.stopped+' stopped':'running';
+    }
+    if(infra.disk){
+      const p=parseInt(infra.disk.usage);
+      document.getElementById('tv-disk').textContent=infra.disk.usage;
+      document.getElementById('ts-disk').textContent=fmtKB(infra.disk.free)+' free';
+      document.getElementById('tile-disk').className='tile '+(p<60?'t-green':p<80?'t-yellow':'t-red');
+    }
+    if(infra.flux){
+      document.getElementById('tv-flux').textContent=infra.flux.ok;
+      document.getElementById('ts-flux').textContent=infra.flux.failed>0?infra.flux.failed+' failed':'synced';
+      if(infra.flux.failed>0){
+        document.getElementById('tile-flux').className='tile t-red';
+        document.getElementById('tv-flux').style.color='';
+      }else{
+        document.getElementById('tv-flux').style.color='var(--green)';
+      }
+    }
   }
-
-  function statusClass(status) {
-    if (status === 'ok') return 'status-ok';
-    if (status === 'warn') return 'status-warn';
-    if (status === 'error') return 'status-error';
-    return 'status-pending';
+  if(agents){
+    // Count all agents including any not in AGENT_DEFS
+    const allKeys=new Set([...AGENT_DEFS.map(d=>d.key),...Object.keys(agents)]);
+    const active=[...allKeys].filter(k=>agents[k]&&agents[k].status==='ok').length;
+    document.getElementById('tv-agents').textContent=active+'/'+allKeys.size;
+    document.getElementById('ts-agents').textContent='active';
+    document.getElementById('tile-agents').className='tile '+(active===0?'t-red':active<allKeys.size?'t-accent':'t-green');
   }
+}
 
-  function statusLabel(status) {
-    if (status === 'ok') return 'OK';
-    if (status === 'warn') return 'Warn';
-    if (status === 'error') return 'Error';
-    return 'Pending';
-  }
-
-  function renderAgents(data) {
-    const grid = document.getElementById('agentsGrid');
-    grid.innerHTML = AGENTS_CONFIG.map(agent => {
-      const agentData = (data && data[agent.id]) || {};
-      const status = agentData.status || 'pending';
-      const summary = agentData.summary || 'Nu a rulat încă';
-      const lastRun = agentData.lastRun;
-
-      return `
-        <div class="agent-card" style="--agent-color: ${agent.color}; --agent-color-dim: ${agent.colorDim};">
-          <div class="agent-header">
-            <div class="agent-icon-name">
-              <div class="agent-icon">${agent.icon}</div>
-              <div>
-                <div class="agent-name">${agent.name}</div>
-                <div class="agent-role">${agent.role}</div>
-              </div>
-            </div>
-            <span class="status-badge ${statusClass(status)}">${statusLabel(status)}</span>
-          </div>
-          <div class="agent-summary">${summary}</div>
-          <div class="agent-meta">
-            <div class="agent-last-run">Ultima rulare: ${formatDate(lastRun)}</div>
-            ${agent.reportLink ? `<a href="${agent.reportLink}" class="agent-link">${agent.reportLabel} →</a>` : '<span></span>'}
-          </div>
+function renderNodes(infra){
+  const metrics=(infra&&infra.nodes&&infra.nodes.metrics)||[];
+  document.getElementById('nodes-list').innerHTML=metrics.map(n=>{
+    const ip=NODE_IPS[n.name]||'—';
+    const short=n.name.replace('kubernetes-','');
+    return `<div class="node">
+      <div class="dot dot-ok pulse"></div>
+      <div class="node-info">
+        <div class="node-name">${esc(short)}</div>
+        <div class="node-meta">control-plane · ${esc(ip)}</div>
+      </div>
+      <div class="node-bars">
+        <div class="bar-row">
+          <span class="bar-lbl">CPU</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${n.cpu}%;background:${barColor(n.cpu)}"></div></div>
+          <span class="bar-pct">${n.cpu}%</span>
         </div>
-      `;
+        <div class="bar-row">
+          <span class="bar-lbl">MEM</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${n.mem}%;background:${barColor(n.mem)}"></div></div>
+          <span class="bar-pct">${n.mem}%</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const diskPct=infra&&infra.disk?infra.disk.pct||parseInt(infra.disk.usage):0;
+  const freeGB=infra&&infra.disk?fmtKB(infra.disk.free):'?';
+  const memPct=infra&&infra.memory?infra.memory.pct:0;
+  const memStr=infra&&infra.memory?(Math.round(infra.memory.usedMB/1024*10)/10)+'G / '+(Math.round(infra.memory.totalMB/1024*10)/10)+'G':'';
+  const cpuAvg=metrics.length?Math.round(metrics.reduce((s,n)=>s+n.cpu,0)/metrics.length):0;
+  document.getElementById('res-list').innerHTML=[
+    {name:'Disk (VPS /)',       pct:diskPct, detail:freeGB+' free'},
+    {name:'CPU avg (cluster)',  pct:cpuAvg,  detail:cpuAvg+'%'},
+    {name:'Memory (VPS)',       pct:memPct,  detail:memStr},
+  ].map(r=>`<div class="res-item">
+    <div class="res-hdr">
+      <span class="res-name">${esc(r.name)}</span>
+      <span class="res-val">${r.pct}%${r.detail?' · '+esc(r.detail):''}</span>
+    </div>
+    <div class="res-track"><div class="res-fill" style="width:${r.pct}%;background:${barColor(r.pct)}"></div></div>
+  </div>`).join('');
+}
+
+function renderAgentNetwork(agents){
+  // Merge AGENT_DEFS with any extra keys in agents.json
+  const knownKeys=new Set(AGENT_DEFS.map(d=>d.key));
+  const extraDefs=agents?Object.keys(agents).filter(k=>!knownKeys.has(k)).map(k=>({key:k,icon:'🤖',name:k.charAt(0).toUpperCase()+k.slice(1)+' Agent',role:''})):[];
+  const allDefs=[...AGENT_DEFS,...extraDefs];
+
+  const active=allDefs.filter(d=>agents&&agents[d.key]&&agents[d.key].status==='ok').length;
+  document.getElementById('agents-tag').textContent=active+'/'+allDefs.length+' active';
+
+  // Orchestrator hub
+  const orchDef=allDefs.find(d=>d.key==='orchestrator')||{icon:'🎛️',name:'Orchestrator',role:'supervises all agents'};
+  const orch=agents&&agents.orchestrator;
+  const orchOk=orch&&orch.status==='ok';
+
+  let html=`<div class="agent-hub">
+    <div class="dot ${orchOk?'dot-ok pulse':'dot-idle'}"></div>
+    <div class="agent-hub-body">
+      <div class="agent-hub-name">${orchDef.icon} ${esc(orchDef.name)}</div>
+      <div class="agent-hub-meta">${esc(orchOk?(orch.summary||orchDef.role):'Not configured yet')} · ${fmtTime(orch&&orch.lastRun)}</div>
+    </div>
+    <span class="sbadge ${orchOk?'sb-ok':'sb-idle'}">${orchOk?'OK':'IDLE'}</span>
+  </div>
+  <div class="agent-connector">supervises</div>
+  <div class="agent-rows">`;
+
+  allDefs.filter(d=>d.key!=='orchestrator').forEach(def=>{
+    const a=agents&&agents[def.key];
+    const isOk=a&&a.status==='ok';
+    const isErr=a&&a.status==='error';
+    const summary=a&&a.summary?a.summary:(def.role||'Not configured yet');
+    html+=`<div class="agent-row">
+      <div class="agent-icon">${def.icon}</div>
+      <div class="agent-info">
+        <div class="agent-name">${esc(def.name)}</div>
+        <div class="agent-sum">${esc(summary)}</div>
+      </div>
+      <div class="agent-right">
+        <span class="sbadge ${isOk?'sb-ok':isErr?'sb-err':'sb-idle'}">${isOk?'OK':isErr?'ERROR':'IDLE'}</span>
+        <span class="agent-time">${fmtTime(a&&a.lastRun)}</span>
+      </div>
+    </div>`;
+  });
+
+  html+='</div>';
+  document.getElementById('agent-network').innerHTML=html;
+}
+
+function renderLonghorn(infra){
+  const lh=infra&&infra.longhorn;
+  if(!lh)return;
+  document.getElementById('lh-vol').textContent=lh.healthy+'/'+lh.total;
+  document.getElementById('lh-vol-sub').textContent=lh.healthy===lh.total?'all healthy':'degraded';
+  document.getElementById('lh-used').textContent=(lh.usedG||'?')+'G';
+  document.getElementById('lh-used-sub').textContent='/ '+(lh.totalG||'?')+' total';
+  document.getElementById('lh-tag').textContent=lh.healthy+'/'+lh.total+' healthy';
+  const nodes=infra.longhornNodes||[];
+  document.getElementById('lh-nodes').innerHTML=nodes.map(n=>{
+    const pct=Math.round(n.used/n.total*100);
+    const short=n.name.replace('kubernetes-','');
+    return `<div class="lh-node">
+      <div class="lh-node-hdr">
+        <span>${esc(short)}</span>
+        <span>${Math.round(n.used/1073741824)}G / ${Math.round(n.total/1073741824)}G (${pct}%)</span>
+      </div>
+      <div class="lh-bar"><div class="lh-fill" style="width:${pct}%;background:${barColor(pct)}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderBackup(backup){
+  if(!backup||!backup.services){document.getElementById('bkp-rows').innerHTML='<div class="empty">No data</div>';return;}
+  const svc=k=>backup.services.find(s=>s.name===k);
+  const allOk=backup.services.filter(s=>s.status!=='unknown').every(s=>s.status==='ok');
+  document.getElementById('bkp-tag').textContent=allOk?'All OK':'Issues detected';
+
+  // Parse Garage S3: "running - 96.0 GB disponibil, 38,877 obiecte, fără erori"
+  const s3=svc('Garage S3');
+  if(s3){
+    const m=s3.lastBackup&&s3.lastBackup.match(/(\d+\.?\d*)\s*GB disponibil,\s*([\d,]+)\s*obiecte/);
+    document.getElementById('bkp-s3-val').textContent=m?m[1]+'G':'OK';
+    document.getElementById('bkp-s3-sub').textContent=m?m[2].replace(',','.')+' objects free':'available';
+  }
+
+  // Parse NAS Mount: "192.7G total, 89.4G disponibil (54% folosit)"
+  const nas=svc('NAS Mount');
+  if(nas){
+    const m=nas.lastBackup&&nas.lastBackup.match(/([\d.]+G)\s+total,\s*([\d.]+G)\s+disponibil\s*\((\d+)%/);
+    document.getElementById('bkp-nas-val').textContent=m?m[2]:'OK';
+    document.getElementById('bkp-nas-sub').textContent=m?'of '+m[1]+' ('+m[3]+'% used)':'free';
+    const pct=m?parseInt(m[3]):0;
+    document.getElementById('bkp-nas-val').style.color=pct<70?'var(--green)':pct<85?'var(--yellow)':'var(--red)';
+  }
+
+  // Parse Longhorn PVCs: "azi (2026-05-29T02:35:20Z)"
+  const lhb=svc('Longhorn PVCs');
+  if(lhb){
+    const isOk=lhb.status==='ok';
+    const m=lhb.lastBackup&&lhb.lastBackup.match(/\((.+?)\)/);
+    const dt=m?new Date(m[1]):null;
+    const timeStr=dt?dt.toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false,hour:'2-digit',minute:'2-digit'}):'—';
+    document.getElementById('bkp-lh-val').textContent=isOk?'✓':'!';
+    document.getElementById('bkp-lh-sub').textContent=dt?'today '+timeStr:(lhb.lastBackup||'—');
+    document.getElementById('bkp-lh-val').style.color=isOk?'var(--green)':'var(--red)';
+  }
+
+  // Service status rows (all services)
+  document.getElementById('bkp-rows').innerHTML=backup.services.map(s=>{
+    const isOk=s.status==='ok';
+    const isUnk=s.status==='unknown';
+    return `<div class="bkp-row">
+      <div class="dot ${isOk?'dot-ok pulse':isUnk?'dot-idle':'dot-err'}"></div>
+      <div class="bkp-name">${esc(s.name)}</div>
+      <div class="bkp-detail">${esc(s.lastBackup||'—')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderDocker(infra){
+  const r=infra&&infra.docker?infra.docker.running:0;
+  const s=infra&&infra.docker?infra.docker.stopped:0;
+  const names=infra&&infra.docker&&infra.docker.names?infra.docker.names:[];
+  document.getElementById('docker-tag').textContent=r+' running'+(s>0?', '+s+' stopped':'');
+  document.getElementById('docker-chips').innerHTML=names.map(name=>
+    `<div class="chip"><div class="chip-dot"></div><span>${esc(name)}</span></div>`
+  ).join('');
+}
+
+function renderNS(infra){
+  const ns=infra&&infra.namespaces;
+  if(!ns){document.getElementById('ns-chips').innerHTML='<div class="empty">No data</div>';return;}
+  const total=Object.values(ns).reduce((s,v)=>s+v,0);
+  document.getElementById('ns-tag').textContent=total+' pods total';
+  document.getElementById('ns-chips').innerHTML=Object.entries(ns).sort((a,b)=>b[1]-a[1]).map(([name,pods])=>
+    `<div class="ns-chip"><span class="ns-name">${esc(name)}</span><span class="ns-count">${pods}</span></div>`
+  ).join('');
+}
+
+const PRIO={critical:0,warn:1,info:2};
+function sortByPrio(arr){return[...arr].sort((a,b)=>(PRIO[a.priority]??2)-(PRIO[b.priority]??2));}
+
+function renderNews(news){
+  const items=(news&&news.items)||[];
+  document.getElementById('news-total').textContent=items.length+' items';
+  document.getElementById('news-date').textContent=(news&&news.date)||'—';
+  const crit=items.filter(i=>i.priority==='critical').length;
+  const warn=items.filter(i=>i.priority==='warn').length;
+  const info=items.filter(i=>i.priority==='info').length;
+  document.getElementById('news-pills').innerHTML=
+    (crit?`<span class="pill pill-crit">${crit} critical</span>`:'')+
+    (warn?`<span class="pill pill-warn">${warn} warn</span>`:'')+
+    (info?`<span class="pill pill-info">${info} info</span>`:'');
+
+  const stack=sortByPrio(items.filter(i=>i.source&&i.source.toLowerCase().includes('github')&&!i.source.includes('Trending')));
+  const tech=sortByPrio(items.filter(i=>!i.source||!i.source.toLowerCase().includes('github')||i.source.includes('Trending')));
+
+  function buildList(arr){
+    if(!arr.length)return'<div class="empty">—</div>';
+    return arr.map(item=>{
+      const dc=item.priority==='critical'?'nd-crit':item.priority==='warn'?'nd-warn':'nd-info';
+      const tag=item.url?'a':'div';
+      const href=item.url?` href="${esc(item.url)}" target="_blank" rel="noopener"`:'';
+      return `<${tag}${href} class="news-item">
+        <div class="news-dot ${dc}"></div>
+        <div class="news-body">
+          <div class="news-title">${esc(item.title)}</div>
+          <div class="news-meta">${esc(item.source)} · ${esc(item.date)}</div>
+        </div>
+        ${item.url?'<span class="news-arr">↗</span>':''}
+      </${tag}>`;
     }).join('');
   }
+  document.getElementById('news-stack').innerHTML=buildList(stack);
+  document.getElementById('news-tech').innerHTML=buildList(tech);
+}
 
-  function renderNews(data) {
-    const container = document.getElementById('newsItems');
-    const badge = document.getElementById('newsBadge');
+async function loadAll(){
+  cd=REFRESH;
+  try{
+    const[aR,iR,nR,bR]=await Promise.allSettled([
+      fetchJ('/data/agents.json'),
+      fetchJ('/data/infra.json'),
+      fetchJ('/data/news.json'),
+      fetchJ('/data/backup.json'),
+    ]);
+    const agents=aR.status==='fulfilled'?aR.value:null;
+    const infra=iR.status==='fulfilled'?iR.value:null;
+    const news=nR.status==='fulfilled'?nR.value:null;
+    const backup=bR.status==='fulfilled'?bR.value:null;
 
-    if (!data || !data.items || data.items.length === 0) {
-      badge.className = 'status-badge status-pending';
-      badge.textContent = 'No data';
-      container.innerHTML = '<div class="news-empty">Niciun briefing generat încă. Agentul rulează la 07:00.</div>';
-      return;
-    }
+    renderAlerts(news);
+    renderTiles(infra,agents);
+    renderNodes(infra);
+    renderAgentNetwork(agents);
+    renderLonghorn(infra);
+    renderBackup(backup);
+    renderDocker(infra);
+    renderNS(infra);
+    renderNews(news);
+  }catch(e){console.error('loadAll:',e);}
+}
 
-    badge.className = 'status-badge status-ok';
-    badge.textContent = data.date || 'Azi';
-
-    const items = data.items.slice(0, 6);
-    container.innerHTML = items.map(item => {
-      const priorityIcon = item.priority === 'critical' ? '🔴' :
-                           item.priority === 'warn' ? '🟡' : '🟢';
-      return `
-        <div class="news-item">
-          <span class="news-priority">${priorityIcon}</span>
-          <div class="news-content">
-            ${item.url ? `<a href="${item.url}" class="news-title" target="_blank">${item.title}</a>` :
-                         `<span class="news-title">${item.title}</span>`}
-            <div class="news-meta">${item.source || ''} ${item.date ? '· ' + item.date : ''}</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function renderInfra(data) {
-    if (!data) return;
-    const set = (id, val, sub) => {
-      const el = document.getElementById(id);
-      const subEl = document.getElementById(id + 'Sub');
-      if (el && val !== undefined) el.textContent = val;
-      if (subEl && sub !== undefined) subEl.textContent = sub;
-    };
-    set('infraNodes', data.nodes?.ready ?? '—', data.nodes?.status ?? 'Nu există date');
-    set('infraPods', data.pods?.unhealthy ?? '—', data.pods?.details ?? 'Nu există date');
-    set('infraDisk', data.disk?.usage ?? '—', data.disk?.path ?? 'Nu există date');
-    set('infraDocker', data.docker?.running ?? '—', data.docker?.stopped ? `${data.docker.stopped} oprite` : 'Nu există date');
-    set('infraFlux', data.flux?.status ?? '—', data.flux?.details ?? 'Nu există date');
-    set('infraCert', data.cert?.days ?? '—', data.cert?.domain ?? 'Nu există date');
-  }
-
-  function renderBackup(data) {
-    const container = document.getElementById('backupList');
-    if (!data || !data.services) {
-      container.innerHTML = '<div class="backup-item"><span class="backup-name" style="color:var(--text-muted)">Nicio verificare backup efectuată încă.</span></div>';
-      return;
-    }
-    container.innerHTML = data.services.map(svc => {
-      const dotClass = svc.status === 'ok' ? 'dot-green' :
-                       svc.status === 'warn' ? 'dot-yellow' :
-                       svc.status === 'error' ? 'dot-red' : 'dot-gray';
-      return `
-        <div class="backup-item">
-          <span class="backup-name">${svc.name}</span>
-          <div class="backup-status">
-            <div class="backup-dot ${dotClass}"></div>
-            ${svc.lastBackup ? `Ultimul: ${svc.lastBackup}` : 'Necunoscut'}
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function updateTimestamp() {
-    document.getElementById('lastRefresh').textContent =
-      new Date().toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  }
-
-  async function loadData() {
-    try {
-      const [agents, news, infra, backup] = await Promise.allSettled([
-        fetch('/data/agents.json?t=' + Date.now()).then(r => r.json()),
-        fetch('/data/news.json?t=' + Date.now()).then(r => r.json()),
-        fetch('/data/infra.json?t=' + Date.now()).then(r => r.json()),
-        fetch('/data/backup.json?t=' + Date.now()).then(r => r.json()),
-      ]);
-
-      renderAgents(agents.status === 'fulfilled' ? agents.value : null);
-      renderNews(news.status === 'fulfilled' ? news.value : null);
-      renderInfra(infra.status === 'fulfilled' ? infra.value : null);
-      renderBackup(backup.status === 'fulfilled' ? backup.value : null);
-      updateTimestamp();
-    } catch(e) {
-      console.error('Load error:', e);
-    }
-  }
-
-  // Initial load
-  loadData();
-
-  // Auto-refresh every 60 seconds
-  setInterval(loadData, 60000);
+window.addEventListener('load',loadAll);
 </script>
-
 </body>
 </html>
