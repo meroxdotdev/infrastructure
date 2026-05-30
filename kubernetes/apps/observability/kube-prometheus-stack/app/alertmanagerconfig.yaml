@@ -17,13 +17,12 @@ spec:
           - name: alertname
             value: InfoInhibitor
             matchType: "="
-      - receiver: "null"  # Disable heartbeat for the moment
+      - receiver: heartbeat
         matchers:
           - name: alertname
             value: Watchdog
             matchType: "="
-      # Uncomment for notifications
-      # - receiver: pushover
+      # - receiver: pushover  # Enable when Pushover tokens are added to secret
       #   matchers:
       #     - name: severity
       #       value: critical
@@ -40,46 +39,9 @@ spec:
           matchType: "="
   receivers:
     - name: "null"
-    # Uncomment when secret is configured
-    # - name: heartbeat
-    #   webhookConfigs:
-    #     - urlSecret:
-    #         name: alertmanager-secret
-    #         key: ALERTMANAGER_HEARTBEAT_URL
-    # - name: pushover
-    #   pushoverConfigs:
-    #     - html: true
-    #       message: |-
-    #         {{- range .Alerts }}
-    #           {{- if ne .Annotations.description "" }}
-    #             {{ .Annotations.description }}
-    #           {{- else if ne .Annotations.summary "" }}
-    #             {{ .Annotations.summary }}
-    #           {{- else if ne .Annotations.message "" }}
-    #             {{ .Annotations.message }}
-    #           {{- else }}
-    #             Alert description not available
-    #           {{- end }}
-    #           {{- if gt (len .Labels.SortedPairs) 0 }}
-    #             <small>
-    #               {{- range .Labels.SortedPairs }}
-    #                 <b>{{ .Name }}:</b> {{ .Value }}
-    #               {{- end }}
-    #             </small>
-    #           {{- end }}
-    #         {{- end }}
-    #       priority: |-
-    #         {{ if eq .Status "firing" }}1{{ else }}0{{ end }}
-    #       sendResolved: true
-    #       sound: gamelan
-    #       title: >-
-    #         [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]
-    #         {{ .CommonLabels.alertname }}
-    #       ttl: 86400s
-    #       token:
-    #         name: alertmanager-secret
-    #         key: ALERTMANAGER_PUSHOVER_TOKEN
-    #       userKey:
-    #         name: alertmanager-secret
-    #         key: PUSHOVER_USER_KEY
-    #       urlTitle: View in Alertmanager
+    - name: heartbeat
+      webhookConfigs:
+        - urlSecret:
+            name: alertmanager-secret
+            key: ALERTMANAGER_HEARTBEAT_URL
+    # pushover receiver - enable when tokens are added to alertmanager-secret
