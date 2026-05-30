@@ -18,6 +18,7 @@ spec:
             value: InfoInhibitor
             matchType: "="
       - receiver: heartbeat
+        repeatInterval: 1m
         matchers:
           - name: alertname
             value: Watchdog
