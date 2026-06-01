@@ -21,17 +21,21 @@ Backups are never deleted automatically — only if disk > 90%.
 
 ## Full cron schedule (openclaw user)
 
-| Agent | Cron (UTC) | Log file |
-|-------|-----------|----------|
-| `news` | `0 7 * * *` daily | `heartbeat-news.log` |
-| `infra` | `0 8 * * *` + `0 20 * * *` | `heartbeat-infra.log` |
-| `costs` | `0 9 * * 0` Sunday | `heartbeat-costs.log` |
-| `dashboard` | `0 23 * * *` nightly | `heartbeat-dashboard.log` |
-| `orchestrator` (you) | `0 12 * * *` daily | `heartbeat-orchestrator.log` |
-| `blog` | `0 9 * * 1` Monday | `heartbeat-blog.log` |
-| `update-infra.sh` (bash) | `*/5 * * * *` | `update-infra.log` |
-| `update-backup.sh` (bash) | `*/30 * * * *` | (no separate log) |
-| `update-news.sh` (bash) | `0 */6 * * *` | `update-news.log` |
+| Agent | Cron (UTC) | Trigger | Log file |
+|-------|-----------|---------|----------|
+| `news` | `0 4 * * *` daily | `/srv/dashboard/news-morning-run.sh` (MORNING_RUN, fresh session) | `heartbeat-news.log` |
+| `infra` | `0 8,20 * * *` 2×/day | `HEARTBEAT` | `heartbeat-infra.log` |
+| `costs` | `0 9 * * 0` Sunday | `HEARTBEAT` | `heartbeat-costs.log` |
+| `dashboard` | `0 23 * * *` nightly | `HEARTBEAT` | `heartbeat-dashboard.log` |
+| `orchestrator` (you) | `0 12 * * *` daily | `HEARTBEAT` | `heartbeat-orchestrator.log` |
+| `blog` | `0 9 * * 1` Monday | `HEARTBEAT` | `heartbeat-blog.log` |
+| `update-infra.sh` (bash) | `*/5 * * * *` | — | `update-infra.log` |
+| `update-backup.sh` (bash) | `*/30 * * * *` | — | `update-backup.log` |
+| `update-news.sh` (bash) | `0 */6 * * *` | — writes `news-releases.json` only, NOT `news.json` | `update-news.log` |
+| `update-upgrades.sh` (bash) | `*/30 * * * *` | — | (inline) |
+| `check-logs.sh` (bash) | `0 */2 * * *` | — | `check-logs.log` |
+| `check-proposals.sh` (bash) | `15 12 * * *` | — | (inline) |
+| `self-healing.sh` (bash) | `5 8,20 * * *` | — restarts stale agents | `self-healing.log` |
 
 All logs at: `/home/openclaw/.openclaw/logs/`
 

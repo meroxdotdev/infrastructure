@@ -7,7 +7,8 @@
 kubectl get nodes
 kubectl get pods -A
 kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
-flux get all -A --status-selector=ready=false
+kubectl get helmreleases -A --no-headers   # HelmRelease status (flux CLI nu suporta --no-headers in v2.8.8)
+flux get helmreleases -A                   # alternativa cu output formatat
 talosctl --talosconfig /home/openclaw/.talos/config health
 
 # Server

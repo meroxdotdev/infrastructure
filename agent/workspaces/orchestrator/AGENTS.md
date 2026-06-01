@@ -155,18 +155,17 @@ Look for patterns:
 }
 ```
 
-**Send to Telegram:**
+**Send to Telegram** — MANDATORY after writing proposals to `proposals.json`:
+```bash
+/srv/dashboard/tg-notify.sh "🤖 *Orchestrator — propuneri noi*
+
+📋 *[Title]*
+   Agent: [agent] | Risc: [risk]
+   [Description]
+   ✅ \`/approve [id]\`  ❌ \`/reject [id]\`"
 ```
-🔧 Propunere #prop-YYYYMMDD-news-001
 
-Agent: news
-Risc: low
-
-[Title]
-[Description]
-
-Răspunde cu /approve prop-YYYYMMDD-news-001 sau /reject prop-YYYYMMDD-news-001
-```
+If multiple proposals, send one combined message. The script `/srv/dashboard/check-proposals.sh` also runs at 12:15 UTC as a safety net for any proposals not yet notified.
 
 ### Phase 4 — Apply approved proposals
 
@@ -198,7 +197,7 @@ for prop in proposals["pending"]:
     # ... make the specific change ...
 
     prop["status"] = "applied"
-    prop["appliedAt"] = NOW.isoformat() + "Z"
+    prop["appliedAt"] = NOW.strftime('%Y-%m-%dT%H:%M:%S') + 'Z'
 
     # Move to history
     proposals["history"].append(prop)
@@ -253,7 +252,7 @@ from datetime import datetime, timezone
 NOW = datetime.now(timezone.utc)
 
 orchestrator_data = {
-    "lastRun": NOW.isoformat() + "Z",
+    "lastRun": NOW.strftime('%Y-%m-%dT%H:%M:%S') + 'Z',
     "status": "ok",  # ok / warn / error
     "issuesFound": len(issues),
     "fixesApplied": fixes_applied,
@@ -265,16 +264,23 @@ orchestrator_data = {
 with open('/srv/dashboard/data/orchestrator.json', 'w') as f:
     json.dump(orchestrator_data, f, indent=2)
 
-# Update agents.json entry
+# MANDATORY: update agents.json so dashboard reflects this run
 with open('/srv/dashboard/data/agents.json') as f:
     d = json.load(f)
 d['orchestrator'] = {
-    'lastRun': NOW.isoformat() + 'Z',
+    'lastRun': NOW.strftime('%Y-%m-%dT%H:%M:%S') + 'Z',
     'status': orchestrator_data['status'],
     'summary': orchestrator_data['summary']
 }
 with open('/srv/dashboard/data/agents.json', 'w') as f:
     json.dump(d, f, indent=2)
+
+# Send Telegram notification if warn or error — use tg-notify.sh, NOT session tools
+if orchestrator_data['status'] in ('warn', 'error'):
+    import subprocess
+    msg = f"🤖 Orchestrator — {orchestrator_data['summary']}"
+    subprocess.run(['/srv/dashboard/tg-notify.sh', msg], check=False)
+# If status is ok and no proposals, stay silent
 ```
 
 ## Approval command handling

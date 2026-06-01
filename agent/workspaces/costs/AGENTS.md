@@ -84,7 +84,7 @@ Update agent status in `/srv/dashboard/data/agents.json`:
 import json
 from datetime import datetime
 with open('/srv/dashboard/data/agents.json') as f: d = json.load(f)
-d['costs'] = {'lastRun': datetime.utcnow().isoformat()+'Z', 'status': 'ok', 'summary': 'SUMMARY'}
+d['costs'] = {'lastRun': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'status': 'ok', 'summary': 'SUMMARY'}
 with open('/srv/dashboard/data/agents.json', 'w') as f: json.dump(d, f, indent=2)
 ```
 

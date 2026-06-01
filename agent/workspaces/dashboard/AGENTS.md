@@ -170,7 +170,7 @@ import json
 from datetime import datetime
 with open('/srv/dashboard/data/agents.json') as f: d = json.load(f)
 d['dashboard'] = {
-    'lastRun': datetime.utcnow().isoformat()+'Z',
+    'lastRun': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
     'status': 'ok',  # ok / warn / error
     'summary': 'SHORT_SUMMARY_MAX_80_CHARS'
 }
