@@ -50,7 +50,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 .main{padding:16px 20px;display:flex;flex-direction:column;gap:14px;max-width:1600px;margin:0 auto;}
 
 /* CARDS */
-.card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:16px;overflow:hidden;}
 .card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
 .card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text3);display:flex;align-items:center;gap:6px;}
 .tag{background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--text2);font-weight:500;white-space:nowrap;}
@@ -66,10 +66,31 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 .alert-title{font-weight:500;font-size:13px;}
 .alert-meta{font-size:11px;color:var(--text3);margin-top:2px;}
 .alert-badge{flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:3px;align-self:flex-start;margin-top:1px;}
+.alert-dismiss{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;border-radius:3px;align-self:flex-start;margin-top:0px;opacity:.5;transition:opacity .15s;}
+.alert-dismiss:hover{opacity:1;color:var(--text1);}
 .b-crit{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.24);}
 .b-warn{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.22);}
 .b-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.18);}
 
+/* UPGRADES */
+.upg-section{margin-bottom:0;}
+.upg-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.upg-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text3);}
+.upg-meta{font-size:11px;color:var(--text3);}
+.upg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;}
+.upg-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-radius:var(--r);border:1px solid;text-decoration:none;color:inherit;transition:filter .15s;}
+.upg-item:hover{filter:brightness(1.1);}
+.upg-breaking{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.25);}
+.upg-minor{background:rgba(59,130,246,.05);border-color:rgba(59,130,246,.2);}
+.upg-patch{background:rgba(107,114,128,.04);border-color:rgba(107,114,128,.15);}
+.upg-body{flex:1;min-width:0;}
+.upg-pkg{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.upg-versions{font-size:11px;color:var(--text3);margin-top:2px;}
+.upg-badge{flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 6px;border-radius:3px;align-self:flex-start;margin-top:1px;}
+.upg-b-breaking{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.22);}
+.upg-b-minor{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.2);}
+.upg-b-patch{background:rgba(107,114,128,.1);color:var(--text2);border:1px solid rgba(107,114,128,.18);}
+.upg-empty{font-size:12px;color:var(--text3);padding:8px 0;}
 /* TILES */
 .tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
 .tile{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;}
@@ -126,8 +147,8 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 .agent-hub-meta{font-size:11px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .agent-connector{padding:4px 0 4px 15px;color:var(--text3);font-size:10px;display:flex;align-items:center;gap:6px;}
 .agent-connector::before{content:'';width:1px;height:12px;background:var(--border2);}
-.agent-rows{display:flex;flex-direction:column;gap:1px;}
-.agent-row{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--r2);transition:background .1s;}
+.agent-rows{display:flex;flex-direction:column;gap:1px;overflow:hidden;min-width:0;}
+.agent-row{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--r2);transition:background .1s;min-width:0;overflow:hidden;}
 .agent-row:hover{background:var(--bg2);}
 .agent-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center;margin-top:1px;}
 .agent-info{flex:1;min-width:0;}
@@ -135,10 +156,14 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 .agent-sum{font-size:11px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .agent-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
 .agent-time{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums;}
+.agent-next{font-size:9px;color:var(--text3);opacity:.6;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.agent-next.soon{color:#fbbf24;opacity:.9;}
 .sbadge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 6px;border-radius:3px;}
 .sb-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.18);}
 .sb-err{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.18);}
 .sb-idle{background:rgba(71,85,105,.12);color:var(--text3);border:1px solid var(--border2);}
+.sb-warn{background:rgba(234,179,8,.1);color:#fde047;border:1px solid rgba(234,179,8,.25);}
+.sb-error{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.25);}
 
 /* LONGHORN */
 .lh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
@@ -202,19 +227,32 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 @media(max-width:1200px){.tiles{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:768px){
   .header{padding:0 14px;}
+  .quicklinks{padding:0 14px;}
   .main{padding:12px 14px;gap:12px;}
   .tiles{grid-template-columns:repeat(2,1fr);}
   .news-2col{grid-template-columns:1fr;}
   .node-bars{display:none;}
   .lh-stats{grid-template-columns:repeat(3,1fr);}
+  .bkp-row{gap:8px;}
 }
 @media(max-width:480px){
   .header{padding:0 12px;}
+  .quicklinks{padding:0 12px;}
   .main{padding:10px 12px;gap:10px;}
   .tile-value{font-size:20px;}
+  .tile-label{font-size:9px;letter-spacing:.4px;}
   .btn-refresh span{display:none;}
   #countdown{display:none;}
   .badge.hide-xs{display:none;}
+  .lh-stats{grid-template-columns:repeat(2,1fr);}
+  .agent-row{padding:6px 8px;}
+  .node-name{font-size:12px;}
+}
+@media(max-width:360px){
+  .card{padding:12px;}
+  .tile{padding:10px 12px;}
+  .lh-stats{grid-template-columns:1fr 1fr;}
+  .agent-hub{padding:8px 10px;}
 }
 </style>
 </head>
@@ -223,7 +261,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 <header class="header">
   <div class="header-left">
     <div class="logo">merox<em>.</em>dev</div>
-    <div class="badge" id="cluster-badge">☸ Loading…</div>
+    <div class="badge hide-xs" id="cluster-badge">☸ Loading…</div>
   </div>
   <div class="header-right">
     <span class="clock" id="countdown">↻ 5:00</span>
@@ -248,18 +286,27 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 
 <main class="main">
 
-  <!-- ALERTS -->
+  <!-- ALERTS (securitate / CVE din news) -->
   <div class="alerts" id="alerts"><div class="empty">Se încarcă…</div></div>
+
+  <!-- UPGRADE PREVIEW (Renovate PRs sâmbătă) -->
+  <div class="card upg-section" id="upgrades-section" style="display:none">
+    <div class="upg-header">
+      <div class="upg-title">🔄 Upgrade Preview — PR-uri Renovate</div>
+      <span class="upg-meta" id="upgrades-meta">—</span>
+    </div>
+    <div class="upg-grid" id="upgrades-list"><div class="upg-empty">Se încarcă…</div></div>
+  </div>
 
   <!-- TILES -->
   <div class="tiles">
     <div class="tile t-green" id="tile-nodes">
-      <div class="tile-label">K8s Nodes</div>
+      <div class="tile-label">Noduri K8s</div>
       <div class="tile-value" id="tv-nodes">—</div>
       <div class="tile-sub" id="ts-nodes">Ready</div>
     </div>
     <div class="tile t-green" id="tile-pods">
-      <div class="tile-label">Unhealthy Pods</div>
+      <div class="tile-label">Poduri Problematice</div>
       <div class="tile-value" id="tv-pods">—</div>
       <div class="tile-sub" id="ts-pods">of total</div>
     </div>
@@ -274,7 +321,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
       <div class="tile-sub" id="ts-disk">/ root</div>
     </div>
     <div class="tile t-accent" id="tile-agents">
-      <div class="tile-label">AI Agents</div>
+      <div class="tile-label">Agenți AI</div>
       <div class="tile-value" id="tv-agents">—</div>
       <div class="tile-sub" id="ts-agents">active</div>
     </div>
@@ -289,7 +336,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
   <div class="g2">
     <div class="card">
       <div class="card-hdr">
-        <div class="card-title">Kubernetes Nodes</div>
+        <div class="card-title">Noduri Kubernetes</div>
         <span class="tag" id="nodes-tag">3/3 Ready</span>
       </div>
       <div class="node-list" id="nodes-list"><div class="empty">Se încarcă…</div></div>
@@ -297,7 +344,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
     </div>
     <div class="card">
       <div class="card-hdr">
-        <div class="card-title">AI Agent Network</div>
+        <div class="card-title">Rețea Agenți AI</div>
         <span class="tag" id="agents-tag">—</span>
       </div>
       <div id="agent-network"><div class="empty">Se încarcă…</div></div>
@@ -308,7 +355,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
   <div class="g2">
     <div class="card">
       <div class="card-hdr">
-        <div class="card-title">Longhorn Storage</div>
+        <div class="card-title">Stocare Longhorn</div>
         <span class="tag" id="lh-tag">—</span>
       </div>
       <div class="lh-stats">
@@ -332,7 +379,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
     </div>
     <div class="card">
       <div class="card-hdr">
-        <div class="card-title">Backup &amp; Storage</div>
+        <div class="card-title">Backup &amp; Stocare</div>
         <span class="tag" id="bkp-tag">—</span>
       </div>
       <div class="lh-stats" id="bkp-stats">
@@ -360,14 +407,14 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
   <div class="g2">
     <div class="card">
       <div class="card-hdr">
-        <div class="card-title">Docker Containers</div>
+        <div class="card-title">Containere Docker</div>
         <span class="tag" id="docker-tag">—</span>
       </div>
       <div class="docker-chips" id="docker-chips"><div class="empty">Se încarcă…</div></div>
     </div>
     <div class="card">
       <div class="card-hdr">
-        <div class="card-title">K8s Namespaces</div>
+        <div class="card-title">Namespace-uri K8s</div>
         <span class="tag" id="ns-tag">—</span>
       </div>
       <div class="ns-chips" id="ns-chips"><div class="empty">Se încarcă…</div></div>
@@ -377,7 +424,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
   <!-- NEWS -->
   <div class="card">
     <div class="news-hdr">
-      <div class="card-title" style="margin-bottom:0;text-transform:uppercase;letter-spacing:.9px;">News Stack</div>
+      <div class="card-title" style="margin-bottom:0;text-transform:uppercase;letter-spacing:.9px;">Știri Stack</div>
       <div class="news-pills" id="news-pills"></div>
       <span class="tag" id="news-date">—</span>
       <span class="tag" id="news-total" style="margin-left:auto">—</span>
@@ -400,19 +447,24 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function fmtTime(iso){
-  if(!iso)return'Never run';
+  if(!iso)return'Niciodată';
   try{
-    const d=new Date(iso);
+    // Sanitize malformed timestamps like "2026-05-31T12:00:21+00:00Z" (both offset and Z)
+    const clean=iso.replace(/\+00:00Z$/,'Z').replace(/\+00:00$/,'Z');
+    const d=new Date(clean);
     const now=new Date();
     const diff=now-d;
     const mins=Math.floor(diff/60000);
-    const hrs=Math.floor(diff/3600000);
-    if(mins<2)return'just now';
-    if(mins<60)return mins+'m ago';
-    const hhmm=d.toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false,hour:'2-digit',minute:'2-digit'});
-    if(hrs<24)return'today '+hhmm;
-    if(hrs<48)return'yesterday '+hhmm;
-    return d.toLocaleDateString('ro-RO',{timeZone:'Europe/Bucharest',day:'2-digit',month:'2-digit'})+' '+hhmm;
+    if(mins<2)return'acum';
+    if(mins<60)return'acum '+mins+'m';
+    const TZ='Europe/Bucharest';
+    const hhmm=d.toLocaleTimeString('ro-RO',{timeZone:TZ,hour12:false,hour:'2-digit',minute:'2-digit'});
+    const dayD=d.toLocaleDateString('ro-RO',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
+    const dayN=now.toLocaleDateString('ro-RO',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
+    const yesterday=new Date(now-86400000).toLocaleDateString('ro-RO',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
+    if(dayD===dayN)return'azi '+hhmm;
+    if(dayD===yesterday)return'ieri '+hhmm;
+    return d.toLocaleDateString('ro-RO',{timeZone:TZ,day:'2-digit',month:'2-digit'})+' '+hhmm;
   }catch(e){return iso;}
 }
 
@@ -427,6 +479,9 @@ function fmtKB(kb){
 // Clock
 function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false});}
 setInterval(tick,1000);tick();
+
+// Next-run countdown — update every 60s
+setInterval(updateNextRunLabels,60000);
 
 // Countdown
 const REFRESH=300;
@@ -443,66 +498,125 @@ const NODE_IPS={
 };
 
 // Ordered agent definitions — orchestrator first as hub, rest as supervised agents
+// schedule: {h:[utc hours], m:minute, dow:[0-6] or null=daily}
 const AGENT_DEFS=[
-  {key:'orchestrator', icon:'🎛️', name:'Orchestrator',  role:'supervises all agents'},
-  {key:'news',         icon:'📰', name:'News Agent',     role:'stack updates & tech news'},
-  {key:'infra',        icon:'☸️', name:'Infra Agent',    role:'cluster health monitoring'},
-  {key:'costs',        icon:'💰', name:'Costs Agent',    role:'storage & backup checks'},
-  {key:'dashboard',    icon:'🖥️', name:'Dashboard Agent',role:'updates this page'},
-  {key:'blog',         icon:'✍️', name:'Blog Agent',     role:'content generation'},
-  {key:'design',       icon:'🎨', name:'Design Agent',   role:'UI/UX suggestions'},
+  {key:'orchestrator', icon:'🎛️', name:'Orchestrator',  role:'supervises all agents',   schedule:{h:[12],m:0,dow:null}},
+  {key:'news',         icon:'📰', name:'News Agent',     role:'stack updates & tech news',schedule:{h:[4], m:0,dow:null}},
+  {key:'infra',        icon:'☸️', name:'Infra Agent',    role:'cluster health monitoring',schedule:{h:[8,20],m:0,dow:null}},
+  {key:'costs',        icon:'💰', name:'Costs Agent',    role:'storage & backup checks',  schedule:{h:[9], m:0,dow:[0]}},
+  {key:'dashboard',    icon:'🖥️', name:'Dashboard Agent',role:'updates this page',        schedule:{h:[23],m:0,dow:null}},
+  {key:'blog',         icon:'✍️', name:'Blog Agent',     role:'content generation',       schedule:{h:[9], m:0,dow:[1]}},
+  {key:'design',       icon:'🎨', name:'Design Agent',   role:'UI/UX suggestions',        schedule:null},
 ];
+
+function nextRunDate(schedule){
+  if(!schedule)return null;
+  const now=new Date();
+  const best=[];
+  for(const h of schedule.h){
+    for(let d=0;d<=7;d++){
+      const c=new Date(now);
+      c.setUTCHours(h,schedule.m,0,0);
+      c.setUTCDate(c.getUTCDate()+d);
+      if(c<=now)continue;
+      if(schedule.dow&&!schedule.dow.includes(c.getUTCDay()))continue;
+      best.push(c);
+    }
+  }
+  if(!best.length)return null;
+  return best.sort((a,b)=>a-b)[0];
+}
+
+function fmtNextRun(schedule){
+  const next=nextRunDate(schedule);
+  if(!next)return'';
+  const mins=Math.round((next-new Date())/60000);
+  if(mins<1)return'acum';
+  if(mins<60)return'în '+mins+'m';
+  const h=Math.floor(mins/60),m=mins%60;
+  if(h<24)return m?'în '+h+'h '+m+'m':'în '+h+'h';
+  const days=Math.floor(h/24),rh=h%24;
+  return rh?'în '+days+'z '+rh+'h':'în '+days+'z';
+}
+
+function updateNextRunLabels(){
+  AGENT_DEFS.forEach(def=>{
+    const el=document.getElementById('nr-'+def.key);
+    if(!el||!def.schedule)return;
+    const txt=fmtNextRun(def.schedule);
+    el.textContent=txt;
+    const mins=Math.round((nextRunDate(def.schedule)-new Date())/60000);
+    el.classList.toggle('soon',mins<60);
+  });
+}
+
+function getDismissedAlerts(){
+  try{const today=new Date().toISOString().slice(0,10);const d=JSON.parse(localStorage.getItem('dismissedAlerts')||'{}');return d.date===today?new Set(d.ids):new Set();}catch{return new Set();}
+}
+function saveDismissedAlert(id){
+  try{const today=new Date().toISOString().slice(0,10);const d=JSON.parse(localStorage.getItem('dismissedAlerts')||'{}');const ids=d.date===today?(d.ids||[]):[];ids.push(id);localStorage.setItem('dismissedAlerts',JSON.stringify({date:today,ids}));}catch{}
+}
+function alertId(item){return(item.title||'').slice(0,60);}
 
 function renderAlerts(news){
   const items=(news&&news.items)||[];
-  const crits=items.filter(i=>i.priority==='critical');
-  const warns=items.filter(i=>i.priority==='warn');
+  const dismissed=getDismissedAlerts();
+  const crits=items.filter(i=>i.priority==='critical'&&!dismissed.has(alertId(i)));
+  const warns=items.filter(i=>i.priority==='warn'&&!dismissed.has(alertId(i)));
   const el=document.getElementById('alerts');
   if(!crits.length&&!warns.length){
-    el.innerHTML='<div class="alert alert-ok"><div class="alert-body"><div class="alert-title" style="color:var(--green)">Stack OK — no critical alerts today</div></div><span class="alert-badge b-ok">OK</span></div>';
+    el.innerHTML='<div class="alert alert-ok"><div class="alert-body"><div class="alert-title" style="color:var(--green)">Stack OK — nicio alertă critică azi</div></div><span class="alert-badge b-ok">OK</span></div>';
     return;
   }
   el.innerHTML=[...crits,...warns].map(item=>{
     const isc=item.priority==='critical';
     const tag=item.url?'a':'div';
     const href=item.url?` href="${esc(item.url)}" target="_blank" rel="noopener"`:'';
-    return `<${tag}${href} class="alert ${isc?'alert-crit':'alert-warn'}">
+    const id=alertId(item);
+    return `<${tag}${href} class="alert ${isc?'alert-crit':'alert-warn'}" data-alert-id="${esc(id)}">
       <div class="alert-body">
         <div class="alert-title">${esc(item.title)}</div>
         <div class="alert-meta">${esc(item.source)} · ${esc(item.date)}</div>
       </div>
       <span class="alert-badge ${isc?'b-crit':'b-warn'}">${isc?'CRITICAL':'WARN'}</span>
+      <button class="alert-dismiss" title="Închide alertă" onclick="event.preventDefault();event.stopPropagation();dismissAlert('${id.replace(/'/g,"\\'")}')">✕</button>
     </${tag}>`;
   }).join('');
+}
+
+function dismissAlert(id){
+  saveDismissedAlert(id);
+  const el=document.querySelector(`[data-alert-id="${CSS.escape(id)}"]`);
+  if(el){el.style.transition='opacity .2s';el.style.opacity='0';setTimeout(()=>{el.remove();const alerts=document.getElementById('alerts');if(!alerts.querySelector('.alert:not(.alert-ok)')){alerts.innerHTML='<div class="alert alert-ok"><div class="alert-body"><div class="alert-title" style="color:var(--green)">Stack OK — nicio alertă critică azi</div></div><span class="alert-badge b-ok">OK</span></div>';}},220);}
 }
 
 function renderTiles(infra,agents){
   if(infra){
     if(infra.nodes){
       document.getElementById('tv-nodes').textContent=infra.nodes.ready||'3/3';
-      document.getElementById('ts-nodes').textContent=infra.nodes.status||'Ready';
+      document.getElementById('ts-nodes').textContent=infra.nodes.status||'Activ';
       document.getElementById('cluster-badge').textContent='☸ Cluster '+(infra.nodes.ready||'3/3');
     }
     if(infra.pods){
       const u=typeof infra.pods==='object'?infra.pods.unhealthy:infra.pods;
       const total=typeof infra.pods==='object'?infra.pods.total:107;
       document.getElementById('tv-pods').textContent=u;
-      document.getElementById('ts-pods').textContent='of '+total+' total';
+      document.getElementById('ts-pods').textContent='din '+total+' total';
       document.getElementById('tile-pods').className='tile '+(u===0?'t-green':'t-red');
     }
     if(infra.docker){
       document.getElementById('tv-docker').textContent=infra.docker.running||0;
-      document.getElementById('ts-docker').textContent=infra.docker.stopped>0?'running, '+infra.docker.stopped+' stopped':'running';
+      document.getElementById('ts-docker').textContent=infra.docker.stopped>0?'rulând, '+infra.docker.stopped+' oprite':'rulând';
     }
     if(infra.disk){
       const p=parseInt(infra.disk.usage);
       document.getElementById('tv-disk').textContent=infra.disk.usage;
-      document.getElementById('ts-disk').textContent=fmtKB(infra.disk.free)+' free';
+      document.getElementById('ts-disk').textContent=fmtKB(infra.disk.free)+' liber';
       document.getElementById('tile-disk').className='tile '+(p<60?'t-green':p<80?'t-yellow':'t-red');
     }
     if(infra.flux){
       document.getElementById('tv-flux').textContent=infra.flux.ok;
-      document.getElementById('ts-flux').textContent=infra.flux.failed>0?infra.flux.failed+' failed':'synced';
+      document.getElementById('ts-flux').textContent=infra.flux.failed>0?infra.flux.failed+' eșuate':'sincronizat';
       if(infra.flux.failed>0){
         document.getElementById('tile-flux').className='tile t-red';
         document.getElementById('tv-flux').style.color='';
@@ -516,7 +630,7 @@ function renderTiles(infra,agents){
     const allKeys=new Set([...AGENT_DEFS.map(d=>d.key),...Object.keys(agents)]);
     const active=[...allKeys].filter(k=>agents[k]&&agents[k].status==='ok').length;
     document.getElementById('tv-agents').textContent=active+'/'+allKeys.size;
-    document.getElementById('ts-agents').textContent='active';
+    document.getElementById('ts-agents').textContent='activi';
     document.getElementById('tile-agents').className='tile '+(active===0?'t-red':active<allKeys.size?'t-accent':'t-green');
   }
 }
@@ -553,7 +667,7 @@ function renderNodes(infra){
   const memStr=infra&&infra.memory?(Math.round(infra.memory.usedMB/1024*10)/10)+'G / '+(Math.round(infra.memory.totalMB/1024*10)/10)+'G':'';
   const cpuAvg=metrics.length?Math.round(metrics.reduce((s,n)=>s+n.cpu,0)/metrics.length):0;
   document.getElementById('res-list').innerHTML=[
-    {name:'Disk (VPS /)',       pct:diskPct, detail:freeGB+' free'},
+    {name:'Disk (VPS /)',       pct:diskPct, detail:freeGB+' liber'},
     {name:'CPU avg (cluster)',  pct:cpuAvg,  detail:cpuAvg+'%'},
     {name:'Memory (VPS)',       pct:memPct,  detail:memStr},
   ].map(r=>`<div class="res-item">
@@ -568,24 +682,32 @@ function renderNodes(infra){
 function renderAgentNetwork(agents){
   // Merge AGENT_DEFS with any extra keys in agents.json
   const knownKeys=new Set(AGENT_DEFS.map(d=>d.key));
-  const extraDefs=agents?Object.keys(agents).filter(k=>!knownKeys.has(k)).map(k=>({key:k,icon:'🤖',name:k.charAt(0).toUpperCase()+k.slice(1)+' Agent',role:''})):[];
+  const extraDefs=agents?Object.keys(agents).filter(k=>!knownKeys.has(k)&&!k.startsWith('_')).map(k=>({key:k,icon:'🤖',name:k.charAt(0).toUpperCase()+k.slice(1)+' Agent',role:''})):[];
   const allDefs=[...AGENT_DEFS,...extraDefs];
 
   const active=allDefs.filter(d=>agents&&agents[d.key]&&agents[d.key].status==='ok').length;
-  document.getElementById('agents-tag').textContent=active+'/'+allDefs.length+' active';
+  const healthScore=agents&&agents._meta&&agents._meta.healthScore;
+  document.getElementById('agents-tag').textContent=(healthScore||active+'/'+allDefs.length)+' active';
 
   // Orchestrator hub
   const orchDef=allDefs.find(d=>d.key==='orchestrator')||{icon:'🎛️',name:'Orchestrator',role:'supervises all agents'};
   const orch=agents&&agents.orchestrator;
   const orchOk=orch&&orch.status==='ok';
+  const orchWarn=orch&&orch.status==='warn';
+  const orchErr=orch&&orch.status==='error';
+  const orchActive=orch&&orch.lastRun;
+  const orchDotClass=orchOk?'dot-ok pulse':orchWarn?'dot-warn pulse':orchErr?'dot-error pulse':'dot-idle';
+  const orchBadgeClass=orchOk?'sb-ok':orchWarn?'sb-warn':orchErr?'sb-error':'sb-idle';
+  const orchBadgeText=orchOk?'OK':orchWarn?'WARN':orchErr?'ERROR':'IDLE';
+  const orchSummary=orchActive?(orch.summary||orchDef.role):'Not configured yet';
 
   let html=`<div class="agent-hub">
-    <div class="dot ${orchOk?'dot-ok pulse':'dot-idle'}"></div>
+    <div class="dot ${orchDotClass}"></div>
     <div class="agent-hub-body">
       <div class="agent-hub-name">${orchDef.icon} ${esc(orchDef.name)}</div>
-      <div class="agent-hub-meta">${esc(orchOk?(orch.summary||orchDef.role):'Not configured yet')} · ${fmtTime(orch&&orch.lastRun)}</div>
+      <div class="agent-hub-meta">${esc(orchSummary)} · ${fmtTime(orch&&orch.lastRun)}${orchDef.schedule?` · <span class="agent-next${Math.round((nextRunDate(orchDef.schedule)-new Date())/60000)<60?' soon':''}" id="nr-orchestrator">${fmtNextRun(orchDef.schedule)}</span>`:''}</div>
     </div>
-    <span class="sbadge ${orchOk?'sb-ok':'sb-idle'}">${orchOk?'OK':'IDLE'}</span>
+    <span class="sbadge ${orchBadgeClass}">${orchBadgeText}</span>
   </div>
   <div class="agent-connector">supervises</div>
   <div class="agent-rows">`;
@@ -595,6 +717,8 @@ function renderAgentNetwork(agents){
     const isOk=a&&a.status==='ok';
     const isErr=a&&a.status==='error';
     const summary=a&&a.summary?a.summary:(def.role||'Not configured yet');
+    const nextTxt=def.schedule?fmtNextRun(def.schedule):'';
+    const nextMins=def.schedule&&nextRunDate(def.schedule)?Math.round((nextRunDate(def.schedule)-new Date())/60000):9999;
     html+=`<div class="agent-row">
       <div class="agent-icon">${def.icon}</div>
       <div class="agent-info">
@@ -604,6 +728,7 @@ function renderAgentNetwork(agents){
       <div class="agent-right">
         <span class="sbadge ${isOk?'sb-ok':isErr?'sb-err':'sb-idle'}">${isOk?'OK':isErr?'ERROR':'IDLE'}</span>
         <span class="agent-time">${fmtTime(a&&a.lastRun)}</span>
+        ${nextTxt?`<span class="agent-next${nextMins<60?' soon':''}" id="nr-${def.key}">${nextTxt}</span>`:''}
       </div>
     </div>`;
   });
@@ -616,10 +741,10 @@ function renderLonghorn(infra){
   const lh=infra&&infra.longhorn;
   if(!lh)return;
   document.getElementById('lh-vol').textContent=lh.healthy+'/'+lh.total;
-  document.getElementById('lh-vol-sub').textContent=lh.healthy===lh.total?'all healthy':'degraded';
+  document.getElementById('lh-vol-sub').textContent=lh.healthy===lh.total?'toate sănătoase':'degradat';
   document.getElementById('lh-used').textContent=(lh.usedG||'?')+'G';
-  document.getElementById('lh-used-sub').textContent='/ '+(lh.totalG||'?')+' total';
-  document.getElementById('lh-tag').textContent=lh.healthy+'/'+lh.total+' healthy';
+  document.getElementById('lh-used-sub').textContent='/ '+(lh.totalG||'?')+' total GB';
+  document.getElementById('lh-tag').textContent=lh.healthy+'/'+lh.total+' sănătoase';
   const nodes=infra.longhornNodes||[];
   document.getElementById('lh-nodes').innerHTML=nodes.map(n=>{
     const pct=Math.round(n.used/n.total*100);
@@ -638,14 +763,14 @@ function renderBackup(backup){
   if(!backup||!backup.services){document.getElementById('bkp-rows').innerHTML='<div class="empty">No data</div>';return;}
   const svc=k=>backup.services.find(s=>s.name===k);
   const allOk=backup.services.filter(s=>s.status!=='unknown').every(s=>s.status==='ok');
-  document.getElementById('bkp-tag').textContent=allOk?'All OK':'Issues detected';
+  document.getElementById('bkp-tag').textContent=allOk?'Toate OK':'Probleme detectate';
 
   // Parse Garage S3: "running - 96.0 GB disponibil, 38,877 obiecte, fără erori"
   const s3=svc('Garage S3');
   if(s3){
     const m=s3.lastBackup&&s3.lastBackup.match(/(\d+\.?\d*)\s*GB disponibil,\s*([\d,]+)\s*obiecte/);
     document.getElementById('bkp-s3-val').textContent=m?m[1]+'G':'OK';
-    document.getElementById('bkp-s3-sub').textContent=m?m[2].replace(',','.')+' objects free':'available';
+    document.getElementById('bkp-s3-sub').textContent=m?m[2].replace(',','.')+' obiecte libere':'disponibil';
   }
 
   // Parse NAS Mount: "192.7G total, 89.4G disponibil (54% folosit)"
@@ -653,7 +778,7 @@ function renderBackup(backup){
   if(nas){
     const m=nas.lastBackup&&nas.lastBackup.match(/([\d.]+G)\s+total,\s*([\d.]+G)\s+disponibil\s*\((\d+)%/);
     document.getElementById('bkp-nas-val').textContent=m?m[2]:'OK';
-    document.getElementById('bkp-nas-sub').textContent=m?'of '+m[1]+' ('+m[3]+'% used)':'free';
+    document.getElementById('bkp-nas-sub').textContent=m?'din '+m[1]+' ('+m[3]+'% folosit)':'liber';
     const pct=m?parseInt(m[3]):0;
     document.getElementById('bkp-nas-val').style.color=pct<70?'var(--green)':pct<85?'var(--yellow)':'var(--red)';
   }
@@ -666,7 +791,7 @@ function renderBackup(backup){
     const dt=m?new Date(m[1]):null;
     const timeStr=dt?dt.toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false,hour:'2-digit',minute:'2-digit'}):'—';
     document.getElementById('bkp-lh-val').textContent=isOk?'✓':'!';
-    document.getElementById('bkp-lh-sub').textContent=dt?'today '+timeStr:(lhb.lastBackup||'—');
+    document.getElementById('bkp-lh-sub').textContent=dt?'azi '+timeStr:(lhb.lastBackup||'—');
     document.getElementById('bkp-lh-val').style.color=isOk?'var(--green)':'var(--red)';
   }
 
@@ -686,7 +811,7 @@ function renderDocker(infra){
   const r=infra&&infra.docker?infra.docker.running:0;
   const s=infra&&infra.docker?infra.docker.stopped:0;
   const names=infra&&infra.docker&&infra.docker.names?infra.docker.names:[];
-  document.getElementById('docker-tag').textContent=r+' running'+(s>0?', '+s+' stopped':'');
+  document.getElementById('docker-tag').textContent=r+' rulând'+(s>0?', '+s+' oprite':'');
   document.getElementById('docker-chips').innerHTML=names.map(name=>
     `<div class="chip"><div class="chip-dot"></div><span>${esc(name)}</span></div>`
   ).join('');
@@ -696,7 +821,7 @@ function renderNS(infra){
   const ns=infra&&infra.namespaces;
   if(!ns){document.getElementById('ns-chips').innerHTML='<div class="empty">No data</div>';return;}
   const total=Object.values(ns).reduce((s,v)=>s+v,0);
-  document.getElementById('ns-tag').textContent=total+' pods total';
+  document.getElementById('ns-tag').textContent=total+' poduri total';
   document.getElementById('ns-chips').innerHTML=Object.entries(ns).sort((a,b)=>b[1]-a[1]).map(([name,pods])=>
     `<div class="ns-chip"><span class="ns-name">${esc(name)}</span><span class="ns-count">${pods}</span></div>`
   ).join('');
@@ -707,7 +832,7 @@ function sortByPrio(arr){return[...arr].sort((a,b)=>(PRIO[a.priority]??2)-(PRIO[
 
 function renderNews(news){
   const items=(news&&news.items)||[];
-  document.getElementById('news-total').textContent=items.length+' items';
+  document.getElementById('news-total').textContent=items.length+' articole';
   document.getElementById('news-date').textContent=(news&&news.date)||'—';
   const crit=items.filter(i=>i.priority==='critical').length;
   const warn=items.filter(i=>i.priority==='warn').length;
@@ -740,21 +865,63 @@ function renderNews(news){
   document.getElementById('news-tech').innerHTML=buildList(tech);
 }
 
+function renderUpgrades(upgrades){
+  const sec=document.getElementById('upgrades-section');
+  const list=document.getElementById('upgrades-list');
+  const meta=document.getElementById('upgrades-meta');
+  if(!upgrades||!upgrades.items||!upgrades.items.length){sec.style.display='none';return;}
+  sec.style.display='';
+  const bc=upgrades.breakingCount||0;
+  const uTs=upgrades.timestamp?new Date(upgrades.timestamp).toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false,hour:'2-digit',minute:'2-digit'}):'—';
+  meta.textContent=`${upgrades.totalOpen} PR-uri deschise · ${bc} breaking · actualizat ${uTs}`;
+  if(bc>0)meta.style.color='#fca5a5';
+  else meta.style.color='';
+  const badges={breaking:'upg-b-breaking',minor:'upg-b-minor',patch:'upg-b-patch',info:'upg-b-patch'};
+  const styles={breaking:'upg-breaking',minor:'upg-minor',patch:'upg-patch',info:'upg-patch'};
+  const labels={breaking:'BREAKING',minor:'minor',patch:'patch',info:'info'};
+  // Afișăm breaking + minor; patch-urile le colapsăm dacă sunt multe
+  const shown=upgrades.items.filter(i=>i.kind==='breaking'||i.kind==='minor');
+  const patches=upgrades.items.filter(i=>i.kind==='patch'||i.kind==='info');
+  let html=shown.map(i=>{
+    const fromV=i.fromVersion||'?';
+    const toV=i.toVersion||'?';
+    const tag=i.url?'a':'div';
+    const href=i.url?` href="${esc(i.url)}" target="_blank" rel="noopener"`:'';
+    return `<${tag}${href} class="upg-item ${styles[i.kind]||'upg-patch'}">
+      <div class="upg-body">
+        <div class="upg-pkg">${esc(i.package)}</div>
+        <div class="upg-versions">${esc(fromV)} → ${esc(toV)}${i.kind==='breaking'?' ⚠️ breaking change':''}</div>
+      </div>
+      <span class="upg-badge ${badges[i.kind]||'upg-b-patch'}">${labels[i.kind]||'upg'}</span>
+    </${tag}>`;
+  }).join('');
+  if(patches.length){
+    html+=`<div class="upg-item upg-patch" style="grid-column:1/-1;cursor:default">
+      <div class="upg-body"><div class="upg-pkg" style="color:var(--text2)">${patches.length} patch-uri minore</div>
+      <div class="upg-versions">${patches.map(p=>esc(p.package)).join(', ')}</div></div>
+      <span class="upg-badge upg-b-patch">patch</span></div>`;
+  }
+  list.innerHTML=html||'<div class="upg-empty">Niciun PR deschis momentan.</div>';
+}
+
 async function loadAll(){
   cd=REFRESH;
   try{
-    const[aR,iR,nR,bR]=await Promise.allSettled([
+    const[aR,iR,nR,bR,uR]=await Promise.allSettled([
       fetchJ('/data/agents.json'),
       fetchJ('/data/infra.json'),
       fetchJ('/data/news.json'),
       fetchJ('/data/backup.json'),
+      fetchJ('/data/upgrades.json'),
     ]);
     const agents=aR.status==='fulfilled'?aR.value:null;
     const infra=iR.status==='fulfilled'?iR.value:null;
     const news=nR.status==='fulfilled'?nR.value:null;
     const backup=bR.status==='fulfilled'?bR.value:null;
+    const upgrades=uR.status==='fulfilled'?uR.value:null;
 
     renderAlerts(news);
+    renderUpgrades(upgrades);
     renderTiles(infra,agents);
     renderNodes(infra);
     renderAgentNetwork(agents);
