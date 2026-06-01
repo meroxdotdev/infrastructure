@@ -145,6 +145,7 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 .agent-hub-body{flex:1;min-width:0;}
 .agent-hub-name{font-size:13px;font-weight:600;}
 .agent-hub-meta{font-size:11px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.agent-hub-next{font-size:10px;color:var(--text3);margin-top:3px;opacity:.75;}
 .agent-connector{padding:4px 0 4px 15px;color:var(--text3);font-size:10px;display:flex;align-items:center;gap:6px;}
 .agent-connector::before{content:'';width:1px;height:12px;background:var(--border2);}
 .agent-rows{display:flex;flex-direction:column;gap:1px;overflow:hidden;min-width:0;}
@@ -156,8 +157,8 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
 .agent-sum{font-size:11px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .agent-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
 .agent-time{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums;}
-.agent-next{font-size:9px;color:var(--text3);opacity:.6;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.agent-next.soon{color:#fbbf24;opacity:.9;}
+.agent-next{font-size:10px;color:var(--text3);opacity:.8;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.agent-next.soon{color:#fbbf24;opacity:1;font-weight:500;}
 .sbadge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 6px;border-radius:3px;}
 .sb-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.18);}
 .sb-err{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.18);}
@@ -544,8 +545,9 @@ function updateNextRunLabels(){
     const el=document.getElementById('nr-'+def.key);
     if(!el||!def.schedule)return;
     const txt=fmtNextRun(def.schedule);
-    el.textContent=txt;
-    const mins=Math.round((nextRunDate(def.schedule)-new Date())/60000);
+    el.textContent='⏱ '+txt;
+    const next=nextRunDate(def.schedule);
+    const mins=next?Math.round((next-new Date())/60000):9999;
     el.classList.toggle('soon',mins<60);
   });
 }
@@ -705,7 +707,8 @@ function renderAgentNetwork(agents){
     <div class="dot ${orchDotClass}"></div>
     <div class="agent-hub-body">
       <div class="agent-hub-name">${orchDef.icon} ${esc(orchDef.name)}</div>
-      <div class="agent-hub-meta">${esc(orchSummary)} · ${fmtTime(orch&&orch.lastRun)}${orchDef.schedule?` · <span class="agent-next${Math.round((nextRunDate(orchDef.schedule)-new Date())/60000)<60?' soon':''}" id="nr-orchestrator">${fmtNextRun(orchDef.schedule)}</span>`:''}</div>
+      <div class="agent-hub-meta">${esc(orchSummary)} · ${fmtTime(orch&&orch.lastRun)}</div>
+      ${orchDef.schedule?`<div class="agent-hub-next"><span class="agent-next${(()=>{const nr=nextRunDate(orchDef.schedule);return nr&&Math.round((nr-new Date())/60000)<60?' soon':''})()}" id="nr-orchestrator">⏱ ${fmtNextRun(orchDef.schedule)}</span></div>`:''}
     </div>
     <span class="sbadge ${orchBadgeClass}">${orchBadgeText}</span>
   </div>
@@ -728,7 +731,7 @@ function renderAgentNetwork(agents){
       <div class="agent-right">
         <span class="sbadge ${isOk?'sb-ok':isErr?'sb-err':'sb-idle'}">${isOk?'OK':isErr?'ERROR':'IDLE'}</span>
         <span class="agent-time">${fmtTime(a&&a.lastRun)}</span>
-        ${nextTxt?`<span class="agent-next${nextMins<60?' soon':''}" id="nr-${def.key}">${nextTxt}</span>`:''}
+        ${nextTxt?`<span class="agent-next${nextMins<60?' soon':''}" id="nr-${def.key}">⏱ ${nextTxt}</span>`:''}
       </div>
     </div>`;
   });

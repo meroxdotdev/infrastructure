@@ -45,12 +45,18 @@ RO_MONTHS = ["Ian","Feb","Mar","Apr","Mai","Iun","Iul","Aug","Sep","Oct","Nov","
 now = datetime.now(timezone.utc)
 today_ro = f"{now.day} {RO_MONTHS[now.month-1]} {now.year}"
 
-# source "GitHub" → coloana "Stack Updates" în dashboard
-# orice alt source → coloana "Tech & Community"
+# REGULA STRICTĂ PENTRU source:
+# source = "GitHub"      → apare în coloana "Stack Updates"  (releases, CVE din stack)
+# orice alt source       → apare în coloana "Tech & Community"
+#
+# Folosești "GitHub" DACĂ ȘI NUMAI DACĂ itemul vine din news-releases.json
+# sau e un release/CVE dintr-un repo GitHub din stack-ul tău.
+# NU folosi "Stack", "Kubernetes", "Security" etc. pentru release-uri GitHub — rupe dashboard-ul.
 items = [
-    {"title": "...", "url": "https://...", "source": "GitHub", "date": "1 Iun", "priority": "warn"},
-    {"title": "...", "url": "https://...", "source": "Hacker News", "date": "1 Iun", "priority": "info"},
-    {"title": "...", "url": "https://...", "source": "Reddit", "date": "1 Iun", "priority": "info"},
+    {"title": "Talos v1.13.3 — ...", "url": "https://github.com/...", "source": "GitHub", "date": "1 Iun", "priority": "warn"},
+    {"title": "CVE-2026-XXXX gRPC-Go — ...", "url": "https://...", "source": "Hacker News", "date": "1 Iun", "priority": "warn"},
+    {"title": "Cloudflare Turnstile WebGL fingerprinting", "url": "https://...", "source": "Hacker News", "date": "1 Iun", "priority": "info"},
+    {"title": "Immich v3.0.0 RC — ...", "url": "https://...", "source": "Reddit", "date": "1 Iun", "priority": "info"},
 ]
 
 out = "/srv/dashboard/data/news.json"
