@@ -289,6 +289,15 @@ body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','
     <div id="weather-content"></div>
   </div>
 
+  <!-- CALENDAR -->
+  <div class="card" id="calendar-card" style="display:none;margin-bottom:12px">
+    <div class="card-hdr">
+      <div class="card-title">📅 Calendar — 7 zile</div>
+      <span class="tag" id="calendar-tag">—</span>
+    </div>
+    <div id="calendar-content"><div class="empty">Se încarcă…</div></div>
+  </div>
+
   <!-- ALERTS (securitate / CVE din news) -->
   <div class="alerts" id="alerts"><div class="empty">Se încarcă…</div></div>
 
@@ -532,6 +541,50 @@ function saveDismissedAlert(id){
   try{const today=new Date().toISOString().slice(0,10);const d=JSON.parse(localStorage.getItem('dismissedAlerts')||'{}');const ids=d.date===today?(d.ids||[]):[];ids.push(id);localStorage.setItem('dismissedAlerts',JSON.stringify({date:today,ids}));}catch{}
 }
 function alertId(item){return(item.title||'').slice(0,60);}
+
+function renderCalendar(cal){
+  const card=document.getElementById('calendar-card');
+  const content=document.getElementById('calendar-content');
+  const tag=document.getElementById('calendar-tag');
+  if(!cal||!cal.days){card.style.display='none';return;}
+  card.style.display='';
+  const total=cal.totalEvents||0;
+  tag.textContent=total>0?total+' evenimente':'Liber';
+
+  if(!cal.days.length){
+    content.innerHTML='<div class="empty" style="padding:8px 0">Niciun eveniment în următoarele 7 zile 🎉</div>';
+    return;
+  }
+
+  const today=new Date().toISOString().slice(0,10);
+  const tomorrow=new Date(Date.now()+86400000).toISOString().slice(0,10);
+
+  content.innerHTML=cal.days.map(day=>{
+    const dt=new Date(day.date+'T12:00:00');
+    let dayLabel=day.date===today?'Azi':day.date===tomorrow?'Mâine':dt.toLocaleDateString('ro-RO',{weekday:'long',day:'numeric',month:'short'});
+    const isToday=day.date===today;
+    const evHtml=day.events.map(ev=>{
+      let timeStr='';
+      if(!ev.allDay){
+        try{
+          const d=new Date(ev.start);
+          timeStr=d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Bucharest'});
+        }catch{}
+      }else{
+        timeStr='Toată ziua';
+      }
+      return `<div style="display:flex;align-items:baseline;gap:8px;padding:4px 0;border-bottom:1px solid var(--border,rgba(255,255,255,.06))">
+        <span style="font-size:11px;color:var(--text3);min-width:64px;flex-shrink:0">${timeStr}</span>
+        <span style="font-size:13px;color:var(--text1)">${esc(ev.summary)}</span>
+        ${ev.location?`<span style="font-size:11px;color:var(--text3);margin-left:auto">📍${esc(ev.location)}</span>`:''}
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:${isToday?'var(--blue)':'var(--text3)'};margin-bottom:4px">${dayLabel}</div>
+      ${evHtml}
+    </div>`;
+  }).join('');
+}
 
 function renderWeather(w){
   const card=document.getElementById('weather-card');
@@ -969,13 +1022,14 @@ function renderUpgrades(upgrades){
 async function loadAll(){
   cd=REFRESH;
   try{
-    const[aR,iR,nR,bR,uR,wR]=await Promise.allSettled([
+    const[aR,iR,nR,bR,uR,wR,cR]=await Promise.allSettled([
       fetchJ('/data/agents.json'),
       fetchJ('/data/infra.json'),
       fetchJ('/data/news.json'),
       fetchJ('/data/backup.json'),
       fetchJ('/data/upgrades.json'),
       fetchJ('/data/weather.json'),
+      fetchJ('/data/calendar.json'),
     ]);
     const agents=aR.status==='fulfilled'?aR.value:null;
     const infra=iR.status==='fulfilled'?iR.value:null;
@@ -983,8 +1037,10 @@ async function loadAll(){
     const backup=bR.status==='fulfilled'?bR.value:null;
     const upgrades=uR.status==='fulfilled'?uR.value:null;
     const weather=wR.status==='fulfilled'?wR.value:null;
+    const cal=cR.status==='fulfilled'?cR.value:null;
 
     renderWeather(weather);
+    renderCalendar(cal);
     renderAlerts(news);
     renderUpgrades(upgrades);
     renderTiles(infra,agents);
