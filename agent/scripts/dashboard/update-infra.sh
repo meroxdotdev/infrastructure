@@ -61,6 +61,13 @@ mem_total = int(mem_parts[0]) if mem_parts else 0
 mem_used  = int(mem_parts[1]) if len(mem_parts) > 1 else 0
 mem_pct   = (mem_used * 100 // mem_total) if mem_total > 0 else 0
 
+# CPU VPS (1-second average)
+cpu_raw = run("top -bn1 2>/dev/null | awk '/^%Cpu/{print 100-$8}' | head -1")
+try:
+    cpu_pct = round(float(cpu_raw.strip()))
+except:
+    cpu_pct = 0
+
 # Docker
 docker_names_raw = run("docker ps --format '{{.Names}}' 2>/dev/null")
 docker_names = [n for n in docker_names_raw.splitlines() if n.strip()]
@@ -121,6 +128,9 @@ data = {
         "usedMB": mem_used,
         "totalMB": mem_total,
         "pct": mem_pct
+    },
+    "cpu": {
+        "pct": cpu_pct
     },
     "docker": {
         "running": docker_running,

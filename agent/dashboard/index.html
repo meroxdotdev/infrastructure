@@ -3,468 +3,444 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Merox — Command Center</title>
+<title>Merox — Dashboard</title>
 <style>
 :root {
-  --bg0: #08090c;
-  --bg1: #0f1117;
-  --bg2: #161b27;
-  --bg3: #1e2535;
-  --border: #1e2535;
-  --border2: #252d40;
-  --text: #f1f5f9;
-  --text2: #94a3b8;
-  --text3: #475569;
-  --green: #22c55e;
-  --yellow: #f59e0b;
-  --red: #ef4444;
-  --blue: #3b82f6;
+  --bg:     #0d0d10;
+  --surface:#141418;
+  --surface2:#1a1a20;
+  --border: rgba(255,255,255,.07);
+  --border2:rgba(255,255,255,.11);
+  --t1: #f0f0f5;
+  --t2: #9090a8;
+  --t3: #55556a;
+  --green:  #22c55e;
+  --yellow: #eab308;
+  --red:    #ef4444;
+  --blue:   #3b82f6;
   --accent: #6366f1;
-  --purple: #8b5cf6;
-  --r: 8px;
-  --r2: 5px;
+  --r: 14px;
+  --r2: 8px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html{overflow-x:hidden;}
-body{background:var(--bg0);color:var(--text);font-family:-apple-system,'Inter','Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.5;min-height:100vh;overflow-x:hidden;}
+html,body{overflow-x:hidden;}
+body{
+  background:var(--bg);
+  color:var(--t1);
+  font-family:-apple-system,'Inter',system-ui,sans-serif;
+  font-size:14px;
+  line-height:1.5;
+  min-height:100vh;
+}
 
-/* HEADER */
-.header{background:var(--bg1);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:12px;}
-.header-left{display:flex;align-items:center;gap:12px;min-width:0;}
-.logo{font-size:16px;font-weight:700;letter-spacing:-0.5px;flex-shrink:0;}
-.logo em{color:var(--accent);font-style:normal;}
-.badge{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--text2);white-space:nowrap;}
-.header-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.btn-refresh{background:var(--bg2);border:1px solid var(--border2);color:var(--text2);padding:5px 12px;border-radius:var(--r2);cursor:pointer;font-size:12px;font-family:inherit;transition:border-color .15s,color .15s;}
-.btn-refresh:hover{border-color:var(--accent);color:var(--text);}
-.clock{font-size:12px;color:var(--text3);font-variant-numeric:tabular-nums;}
+/* ── HEADER ── */
+.hdr{
+  position:sticky;top:0;z-index:100;
+  background:rgba(13,13,16,.85);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  height:52px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;
+  gap:16px;
+}
+.hdr-logo{font-size:15px;font-weight:700;letter-spacing:-.4px;color:var(--t1);}
+.hdr-logo span{color:var(--accent);}
+.hdr-right{display:flex;align-items:center;gap:14px;}
+.hdr-clock{font-size:13px;color:var(--t3);font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+.hdr-cd{font-size:12px;color:var(--t3);font-variant-numeric:tabular-nums;}
+.btn{
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  color:var(--t2);
+  padding:5px 14px;
+  border-radius:var(--r2);
+  cursor:pointer;
+  font-size:12px;
+  font-family:inherit;
+  transition:border-color .15s,color .15s;
+}
+.btn:hover{border-color:var(--accent);color:var(--t1);}
 
-/* QUICKLINKS */
-.quicklinks{background:var(--bg1);border-bottom:1px solid var(--border);padding:0 20px;height:36px;display:flex;align-items:center;gap:2px;overflow-x:auto;scrollbar-width:none;}
-.quicklinks::-webkit-scrollbar{display:none;}
-.ql{display:flex;align-items:center;gap:5px;background:transparent;border:1px solid transparent;border-radius:var(--r2);padding:4px 10px;font-size:11px;font-weight:500;color:var(--text3);text-decoration:none;transition:all .15s;white-space:nowrap;flex-shrink:0;}
-.ql:hover{border-color:var(--border2);color:var(--text2);background:var(--bg2);}
-.ql-sep{width:1px;height:16px;background:var(--border);flex-shrink:0;margin:0 4px;}
+/* ── MAIN LAYOUT ── */
+.main{
+  max-width:1280px;
+  margin:0 auto;
+  padding:24px 24px 48px;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+}
 
-/* LAYOUT */
-.main{padding:16px 20px;display:flex;flex-direction:column;gap:14px;max-width:1600px;margin:0 auto;}
+/* ── PERSONAL ROW ── */
+.personal-row{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:16px;
+}
+@media(max-width:900px){.personal-row{grid-template-columns:1fr 1fr;}}
+@media(max-width:580px){.personal-row{grid-template-columns:1fr;}}
 
-/* CARDS */
-.card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:16px;overflow:hidden;}
-.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
-.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text3);display:flex;align-items:center;gap:6px;}
-.tag{background:var(--bg2);border:1px solid var(--border2);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--text2);font-weight:500;white-space:nowrap;}
+/* ── CARD ── */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:20px;
+}
+.card-title{
+  font-size:11px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.9px;
+  color:var(--t3);
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.card-title-badge{
+  font-size:10px;
+  font-weight:500;
+  text-transform:none;
+  letter-spacing:0;
+  color:var(--t3);
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:6px;
+  padding:2px 8px;
+}
 
-/* ALERTS */
-.alerts{display:flex;flex-direction:column;gap:6px;}
-.alert{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border-radius:var(--r);border:1px solid;text-decoration:none;color:inherit;transition:filter .15s;}
-.alert:hover{filter:brightness(1.08);}
-.alert-crit{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.28);}
-.alert-warn{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.24);}
-.alert-ok{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.2);}
-.alert-body{flex:1;min-width:0;}
-.alert-title{font-weight:500;font-size:13px;}
-.alert-meta{font-size:11px;color:var(--text3);margin-top:2px;}
-.alert-badge{flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:3px;align-self:flex-start;margin-top:1px;}
-.alert-dismiss{flex-shrink:0;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;border-radius:3px;align-self:flex-start;margin-top:0px;opacity:.5;transition:opacity .15s;}
-.alert-dismiss:hover{opacity:1;color:var(--text1);}
-.b-crit{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.24);}
-.b-warn{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.22);}
-.b-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.18);}
+/* ── WEATHER ── */
+.w-current{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.w-icon{font-size:44px;line-height:1;flex-shrink:0;}
+.w-temp{font-size:38px;font-weight:700;line-height:1;letter-spacing:-1px;}
+.w-desc{font-size:13px;color:var(--t2);margin-top:3px;}
+.w-loc{font-size:11px;color:var(--t3);margin-top:2px;}
+.w-days{display:flex;gap:8px;}
+.w-day{
+  flex:1;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:var(--r2);
+  padding:10px 8px;
+  text-align:center;
+  display:flex;flex-direction:column;gap:4px;
+  align-items:center;
+}
+.w-day-name{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;}
+.w-day-emoji{font-size:20px;line-height:1;}
+.w-day-temp{font-size:12px;font-weight:600;}
+.w-day-min{color:var(--t3);font-weight:400;font-size:11px;}
+.w-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.w-stat{display:flex;flex-direction:column;gap:1px;}
+.w-stat-label{font-size:10px;color:var(--t3);}
+.w-stat-val{font-size:12px;color:var(--t2);}
 
-/* UPGRADES */
-.upg-section{margin-bottom:0;}
-.upg-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.upg-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text3);}
-.upg-meta{font-size:11px;color:var(--text3);}
-.upg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;}
-.upg-item{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border-radius:var(--r);border:1px solid;text-decoration:none;color:inherit;transition:filter .15s;}
-.upg-item:hover{filter:brightness(1.1);}
-.upg-breaking{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.25);}
-.upg-minor{background:rgba(59,130,246,.05);border-color:rgba(59,130,246,.2);}
-.upg-patch{background:rgba(107,114,128,.04);border-color:rgba(107,114,128,.15);}
-.upg-body{flex:1;min-width:0;}
-.upg-pkg{font-weight:600;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.upg-versions{font-size:11px;color:var(--text3);margin-top:2px;}
-.upg-badge{flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 6px;border-radius:3px;align-self:flex-start;margin-top:1px;}
-.upg-b-breaking{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.22);}
-.upg-b-minor{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.2);}
-.upg-b-patch{background:rgba(107,114,128,.1);color:var(--text2);border:1px solid rgba(107,114,128,.18);}
-.upg-empty{font-size:12px;color:var(--text3);padding:8px 0;}
-/* TILES */
-.tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
-.tile{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;}
-.tile-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;}
-.tile-value{font-size:24px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;}
-.tile-sub{font-size:11px;color:var(--text3);margin-top:3px;}
-.t-green .tile-value{color:var(--green);}
-.t-yellow .tile-value{color:var(--yellow);}
-.t-red .tile-value{color:var(--red);}
-.t-blue .tile-value{color:var(--blue);}
-.t-accent .tile-value{color:var(--accent);}
-.t-purple .tile-value{color:var(--purple);}
+/* ── CALENDAR ── */
+.cal-empty{color:var(--t3);font-size:13px;padding:12px 0;}
+.cal-day-label{
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;
+  color:var(--t3);margin-bottom:8px;margin-top:12px;
+}
+.cal-day-label:first-child{margin-top:0;}
+.cal-day-label.today{color:var(--blue);}
+.cal-event{
+  display:flex;gap:10px;align-items:baseline;
+  padding:5px 0;
+  border-bottom:1px solid var(--border);
+  font-size:13px;
+}
+.cal-event:last-child{border-bottom:none;}
+.cal-time{font-size:11px;color:var(--t3);min-width:52px;flex-shrink:0;}
+.cal-name{color:var(--t1);flex:1;}
 
-/* 2-COL GRID */
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-@media(max-width:1024px){.g2{grid-template-columns:1fr;}}
+/* ── TODOS ── */
+.todo-list-name{
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;
+  color:var(--t3);margin-bottom:8px;
+}
+.todo-item{
+  display:flex;align-items:center;gap:10px;
+  padding:7px 0;
+  border-bottom:1px solid var(--border);
+  font-size:13px;
+}
+.todo-item:last-child{border-bottom:none;}
+.todo-circle{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--border2);flex-shrink:0;}
+.todo-text{flex:1;color:var(--t1);}
+.todo-date{font-size:11px;color:var(--t3);}
+.todo-empty{font-size:13px;color:var(--t3);padding:12px 0;}
 
-/* STATUS DOTS */
-.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;display:inline-block;}
-.dot-ok{background:var(--green);box-shadow:0 0 5px rgba(34,197,94,.45);}
+/* ── STATUS BAR ── */
+.status-bar{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:0 20px;
+  height:52px;
+  display:flex;align-items:center;gap:0;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.status-bar::-webkit-scrollbar{display:none;}
+.sb-item{
+  display:flex;align-items:center;gap:8px;
+  padding:0 20px;
+  border-right:1px solid var(--border);
+  height:100%;
+  flex-shrink:0;
+  white-space:nowrap;
+}
+.sb-item:first-child{padding-left:0;}
+.sb-item:last-child{border-right:none;}
+.sb-label{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;}
+.sb-value{font-size:14px;font-weight:600;color:var(--t1);}
+.sb-value.ok{color:var(--green);}
+.sb-value.warn{color:var(--yellow);}
+.sb-value.err{color:var(--red);}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dot-ok{background:var(--green);box-shadow:0 0 6px rgba(34,197,94,.5);}
 .dot-warn{background:var(--yellow);}
-.dot-err{background:var(--red);box-shadow:0 0 5px rgba(239,68,68,.45);}
-.dot-idle{background:var(--bg3);border:1px solid var(--border2);}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.dot-err{background:var(--red);box-shadow:0 0 6px rgba(239,68,68,.5);}
+.dot-idle{background:var(--surface2);border:1px solid var(--border2);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .pulse{animation:pulse 2.5s ease-in-out infinite;}
 
-/* NODES */
-.node-list{display:flex;flex-direction:column;}
-.node{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
-.node:last-child{border-bottom:none;}
-.node-info{flex:1;min-width:0;}
-.node-name{font-weight:500;font-size:13px;}
-.node-meta{font-size:11px;color:var(--text3);}
-.node-bars{display:flex;flex-direction:column;gap:5px;width:150px;flex-shrink:0;}
-.bar-row{display:flex;align-items:center;gap:7px;font-size:11px;}
-.bar-lbl{width:28px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
-.bar-track{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
-.bar-fill{height:100%;border-radius:2px;transition:width .5s;}
-.bar-pct{width:28px;text-align:right;color:var(--text2);font-variant-numeric:tabular-nums;}
+/* ── ALERTS ── */
+.alert{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:14px 18px;
+  border-radius:var(--r);
+  border:1px solid;
+  text-decoration:none;color:inherit;
+  transition:filter .15s;
+}
+.alert:hover{filter:brightness(1.07);}
+.alert-crit{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.22);}
+.alert-warn{background:rgba(234,179,8,.06);border-color:rgba(234,179,8,.2);}
+.alert-ok{background:rgba(34,197,94,.05);border-color:rgba(34,197,94,.18);}
+.alert-body{flex:1;min-width:0;}
+.alert-title{font-size:13px;font-weight:500;}
+.alert-meta{font-size:11px;color:var(--t3);margin-top:2px;}
+.alert-badge{
+  flex-shrink:0;font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;padding:3px 7px;border-radius:5px;align-self:flex-start;margin-top:1px;
+}
+.b-crit{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.25);}
+.b-warn{background:rgba(234,179,8,.13);color:#fde047;border:1px solid rgba(234,179,8,.25);}
+.b-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.2);}
+.alert-x{
+  flex-shrink:0;background:none;border:none;color:var(--t3);
+  cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;
+  opacity:.5;transition:opacity .15s;align-self:flex-start;
+}
+.alert-x:hover{opacity:1;}
 
-/* RESOURCE BARS */
-.res-list{display:flex;flex-direction:column;gap:9px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
-.res-item{display:flex;flex-direction:column;gap:4px;}
-.res-hdr{display:flex;justify-content:space-between;font-size:11px;}
-.res-name{color:var(--text2);}
-.res-val{color:var(--text3);font-variant-numeric:tabular-nums;}
-.res-track{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
-.res-fill{height:100%;border-radius:2px;transition:width .5s;}
+/* ── 2-COL ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:900px){.two-col{grid-template-columns:1fr;}}
 
-/* AGENT NETWORK */
-.agent-hub{padding:10px 12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);margin-bottom:6px;display:flex;align-items:center;gap:10px;}
-.agent-hub-body{flex:1;min-width:0;}
-.agent-hub-name{font-size:13px;font-weight:600;}
-.agent-hub-meta{font-size:11px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.agent-hub-next{font-size:10px;color:var(--text3);margin-top:3px;opacity:.75;}
-.agent-connector{padding:4px 0 4px 15px;color:var(--text3);font-size:10px;display:flex;align-items:center;gap:6px;}
-.agent-connector::before{content:'';width:1px;height:12px;background:var(--border2);}
-.agent-rows{display:flex;flex-direction:column;gap:1px;overflow:hidden;min-width:0;}
-.agent-row{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--r2);transition:background .1s;min-width:0;overflow:hidden;}
-.agent-row:hover{background:var(--bg2);}
-.agent-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center;margin-top:1px;}
-.agent-info{flex:1;min-width:0;}
-.agent-name{font-size:12px;font-weight:600;}
-.agent-sum{font-size:11px;color:var(--text3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.agent-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
-.agent-time{font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums;}
-.agent-next{font-size:10px;color:var(--text3);opacity:.8;font-variant-numeric:tabular-nums;white-space:nowrap;}
-.agent-next.soon{color:#fbbf24;opacity:1;font-weight:500;}
-.sbadge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 6px;border-radius:3px;}
-.sb-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.18);}
-.sb-err{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.18);}
-.sb-idle{background:rgba(71,85,105,.12);color:var(--text3);border:1px solid var(--border2);}
-.sb-warn{background:rgba(234,179,8,.1);color:#fde047;border:1px solid rgba(234,179,8,.25);}
-.sb-error{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.25);}
-
-/* LONGHORN */
-.lh-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
-.lh-stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:10px 12px;}
-.lh-stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;}
-.lh-stat-val{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;margin:3px 0 1px;}
-.lh-stat-sub{font-size:10px;color:var(--text3);}
-.lh-nodes{display:flex;flex-direction:column;gap:9px;}
-.lh-node{display:flex;flex-direction:column;gap:4px;}
-.lh-node-hdr{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);}
-.lh-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
-.lh-fill{height:100%;border-radius:2px;}
-
-/* BACKUP */
-.bkp-rows{display:flex;flex-direction:column;gap:7px;}
-.bkp-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);}
-.bkp-name{font-weight:500;font-size:12px;flex-shrink:0;min-width:90px;max-width:130px;}
-.bkp-detail{font-size:11px;color:var(--text3);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-
-/* DOCKER */
-.docker-chips{display:flex;flex-wrap:wrap;gap:5px;}
-.chip{display:flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:5px 9px;font-size:11px;color:var(--text2);}
-.chip-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;}
-
-/* NAMESPACES */
-.ns-chips{display:flex;flex-wrap:wrap;gap:6px;}
-.ns-chip{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:6px 10px;display:flex;align-items:center;gap:8px;font-size:11px;}
-.ns-name{color:var(--text2);font-weight:500;}
-.ns-count{color:var(--text3);}
-
-/* NEWS */
-.news-hdr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
-.news-pills{display:flex;gap:5px;flex-wrap:wrap;}
-.pill{font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;}
-.pill-crit{background:rgba(239,68,68,.12);color:#fca5a5;}
-.pill-warn{background:rgba(245,158,11,.1);color:#fcd34d;}
-.pill-info{background:rgba(71,85,105,.14);color:var(--text3);}
-.news-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.news-col-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:8px;}
-.news-scroll{max-height:300px;overflow-y:auto;}
-.news-item{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;border-radius:var(--r2);transition:background .1s;}
+/* ── NEWS ── */
+.news-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 0;
+  border-bottom:1px solid var(--border);
+  text-decoration:none;color:inherit;
+  border-radius:var(--r2);
+  transition:background .1s;
+}
 .news-item:last-child{border-bottom:none;}
-.news-item:hover{background:var(--bg2);}
+.news-item:hover .news-title{color:var(--accent);}
 .news-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px;}
 .nd-crit{background:var(--red);box-shadow:0 0 4px rgba(239,68,68,.5);}
 .nd-warn{background:var(--yellow);}
-.nd-info{background:var(--text3);}
-.news-body{flex:1;min-width:0;}
-.news-title{font-size:12px;line-height:1.3;}
-.news-item:hover .news-title{color:#818cf8;}
-.news-meta{font-size:10px;color:var(--text3);margin-top:2px;}
-.news-arr{color:var(--text3);font-size:11px;flex-shrink:0;margin-top:3px;}
+.nd-info{background:var(--t3);}
+.news-title{font-size:13px;line-height:1.4;flex:1;}
+.news-meta{font-size:11px;color:var(--t3);margin-top:2px;}
+.news-arr{color:var(--t3);font-size:11px;flex-shrink:0;margin-top:3px;}
 
-.empty{color:var(--text3);font-size:12px;padding:14px 0;text-align:center;}
+/* ── AGENTS ── */
+.agent-item{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.agent-item:last-child{border-bottom:none;}
+.agent-icon{font-size:18px;width:24px;text-align:center;flex-shrink:0;margin-top:1px;}
+.agent-body{flex:1;min-width:0;}
+.agent-name{font-size:13px;font-weight:600;color:var(--t1);}
+.agent-sum{font-size:12px;color:var(--t2);margin-top:2px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.agent-meta{font-size:11px;color:var(--t3);margin-top:3px;}
+.agent-right{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.sbadge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:5px;}
+.sb-ok{background:rgba(34,197,94,.1);color:#86efac;border:1px solid rgba(34,197,94,.18);}
+.sb-err{background:rgba(239,68,68,.1);color:#fca5a5;border:1px solid rgba(239,68,68,.18);}
+.sb-warn{background:rgba(234,179,8,.1);color:#fde047;border:1px solid rgba(234,179,8,.2);}
+.sb-idle{background:rgba(85,85,106,.12);color:var(--t3);border:1px solid var(--border2);}
+.agent-next{font-size:10px;color:var(--t3);}
+.agent-next.soon{color:#fbbf24;font-weight:500;}
 
-::-webkit-scrollbar{width:5px;height:5px;}
+/* ── NODES ── */
+.node-item{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);}
+.node-item:last-child{border-bottom:none;}
+.node-name{font-size:13px;font-weight:500;flex:1;}
+.node-meta{font-size:11px;color:var(--t3);}
+.node-bars{display:flex;gap:8px;flex-shrink:0;}
+.bar-pill{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t2);}
+.bar-lbl{font-size:10px;color:var(--t3);text-transform:uppercase;}
+.bar-track{width:60px;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;}
+
+/* ── STORAGE ── */
+.storage-item{padding:10px 0;border-bottom:1px solid var(--border);}
+.storage-item:last-child{border-bottom:none;}
+.storage-hdr{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;}
+.storage-name{color:var(--t2);}
+.storage-val{color:var(--t3);font-variant-numeric:tabular-nums;}
+.bar-track-full{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;}
+.bar-fill-full{height:100%;border-radius:2px;}
+
+/* ── UPGRADES ── */
+.upg-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 10px;
+  border-radius:var(--r2);
+  border:1px solid;
+  text-decoration:none;color:inherit;
+  margin-bottom:6px;
+  transition:filter .15s;
+}
+.upg-item:hover{filter:brightness(1.08);}
+.upg-item:last-child{margin-bottom:0;}
+.upg-breaking{background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.2);}
+.upg-minor{background:rgba(59,130,246,.04);border-color:rgba(59,130,246,.15);}
+.upg-patch{background:rgba(85,85,106,.05);border-color:rgba(85,85,106,.15);}
+.upg-pkg{font-size:13px;font-weight:600;flex:1;}
+.upg-versions{font-size:11px;color:var(--t3);margin-top:2px;}
+.upg-badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:5px;flex-shrink:0;}
+.upg-b-breaking{background:rgba(239,68,68,.14);color:#fca5a5;border:1px solid rgba(239,68,68,.22);}
+.upg-b-minor{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.2);}
+.upg-b-patch{background:rgba(85,85,106,.1);color:var(--t2);border:1px solid var(--border2);}
+
+/* ── MISC ── */
+.empty{font-size:12px;color:var(--t3);padding:12px 0;}
+::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
 
-/* RESPONSIVE */
-@media(max-width:1200px){.tiles{grid-template-columns:repeat(3,1fr);}}
-@media(max-width:768px){
-  .header{padding:0 14px;}
-  .quicklinks{padding:0 14px;}
-  .main{padding:12px 14px;gap:12px;}
-  .tiles{grid-template-columns:repeat(2,1fr);}
-  .news-2col{grid-template-columns:1fr;}
+@media(max-width:580px){
+  .hdr{padding:0 16px;}
+  .main{padding:16px 16px 40px;}
+  .hdr-cd{display:none;}
+  .btn span{display:none;}
   .node-bars{display:none;}
-  .lh-stats{grid-template-columns:repeat(3,1fr);}
-  .bkp-row{gap:8px;}
-}
-@media(max-width:480px){
-  .header{padding:0 12px;}
-  .quicklinks{padding:0 12px;}
-  .main{padding:10px 12px;gap:10px;}
-  .tile-value{font-size:20px;}
-  .tile-label{font-size:9px;letter-spacing:.4px;}
-  .btn-refresh span{display:none;}
-  #countdown{display:none;}
-  .badge.hide-xs{display:none;}
-  .lh-stats{grid-template-columns:repeat(2,1fr);}
-  .agent-row{padding:6px 8px;}
-  .node-name{font-size:12px;}
-}
-@media(max-width:360px){
-  .card{padding:12px;}
-  .tile{padding:10px 12px;}
-  .lh-stats{grid-template-columns:1fr 1fr;}
-  .agent-hub{padding:8px 10px;}
+  .card{padding:16px;}
+  .status-bar{padding:0 16px;}
+  .sb-item{padding:0 14px;}
 }
 </style>
 </head>
 <body>
 
-<header class="header">
-  <div class="header-left">
-    <div class="logo">merox<em>.</em>dev</div>
-    <div class="badge hide-xs" id="cluster-badge">☸ Loading…</div>
-  </div>
-  <div class="header-right">
-    <span class="clock" id="countdown">↻ 5:00</span>
-    <button class="btn-refresh" onclick="loadAll()">↻ <span>Refresh</span></button>
-    <span class="clock" id="clock">--:--:--</span>
+<header class="hdr">
+  <div class="hdr-logo">merox<span>.</span>dev</div>
+  <div class="hdr-right">
+    <span class="hdr-cd" id="countdown">↻ 5:00</span>
+    <button class="btn" onclick="loadAll()">↻ <span>Refresh</span></button>
+    <span class="hdr-clock" id="clock">--:--</span>
   </div>
 </header>
 
-<nav class="quicklinks">
-  <a class="ql" href="https://sso.merox.dev" target="_blank">SSO</a>
-  <a class="ql" href="https://media.merox.dev" target="_blank">Media</a>
-  <div class="ql-sep"></div>
-  <a class="ql" href="https://longhorn.k8s.merox.dev" target="_blank">Longhorn</a>
-  <a class="ql" href="https://traefik.cloud.merox.dev" target="_blank">Traefik</a>
-  <a class="ql" href="https://pihole.cloud.merox.dev" target="_blank">Pi-hole</a>
-  <div class="ql-sep"></div>
-  <a class="ql" href="https://homepage.cloud.merox.dev" target="_blank">Homepage</a>
-</nav>
-
 <main class="main">
 
-  <!-- WEATHER -->
-  <div class="card" id="weather-card" style="display:none;margin-bottom:12px">
-    <div id="weather-content"></div>
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="status-bar">
+    <div class="sb-item"><span class="sb-label">Nodes</span><span class="sb-value" id="sb-nodes">—</span></div>
+    <div class="sb-item"><span class="sb-label">Pods</span><span class="sb-value" id="sb-pods">—</span></div>
+    <div class="sb-item"><span class="sb-label">Flux</span><span class="sb-value" id="sb-flux">—</span></div>
+    <div class="sb-item"><span class="sb-label">Disk</span><span class="sb-value" id="sb-disk">—</span></div>
+    <div class="sb-item"><span class="sb-label">Docker</span><span class="sb-value" id="sb-docker">—</span></div>
+    <div class="sb-item"><span class="sb-label">Agenți</span><span class="sb-value" id="sb-agents">—</span></div>
   </div>
 
-  <!-- CALENDAR -->
-  <div class="card" id="calendar-card" style="display:none;margin-bottom:12px">
-    <div class="card-hdr">
-      <div class="card-title">📅 Calendar — 7 zile</div>
-      <span class="tag" id="calendar-tag">—</span>
+  <!-- PERSONAL ROW: Weather | Calendar | Todos -->
+  <div class="personal-row">
+
+    <!-- WEATHER -->
+    <div class="card" id="weather-card" style="display:none">
+      <div class="card-title">Vreme <span class="card-title-badge" id="weather-upd">—</span></div>
+      <div id="weather-content"></div>
     </div>
-    <div id="calendar-content"><div class="empty">Se încarcă…</div></div>
+
+    <!-- CALENDAR -->
+    <div class="card" id="calendar-card" style="display:none">
+      <div class="card-title">Calendar <span class="card-title-badge" id="calendar-tag">—</span></div>
+      <div id="calendar-content"><div class="empty">Se încarcă…</div></div>
+    </div>
+
+    <!-- TODOS -->
+    <div class="card" id="reminders-card" style="display:none">
+      <div class="card-title">Liste <span class="card-title-badge" id="reminders-tag">—</span></div>
+      <div id="reminders-content"><div class="empty">Se încarcă…</div></div>
+    </div>
+
   </div>
 
-  <!-- ALERTS (securitate / CVE din news) -->
-  <div class="alerts" id="alerts"><div class="empty">Se încarcă…</div></div>
+  <!-- ALERTS -->
+  <div id="alerts" style="display:flex;flex-direction:column;gap:8px;"></div>
 
-  <!-- UPGRADE PREVIEW (Renovate PRs sâmbătă) -->
-  <div class="card upg-section" id="upgrades-section" style="display:none">
-    <div class="upg-header">
-      <div class="upg-title">🔄 Upgrade Preview — PR-uri Renovate</div>
-      <span class="upg-meta" id="upgrades-meta">—</span>
-    </div>
-    <div class="upg-grid" id="upgrades-list"><div class="upg-empty">Se încarcă…</div></div>
-  </div>
-
-  <!-- TILES -->
-  <div class="tiles">
-    <div class="tile t-green" id="tile-nodes">
-      <div class="tile-label">Noduri K8s</div>
-      <div class="tile-value" id="tv-nodes">—</div>
-      <div class="tile-sub" id="ts-nodes">Ready</div>
-    </div>
-    <div class="tile t-blue">
-      <div class="tile-label">Docker</div>
-      <div class="tile-value" id="tv-docker">—</div>
-      <div class="tile-sub" id="ts-docker">running</div>
-    </div>
-    <div class="tile t-green" id="tile-disk">
-      <div class="tile-label">Disk VPS</div>
-      <div class="tile-value" id="tv-disk">—</div>
-      <div class="tile-sub" id="ts-disk">/ root</div>
-    </div>
-    <div class="tile t-accent" id="tile-agents">
-      <div class="tile-label">Agenți AI</div>
-      <div class="tile-value" id="tv-agents">—</div>
-      <div class="tile-sub" id="ts-agents">active</div>
-    </div>
-    <div class="tile" id="tile-flux">
-      <div class="tile-label">Flux CD</div>
-      <div class="tile-value" id="tv-flux" style="color:var(--green)">—</div>
-      <div class="tile-sub" id="ts-flux">synced</div>
-    </div>
-  </div>
-
-  <!-- INFRA + AGENTS -->
-  <div class="g2">
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-title">Noduri Kubernetes</div>
-        <span class="tag" id="nodes-tag">3/3 Ready</span>
-      </div>
-      <div class="node-list" id="nodes-list"><div class="empty">Se încarcă…</div></div>
-      <div class="res-list" id="res-list"></div>
-    </div>
-    <div class="card">
-      <div class="card-hdr">
-        <div class="card-title">Rețea Agenți AI</div>
-        <span class="tag" id="agents-tag">—</span>
-      </div>
-      <div id="agent-network"><div class="empty">Se încarcă…</div></div>
-    </div>
-  </div>
-
-  <!-- STORAGE CONSOLIDAT -->
-  <div class="card">
-    <div class="card-hdr">
-      <div class="card-title">Storage &amp; Backup</div>
-      <span class="tag" id="bkp-tag">—</span>
-    </div>
-    <div class="lh-stats" style="flex-wrap:wrap;gap:8px 24px">
-      <div class="lh-stat">
-        <div class="lh-stat-lbl">Longhorn K8s</div>
-        <div class="lh-stat-val" id="lh-used" style="color:var(--blue)">—</div>
-        <div class="lh-stat-sub" id="lh-used-sub">/ total · <span id="lh-vol">—</span> vol</div>
-      </div>
-      <div class="lh-stat">
-        <div class="lh-stat-lbl">VPS Disk</div>
-        <div class="lh-stat-val" id="tv-disk2" style="color:var(--green)">—</div>
-        <div class="lh-stat-sub" id="ts-disk2">Oracle Cloud</div>
-      </div>
-      <div class="lh-stat">
-        <div class="lh-stat-lbl">Garage S3</div>
-        <div class="lh-stat-val" id="bkp-s3-val" style="color:var(--blue)">—</div>
-        <div class="lh-stat-sub" id="bkp-s3-sub">free</div>
-      </div>
-      <div class="lh-stat">
-        <div class="lh-stat-lbl">NAS (Synology)</div>
-        <div class="lh-stat-val" id="bkp-nas-val" style="color:var(--green)">—</div>
-        <div class="lh-stat-sub" id="bkp-nas-sub">free</div>
-      </div>
-      <div class="lh-stat">
-        <div class="lh-stat-lbl">Longhorn PVCs</div>
-        <div class="lh-stat-val" id="bkp-lh-val" style="color:var(--green)">—</div>
-        <div class="lh-stat-sub" id="bkp-lh-sub">last backup</div>
-      </div>
-    </div>
-    <div id="lh-nodes" style="margin-top:8px"></div>
-    <div class="bkp-rows" id="bkp-rows" style="margin-top:10px"></div>
-  </div>
-
-  <!-- DOCKER -->
-  <div class="card">
-    <div class="card-hdr">
-      <div class="card-title">Containere Docker (Oracle VPS)</div>
-      <span class="tag" id="docker-tag">—</span>
-    </div>
-    <div class="docker-chips" id="docker-chips"><div class="empty">Se încarcă…</div></div>
+  <!-- UPGRADES -->
+  <div class="card" id="upgrades-section" style="display:none">
+    <div class="card-title">Upgrade-uri Renovate <span class="card-title-badge" id="upgrades-meta">—</span></div>
+    <div id="upgrades-list"></div>
   </div>
 
   <!-- NEWS -->
+  <div class="card" id="news-card">
+    <div class="card-title">News <span class="card-title-badge" id="news-meta">—</span></div>
+    <div id="news-list"></div>
+  </div>
+
+  <!-- AGENTS (full width, 2-col grid inside) -->
   <div class="card">
-    <div class="news-hdr">
-      <div class="card-title" style="margin-bottom:0;text-transform:uppercase;letter-spacing:.9px;">Știri Stack</div>
-      <div class="news-pills" id="news-pills"></div>
-      <span class="tag" id="news-date">—</span>
-      <span class="tag" id="news-total" style="margin-left:auto">—</span>
+    <div class="card-title">Agenți AI <span class="card-title-badge" id="agents-tag">—</span></div>
+    <div id="agent-network"></div>
+  </div>
+
+  <!-- VPS Oracle Cloud -->
+  <div class="card">
+    <div class="card-title">VPS — Oracle Cloud <span class="card-title-badge" id="vps-tag">—</span></div>
+    <div id="vps-content"></div>
+  </div>
+
+  <!-- HOMELAB -->
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Homelab — K8s Cluster <span class="card-title-badge" id="infra-tag">—</span></div>
+      <div id="nodes-list"></div>
     </div>
-    <div class="news-2col">
-      <div>
-        <div class="news-col-title">Stack Updates</div>
-        <div class="news-scroll"><div id="news-stack"><div class="empty">Se încarcă…</div></div></div>
-      </div>
-      <div>
-        <div class="news-col-title">Tech &amp; Community</div>
-        <div class="news-scroll"><div id="news-tech"><div class="empty">Se încarcă…</div></div></div>
-      </div>
+    <div class="card">
+      <div class="card-title">Storage & Backup <span class="card-title-badge" id="bkp-tag">—</span></div>
+      <div id="storage-content"></div>
     </div>
   </div>
 
 </main>
 
 <script>
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-function fmtTime(iso){
-  if(!iso)return'Niciodată';
-  try{
-    // Sanitize malformed timestamps like "2026-05-31T12:00:21+00:00Z" (both offset and Z)
-    const clean=iso.replace(/\+00:00Z$/,'Z').replace(/\+00:00$/,'Z');
-    const d=new Date(clean);
-    const now=new Date();
-    const diff=now-d;
-    const mins=Math.floor(diff/60000);
-    if(mins<2)return'acum';
-    if(mins<60)return'acum '+mins+'m';
-    const TZ='Europe/Bucharest';
-    const hhmm=d.toLocaleTimeString('ro-RO',{timeZone:TZ,hour12:false,hour:'2-digit',minute:'2-digit'});
-    const dayD=d.toLocaleDateString('ro-RO',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
-    const dayN=now.toLocaleDateString('ro-RO',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
-    const yesterday=new Date(now-86400000).toLocaleDateString('ro-RO',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'});
-    if(dayD===dayN)return'azi '+hhmm;
-    if(dayD===yesterday)return'ieri '+hhmm;
-    return d.toLocaleDateString('ro-RO',{timeZone:TZ,day:'2-digit',month:'2-digit'})+' '+hhmm;
-  }catch(e){return iso;}
-}
-
-function barColor(p){return p<60?'#22c55e':p<80?'#f59e0b':'#ef4444';}
-
-function fmtKB(kb){
-  if(!kb||isNaN(+kb))return'?';
-  const g=+kb/1024/1024;
-  return g>=1?(Math.round(g*10)/10)+'G':Math.round(+kb/1024)+'M';
-}
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function barColor(p){return p<60?'var(--green)':p<80?'var(--yellow)':'var(--red)';}
+function fmtKB(kb){if(!kb)return'?';const gb=kb/1024/1024;if(gb>=1)return gb.toFixed(1)+'G';return(kb/1024).toFixed(0)+'M';}
+function fmtTime(iso){if(!iso)return null;try{const d=new Date(iso);const now=new Date();const diff=Math.round((now-d)/60000);if(diff<1)return'acum';if(diff<60)return'acum '+diff+'m';if(diff<1440)return'acum '+Math.floor(diff/60)+'h';return d.toLocaleDateString('ro-RO',{day:'numeric',month:'short'});}catch{return null;}}
 
 // Clock
-function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false});}
-setInterval(tick,1000);tick();
-
-// Next-run countdown — update every 60s
-setInterval(updateNextRunLabels,60000);
+function tick(){
+  const t=new Date().toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false,hour:'2-digit',minute:'2-digit'});
+  document.getElementById('clock').textContent=t;
+}
+setInterval(tick,10000);tick();
 
 // Countdown
 const REFRESH=300;
@@ -474,555 +450,424 @@ setInterval(()=>{cd--;const el=document.getElementById('countdown');if(el)el.tex
 
 async function fetchJ(url){const r=await fetch(url+'?_='+Date.now());if(!r.ok)throw new Error(r.status);return r.json();}
 
-const NODE_IPS={
-  'kubernetes-controlplane-1':'10.57.57.80',
-  'kubernetes-controlplane-2':'10.57.57.82',
-  'kubernetes-controlplane-3':'10.57.57.84',
-};
-
-// Ordered agent definitions — orchestrator first as hub, rest as supervised agents
-// schedule: {h:[utc hours], m:minute, dow:[0-6] or null=daily}
+// ── Agent defs ──
 const AGENT_DEFS=[
-  {key:'orchestrator', icon:'🎛️', name:'Orchestrator',  role:'supervises all agents',   schedule:{h:[12],m:0,dow:null}},
-  {key:'news',         icon:'📰', name:'News Agent',     role:'stack updates & tech news',schedule:{h:[4], m:0,dow:null}},
-  {key:'infra',        icon:'☸️', name:'Infra Agent',    role:'cluster health monitoring',schedule:{h:[8,20],m:0,dow:null}},
-  {key:'costs',        icon:'💰', name:'Costs Agent',    role:'storage & backup checks',  schedule:{h:[9], m:0,dow:[0]}},
-  {key:'dashboard',    icon:'🖥️', name:'Dashboard Agent',role:'updates this page',        schedule:{h:[23],m:0,dow:null}},
-  {key:'blog',         icon:'✍️', name:'Blog Agent',     role:'content generation',       schedule:{h:[9], m:0,dow:[1]}},
-  {key:'design',       icon:'🎨', name:'Design Agent',   role:'UI/UX suggestions',        schedule:null},
+  {key:'orchestrator',icon:'🎛️',name:'Orchestrator',role:'supervises all agents',schedule:{h:[12],m:0,dow:null}},
+  {key:'news',        icon:'📰',name:'News',         role:'stack updates & tech news',schedule:{h:[4],m:0,dow:null}},
+  {key:'infra',       icon:'☸️',name:'Infra',         role:'cluster health monitoring',schedule:{h:[8,20],m:0,dow:null}},
+  {key:'costs',       icon:'💰',name:'Costs',         role:'storage & backup checks',  schedule:{h:[9],m:0,dow:[0]}},
+  {key:'dashboard',   icon:'🖥️',name:'Dashboard',    role:'updates this page',         schedule:{h:[23],m:0,dow:null}},
+  {key:'blog',        icon:'✍️',name:'Blog',          role:'content generation',        schedule:{h:[9],m:0,dow:[1]}},
+  {key:'design',      icon:'🎨',name:'Design',        role:'UI/UX suggestions',         schedule:null},
 ];
 
-function nextRunDate(schedule){
-  if(!schedule)return null;
-  const now=new Date();
-  const best=[];
-  for(const h of schedule.h){
+function nextRunDate(s){
+  if(!s)return null;
+  const now=new Date(),best=[];
+  for(const h of s.h){
     for(let d=0;d<=7;d++){
       const c=new Date(now);
-      c.setUTCHours(h,schedule.m,0,0);
-      c.setUTCDate(c.getUTCDate()+d);
+      c.setUTCHours(h,s.m,0,0);c.setUTCDate(c.getUTCDate()+d);
       if(c<=now)continue;
-      if(schedule.dow&&!schedule.dow.includes(c.getUTCDay()))continue;
+      if(s.dow&&!s.dow.includes(c.getUTCDay()))continue;
       best.push(c);
     }
   }
-  if(!best.length)return null;
-  return best.sort((a,b)=>a-b)[0];
+  return best.length?best.sort((a,b)=>a-b)[0]:null;
 }
-
-function fmtNextRun(schedule){
-  const next=nextRunDate(schedule);
+function fmtNextRun(s){
+  const next=nextRunDate(s);
   if(!next)return'';
   const mins=Math.round((next-new Date())/60000);
-  if(mins<1)return'acum';
-  if(mins<60)return'în '+mins+'m';
+  if(mins<1)return'acum';if(mins<60)return'în '+mins+'m';
   const h=Math.floor(mins/60),m=mins%60;
   if(h<24)return m?'în '+h+'h '+m+'m':'în '+h+'h';
   const days=Math.floor(h/24),rh=h%24;
   return rh?'în '+days+'z '+rh+'h':'în '+days+'z';
 }
-
 function updateNextRunLabels(){
-  AGENT_DEFS.forEach(def=>{
-    const el=document.getElementById('nr-'+def.key);
-    if(!el||!def.schedule)return;
-    const txt=fmtNextRun(def.schedule);
-    el.textContent='⏱ '+txt;
-    const next=nextRunDate(def.schedule);
+  AGENT_DEFS.forEach(d=>{
+    const el=document.getElementById('nr-'+d.key);
+    if(!el||!d.schedule)return;
+    const next=nextRunDate(d.schedule);
     const mins=next?Math.round((next-new Date())/60000):9999;
-    el.classList.toggle('soon',mins<60);
+    el.textContent='⏱ '+fmtNextRun(d.schedule);
+    el.className='agent-next'+(mins<60?' soon':'');
   });
 }
+setInterval(updateNextRunLabels,60000);
 
-function getDismissedAlerts(){
-  try{const today=new Date().toISOString().slice(0,10);const d=JSON.parse(localStorage.getItem('dismissedAlerts')||'{}');return d.date===today?new Set(d.ids):new Set();}catch{return new Set();}
+// ── Alert dismiss ──
+function getDismissed(){
+  try{const today=new Date().toISOString().slice(0,10);const d=JSON.parse(localStorage.getItem('da2')||'{}');return d.date===today?new Set(d.ids):new Set();}catch{return new Set();}
 }
-function saveDismissedAlert(id){
-  try{const today=new Date().toISOString().slice(0,10);const d=JSON.parse(localStorage.getItem('dismissedAlerts')||'{}');const ids=d.date===today?(d.ids||[]):[];ids.push(id);localStorage.setItem('dismissedAlerts',JSON.stringify({date:today,ids}));}catch{}
+function saveD(id){
+  try{const today=new Date().toISOString().slice(0,10);const d=JSON.parse(localStorage.getItem('da2')||'{}');const ids=d.date===today?(d.ids||[]):[];ids.push(id);localStorage.setItem('da2',JSON.stringify({date:today,ids}));}catch{}
 }
-function alertId(item){return(item.title||'').slice(0,60);}
-
-function renderCalendar(cal){
-  const card=document.getElementById('calendar-card');
-  const content=document.getElementById('calendar-content');
-  const tag=document.getElementById('calendar-tag');
-  if(!cal||!cal.days){card.style.display='none';return;}
-  card.style.display='';
-  const total=cal.totalEvents||0;
-  tag.textContent=total>0?total+' evenimente':'Liber';
-
-  if(!cal.days.length){
-    content.innerHTML='<div class="empty" style="padding:8px 0">Niciun eveniment în următoarele 7 zile 🎉</div>';
-    return;
-  }
-
-  const today=new Date().toISOString().slice(0,10);
-  const tomorrow=new Date(Date.now()+86400000).toISOString().slice(0,10);
-
-  content.innerHTML=cal.days.map(day=>{
-    const dt=new Date(day.date+'T12:00:00');
-    let dayLabel=day.date===today?'Azi':day.date===tomorrow?'Mâine':dt.toLocaleDateString('ro-RO',{weekday:'long',day:'numeric',month:'short'});
-    const isToday=day.date===today;
-    const evHtml=day.events.map(ev=>{
-      let timeStr='';
-      if(!ev.allDay){
-        try{
-          const d=new Date(ev.start);
-          timeStr=d.toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Bucharest'});
-        }catch{}
-      }else{
-        timeStr='Toată ziua';
-      }
-      return `<div style="display:flex;align-items:baseline;gap:8px;padding:4px 0;border-bottom:1px solid var(--border,rgba(255,255,255,.06))">
-        <span style="font-size:11px;color:var(--text3);min-width:64px;flex-shrink:0">${timeStr}</span>
-        <span style="font-size:13px;color:var(--text1)">${esc(ev.summary)}</span>
-        ${ev.location?`<span style="font-size:11px;color:var(--text3);margin-left:auto">📍${esc(ev.location)}</span>`:''}
-      </div>`;
-    }).join('');
-    return `<div style="margin-bottom:10px">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:${isToday?'var(--blue)':'var(--text3)'};margin-bottom:4px">${dayLabel}</div>
-      ${evHtml}
-    </div>`;
-  }).join('');
+function dismissAlert(id){
+  saveD(id);
+  const el=document.querySelector(`[data-aid="${CSS.escape(id)}"]`);
+  if(el){el.style.transition='opacity .2s';el.style.opacity='0';setTimeout(()=>el.remove(),220);}
 }
 
+// ── RENDER: Weather ──
 function renderWeather(w){
   const card=document.getElementById('weather-card');
-  const content=document.getElementById('weather-content');
   if(!w||!w.current){card.style.display='none';return;}
   card.style.display='';
   const c=w.current;
+  const upd=w.updatedAt?Math.round((Date.now()-new Date(w.updatedAt))/60000):null;
+  document.getElementById('weather-upd').textContent=upd!=null?(upd<2?'acum':upd+'m ago'):'';
+  const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+  const wd=dirs[Math.round(c.wind_dir/22.5)%16]||'';
   const days=w.daily||[];
-  const windDirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
-  const wdLabel=windDirs[Math.round(c.wind_dir/22.5)%16]||'';
-  const updMin=w.updatedAt?Math.round((Date.now()-new Date(w.updatedAt))/60000):null;
-  const updLabel=updMin!=null?(updMin<2?'acum':'acum '+updMin+'m'):'';
-
-  const dailyHtml=days.map((d,i)=>{
-    const dt=new Date(d.date+'T12:00:00');
-    const isToday=i===0;
-    const dayLabel=isToday?'Azi':dt.toLocaleDateString('ro-RO',{weekday:'long'});
-    const dateLabel=dt.toLocaleDateString('ro-RO',{day:'numeric',month:'short'});
-    return `<div style="flex:1;min-width:90px;background:var(--card2,rgba(255,255,255,.04));border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">${dayLabel}</div>
-      <div style="font-size:10px;color:var(--text3)">${dateLabel}</div>
-      <div style="font-size:28px;margin:4px 0;line-height:1">${d.emoji}</div>
-      <div style="font-size:13px;font-weight:600">${Math.round(d.max)}° <span style="color:var(--text3);font-weight:400;font-size:12px">${Math.round(d.min)}°</span></div>
-      <div style="font-size:11px;color:var(--text3)">${d.icon}</div>
-      ${d.precip>0?`<div style="font-size:10px;color:#60a5fa;margin-top:2px">💧 ${d.precip} mm</div>`:''}
-    </div>`;
-  }).join('');
-
-  const stats=[
-    {icon:'💧',label:'Umiditate',val:c.humidity+'%'},
-    {icon:'💨',label:'Vânt',val:c.wind_kmh+' km/h '+wdLabel},
-    {icon:'🌡️',label:'Percepuți',val:c.feels_like+'°C'},
-    {icon:'🌧️',label:'Precipitații',val:c.precipitation>0?c.precipitation+' mm':'0 mm'},
-  ].map(s=>`<div style="display:flex;flex-direction:column;gap:1px">
-    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${s.icon} ${s.label}</div>
-    <div style="font-size:13px;font-weight:500;color:var(--text1)">${s.val}</div>
-  </div>`).join('');
-
-  content.innerHTML=`
-    <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start">
+  document.getElementById('weather-content').innerHTML=`
+    <div class="w-current">
+      <div class="w-icon">${c.icon}</div>
       <div>
-        <div style="font-size:56px;line-height:1">${c.icon}</div>
-      </div>
-      <div>
-        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
-          <span style="font-size:36px;font-weight:700;line-height:1">${c.temp}°C</span>
-          <span style="font-size:14px;color:var(--text2)">${c.description}</span>
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:3px">${w.location}${updLabel?' · actualizat '+updLabel:''}</div>
-        <div style="display:flex;gap:20px;margin-top:10px;flex-wrap:wrap">${stats}</div>
+        <div class="w-temp">${Math.round(c.temp)}°</div>
+        <div class="w-desc">${esc(c.description)}</div>
+        <div class="w-loc">${esc(w.location)}</div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">${dailyHtml}</div>`;
+    <div class="w-days">
+      ${days.map((d,i)=>{
+        const dt=new Date(d.date+'T12:00:00');
+        const lbl=i===0?'Azi':dt.toLocaleDateString('ro-RO',{weekday:'short'});
+        return `<div class="w-day">
+          <div class="w-day-name">${lbl}</div>
+          <div class="w-day-emoji">${d.emoji}</div>
+          <div class="w-day-temp">${Math.round(d.max)}° <span class="w-day-min">${Math.round(d.min)}°</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="w-stats">
+      <div class="w-stat"><div class="w-stat-label">Umiditate</div><div class="w-stat-val">${c.humidity}%</div></div>
+      <div class="w-stat"><div class="w-stat-label">Vânt</div><div class="w-stat-val">${c.wind_kmh} km/h ${wd}</div></div>
+      <div class="w-stat"><div class="w-stat-label">Percepuți</div><div class="w-stat-val">${c.feels_like}°C</div></div>
+      ${c.precipitation>0?`<div class="w-stat"><div class="w-stat-label">Precipitații</div><div class="w-stat-val">${c.precipitation} mm</div></div>`:''}
+    </div>`;
 }
 
+// ── RENDER: Calendar ──
+function renderCalendar(cal){
+  const card=document.getElementById('calendar-card');
+  const content=document.getElementById('calendar-content');
+  if(!cal||!cal.days){card.style.display='none';return;}
+  card.style.display='';
+  const total=cal.totalEvents||0;
+  document.getElementById('calendar-tag').textContent=total?total+' ev':'Liber';
+  if(!cal.days.length){content.innerHTML='<div class="cal-empty">Niciun eveniment în 7 zile 🎉</div>';return;}
+  const today=new Date().toISOString().slice(0,10);
+  const tomorrow=new Date(Date.now()+86400000).toISOString().slice(0,10);
+  content.innerHTML=cal.days.map(day=>{
+    const isToday=day.date===today;
+    const isTomorrow=day.date===tomorrow;
+    const dt=new Date(day.date+'T12:00:00');
+    const lbl=isToday?'Azi':isTomorrow?'Mâine':dt.toLocaleDateString('ro-RO',{weekday:'long',day:'numeric',month:'short'});
+    const evs=day.events.map(ev=>{
+      let time='Toată ziua';
+      if(!ev.allDay){try{time=new Date(ev.start).toLocaleTimeString('ro-RO',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Bucharest'});}catch{}}
+      return `<div class="cal-event">
+        <span class="cal-time">${time}</span>
+        <span class="cal-name">${esc(ev.summary)}</span>
+      </div>`;
+    }).join('');
+    return `<div class="cal-day-label ${isToday?'today':''}">${esc(lbl)}</div>${evs}`;
+  }).join('');
+}
+
+// ── RENDER: Todos ──
+function renderReminders(rem){
+  const card=document.getElementById('reminders-card');
+  const content=document.getElementById('reminders-content');
+  if(!rem||!rem.lists){card.style.display='none';return;}
+  const lists=Object.entries(rem.lists);
+  const total=lists.reduce((s,[,v])=>s+v.filter(i=>!i.done).length,0);
+  if(total===0){card.style.display='none';return;}
+  card.style.display='';
+  document.getElementById('reminders-tag').textContent=total+' item'+(total>1?'e':'');
+  const EMOJI={Cumpărături:'🛒',Todo:'📌'};
+  content.innerHTML=lists.map(([name,items])=>{
+    const active=items.filter(i=>!i.done);
+    if(!active.length)return'';
+    const em=EMOJI[name]||'📋';
+    return `<div class="todo-list-name">${em} ${esc(name)}</div>`+
+      active.map(i=>`<div class="todo-item">
+        <div class="todo-circle"></div>
+        <span class="todo-text">${esc(i.text)}</span>
+      </div>`).join('');
+  }).join('');
+}
+
+// ── RENDER: Alerts ──
 function renderAlerts(news){
   const items=(news&&news.items)||[];
-  const dismissed=getDismissedAlerts();
-  const crits=items.filter(i=>i.priority==='critical'&&!dismissed.has(alertId(i)));
-  const warns=items.filter(i=>i.priority==='warn'&&!dismissed.has(alertId(i)));
+  const dismissed=getDismissed();
+  const crits=items.filter(i=>i.priority==='critical'&&!dismissed.has((i.title||'').slice(0,60)));
+  const warns=items.filter(i=>i.priority==='warn'&&!dismissed.has((i.title||'').slice(0,60)));
   const el=document.getElementById('alerts');
   if(!crits.length&&!warns.length){
-    el.innerHTML='<div class="alert alert-ok"><div class="alert-body"><div class="alert-title" style="color:var(--green)">Stack OK — nicio alertă critică azi</div></div><span class="alert-badge b-ok">OK</span></div>';
+    el.innerHTML='<div class="alert alert-ok"><div class="alert-body"><div class="alert-title" style="color:var(--green)">Stack OK — nicio alertă critică</div></div><span class="alert-badge b-ok">OK</span></div>';
     return;
   }
   el.innerHTML=[...crits,...warns].map(item=>{
     const isc=item.priority==='critical';
+    const id=(item.title||'').slice(0,60);
     const tag=item.url?'a':'div';
     const href=item.url?` href="${esc(item.url)}" target="_blank" rel="noopener"`:'';
-    const id=alertId(item);
-    return `<${tag}${href} class="alert ${isc?'alert-crit':'alert-warn'}" data-alert-id="${esc(id)}">
+    return `<${tag}${href} class="alert ${isc?'alert-crit':'alert-warn'}" data-aid="${esc(id)}">
       <div class="alert-body">
         <div class="alert-title">${esc(item.title)}</div>
         <div class="alert-meta">${esc(item.source)} · ${esc(item.date)}</div>
       </div>
       <span class="alert-badge ${isc?'b-crit':'b-warn'}">${isc?'CRITICAL':'WARN'}</span>
-      <button class="alert-dismiss" title="Închide alertă" onclick="event.preventDefault();event.stopPropagation();dismissAlert('${id.replace(/'/g,"\\'")}')">✕</button>
+      <button class="alert-x" onclick="event.preventDefault();event.stopPropagation();dismissAlert('${id.replace(/'/g,"\\'")}')">✕</button>
     </${tag}>`;
   }).join('');
 }
 
-function dismissAlert(id){
-  saveDismissedAlert(id);
-  const el=document.querySelector(`[data-alert-id="${CSS.escape(id)}"]`);
-  if(el){el.style.transition='opacity .2s';el.style.opacity='0';setTimeout(()=>{el.remove();const alerts=document.getElementById('alerts');if(!alerts.querySelector('.alert:not(.alert-ok)')){alerts.innerHTML='<div class="alert alert-ok"><div class="alert-body"><div class="alert-title" style="color:var(--green)">Stack OK — nicio alertă critică azi</div></div><span class="alert-badge b-ok">OK</span></div>';}},220);}
-}
-
-function renderTiles(infra,agents){
-  if(infra){
-    if(infra.nodes){
-      document.getElementById('tv-nodes').textContent=infra.nodes.ready||'3/3';
-      document.getElementById('ts-nodes').textContent=infra.nodes.status||'Activ';
-      document.getElementById('cluster-badge').textContent='☸ Cluster '+(infra.nodes.ready||'3/3');
-    }
-    if(infra.pods){
-      const u=typeof infra.pods==='object'?infra.pods.unhealthy:infra.pods;
-      const el=document.getElementById('tile-pods');
-      if(el)el.className='tile '+(u===0?'t-green':'t-red');
-    }
-    if(infra.docker){
-      document.getElementById('tv-docker').textContent=infra.docker.running||0;
-      document.getElementById('ts-docker').textContent=infra.docker.stopped>0?'rulând, '+infra.docker.stopped+' oprite':'rulând';
-    }
-    if(infra.disk){
-      const p=parseInt(infra.disk.usage);
-      document.getElementById('tv-disk').textContent=infra.disk.usage;
-      document.getElementById('ts-disk').textContent=fmtKB(infra.disk.free)+' liber';
-      document.getElementById('tile-disk').className='tile '+(p<60?'t-green':p<80?'t-yellow':'t-red');
-      const d2=document.getElementById('tv-disk2');
-      if(d2){d2.textContent=infra.disk.usage;d2.style.color=p<60?'var(--green)':p<80?'var(--yellow)':'var(--red)';}
-      const d2s=document.getElementById('ts-disk2');
-      if(d2s)d2s.textContent=fmtKB(infra.disk.free)+' liber';
-    }
-    if(infra.flux){
-      document.getElementById('tv-flux').textContent=infra.flux.ok;
-      document.getElementById('ts-flux').textContent=infra.flux.failed>0?infra.flux.failed+' eșuate':'sincronizat';
-      if(infra.flux.failed>0){
-        document.getElementById('tile-flux').className='tile t-red';
-        document.getElementById('tv-flux').style.color='';
-      }else{
-        document.getElementById('tv-flux').style.color='var(--green)';
-      }
-    }
-  }
-  if(agents){
-    // Count all agents including any not in AGENT_DEFS
-    const allKeys=new Set([...AGENT_DEFS.map(d=>d.key),...Object.keys(agents)]);
-    const active=[...allKeys].filter(k=>agents[k]&&agents[k].status==='ok').length;
-    document.getElementById('tv-agents').textContent=active+'/'+allKeys.size;
-    document.getElementById('ts-agents').textContent='activi';
-    document.getElementById('tile-agents').className='tile '+(active===0?'t-red':active<allKeys.size?'t-accent':'t-green');
-  }
-}
-
-function renderNodes(infra){
-  const metrics=(infra&&infra.nodes&&infra.nodes.metrics)||[];
-  document.getElementById('nodes-list').innerHTML=metrics.map(n=>{
-    const ip=NODE_IPS[n.name]||'—';
-    const short=n.name.replace('kubernetes-','');
-    return `<div class="node">
-      <div class="dot dot-ok pulse"></div>
-      <div class="node-info">
-        <div class="node-name">${esc(short)}</div>
-        <div class="node-meta">control-plane · ${esc(ip)}</div>
+// ── RENDER: Upgrades ──
+function renderUpgrades(upgrades){
+  const sec=document.getElementById('upgrades-section');
+  const list=document.getElementById('upgrades-list');
+  if(!upgrades||!upgrades.items||!upgrades.items.length){sec.style.display='none';return;}
+  sec.style.display='';
+  const bc=upgrades.breakingCount||0;
+  const meta=`${upgrades.totalOpen} PR · ${bc} breaking`;
+  document.getElementById('upgrades-meta').textContent=meta;
+  if(bc>0)document.getElementById('upgrades-meta').style.color='#fca5a5';
+  const shown=upgrades.items.filter(i=>i.kind==='breaking'||i.kind==='minor');
+  const patches=upgrades.items.filter(i=>i.kind==='patch'||i.kind==='info');
+  const labels={breaking:'BREAKING',minor:'minor',patch:'patch',info:'info'};
+  const bs={breaking:'upg-b-breaking',minor:'upg-b-minor',patch:'upg-b-patch',info:'upg-b-patch'};
+  const ss={breaking:'upg-breaking',minor:'upg-minor',patch:'upg-patch',info:'upg-patch'};
+  let html=shown.map(i=>{
+    const tag=i.url?'a':'div';
+    const href=i.url?` href="${esc(i.url)}" target="_blank" rel="noopener"`:'';
+    return `<${tag}${href} class="upg-item ${ss[i.kind]||'upg-patch'}">
+      <div style="flex:1;min-width:0">
+        <div class="upg-pkg">${esc(i.package)}</div>
+        <div class="upg-versions">${esc(i.fromVersion||'?')} → ${esc(i.toVersion||'?')}</div>
       </div>
-      <div class="node-bars">
-        <div class="bar-row">
-          <span class="bar-lbl">CPU</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${n.cpu}%;background:${barColor(n.cpu)}"></div></div>
-          <span class="bar-pct">${n.cpu}%</span>
-        </div>
-        <div class="bar-row">
-          <span class="bar-lbl">MEM</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${n.mem}%;background:${barColor(n.mem)}"></div></div>
-          <span class="bar-pct">${n.mem}%</span>
-        </div>
-      </div>
-    </div>`;
+      <span class="upg-badge ${bs[i.kind]||'upg-b-patch'}">${labels[i.kind]||'upg'}</span>
+    </${tag}>`;
   }).join('');
-
-  const diskPct=infra&&infra.disk?infra.disk.pct||parseInt(infra.disk.usage):0;
-  const freeGB=infra&&infra.disk?fmtKB(infra.disk.free):'?';
-  const memPct=infra&&infra.memory?infra.memory.pct:0;
-  const memStr=infra&&infra.memory?(Math.round(infra.memory.usedMB/1024*10)/10)+'G / '+(Math.round(infra.memory.totalMB/1024*10)/10)+'G':'';
-  const cpuAvg=metrics.length?Math.round(metrics.reduce((s,n)=>s+n.cpu,0)/metrics.length):0;
-  document.getElementById('res-list').innerHTML=[
-    {name:'Disk (VPS /)',       pct:diskPct, detail:freeGB+' liber'},
-    {name:'CPU avg (cluster)',  pct:cpuAvg,  detail:cpuAvg+'%'},
-    {name:'Memory (VPS)',       pct:memPct,  detail:memStr},
-  ].map(r=>`<div class="res-item">
-    <div class="res-hdr">
-      <span class="res-name">${esc(r.name)}</span>
-      <span class="res-val">${r.pct}%${r.detail?' · '+esc(r.detail):''}</span>
-    </div>
-    <div class="res-track"><div class="res-fill" style="width:${r.pct}%;background:${barColor(r.pct)}"></div></div>
-  </div>`).join('');
+  if(patches.length){
+    html+=`<div class="upg-item upg-patch" style="cursor:default">
+      <div style="flex:1"><div class="upg-pkg" style="color:var(--t2)">${patches.length} patch-uri</div>
+      <div class="upg-versions">${patches.slice(0,6).map(p=>esc(p.package)).join(', ')}${patches.length>6?'…':''}</div></div>
+      <span class="upg-badge upg-b-patch">patch</span></div>`;
+  }
+  list.innerHTML=html||'<div class="empty">Niciun PR deschis.</div>';
 }
 
+// ── RENDER: News ──
+function renderNews(news){
+  const items=(news&&news.items)||[];
+  const crit=items.filter(i=>i.priority==='critical').length;
+  const warn=items.filter(i=>i.priority==='warn').length;
+  document.getElementById('news-meta').textContent=items.length+' articole'+(crit?' · '+crit+' critical':'')+(warn?' · '+warn+' warn':'');
+  const PRIO={critical:0,warn:1,info:2};
+  const sorted=[...items].sort((a,b)=>(PRIO[a.priority]??2)-(PRIO[b.priority]??2));
+  if(!sorted.length){document.getElementById('news-list').innerHTML='<div class="empty">Nicio știre azi.</div>';return;}
+  document.getElementById('news-list').innerHTML=sorted.map(item=>{
+    const dc=item.priority==='critical'?'nd-crit':item.priority==='warn'?'nd-warn':'nd-info';
+    const tag=item.url?'a':'div';
+    const href=item.url?` href="${esc(item.url)}" target="_blank" rel="noopener"`:'';
+    return `<${tag}${href} class="news-item">
+      <div class="news-dot ${dc}" style="margin-top:5px"></div>
+      <div style="flex:1;min-width:0">
+        <div class="news-title">${esc(item.title)}</div>
+        <div class="news-meta">${esc(item.source)} · ${esc(item.date)}</div>
+      </div>
+      ${item.url?'<span class="news-arr">↗</span>':''}
+    </${tag}>`;
+  }).join('');
+}
+
+// ── RENDER: Agents ──
 function renderAgentNetwork(agents){
-  // Merge AGENT_DEFS with any extra keys in agents.json
   const knownKeys=new Set(AGENT_DEFS.map(d=>d.key));
-  const extraDefs=agents?Object.keys(agents).filter(k=>!knownKeys.has(k)&&!k.startsWith('_')).map(k=>({key:k,icon:'🤖',name:k.charAt(0).toUpperCase()+k.slice(1)+' Agent',role:''})):[];
-  const allDefs=[...AGENT_DEFS,...extraDefs];
-
-  const active=allDefs.filter(d=>agents&&agents[d.key]&&agents[d.key].status==='ok').length;
-  const healthScore=agents&&agents._meta&&agents._meta.healthScore;
-  document.getElementById('agents-tag').textContent=(healthScore||active+'/'+allDefs.length)+' active';
-
-  // Orchestrator hub
-  const orchDef=allDefs.find(d=>d.key==='orchestrator')||{icon:'🎛️',name:'Orchestrator',role:'supervises all agents'};
-  const orch=agents&&agents.orchestrator;
-  const orchOk=orch&&orch.status==='ok';
-  const orchWarn=orch&&orch.status==='warn';
-  const orchErr=orch&&orch.status==='error';
-  const orchActive=orch&&orch.lastRun;
-  const orchDotClass=orchOk?'dot-ok pulse':orchWarn?'dot-warn pulse':orchErr?'dot-error pulse':'dot-idle';
-  const orchBadgeClass=orchOk?'sb-ok':orchWarn?'sb-warn':orchErr?'sb-error':'sb-idle';
-  const orchBadgeText=orchOk?'OK':orchWarn?'WARN':orchErr?'ERROR':'IDLE';
-  const orchSummaryFull=orchActive?(orch.summary||orchDef.role):'Not configured yet';
-  const orchSummary=orchSummaryFull.length>80?orchSummaryFull.slice(0,77)+'…':orchSummaryFull;
-
-  const orchNextMins=orchDef.schedule&&nextRunDate(orchDef.schedule)?Math.round((nextRunDate(orchDef.schedule)-new Date())/60000):9999;
-  let html=`<div class="agent-hub">
-    <div class="dot ${orchDotClass}"></div>
-    <div class="agent-hub-body" style="flex:1;min-width:0">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div class="agent-hub-name">${orchDef.icon} ${esc(orchDef.name)}</div>
-        <span class="sbadge ${orchBadgeClass}">${orchBadgeText}</span>
-      </div>
-      <div style="font-size:12px;color:var(--text2);margin-top:3px;word-break:break-word">${esc(orchSummary)}</div>
-      <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--text3)">🕐 ${fmtTime(orch&&orch.lastRun)||'—'}</span>
-        ${orchDef.schedule?`<span class="agent-next${orchNextMins<60?' soon':''}" id="nr-orchestrator" style="font-size:11px">⏱ ${fmtNextRun(orchDef.schedule)}</span>`:''}
-      </div>
-    </div>
-  </div>
-  <div class="agent-connector">supervises</div>
-  <div class="agent-rows">`;
-
-  allDefs.filter(d=>d.key!=='orchestrator').forEach(def=>{
+  const extra=agents?Object.keys(agents).filter(k=>!knownKeys.has(k)&&!k.startsWith('_')).map(k=>({key:k,icon:'🤖',name:k,role:'',schedule:null})):[];
+  const defs=[...AGENT_DEFS,...extra];
+  const active=defs.filter(d=>agents&&agents[d.key]&&agents[d.key].status==='ok').length;
+  document.getElementById('agents-tag').textContent=active+'/'+defs.length+' ok';
+  document.getElementById('agent-network').innerHTML=`<div style="display:flex;flex-direction:column;gap:8px">`+
+  defs.map(def=>{
     const a=agents&&agents[def.key];
     const isOk=a&&a.status==='ok';
     const isErr=a&&a.status==='error';
     const isWarn=a&&a.status==='warn';
-    const badgeClass=isOk?'sb-ok':isErr?'sb-error':isWarn?'sb-warn':'sb-idle';
-    const badgeTxt=isOk?'OK':isErr?'ERROR':isWarn?'WARN':'IDLE';
-    const summaryFull=a&&a.summary?a.summary:(def.role||'—');
-    const summary=summaryFull.length>90?summaryFull.slice(0,87)+'…':summaryFull;
-    const nextTxt=def.schedule?fmtNextRun(def.schedule):'on demand';
+    const bc=isOk?'sb-ok':isErr?'sb-err':isWarn?'sb-warn':'sb-idle';
+    const bt=isOk?'OK':isErr?'ERR':isWarn?'WARN':'—';
+    const lastRun=fmtTime(a&&a.lastRun)||'—';
     const nextMins=def.schedule&&nextRunDate(def.schedule)?Math.round((nextRunDate(def.schedule)-new Date())/60000):9999;
-    html+=`<div class="agent-row" style="align-items:flex-start;gap:10px">
-      <div style="font-size:22px;line-height:1.3;flex-shrink:0">${def.icon}</div>
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:13px;font-weight:600;color:var(--text1)">${esc(def.name)}</span>
-          <span class="sbadge ${badgeClass}">${badgeTxt}</span>
+    const nextTxt=def.schedule?fmtNextRun(def.schedule):'—';
+    const dotCls=isOk?'dot-ok pulse':isErr?'dot-err':isWarn?'dot-warn':'dot-idle';
+    const sum=a&&a.summary?a.summary:def.role||'';
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+        <div style="display:flex;align-items:center;gap:7px;min-width:0">
+          <span style="font-size:16px;line-height:1;flex-shrink:0">${def.icon}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap">${esc(def.name)}</span>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:1px">${esc(def.role||'')}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.45;word-break:break-word">${esc(summary)}</div>
-        <div style="display:flex;gap:10px;margin-top:5px;flex-wrap:wrap">
-          <span style="font-size:11px;color:var(--text3)">🕐 ${fmtTime(a&&a.lastRun)||'—'}</span>
-          <span class="agent-next${nextMins<60?' soon':''}" id="nr-${def.key}" style="font-size:11px">⏱ ${nextTxt}</span>
-        </div>
+        <span class="sbadge ${bc}" style="flex-shrink:0">${bt}</span>
+      </div>
+      ${sum?`<div style="font-size:12px;color:var(--t2);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(sum)}</div>`:''}
+      <div style="font-size:11px;color:var(--t3);display:flex;justify-content:space-between;gap:8px;padding-top:4px;border-top:1px solid var(--border)">
+        <span>🕐 ${lastRun}</span>
+        <span class="${nextMins<60?'agent-next soon':'agent-next'}" id="nr-${def.key}">⏱ ${nextTxt}</span>
       </div>
     </div>`;
-  });
-
-  html+='</div>';
-  document.getElementById('agent-network').innerHTML=html;
+  }).join('')+`</div>`;
 }
 
-function renderLonghorn(infra){
-  const lh=infra&&infra.longhorn;
-  if(!lh)return;
-  document.getElementById('lh-vol').textContent=lh.healthy+'/'+lh.total;
-  document.getElementById('lh-used').textContent=(lh.usedG||'?')+'G';
-  document.getElementById('lh-used-sub').textContent='/ '+(lh.totalG||'?')+' · '+(lh.healthy+'/'+lh.total)+' vol';
-  document.getElementById('bkp-tag').textContent=lh.healthy===lh.total?'OK':'WARN';
-  const nodes=infra.longhornNodes||[];
-  document.getElementById('lh-nodes').innerHTML=nodes.map(n=>{
-    const pct=Math.round(n.used/n.total*100);
+// ── RENDER: Status bar ──
+function renderStatusBar(infra,agents){
+  if(!infra)return;
+  const nodes=infra.nodes;
+  if(nodes){
+    const el=document.getElementById('sb-nodes');
+    el.textContent=nodes.ready||'3/3';
+    el.className='sb-value ok';
+  }
+  if(infra.pods){
+    const u=typeof infra.pods==='object'?infra.pods.unhealthy:0;
+    const el=document.getElementById('sb-pods');
+    el.textContent=u===0?'OK':u+' err';
+    el.className='sb-value '+(u===0?'ok':'err');
+  }
+  if(infra.flux){
+    const el=document.getElementById('sb-flux');
+    el.textContent=infra.flux.failed>0?infra.flux.failed+' fail':'OK';
+    el.className='sb-value '+(infra.flux.failed>0?'err':'ok');
+  }
+  if(infra.disk){
+    const p=parseInt(infra.disk.usage);
+    const el=document.getElementById('sb-disk');
+    el.textContent=infra.disk.usage;
+    el.className='sb-value '+(p<60?'ok':p<80?'warn':'err');
+  }
+  if(infra.docker){
+    const el=document.getElementById('sb-docker');
+    const stopped=infra.docker.stopped||0;
+    el.textContent=infra.docker.running+(stopped>0?' (+'+stopped+' off)':'');
+    el.className='sb-value '+(stopped>0?'warn':'ok');
+  }
+  if(agents){
+    const all=[...new Set([...AGENT_DEFS.map(d=>d.key),...Object.keys(agents)])].filter(k=>!k.startsWith('_'));
+    const ok=all.filter(k=>agents[k]&&agents[k].status==='ok').length;
+    const el=document.getElementById('sb-agents');
+    el.textContent=ok+'/'+all.length;
+    el.className='sb-value '+(ok===all.length?'ok':ok===0?'err':'warn');
+  }
+}
+
+// ── RENDER: VPS ──
+function renderVPS(infra){
+  const diskPct=infra&&infra.disk?infra.disk.pct||parseInt(infra.disk.usage):0;
+  const freeGB=infra&&infra.disk?fmtKB(infra.disk.free):'?';
+  const memPct=infra&&infra.memory?infra.memory.pct:0;
+  const memUsed=infra&&infra.memory?Math.round(infra.memory.usedMB/1024*10)/10:0;
+  const memTotal=infra&&infra.memory?Math.round(infra.memory.totalMB/1024*10)/10:0;
+  const cpuPct=infra&&infra.cpu?infra.cpu.pct:0;
+  const docker=infra&&infra.docker;
+  const stopped=docker?docker.stopped:0;
+
+  document.getElementById('vps-tag').textContent='Oracle Cloud ARM';
+
+  const rows=[
+    {name:'CPU',    pct:cpuPct,  info:cpuPct+'%'},
+    {name:'Memory', pct:memPct,  info:memUsed+'G / '+memTotal+'G · '+memPct+'%'},
+    {name:'Disk /', pct:diskPct, info:freeGB+' liber · '+diskPct+'%'},
+  ];
+  const barsHtml=rows.map(r=>`<div class="storage-item">
+    <div class="storage-hdr"><span class="storage-name">${r.name}</span><span class="storage-val">${esc(r.info)}</span></div>
+    <div class="bar-track-full"><div class="bar-fill-full" style="width:${r.pct}%;background:${barColor(r.pct)}"></div></div>
+  </div>`).join('');
+
+  const dockerHtml=docker?`<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.7px">Docker</div>
+    <div style="display:flex;gap:16px;font-size:13px">
+      <span><span style="color:var(--green);font-weight:600">${docker.running}</span> <span style="color:var(--t3)">rulând</span></span>
+      ${stopped>0?`<span><span style="color:var(--yellow);font-weight:600">${stopped}</span> <span style="color:var(--t3)">oprite</span></span>`:''}
+    </div>
+  </div>`:'';
+
+  document.getElementById('vps-content').innerHTML=barsHtml+dockerHtml;
+}
+
+// ── RENDER: K8s Nodes ──
+function renderNodes(infra){
+  const metrics=(infra&&infra.nodes&&infra.nodes.metrics)||[];
+  const IPS={'kubernetes-controlplane-1':'10.57.57.80','kubernetes-controlplane-2':'10.57.57.82','kubernetes-controlplane-3':'10.57.57.84'};
+  const cpuAvg=metrics.length?Math.round(metrics.reduce((s,n)=>s+n.cpu,0)/metrics.length):0;
+  const memAvg=metrics.length?Math.round(metrics.reduce((s,n)=>s+n.mem,0)/metrics.length):0;
+  document.getElementById('infra-tag').textContent=metrics.length+' noduri · CPU avg '+cpuAvg+'%';
+  document.getElementById('nodes-list').innerHTML=metrics.map(n=>{
     const short=n.name.replace('kubernetes-','');
-    return `<div class="lh-node">
-      <div class="lh-node-hdr">
-        <span>${esc(short)}</span>
-        <span>${Math.round(n.used/1073741824)}G / ${Math.round(n.total/1073741824)}G (${pct}%)</span>
+    const ip=IPS[n.name]||'';
+    return `<div class="node-item">
+      <div class="dot dot-ok pulse"></div>
+      <div style="flex:1;min-width:0">
+        <div class="node-name">${esc(short)}</div>
+        <div class="node-meta">${ip}</div>
       </div>
-      <div class="lh-bar"><div class="lh-fill" style="width:${pct}%;background:${barColor(pct)}"></div></div>
+      <div class="node-bars">
+        <div class="bar-pill"><span class="bar-lbl">CPU</span><div class="bar-track"><div class="bar-fill" style="width:${n.cpu}%;background:${barColor(n.cpu)}"></div></div><span>${n.cpu}%</span></div>
+        <div class="bar-pill"><span class="bar-lbl">MEM</span><div class="bar-track"><div class="bar-fill" style="width:${n.mem}%;background:${barColor(n.mem)}"></div></div><span>${n.mem}%</span></div>
+      </div>
     </div>`;
   }).join('');
 }
 
-function renderBackup(backup){
-  if(!backup||!backup.services){document.getElementById('bkp-rows').innerHTML='<div class="empty">No data</div>';return;}
-  const svc=k=>backup.services.find(s=>s.name===k);
-  const allOk=backup.services.filter(s=>s.status!=='unknown').every(s=>s.status==='ok');
-  document.getElementById('bkp-tag').textContent=allOk?'Toate OK':'Probleme detectate';
-
-  // Parse Garage S3: "running - 96.0 GB disponibil, 38,877 obiecte, fără erori"
-  const s3=svc('Garage S3');
-  if(s3){
-    const m=s3.lastBackup&&s3.lastBackup.match(/(\d+\.?\d*)\s*GB disponibil,\s*([\d,]+)\s*obiecte/);
-    document.getElementById('bkp-s3-val').textContent=m?m[1]+'G':'OK';
-    document.getElementById('bkp-s3-sub').textContent=m?m[2].replace(',','.')+' obiecte libere':'disponibil';
-  }
-
-  // Parse NAS Mount: "192.7G total, 89.4G disponibil (54% folosit)"
-  const nas=svc('NAS Mount');
-  if(nas){
-    const m=nas.lastBackup&&nas.lastBackup.match(/([\d.]+G)\s+total,\s*([\d.]+G)\s+disponibil\s*\((\d+)%/);
-    document.getElementById('bkp-nas-val').textContent=m?m[2]:'OK';
-    document.getElementById('bkp-nas-sub').textContent=m?'din '+m[1]+' ('+m[3]+'% folosit)':'liber';
-    const pct=m?parseInt(m[3]):0;
-    document.getElementById('bkp-nas-val').style.color=pct<70?'var(--green)':pct<85?'var(--yellow)':'var(--red)';
-  }
-
-  // Parse Longhorn PVCs: "azi (2026-05-29T02:35:20Z)"
-  const lhb=svc('Longhorn PVCs');
-  if(lhb){
-    const isOk=lhb.status==='ok';
-    const m=lhb.lastBackup&&lhb.lastBackup.match(/\((.+?)\)/);
-    const dt=m?new Date(m[1]):null;
-    const timeStr=dt?dt.toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false,hour:'2-digit',minute:'2-digit'}):'—';
-    document.getElementById('bkp-lh-val').textContent=isOk?'✓':'!';
-    document.getElementById('bkp-lh-sub').textContent=dt?'azi '+timeStr:(lhb.lastBackup||'—');
-    document.getElementById('bkp-lh-val').style.color=isOk?'var(--green)':'var(--red)';
-  }
-
-  // Service status rows (all services)
-  document.getElementById('bkp-rows').innerHTML=backup.services.map(s=>{
-    const isOk=s.status==='ok';
-    const isUnk=s.status==='unknown';
-    return `<div class="bkp-row">
-      <div class="dot ${isOk?'dot-ok pulse':isUnk?'dot-idle':'dot-err'}"></div>
-      <div class="bkp-name">${esc(s.name)}</div>
-      <div class="bkp-detail">${esc(s.lastBackup||'—')}</div>
-    </div>`;
-  }).join('');
-}
-
-function renderDocker(infra){
-  const r=infra&&infra.docker?infra.docker.running:0;
-  const s=infra&&infra.docker?infra.docker.stopped:0;
-  const names=infra&&infra.docker&&infra.docker.names?infra.docker.names:[];
-  document.getElementById('docker-tag').textContent=r+' rulând'+(s>0?', '+s+' oprite':'');
-  const groups={
-    'Proxy & Auth':      ['traefik','authentik-server','authentik-worker','authentik-redis','authentik-postgresql','unbound','pihole'],
-    'Storage & Backup':  ['garage','garage-webui','filebrowser'],
-    'Monitoring':        ['uptime-kuma','glances','portainer'],
-    'Apps & Tools':      ['joplin-server','joplin-db','homepage','guacamole','agents-dashboard'],
-  };
-  const placed=new Set();
-  let html='<div style="display:flex;flex-direction:column;gap:10px">';
-  for(const [grp,keys] of Object.entries(groups)){
-    const inGrp=names.filter(n=>keys.some(k=>n.toLowerCase().includes(k)));
-    if(!inGrp.length) continue;
-    inGrp.forEach(n=>placed.add(n));
-    html+=`<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:4px">${grp}</div>`;
-    html+=`<div style="display:flex;flex-wrap:wrap;gap:4px">`;
-    html+=inGrp.map(name=>`<div class="chip"><div class="chip-dot"></div><span>${esc(name)}</span></div>`).join('');
-    html+=`</div></div>`;
-  }
-  const rest=names.filter(n=>!placed.has(n));
-  if(rest.length){
-    html+=`<div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);margin-bottom:4px">Altele</div>`;
-    html+=`<div style="display:flex;flex-wrap:wrap;gap:4px">`;
-    html+=rest.map(name=>`<div class="chip"><div class="chip-dot"></div><span>${esc(name)}</span></div>`).join('');
-    html+=`</div></div>`;
-  }
-  html+='</div>';
-  document.getElementById('docker-chips').innerHTML=names.length?html:'<div class="empty">No containers</div>';
-}
-
-function renderNS(infra){
-  // panel removed — no-op
-}
-
-const PRIO={critical:0,warn:1,info:2};
-function sortByPrio(arr){return[...arr].sort((a,b)=>(PRIO[a.priority]??2)-(PRIO[b.priority]??2));}
-
-function renderNews(news){
-  const items=(news&&news.items)||[];
-  document.getElementById('news-total').textContent=items.length+' articole';
-  document.getElementById('news-date').textContent=(news&&news.date)||'—';
-  const crit=items.filter(i=>i.priority==='critical').length;
-  const warn=items.filter(i=>i.priority==='warn').length;
-  const info=items.filter(i=>i.priority==='info').length;
-  document.getElementById('news-pills').innerHTML=
-    (crit?`<span class="pill pill-crit">${crit} critical</span>`:'')+
-    (warn?`<span class="pill pill-warn">${warn} warn</span>`:'')+
-    (info?`<span class="pill pill-info">${info} info</span>`:'');
-
-  const stack=sortByPrio(items.filter(i=>i.source&&i.source.toLowerCase().includes('github')&&!i.source.includes('Trending')));
-  const tech=sortByPrio(items.filter(i=>!i.source||!i.source.toLowerCase().includes('github')||i.source.includes('Trending')));
-
-  function buildList(arr){
-    if(!arr.length)return'<div class="empty">—</div>';
-    return arr.map(item=>{
-      const dc=item.priority==='critical'?'nd-crit':item.priority==='warn'?'nd-warn':'nd-info';
-      const tag=item.url?'a':'div';
-      const href=item.url?` href="${esc(item.url)}" target="_blank" rel="noopener"`:'';
-      return `<${tag}${href} class="news-item">
-        <div class="news-dot ${dc}"></div>
-        <div class="news-body">
-          <div class="news-title">${esc(item.title)}</div>
-          <div class="news-meta">${esc(item.source)} · ${esc(item.date)}</div>
-        </div>
-        ${item.url?'<span class="news-arr">↗</span>':''}
-      </${tag}>`;
+// ── RENDER: Storage & Backup ──
+function renderStorage(infra,backup){
+  let html='';
+  // Longhorn
+  const lh=infra&&infra.longhorn;
+  if(lh){
+    html+=`<div class="storage-item">
+      <div class="storage-hdr"><span class="storage-name">Longhorn PVCs</span><span class="storage-val">${lh.healthy}/${lh.total} healthy · ${(lh.usedG||'?')}G / ${(lh.totalG||'?')}G</span></div>`;
+    const totalGNum=parseFloat(String(lh.totalG));
+    const pct=totalGNum?Math.round(lh.usedG/totalGNum*100):0;
+    html+=`<div class="bar-track-full"><div class="bar-fill-full" style="width:${pct}%;background:${barColor(pct)}"></div></div></div>`;
+    const nodes=infra.longhornNodes||[];
+    html+=nodes.map(n=>{
+      const p=Math.round(n.used/n.total*100);
+      const short=n.name.replace('kubernetes-','');
+      return `<div class="storage-item">
+        <div class="storage-hdr"><span class="storage-name" style="color:var(--t3)">${esc(short)}</span><span class="storage-val">${Math.round(n.used/1073741824)}G / ${Math.round(n.total/1073741824)}G</span></div>
+        <div class="bar-track-full"><div class="bar-fill-full" style="width:${p}%;background:${barColor(p)}"></div></div>
+      </div>`;
     }).join('');
   }
-  document.getElementById('news-stack').innerHTML=buildList(stack);
-  document.getElementById('news-tech').innerHTML=buildList(tech);
-}
-
-function renderUpgrades(upgrades){
-  const sec=document.getElementById('upgrades-section');
-  const list=document.getElementById('upgrades-list');
-  const meta=document.getElementById('upgrades-meta');
-  if(!upgrades||!upgrades.items||!upgrades.items.length){sec.style.display='none';return;}
-  sec.style.display='';
-  const bc=upgrades.breakingCount||0;
-  const uTs=upgrades.timestamp?new Date(upgrades.timestamp).toLocaleTimeString('ro-RO',{timeZone:'Europe/Bucharest',hour12:false,hour:'2-digit',minute:'2-digit'}):'—';
-  meta.textContent=`${upgrades.totalOpen} PR-uri deschise · ${bc} breaking · actualizat ${uTs}`;
-  if(bc>0)meta.style.color='#fca5a5';
-  else meta.style.color='';
-  const badges={breaking:'upg-b-breaking',minor:'upg-b-minor',patch:'upg-b-patch',info:'upg-b-patch'};
-  const styles={breaking:'upg-breaking',minor:'upg-minor',patch:'upg-patch',info:'upg-patch'};
-  const labels={breaking:'BREAKING',minor:'minor',patch:'patch',info:'info'};
-  // Afișăm breaking + minor; patch-urile le colapsăm dacă sunt multe
-  const shown=upgrades.items.filter(i=>i.kind==='breaking'||i.kind==='minor');
-  const patches=upgrades.items.filter(i=>i.kind==='patch'||i.kind==='info');
-  let html=shown.map(i=>{
-    const fromV=i.fromVersion||'?';
-    const toV=i.toVersion||'?';
-    const tag=i.url?'a':'div';
-    const href=i.url?` href="${esc(i.url)}" target="_blank" rel="noopener"`:'';
-    return `<${tag}${href} class="upg-item ${styles[i.kind]||'upg-patch'}">
-      <div class="upg-body">
-        <div class="upg-pkg">${esc(i.package)}</div>
-        <div class="upg-versions">${esc(fromV)} → ${esc(toV)}${i.kind==='breaking'?' ⚠️ breaking change':''}</div>
-      </div>
-      <span class="upg-badge ${badges[i.kind]||'upg-b-patch'}">${labels[i.kind]||'upg'}</span>
-    </${tag}>`;
-  }).join('');
-  if(patches.length){
-    html+=`<div class="upg-item upg-patch" style="grid-column:1/-1;cursor:default">
-      <div class="upg-body"><div class="upg-pkg" style="color:var(--text2)">${patches.length} patch-uri minore</div>
-      <div class="upg-versions">${patches.map(p=>esc(p.package)).join(', ')}</div></div>
-      <span class="upg-badge upg-b-patch">patch</span></div>`;
+  // Backup services
+  if(backup&&backup.services){
+    const allOk=backup.services.filter(s=>s.status!=='unknown').every(s=>s.status==='ok');
+    document.getElementById('bkp-tag').textContent=allOk?'OK':'Verifică';
+    if(!allOk)document.getElementById('bkp-tag').style.color='var(--yellow)';
+    html+=backup.services.map(s=>{
+      const isOk=s.status==='ok';
+      const isUnk=s.status==='unknown';
+      return `<div class="node-item">
+        <div class="dot ${isOk?'dot-ok pulse':isUnk?'dot-idle':'dot-err'}"></div>
+        <div style="flex:1;min-width:0">
+          <div class="node-name">${esc(s.name)}</div>
+          <div class="node-meta">${esc(s.lastBackup||'—')}</div>
+        </div>
+      </div>`;
+    }).join('');
   }
-  list.innerHTML=html||'<div class="upg-empty">Niciun PR deschis momentan.</div>';
+  document.getElementById('storage-content').innerHTML=html||'<div class="empty">No data</div>';
 }
 
+// ── LOAD ALL ──
 async function loadAll(){
   cd=REFRESH;
   try{
-    const[aR,iR,nR,bR,uR,wR,cR]=await Promise.allSettled([
+    const[aR,iR,nR,bR,uR,wR,cR,remR]=await Promise.allSettled([
       fetchJ('/data/agents.json'),
       fetchJ('/data/infra.json'),
       fetchJ('/data/news.json'),
@@ -1030,27 +875,29 @@ async function loadAll(){
       fetchJ('/data/upgrades.json'),
       fetchJ('/data/weather.json'),
       fetchJ('/data/calendar.json'),
+      fetchJ('/data/todos.json'),
     ]);
-    const agents=aR.status==='fulfilled'?aR.value:null;
-    const infra=iR.status==='fulfilled'?iR.value:null;
-    const news=nR.status==='fulfilled'?nR.value:null;
-    const backup=bR.status==='fulfilled'?bR.value:null;
+    const agents  =aR.status==='fulfilled'?aR.value:null;
+    const infra   =iR.status==='fulfilled'?iR.value:null;
+    const news    =nR.status==='fulfilled'?nR.value:null;
+    const backup  =bR.status==='fulfilled'?bR.value:null;
     const upgrades=uR.status==='fulfilled'?uR.value:null;
-    const weather=wR.status==='fulfilled'?wR.value:null;
-    const cal=cR.status==='fulfilled'?cR.value:null;
+    const weather =wR.status==='fulfilled'?wR.value:null;
+    const cal     =cR.status==='fulfilled'?cR.value:null;
+    const rem     =remR.status==='fulfilled'?remR.value:null;
 
+    renderStatusBar(infra,agents);
     renderWeather(weather);
     renderCalendar(cal);
+    renderReminders(rem);
     renderAlerts(news);
     renderUpgrades(upgrades);
-    renderTiles(infra,agents);
-    renderNodes(infra);
-    renderAgentNetwork(agents);
-    renderLonghorn(infra);
-    renderBackup(backup);
-    renderDocker(infra);
-    renderNS(infra);
     renderNews(news);
+    renderAgentNetwork(agents);
+    renderVPS(infra);
+    renderNodes(infra);
+    renderStorage(infra,backup);
+    updateNextRunLabels();
   }catch(e){console.error('loadAll:',e);}
 }
 
