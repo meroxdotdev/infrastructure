@@ -8,11 +8,13 @@ Self-hosted AI agent setup using [OpenClaw](https://openclaw.ai) for the merox.d
 oracle-cloud VPS
   └── openclaw user (non-root, docker group)
         └── openclaw gateway (systemd user service, port 18789, loopback only)
-              ├── news agent    — daily morning briefing in Romanian
-              ├── blog agent    — content analysis & drafting for merox.dev
-              ├── design agent  — UX/design recommendations for merox.dev
-              ├── infra agent   — K8s cluster + VPS security & stability
-              └── costs agent   — backup verification & resource tracking
+              ├── news agent        — daily morning briefing in Romanian
+              ├── blog agent        — content analysis & drafting for merox.dev
+              ├── design agent      — UX/design recommendations for merox.dev (on-demand)
+              ├── infra agent       — K8s cluster + VPS security & stability
+              ├── costs agent       — backup verification & resource tracking
+              ├── dashboard agent   — nightly audit + improvement of the command center
+              └── orchestrator      — monitors all agents, auto-fixes, proposes improvements
 
 agents-dashboard (nginx container via Traefik)
   └── https://agents.cloud.merox.dev
@@ -77,19 +79,33 @@ openclaw ALL=(ALL) NOPASSWD: /usr/bin/node
 /usr/local/bin/openclaw-fix-perms    # fixes root ownership after Claude Code sessions
 
 /srv/dashboard/                      # web dashboard (nginx container)
-├── index.html                       # command center (written by dashboard agent)
+├── index.html                       # command center (written by dashboard agent nightly)
 ├── news.html                        # news briefing (written by news agent)
 ├── update-infra.sh                  # bash: updates infra.json every 5 min (root-owned)
 ├── update-backup.sh                 # bash: updates backup.json every 30 min (root-owned)
-├── update-news.sh                   # bash: pre-fetches GitHub releases (root-owned)
+├── update-news.sh                   # bash: pre-fetches GitHub releases every 6h (root-owned)
+├── update-upgrades.sh               # bash: Renovate PRs from infrastructure repo every 30 min
+├── update-weather.sh                # bash: Open-Meteo hyperlocal weather every 30 min
+├── update-network.sh                # bash: LAN + WiFi + Tailscale subnet scan every hour
+├── update-calendar.sh               # bash: iCloud CalDAV events every 30 min
+├── self-healing.sh                  # watchdog: restarts stale agents (runs after infra checks)
+├── check-logs.sh                    # error detection across agent logs every 2h
+├── check-proposals.sh               # re-notifies pending orchestrator proposals at 12:15 UTC
+├── tg-notify.sh                     # Telegram notification helper (chmod 750, openclaw-only)
 └── data/
-    ├── agents.json                  # all agents write their own key here
+    ├── agents.json                  # all agents write their own key here (644)
     ├── news.json                    # news agent
+    ├── news-releases.json           # pre-fetched GitHub releases (update-news.sh)
     ├── infra.json                   # ← OWNED BY update-infra.sh — agents NEVER write this
-    ├── infra-extended.json          # infra agent (TLS days, flux times, etc.)
+    ├── infra-extended.json          # infra agent (TLS days, flux reconcile times, etc.)
     ├── backup.json                  # costs agent + update-backup.sh
-    ├── orchestrator.json            # orchestrator agent
-    └── proposals.json               # orchestrator agent
+    ├── weather.json                 # update-weather.sh
+    ├── network.json                 # update-network.sh
+    ├── calendar.json                # update-calendar.sh (iCloud CalDAV)
+    ├── upgrades.json                # update-upgrades.sh (open Renovate PRs)
+    ├── shared-memory.json           # cross-agent context (notes, suppressions)
+    ├── orchestrator.json            # orchestrator agent run history
+    └── proposals.json               # orchestrator improvement proposals
 
 /srv/docker/agents-dashboard/        # nginx container docker-compose
 /srv/merox/src/content/blog/         # blog drafts (blog agent writes here)
@@ -208,5 +224,5 @@ sudo -u openclaw bash /srv/dashboard/update-infra.sh
 
 ## OpenClaw version
 
-Installed: `openclaw --version`
+Current: `2026.5.28` — install/upgrade with `sudo npm install -g openclaw@latest`
 Docs: https://docs.openclaw.ai
