@@ -66,10 +66,10 @@ make restore
 > **Note:** The inventory uses `ansible_connection=local` — Ansible must run **on the server itself**, not from a remote machine.
 
 ```bash
-# 1. SSH into the server, then clone the repo there
+# 1. SSH into the server, then clone the infrastructure repo
 ssh root@<SERVER_IP>
-git clone https://github.com/meroxdotdev/cloudlab-merox /opt/cloudlab-merox
-cd /opt/cloudlab-merox
+git clone https://github.com/meroxdotdev/infrastructure /opt/infrastructure
+cd /opt/infrastructure/vps
 echo "<vault-password>" > .vault_pass && chmod 600 .vault_pass
 
 # 2. Install Ansible collections
