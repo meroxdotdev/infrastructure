@@ -33,3 +33,38 @@ tasks:
     preconditions:
       - test -f {{.KUBECONFIG}}
       - which flux
+
+  dr:create-vms:
+    desc: "DR: create 3 Talos VMs on Proxmox via Terraform"
+    dir: '{{.TALOS_DIR}}/terraform'
+    cmds:
+      - terraform init -upgrade
+      - terraform apply
+    preconditions:
+      - test -f {{.TALOS_DIR}}/terraform/terraform.tfvars
+
+  dr:patch-talconfig:
+    desc: "DR: patch talconfig.yaml with DR IPs + MACs from Terraform outputs"
+    cmd: bash {{.SCRIPTS_DIR}}/gen-dr-talconfig.sh
+    preconditions:
+      - test -f {{.TALOS_DIR}}/terraform/.terraform/terraform.tfstate
+      - test -f {{.TALOS_DIR}}/talconfig.yaml
+
+  dr:restore-talconfig:
+    desc: "DR: restore prod talconfig.yaml after DR test"
+    cmd: |
+      test -f {{.TALOS_DIR}}/talconfig.yaml.prod-backup \
+        && cp {{.TALOS_DIR}}/talconfig.yaml.prod-backup {{.TALOS_DIR}}/talconfig.yaml \
+        && echo "Restored prod talconfig.yaml" \
+        || echo "No backup found — nothing to restore"
+
+  dr:destroy-vms:
+    desc: "DR: destroy Talos DR VMs on Proxmox"
+    dir: '{{.TALOS_DIR}}/terraform'
+    cmd: terraform destroy
+    preconditions:
+      - test -f {{.TALOS_DIR}}/terraform/terraform.tfvars
+
+  dr:verify:
+    desc: "DR: run full verification (phase 1+2+3)"
+    cmd: bash {{.SCRIPTS_DIR}}/dr-verify.sh --phase all

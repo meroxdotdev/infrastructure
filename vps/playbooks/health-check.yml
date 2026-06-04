@@ -5,39 +5,113 @@
   gather_facts: yes
 
   tasks:
-    - name: Check all containers are running
-      shell: docker ps --filter "status=running" --format "{{.Names}}" | wc -l
-      register: running_containers
-      changed_when: false
-
-    - name: Check Traefik health
-      uri:
-        url: "http://localhost:8080/ping"
-        status_code: 200
-      register: traefik_health
-      ignore_errors: yes
-
-    - name: Check Pi-hole DNS
-      shell: dig @localhost google.com +short
-      register: pihole_dns
-      changed_when: false
-      ignore_errors: yes
-
     - name: Check disk space percentage
       shell: df -h / | awk 'NR==2 {print $5}' | sed 's/%//'
       register: disk_usage
       changed_when: false
 
-    - name: Warn if disk usage > 80%
+    - name: Fail if disk usage > 85%
+      fail:
+        msg: "Disk usage is {{ disk_usage.stdout }}% — clean up before proceeding"
+      when: disk_usage.stdout | int > 85
+
+    - name: Warn if disk usage > 70%
       debug:
-        msg: "⚠️  WARNING: Disk usage is {{ disk_usage.stdout }}% - consider cleanup!"
-      when: disk_usage.stdout | int > 80
+        msg: "WARNING: Disk usage is {{ disk_usage.stdout }}% — monitor closely"
+      when: disk_usage.stdout | int > 70
+
+    - name: Check running containers
+      shell: docker ps --filter "status=running" --format "{% raw %}{{.Names}}{% endraw %}" | sort
+      register: running_containers
+      changed_when: false
+
+    - name: Verify expected containers are running
+      shell: >
+        for c in traefik pihole unbound homepage glances portainer
+                 authentik-server authentik-worker garage uptime-kuma dozzle; do
+          docker ps --filter "name=^${c}$" --filter "status=running" --format "{% raw %}{{.Names}}{% endraw %}" | grep -q "^${c}$" \
+            && echo "OK: $c" \
+            || echo "MISSING: $c";
+        done
+      register: container_check
+      changed_when: false
+
+    - name: Fail if any expected container is missing
+      fail:
+        msg: "Missing containers:\n{{ container_check.stdout_lines | select('match', 'MISSING.*') | list | join('\n') }}"
+      when: container_check.stdout_lines | select('match', 'MISSING.*') | list | length > 0
+
+    - name: Check Traefik API
+      uri:
+        url: "http://localhost:8080/ping"
+        status_code: 200
+        timeout: 5
+      register: traefik_health
+      ignore_errors: yes
+
+    - name: Check Pi-hole DNS resolution
+      shell: dig @localhost google.com +short +time=3
+      register: pihole_dns
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Check Homepage HTTP
+      uri:
+        url: "http://localhost:3000"
+        status_code: 200
+        timeout: 5
+      register: homepage_health
+      ignore_errors: yes
+
+    - name: Check Joplin sync server API
+      uri:
+        url: "http://localhost:22300/api/ping"
+        status_code: 200
+        timeout: 5
+      register: joplin_health
+      ignore_errors: yes
+
+    - name: Check Authentik health
+      uri:
+        url: "http://localhost:9000/-/health/live/"
+        status_code: [200, 302, 404]
+        timeout: 5
+      register: authentik_health
+      ignore_errors: yes
+
+    - name: Check Garage S3 API
+      uri:
+        url: "http://localhost:3900/health"
+        status_code: [200, 204]
+        timeout: 5
+      register: garage_health
+      ignore_errors: yes
+
+    - name: Check Portainer API
+      uri:
+        url: "http://localhost:9000/api/system/status"
+        status_code: [200, 401]
+        timeout: 5
+      register: portainer_health
+      ignore_errors: yes
+
+    - name: Check Tailscale connected
+      shell: tailscale status --json | python3 -c "import sys,json; d=json.load(sys.stdin); print('OK' if d.get('BackendState')=='Running' else 'FAIL')"
+      register: tailscale_status
+      changed_when: false
+      ignore_errors: yes
 
     - name: Display health summary
       debug:
         msg:
-          - "✅ Health Check Summary"
-          - "Running containers: {{ running_containers.stdout }}"
-          - "Traefik status: {{ 'OK' if traefik_health is success else 'FAIL' }}"
-          - "Pi-hole DNS: {{ 'OK' if pihole_dns.rc == 0 else 'FAIL' }}"
-          - "Disk usage: {{ disk_usage.stdout }}%"
+          - "===== Health Check Summary ====="
+          - "Disk usage:    {{ disk_usage.stdout }}%"
+          - "Traefik:       {{ 'OK' if traefik_health is success else 'FAIL' }}"
+          - "Pi-hole DNS:   {{ 'OK' if pihole_dns.rc == 0 else 'FAIL' }}"
+          - "Homepage:      {{ 'OK' if homepage_health is success else 'FAIL' }}"
+          - "Joplin:        {{ 'OK' if joplin_health is success else 'FAIL (Ansible role deploys separately)' }}"
+          - "Authentik:     {{ 'OK' if authentik_health is success else 'FAIL' }}"
+          - "Garage S3:     {{ 'OK' if garage_health is success else 'FAIL' }}"
+          - "Portainer:     {{ 'OK' if portainer_health is success else 'FAIL (may need admin password set)' }}"
+          - "Tailscale:     {{ tailscale_status.stdout | default('FAIL') }}"
+          - "All containers: {{ 'OK' if (container_check.stdout_lines | select('match', 'MISSING.*') | list | length == 0) else 'FAIL - see above' }}"

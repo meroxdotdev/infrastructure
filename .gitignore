@@ -1,6 +1,14 @@
 # Secrets
 *.pub
 *.key
+# Terraform state and secrets — never commit
+vps/terraform/terraform.tfvars
+talos/terraform/terraform.tfvars
+talos/terraform/.terraform/
+talos/terraform/terraform.tfstate*
+talos/terraform/.terraform.lock.hcl
+# DR backup files
+talos/talconfig.yaml.prod-backup
 *.decrypted~*.yaml
 /age.key
 /cloudflare-tunnel.json

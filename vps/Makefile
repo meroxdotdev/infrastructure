@@ -7,7 +7,8 @@
         beszel-setup beszel-test dozzle-setup dozzle-test \
         authentik-setup authentik-test authentik-backup \
         cleanup check-resources health-check \
-        terraform-init terraform-plan terraform-apply terraform-destroy dr-full \
+        terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
+        dr-verify-phase1 dr-verify-phase2 dr-verify-phase3 garage-extract-creds \
         vault-edit vault-show-required view-vault
 
 help:
@@ -15,7 +16,12 @@ help:
 	@echo "========================"
 	@echo ""
 	@echo "Disaster Recovery:"
-	@echo "  dr-full            Provision Hetzner + full deploy (~15 min)"
+	@echo "  dr-preflight       Pre-flight checks before dr-full"
+	@echo "  dr-full            Pre-flight + provision Hetzner + full deploy (~15 min)"
+	@echo "  dr-verify-phase1   Verify VPS phase (run on the VPS)"
+	@echo "  dr-verify-phase2   Verify K8s phase (run from local machine)"
+	@echo "  dr-verify-phase3   Verify Agents phase (run on the VPS)"
+	@echo "  garage-extract-creds  Extract Garage S3 creds + update vault (between Phase 1+2)"
 	@echo "  terraform-apply    Provision server on Hetzner only"
 	@echo "  terraform-plan     Preview what Terraform will create"
 	@echo "  terraform-init     Initialize Terraform (first time only)"
@@ -196,11 +202,34 @@ terraform-destroy:
 	@sleep 5
 	cd terraform && terraform destroy
 
+dr-preflight:
+	@bash ../scripts/dr-preflight.sh
+
+dr-verify-phase1:
+	@bash ../scripts/dr-verify.sh --phase 1
+
+dr-verify-phase2:
+	@bash ../scripts/dr-verify.sh --phase 2
+
+dr-verify-phase3:
+	@bash ../scripts/dr-verify.sh --phase 3
+
+garage-extract-creds:
+	@bash ../scripts/garage-extract-creds.sh
+
 dr-full:
 	@echo "Starting full disaster recovery..."
+	$(MAKE) dr-preflight
 	$(MAKE) terraform-apply
-	@echo "Waiting 45s for server boot + cloud-init..."
-	@sleep 45
+	@echo "Polling for SSH availability (max 150s)..."
+	@NEW_IP=$$(cd terraform && terraform output -raw server_ip 2>/dev/null); \
+	for i in $$(seq 1 30); do \
+	  ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@$$NEW_IP exit 2>/dev/null \
+	    && echo "  Server ready." && break; \
+	  [ $$i -eq 30 ] && echo "ERROR: server unreachable after 150s" && exit 1; \
+	  echo "  Attempt $$i/30 — waiting 5s..."; \
+	  sleep 5; \
+	done
 	$(MAKE) setup
 
 # --- Vault ---

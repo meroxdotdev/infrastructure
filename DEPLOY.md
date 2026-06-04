@@ -25,12 +25,17 @@ Before starting, have these ready:
 
 > ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Pi-hole + Unbound,
 > Portainer, Homepage, Joplin + Postgres, Uptime Kuma, Guacamole, Glances, Authentik SSO,
-> Garage S3, Netdata, Beszel, Dozzle. Ansible runs **autonomously on the server via cloud-init** — no external runner needed.
+> Garage S3, Netdata, Beszel, Dozzle.
+>
+> **How it works:** Terraform provisions the Hetzner server (cloud-init installs python3 + creates dirs).
+> `make dr-full` then runs Ansible from your local machine over SSH to deploy all services.
+> This differs from the Oracle Cloud production setup, where Ansible runs locally on the server
+> (inventory uses `ansible_connection=local` since OCI blocks SSH from external IPs).
 
-### Option A — Terraform + cloud-init (recommended, fully automated)
+### Option A — Terraform + Hetzner (recommended for DR)
 
-> **Prerequisite:** `vault_tailscale_auth_key` must be valid (Tailscale keys expire).
-> Generate a new one at `tailscale.com/admin/settings/keys` (Reusable, Ephemeral OFF), then:
+> **Prerequisite:** `vault_tailscale_auth_key` must be valid (Tailscale keys expire after 90 days).
+> Verify at `tailscale.com/admin/settings/keys` before starting. Then:
 > ```bash
 > cd vps/ && make vault-edit   # update vault_tailscale_auth_key
 > git add inventories/production/group_vars/all/vault.yml && git commit -m "fix: update tailscale auth key" && git push
@@ -42,23 +47,28 @@ cd vps/
 # First time only
 make terraform-init
 
-# Provision fallback VPS (Hetzner) — cloud-init deploys everything autonomously on the server
+# Run pre-flight checks, then provision + deploy
 make dr-full
+# dr-full = dr-preflight + terraform apply + SSH poll until ready + Ansible setup
 ```
 
 Reads vault password from `.vault_pass` automatically — no prompt.
-`dr-full` = `terraform apply` (provisions server) → cloud-init clones repo + runs full Ansible on the server (~15 min).
-Tailscale and Let's Encrypt certs reconnect automatically.
-
-Monitor progress:
-```bash
-ssh -i ~/.ssh/cloudlab_dr_test root@<IP> 'tail -f /var/log/cloudlab-setup.log'
-```
+Tailscale and Let's Encrypt certs connect automatically.
 
 After deploy completes, restore Joplin and Authentik data:
 ```bash
 make restore
 # Interactive: asks which service, optional remote backup host (IP/SSH key), then restores
+```
+
+Verify Phase 1 is healthy:
+```bash
+make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 1)
+```
+
+**IMPORTANT — before Phase 2:** extract Garage S3 credentials and save to vault:
+```bash
+make garage-extract-creds   # run on the VPS — extracts keys + updates vault automatically
 ```
 
 ### Option B — Existing server / manual provisioning
@@ -107,6 +117,47 @@ make health-check
 ## Phase 2 — Kubernetes Cluster
 
 > ~20 min. Talos Linux + FluxCD + all apps via GitOps.
+
+### Option A — New Proxmox VMs via Terraform (recommended for DR simulation)
+
+```bash
+cd /srv/kubernetes/infrastructure/
+
+# 1. Install tools
+mise trust && mise install
+
+# 2. Place AGE key
+cp /path/to/age.key ./age.key
+
+# 3. Create Proxmox API token for Terraform:
+#    Proxmox → Datacenter → API Tokens → Add
+#    User: root@pam, Token name: terraform, Privilege separation: OFF
+#    Save the secret shown once.
+
+# 4. Configure Terraform for Proxmox VMs
+cp talos/terraform/terraform.tfvars.example talos/terraform/terraform.tfvars
+# Edit: fill in proxmox_token_id and proxmox_token_secret
+
+# 5. Create 3 Talos VMs on Proxmox (downloads ISO automatically)
+task dr:create-vms
+# Wait 30s for VMs to boot into Talos maintenance mode
+# Verify: nmap -Pn -n -p 50000 10.57.57.90 10.57.57.92 10.57.57.94 -vv | grep Discovered
+
+# 6. Patch talconfig.yaml with DR IPs + MACs (auto-reads Terraform outputs)
+task dr:patch-talconfig
+
+# 7. Bootstrap Talos
+task bootstrap:talos
+git add -A && git commit -m "chore: add secrets" && git push
+```
+
+After DR test, restore prod config and destroy VMs:
+```bash
+task dr:restore-talconfig
+task dr:destroy-vms
+```
+
+### Option B — Existing hardware / manual IP assignment
 
 ```bash
 cd /srv/kubernetes/infrastructure/
@@ -160,7 +211,11 @@ nmap -Pn -n -p 50000 10.57.57.0/24 -vv | grep 'Discovered'
 # 5. Bootstrap Talos on all nodes (~10 min)
 task bootstrap:talos
 git add -A && git commit -m "chore: add secrets" && git push
+```
 
+### Shared steps (both Option A and Option B)
+
+```bash
 # 6. Bootstrap Flux and wait for Longhorn to be ready (do NOT let Flux reconcile apps yet)
 task bootstrap:apps
 # Wait until Longhorn is fully running before proceeding:
@@ -180,6 +235,9 @@ kubectl get pods -A --watch
 
 **Verify:**
 ```bash
+# One-shot: bash scripts/dr-verify.sh --phase 2
+# Or manually:
+
 # Nodes and Flux
 kubectl get nodes                                    # All Ready
 kubectl get kustomizations -A                        # All True
@@ -246,6 +304,8 @@ The agent README is the single source of truth for this phase. It covers:
 
 **Verify when done:**
 ```bash
+# One-shot: bash scripts/dr-verify.sh --phase 3
+# Or manually:
 sudo -u openclaw openclaw doctor
 sudo -u openclaw openclaw status
 # Telegram: send "hello" to your bot — news agent should respond
@@ -258,7 +318,9 @@ sudo -u openclaw openclaw status
 
 ```
 [ ] vault_tailscale_auth_key valid and pushed before dr-full
-[ ] Phase 1 complete — make dr-full finished, all containers up (make health-check)
+[ ] make dr-preflight — all checks PASS (no FAIL)
+[ ] Phase 1 complete — make dr-full finished, all containers up (make dr-verify-phase1)
+[ ] make garage-extract-creds — Garage S3 credentials saved to vault (REQUIRED before Phase 2)
 [ ] Joplin + Authentik data restored — make restore
 [ ] Tailscale connected (verify: ssh root@<IP> tailscale status)
 [ ] Portainer admin password set
@@ -272,7 +334,7 @@ sudo -u openclaw openclaw status
 [ ] Intel iGPU (i915) present on new hardware — required for Jellyfin HW transcoding
     (if no Intel iGPU: remove gpu.intel.com/i915 from jellyfin helmrelease + disable intel-device-plugin-operator)
 [ ] Nodes reachable on port 50000 (nmap verification)
-[ ] Phase 2 complete — all nodes Ready, Flux healthy, cilium status OK
+[ ] Phase 2 complete — all nodes Ready, Flux healthy, cilium status OK (make dr-verify-phase2)
 [ ] Longhorn volumes restored (task restore:longhorn ran successfully)
 [ ] All PVCs bound (kubectl get pvc -A | grep -v Bound → empty)
 [ ] Gateway TCP connectivity OK (nmap -p 443 on LB_IP_GATEWAY_INTERNAL + LB_IP_GATEWAY_EXTERNAL)
@@ -291,7 +353,8 @@ sudo -u openclaw openclaw status
 [ ] openclaw-gateway systemd user service enabled + running as openclaw user
 [ ] https://agents.cloud.merox.dev accessible and showing command center
 [ ] Telegram bot responds to messages
-[ ] openclaw doctor — no warnings
+[ ] All 9 workspaces installed (news, blog, design, infra, costs, dashboard, orchestrator, renovate, repo)
+[ ] openclaw doctor — no warnings (make dr-verify-phase3)
 [ ] Old server decommissioned / Tailscale node removed
 ```
 

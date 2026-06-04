@@ -1,0 +1,17 @@
+# Copy to terraform.tfvars and fill in your values
+# terraform.tfvars is gitignored
+
+proxmox_url          = "https://10.57.57.254:8006"
+proxmox_token_id     = "root@pam!terraform"   # create at: Proxmox → Datacenter → API Tokens
+proxmox_token_secret = "your-token-secret-here"
+
+# Optional overrides (defaults should work for most cases):
+# proxmox_nodes  = ["px-0", "px-1", "px-2"]
+# vmid_start     = 810
+# vm_cores       = 4
+# vm_memory_mb   = 8192
+# vm_disk_gb     = 50
+# node_ips       = ["10.57.57.90", "10.57.57.92", "10.57.57.94"]
+# node_vip       = "10.57.57.98"
+# iso_storage    = "local-data"
+# disk_storage   = "cluster-storage"

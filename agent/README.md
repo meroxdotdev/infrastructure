@@ -14,7 +14,9 @@ oracle-cloud VPS
               ├── infra agent       — K8s cluster + VPS security & stability
               ├── costs agent       — backup verification & resource tracking
               ├── dashboard agent   — nightly audit + improvement of the command center
-              └── orchestrator      — monitors all agents, auto-fixes, proposes improvements
+              ├── orchestrator      — monitors all agents, auto-fixes, proposes improvements
+              ├── renovate          — reviews Renovate PRs, summarizes changes via Telegram
+              └── repo              — weekly Monday 07:00 UTC audit of infrastructure repo
 
 agents-dashboard (nginx container via Traefik)
   └── https://agents.cloud.merox.dev
@@ -154,15 +156,18 @@ sudo chmod 600 /home/openclaw/.kube/config /home/openclaw/.talos/config
 sudo -u openclaw mkdir -p /home/openclaw/.openclaw
 WDIR=/home/openclaw/.openclaw
 REPO_WS=$(pwd)/agent/workspaces
-sudo -u openclaw cp -r $REPO_WS/news      $WDIR/workspace
-sudo -u openclaw cp -r $REPO_WS/blog      $WDIR/workspace-blog
-sudo -u openclaw cp -r $REPO_WS/design    $WDIR/workspace-design
-sudo -u openclaw cp -r $REPO_WS/infra     $WDIR/workspace-infra
-sudo -u openclaw cp -r $REPO_WS/costs     $WDIR/workspace-costs
-sudo -u openclaw cp -r $REPO_WS/dashboard $WDIR/workspace-dashboard
+sudo -u openclaw cp -r $REPO_WS/news         $WDIR/workspace
+sudo -u openclaw cp -r $REPO_WS/blog         $WDIR/workspace-blog
+sudo -u openclaw cp -r $REPO_WS/design       $WDIR/workspace-design
+sudo -u openclaw cp -r $REPO_WS/infra        $WDIR/workspace-infra
+sudo -u openclaw cp -r $REPO_WS/costs        $WDIR/workspace-costs
+sudo -u openclaw cp -r $REPO_WS/dashboard    $WDIR/workspace-dashboard
 sudo -u openclaw cp -r $REPO_WS/orchestrator $WDIR/workspace-orchestrator
+sudo -u openclaw cp -r $REPO_WS/renovate     $WDIR/workspace-renovate
+sudo -u openclaw cp -r $REPO_WS/repo         $WDIR/workspace-repo
 for ws in workspace workspace-blog workspace-design workspace-infra \
-          workspace-costs workspace-dashboard workspace-orchestrator; do
+          workspace-costs workspace-dashboard workspace-orchestrator \
+          workspace-renovate workspace-repo; do
   sudo -u openclaw mkdir -p $WDIR/$ws/memory
 done
 
