@@ -150,11 +150,23 @@ cp /path/to/age.key ./age.key
 # 4. Configure Terraform for Proxmox VMs
 cp talos/terraform/terraform.tfvars.example talos/terraform/terraform.tfvars
 # Edit: fill in proxmox_token_id and proxmox_token_secret
+#
+# IMPORTANT — storage layout on this cluster (discovered DR 2026-06-04):
+#   cluster-storage → enabled only on px-0
+#   local-data      → enabled on all nodes (iso+images) but node-local, not shared
+#   ISO downloaded on one node cannot be used by VMs on other nodes
+#
+# Working config for DR (all VMs on px-0 with local-data):
+#   proxmox_nodes = ["px-0", "px-0", "px-0"]
+#   disk_storage  = "local-data"
+#
+# task dr:create-vms runs terraform apply interactively — use directly:
+cd talos/terraform && terraform init && terraform apply -auto-approve && cd ../..
 
-# 5. Create 3 Talos VMs on Proxmox (downloads ISO automatically)
-task dr:create-vms
-# Wait 30s for VMs to boot into Talos maintenance mode
-# Verify: nmap -Pn -n -p 50000 10.57.57.90 10.57.57.92 10.57.57.94 -vv | grep Discovered
+# 5. Wait for VMs to boot into Talos maintenance mode (~60s)
+# Verify (loop until open):
+until nmap -Pn -n -p 50000 10.57.57.90 10.57.57.92 10.57.57.94 2>&1 | grep -q "open"; do sleep 10; done
+echo "Talos ready"
 
 # 6. Patch talconfig.yaml with DR IPs + MACs (auto-reads Terraform outputs)
 task dr:patch-talconfig
