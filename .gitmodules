@@ -1,3 +1,0 @@
-[submodule "nixos"]
-	path = nixos
-	url = https://github.com/meroxdotdev/nixos.git
