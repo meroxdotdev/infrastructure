@@ -1,0 +1,117 @@
+---
+- name: Detect Tailscale IP address
+  shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
+  register: tailscale_ip_result
+  changed_when: false
+  failed_when: tailscale_ip_result.stdout == ""
+
+- name: Set Tailscale IP as fact
+  set_fact:
+    tailscale_ip: "{{ tailscale_ip_result.stdout }}"
+
+- name: Create Garage directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  become: yes
+  loop:
+    - "{{ garage_docker_dir }}"
+    - "{{ garage_docker_dir }}/meta"
+    - "{{ garage_docker_dir }}/data"
+
+- name: Deploy Garage configuration file
+  template:
+    src: garage.toml.j2
+    dest: "{{ garage_docker_dir }}/garage.toml"
+    mode: '0644'
+  notify: Restart garage
+
+- name: Deploy Garage docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ garage_docker_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart garage
+
+- name: Start Garage containers
+  community.docker.docker_compose_v2:
+    project_src: "{{ garage_docker_dir }}"
+    state: present
+  when: not ansible_check_mode
+
+- name: Wait for Garage to be ready
+  wait_for:
+    port: "{{ garage_admin_port }}"
+    host: localhost
+    delay: 5
+    timeout: 60
+
+- name: Get Garage node ID
+  shell: docker exec garage /garage node id | grep -oP '^[a-f0-9]+'
+  register: garage_node_id
+  changed_when: false
+
+- name: Check if layout is already configured
+  shell: docker exec garage /garage layout show
+  register: garage_layout_check
+  changed_when: false
+  failed_when: false
+
+- name: Configure Garage node layout
+  shell: |
+    docker exec garage /garage layout assign {{ garage_node_id.stdout }} -z default -c {{ garage_storage_capacity }}
+    docker exec garage /garage layout apply --version 1
+  when: "'No nodes currently have a role' in garage_layout_check.stdout or garage_layout_check.rc != 0"
+
+- name: Check if bucket exists
+  shell: docker exec garage /garage bucket list | grep {{ garage_bucket_name }}
+  register: garage_bucket_check
+  changed_when: false
+  failed_when: false
+
+- name: Create Garage bucket
+  shell: docker exec garage /garage bucket create {{ garage_bucket_name }}
+  when: garage_bucket_check.rc != 0
+
+- name: Check if key exists
+  shell: docker exec garage /garage key list | grep {{ garage_key_name }}
+  register: garage_key_check
+  changed_when: false
+  failed_when: false
+
+- name: Create Garage access key
+  shell: docker exec garage /garage key create {{ garage_key_name }}
+  when: garage_key_check.rc != 0
+
+- name: Grant bucket permissions
+  shell: docker exec garage /garage bucket allow {{ garage_bucket_name }} --read --write --owner --key {{ garage_key_name }}
+  when: garage_key_check.rc != 0
+
+- name: Create Traefik dynamic config for Garage S3
+  template:
+    src: traefik-garage-config.yml.j2
+    dest: /srv/docker/traefik/config/garage.yml
+    mode: '0644'
+  notify: Reload traefik
+
+- name: Create Traefik dynamic config for Garage WebUI
+  template:
+    src: traefik-garage-webui-config.yml.j2
+    dest: /srv/docker/traefik/config/garage-webui.yml
+    mode: '0644'
+  notify: Reload traefik
+
+- name: Display Garage access information
+  debug:
+    msg:
+      - "Garage S3 Storage deployed successfully!"
+      - "S3 API: https://{{ garage_domain }}"
+      - "WebUI: https://{{ garage_webui_domain }}"
+      - "Region: {{ garage_region }}"
+      - "Bucket: {{ garage_bucket_name }}"
+      - ""
+      - "IMPORTANT: Get credentials with:"
+      - "  docker exec garage /garage key info {{ garage_key_name }} --show-secret"
+      - ""
+      - "Save them to vault if this is first deployment!"

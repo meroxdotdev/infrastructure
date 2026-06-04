@@ -1,0 +1,8 @@
+---
+guacamole_docker_dir: /srv/docker/oracle-cloud/guacamole
+guacamole_image: "flcontainers/guacamole:latest"
+guacamole_domain: "rmt.merox.dev"
+guacamole_port: 8080
+guacamole_ip: "172.25.10.33"
+guacamole_timezone: "Europe/Bucharest"
+traefik_network_name: network-cloud-merox

@@ -1,0 +1,12 @@
+---
+authentik_docker_dir: /srv/docker/oracle-cloud/authentik
+authentik_version: "2026.2.3"
+authentik_domain: "sso.merox.dev"
+authentik_port: 9000
+authentik_db_user: "authentik"
+authentik_db_name: "authentik"
+authentik_pg_ip: "172.25.10.70"
+authentik_redis_ip: "172.25.10.71"
+authentik_server_ip: "172.25.10.72"
+authentik_worker_ip: "172.25.10.73"
+traefik_network_name: network-cloud-merox

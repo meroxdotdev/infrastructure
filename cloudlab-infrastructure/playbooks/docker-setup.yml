@@ -1,0 +1,18 @@
+---
+- name: Install Docker on VPS
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+  
+  roles:
+    - role: docker_setup
+      tags: ['docker']
+  
+  post_tasks:
+    - name: Test Docker with hello-world
+      community.docker.docker_container:
+        name: test-hello
+        image: hello-world
+        state: started
+        auto_remove: yes
+      tags: ['docker', 'test']

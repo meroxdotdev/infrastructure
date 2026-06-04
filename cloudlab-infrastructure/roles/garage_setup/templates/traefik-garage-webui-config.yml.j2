@@ -1,0 +1,18 @@
+http:
+  routers:
+    garage-webui:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ garage_webui_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: garage-webui
+
+  services:
+    garage-webui:
+      loadBalancer:
+        servers:
+          - url: "http://localhost:{{ garage_webui_port }}"
+        passHostHeader: true

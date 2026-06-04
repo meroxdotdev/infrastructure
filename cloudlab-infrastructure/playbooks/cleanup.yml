@@ -1,0 +1,28 @@
+---
+- name: Cleanup unused Docker resources
+  hosts: vps_servers
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Remove unused Docker images
+      community.docker.docker_prune:
+        images: yes
+        images_filters:
+          dangling: false
+
+    - name: Remove unused Docker containers
+      community.docker.docker_prune:
+        containers: yes
+
+    - name: Remove unused Docker volumes
+      community.docker.docker_prune:
+        volumes: yes
+
+    - name: Remove unused Docker networks
+      community.docker.docker_prune:
+        networks: yes
+
+    - name: Display cleanup results
+      debug:
+        msg: "Docker cleanup completed successfully"

@@ -1,0 +1,7 @@
+---
+uptime_kuma_docker_dir: /srv/docker/uptime-kuma
+uptime_kuma_image: "louislam/uptime-kuma:latest"
+uptime_kuma_domain: "status.cloud.merox.dev"
+uptime_kuma_port: 3001
+uptime_kuma_ip: "172.25.10.50"
+traefik_network_name: network-cloud-merox

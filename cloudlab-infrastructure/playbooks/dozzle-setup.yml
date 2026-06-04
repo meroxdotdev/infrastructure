@@ -1,0 +1,8 @@
+---
+- name: Setup Dozzle log viewer
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - dozzle_setup

@@ -1,0 +1,47 @@
+services:
+  joplin-db:
+    image: {{ joplin_db_image }}
+    container_name: joplin-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: {{ joplin_db_password }}
+      POSTGRES_USER: {{ joplin_db_user }}
+      POSTGRES_DB: {{ joplin_db_name }}
+    volumes:
+      - joplin_db_data:/var/lib/postgresql/data
+    networks:
+      {{ traefik_network_name }}:
+        ipv4_address: {{ joplin_db_ip }}
+
+  joplin-server:
+    image: {{ joplin_server_image }}
+    container_name: joplin-server
+    restart: unless-stopped
+    depends_on:
+      - joplin-db
+    environment:
+      APP_PORT: {{ joplin_app_port }}
+      APP_BASE_URL: "https://{{ joplin_domain }}"
+      DB_CLIENT: pg
+      POSTGRES_PASSWORD: {{ joplin_db_password }}
+      POSTGRES_DATABASE: {{ joplin_db_name }}
+      POSTGRES_USER: {{ joplin_db_user }}
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: joplin-db
+    networks:
+      {{ traefik_network_name }}:
+        ipv4_address: {{ joplin_server_ip }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.joplin.rule=Host(`{{ joplin_domain }}`)"
+      - "traefik.http.routers.joplin.entrypoints=https"
+      - "traefik.http.routers.joplin.tls.certresolver=cloudflare"
+      - "traefik.http.services.joplin.loadbalancer.server.port={{ joplin_app_port }}"
+      - "traefik.docker.network={{ traefik_network_name }}"
+
+volumes:
+  joplin_db_data:
+
+networks:
+  {{ traefik_network_name }}:
+    external: true

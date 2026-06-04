@@ -1,0 +1,8 @@
+---
+- name: Setup Garage S3-compatible object storage
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - garage_setup

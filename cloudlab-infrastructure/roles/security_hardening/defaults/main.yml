@@ -1,0 +1,16 @@
+---
+ssh_password_auth: "no"
+ssh_x11_forwarding: "no"
+ssh_max_auth_tries: 3
+
+fail2ban_ssh_maxretry: 5
+fail2ban_ssh_bantime: 86400
+fail2ban_ssh_findtime: 600
+
+sysctl_swappiness: 10
+sysctl_vfs_cache_pressure: 50
+
+docker_log_max_size: "10m"
+docker_log_max_file: "3"
+
+tailscale_network: "100.64.0.0/10"

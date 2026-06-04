@@ -1,0 +1,18 @@
+---
+- name: Reload sshd
+  systemd:
+    name: ssh
+    state: reloaded
+
+- name: Restart fail2ban
+  systemd:
+    name: fail2ban
+    state: restarted
+
+- name: Apply sysctl
+  command: sysctl -p /etc/sysctl.d/99-cloudlab-tuning.conf
+
+- name: Restart docker
+  systemd:
+    name: docker
+    state: restarted

@@ -1,0 +1,104 @@
+---
+# Install Docker CE on Ubuntu/Debian (2025 best practices)
+
+- name: Install prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-docker  # ← Folosim pachetul Debian în loc de pip
+    state: present
+    update_cache: yes
+  tags: ['docker', 'setup']
+
+- name: Add Docker GPG apt Key
+  ansible.builtin.apt_key:
+    url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+    state: present
+  tags: ['docker', 'setup']
+
+- name: Add Docker Repository
+  ansible.builtin.apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
+    state: present
+    filename: docker
+    update_cache: yes
+  tags: ['docker', 'setup']
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: present
+    update_cache: yes
+  notify: restart docker
+  tags: ['docker', 'setup', 'packages']
+
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.systemd:
+    name: docker
+    state: "{{ docker_service_state }}"
+    enabled: "{{ docker_service_enabled }}"
+  tags: ['docker', 'setup']
+
+- name: Configure Docker daemon options
+  ansible.builtin.copy:
+    content: "{{ docker_daemon_options | to_nice_json }}"
+    dest: /etc/docker/daemon.json
+    mode: '0644'
+  notify: restart docker
+  when: docker_daemon_options | length > 0
+  tags: ['docker', 'config']
+
+- name: Add users to docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop: "{{ docker_users }}"
+  when: docker_users | length > 0
+  tags: ['docker', 'users']
+
+- name: Verify Docker installation
+  ansible.builtin.command: docker --version
+  register: docker_version
+  changed_when: false
+  tags: ['docker', 'verify']
+
+- name: Display Docker version
+  ansible.builtin.debug:
+    msg: "✅ Docker installed: {{ docker_version.stdout }}"
+  tags: ['docker', 'verify']
+
+- name: Verify Docker Compose plugin
+  ansible.builtin.command: docker compose version
+  register: compose_version
+  changed_when: false
+  when: docker_install_compose_plugin
+  tags: ['docker', 'verify']
+
+- name: Display Docker Compose version
+  ansible.builtin.debug:
+    msg: "✅ Docker Compose installed: {{ compose_version.stdout }}"
+  when: docker_install_compose_plugin and compose_version is defined
+  tags: ['docker', 'verify']
+
+- name: Test Docker with hello-world container
+  community.docker.docker_container:
+    name: test-hello-world
+    image: hello-world
+    state: started
+    auto_remove: yes
+    detach: no
+  register: hello_result
+  ignore_errors: yes
+  tags: ['docker', 'test']
+
+- name: Display Docker test result
+  ansible.builtin.debug:
+    msg: "✅ Docker is working correctly!"
+  when: hello_result is succeeded
+  tags: ['docker', 'test']

@@ -1,0 +1,23 @@
+---
+# System timezone
+timezone: "Europe/Bucharest"
+
+# NTP configuration
+enable_ntp: true
+
+# Firewall configuration
+enable_ufw: true
+allowed_ssh_port: 22
+
+# System packages to install
+system_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - ufw
+  - unattended-upgrades
+  - software-properties-common
+  - ca-certificates

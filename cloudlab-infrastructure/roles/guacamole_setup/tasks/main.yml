@@ -1,0 +1,25 @@
+---
+- name: Create Guacamole directory
+  file:
+    path: "{{ guacamole_docker_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Guacamole docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ guacamole_docker_dir }}/docker-compose.yml"
+    mode: "0644"
+  notify: Restart guacamole
+
+- name: Start Guacamole
+  community.docker.docker_compose_v2:
+    project_src: "{{ guacamole_docker_dir }}"
+    state: present
+
+- name: Wait for Guacamole to be ready
+  wait_for:
+    port: "{{ guacamole_port }}"
+    host: localhost
+    delay: 10
+    timeout: 120

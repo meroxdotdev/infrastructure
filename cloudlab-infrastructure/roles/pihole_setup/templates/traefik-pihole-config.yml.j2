@@ -1,0 +1,18 @@
+http:
+  routers:
+    pihole:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ pihole_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: pihole
+
+  services:
+    pihole:
+      loadBalancer:
+        servers:
+          - url: "http://{{ pihole_container_ip }}:80"
+        passHostHeader: true

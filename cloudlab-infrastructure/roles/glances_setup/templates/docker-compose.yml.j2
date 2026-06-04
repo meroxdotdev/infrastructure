@@ -1,0 +1,26 @@
+services:
+  glances:
+    image: {{ glances_image }}
+    container_name: glances
+    restart: unless-stopped
+    pid: host
+    environment:
+      GLANCES_OPT: "-w"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/etc/os-release:ro
+    networks:
+      {{ traefik_network_name }}:
+        ipv4_address: {{ glances_ip }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.glances.rule=Host(`{{ glances_domain }}`)"
+      - "traefik.http.routers.glances.entrypoints=https"
+      - "traefik.http.routers.glances.tls.certresolver=cloudflare"
+      - "traefik.http.services.glances.loadbalancer.server.port={{ glances_port }}"
+
+networks:
+  {{ traefik_network_name }}:
+    external: true

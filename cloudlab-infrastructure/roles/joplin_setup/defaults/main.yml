@@ -1,0 +1,11 @@
+---
+joplin_docker_dir: /srv/docker/joplin
+joplin_server_image: "joplin/server:latest"
+joplin_db_image: "postgres:15"
+joplin_domain: "joplin.cloud.merox.dev"
+joplin_app_port: 22300
+joplin_db_user: joplin
+joplin_db_name: joplin
+joplin_server_ip: "172.25.10.61"
+joplin_db_ip: "172.25.10.60"
+traefik_network_name: network-cloud-merox

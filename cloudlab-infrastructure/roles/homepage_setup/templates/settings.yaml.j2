@@ -1,0 +1,143 @@
+---
+# Merox Infrastructure Dashboard - Settings Configuration
+# Optimized for multi-tab layout with comprehensive monitoring
+
+# ============================================================================
+# PAGE IDENTITY
+# ============================================================================
+title: Inside Merox Infrastructure
+description: Unified Cloud, On-Premises & Media Infrastructure Management
+startUrl: https://inside.merox.dev
+
+# ============================================================================
+# VISUAL THEME
+# ============================================================================
+theme: dark
+color: gray
+iconStyle: theme
+
+
+# Background - Modern dark tech aesthetic
+background:
+  image: https://merox.dev/assets/homelab.webp
+  blur: xs
+  saturate: 60
+  brightness: 75
+  opacity: 25
+cardBlur: xl
+
+# Favicon
+favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
+
+# ============================================================================
+# LAYOUT CONFIGURATION
+# ============================================================================
+layout:
+  # -------------------------------------------------------------------------
+  # TAB 1: CLOUD - Cloud Services & Monitoring
+  # -------------------------------------------------------------------------
+  Cloud Infrastructure:
+    tab: Cloud
+    style: row
+    columns: 4
+    icon: mdi-cloud-outline
+    useEqualHeights: true
+    
+  System Monitoring:
+    tab: Cloud
+    style: row
+    columns: 6
+    icon: mdi-monitor-dashboard
+    useEqualHeights: true
+
+  # -------------------------------------------------------------------------
+  # TAB 2: ON-PREM - On-Premises Infrastructure
+  # -------------------------------------------------------------------------
+  Network Infrastructure:
+    tab: On-Prem
+    style: row
+    columns: 3
+    icon: mdi-network
+    useEqualHeights: true
+    
+  Core Infrastructure:
+    tab: On-Prem
+    style: row
+    columns: 3
+    icon: mdi-server
+    useEqualHeights: true
+      
+  Kubernetes Ecosystem:
+    tab: On-Prem
+    style: row
+    columns: 5
+    icon: kubernetes.png
+    useEqualHeights: true
+
+  # -------------------------------------------------------------------------
+  # TAB 3: MEDIA - Content Management & Streaming
+  # -------------------------------------------------------------------------
+  Media Services:
+    tab: Media
+    style: row
+    columns: 3
+    icon: mdi-filmstrip
+    useEqualHeights: true
+    
+  Media Management:
+    tab: Media
+    style: row
+    columns: 4
+    icon: mdi-cog-outline
+    useEqualHeights: true
+
+# ============================================================================
+# DISPLAY OPTIONS
+# ============================================================================
+fullWidth: true
+maxGroupColumns: 6
+maxBookmarkGroupColumns: 6
+disableCollapse: false
+groupsInitiallyCollapsed: false
+useEqualHeights: true
+
+# ============================================================================
+# HEADER STYLE
+# ============================================================================
+headerStyle: boxedWidgets
+
+# ============================================================================
+# QUICK LAUNCH
+# ============================================================================
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: false
+  showSearchSuggestions: true
+  hideVisitURL: false
+  provider: duckduckgo
+  mobileButtonPosition: bottom-right
+
+# ============================================================================
+# DOCKER & KUBERNETES
+# ============================================================================
+showStats: true
+statusStyle: dot
+
+# ============================================================================
+# SYSTEM
+# ============================================================================
+hideVersion: false
+disableUpdateCheck: false
+language: en
+target: _blank
+hideErrors: false
+
+# Instance identification for multi-homepage deployments
+instanceName: merox-main
+
+# ============================================================================
+# API PROVIDERS
+# ============================================================================
+providers:
+  # OpenWeatherMap API
+  openweathermap: YOUR_API_KEY_HERE

@@ -1,0 +1,26 @@
+---
+- name: Create Uptime Kuma directory
+  file:
+    path: "{{ uptime_kuma_docker_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Uptime Kuma docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ uptime_kuma_docker_dir }}/docker-compose.yml"
+    mode: "0644"
+  notify: Restart uptime-kuma
+
+- name: Start Uptime Kuma
+  community.docker.docker_compose_v2:
+    project_src: "{{ uptime_kuma_docker_dir }}"
+    state: present
+  when: not ansible_check_mode
+
+- name: Wait for Uptime Kuma to be ready
+  wait_for:
+    port: "{{ uptime_kuma_port }}"
+    host: localhost
+    delay: 5
+    timeout: 60

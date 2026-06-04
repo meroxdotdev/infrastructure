@@ -1,0 +1,21 @@
+---
+# Deploy Authentik SSO on Oracle Cloud server
+# Prerequisites:
+#   - authentik_pg_pass: set in vault
+#   - authentik_secret_key: set in vault (min 50 chars random string)
+#
+# Run: make authentik-setup
+# After deploy: https://sso.merox.dev/if/flow/initial-setup/
+
+- name: Deploy Authentik SSO
+  hosts: vps_servers
+  become: true
+  gather_facts: true
+  roles:
+    - role: authentik_setup
+      tags: ['authentik', 'sso']
+
+  post_tasks:
+    - name: Display Authentik URL
+      ansible.builtin.debug:
+        msg: "Authentik SSO: https://{{ authentik_domain }}"

@@ -1,0 +1,69 @@
+---
+- name: Create Traefik directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  become: yes
+  loop:
+    - "{{ traefik_docker_dir }}"
+    - "{{ traefik_docker_dir }}/data"
+    - "{{ traefik_docker_dir }}/config"
+
+- name: Create Docker network for Traefik
+  community.docker.docker_network:
+    name: "{{ traefik_network_name }}"
+    driver: bridge
+    ipam_config:
+      - subnet: "{{ traefik_network_subnet }}"
+        gateway: "{{ traefik_network_gateway }}"
+    state: present
+
+- name: Deploy traefik.yml static configuration
+  template:
+    src: traefik.yml.j2
+    dest: "{{ traefik_docker_dir }}/data/traefik.yml"
+    mode: '0644'
+  notify: Restart traefik
+
+- name: Deploy dynamic configuration (config.yml)
+  template:
+    src: config.yml.j2
+    dest: "{{ traefik_docker_dir }}/config/config.yml"
+    mode: '0644'
+  notify: Restart traefik
+
+- name: Create Cloudflare API token file
+  copy:
+    content: "{{ cloudflare_api_token }}"
+    dest: "{{ traefik_docker_dir }}/cf_api_token.txt"
+    mode: '0600'
+  no_log: true
+
+- name: Create .env file for Traefik
+  template:
+    src: traefik.env.j2
+    dest: "{{ traefik_docker_dir }}/.env"
+    mode: '0600'
+  no_log: true
+  notify: Restart traefik
+
+- name: Create acme.json with proper permissions
+  file:
+    path: "{{ traefik_docker_dir }}/data/acme.json"
+    state: touch
+    mode: '0600'
+    modification_time: preserve
+    access_time: preserve
+
+- name: Deploy Traefik docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ traefik_docker_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart traefik
+
+- name: Start Traefik container
+  community.docker.docker_compose_v2:
+    project_src: "{{ traefik_docker_dir }}"
+    state: present

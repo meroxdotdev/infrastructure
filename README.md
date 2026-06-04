@@ -156,7 +156,7 @@ Validation:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  VPS (Oracle/Hetzner)   cloudlab-infrastructure/        │
+│  VPS (Oracle Cloud)   cloudlab-infrastructure/          │
 │  ├── Traefik (reverse proxy + Cloudflare Tunnel)        │
 │  ├── Pi-hole (DNS)                                      │
 │  ├── Portainer EE (container management)                │
@@ -264,7 +264,7 @@ make update             # OS package updates only
 make check              # dry-run (--check --diff)
 make restore            # interactive restore wizard (Joplin / Authentik / all)
 make cleanup            # remove unused Docker images/volumes
-make dr-full            # provision Hetzner + cloud-init deploys everything (~15 min)
+make dr-full            # provision fallback VPS + cloud-init deploys everything (~15 min)
 ```
 
 ---

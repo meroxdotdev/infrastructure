@@ -1,0 +1,34 @@
+services:
+  garage:
+    image: {{ garage_image }}
+    container_name: garage
+    network_mode: "host"
+    restart: unless-stopped
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+      - ./meta:/var/lib/garage/meta
+      - ./data:/var/lib/garage/data
+
+  webui:
+    image: {{ garage_webui_image }}
+    container_name: garage-webui
+    restart: unless-stopped
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+    environment:
+      API_BASE_URL: "http://127.0.0.1:{{ garage_admin_port }}"
+      S3_ENDPOINT_URL: "http://127.0.0.1:{{ garage_s3_port }}"
+    ports:
+      - "{{ garage_webui_port }}:3909"
+    networks:
+      - {{ traefik_network_name }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.garage-webui.rule=Host(`{{ garage_webui_domain }}`)"
+      - "traefik.http.routers.garage-webui.entrypoints=https"
+      - "traefik.http.routers.garage-webui.tls.certresolver=cloudflare"
+      - "traefik.http.services.garage-webui.loadbalancer.server.port=3909"
+
+networks:
+  {{ traefik_network_name }}:
+    external: true

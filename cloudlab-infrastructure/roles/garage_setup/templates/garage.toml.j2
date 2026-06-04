@@ -1,0 +1,18 @@
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+
+replication_factor = {{ garage_replication_factor }}
+
+rpc_bind_addr = "0.0.0.0:{{ garage_rpc_port }}"
+rpc_public_addr = "127.0.0.1:{{ garage_rpc_port }}"
+rpc_secret = "{{ garage_rpc_secret }}"
+
+[s3_api]
+s3_region = "{{ garage_region }}"
+api_bind_addr = "0.0.0.0:{{ garage_s3_port }}"
+root_domain = ".s3.garage"
+
+[admin]
+api_bind_addr = "0.0.0.0:{{ garage_admin_port }}"
+admin_token = "{{ garage_admin_token }}"

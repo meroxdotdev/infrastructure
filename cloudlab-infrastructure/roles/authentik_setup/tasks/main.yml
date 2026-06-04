@@ -1,0 +1,26 @@
+---
+- name: Create Authentik directory
+  file:
+    path: "{{ authentik_docker_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Authentik docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ authentik_docker_dir }}/docker-compose.yml"
+    mode: "0640"
+  no_log: true
+  notify: Restart authentik
+
+- name: Start Authentik
+  community.docker.docker_compose_v2:
+    project_src: "{{ authentik_docker_dir }}"
+    state: present
+
+- name: Wait for Authentik server to be ready
+  wait_for:
+    port: "{{ authentik_port }}"
+    host: "{{ authentik_server_ip }}"
+    delay: 15
+    timeout: 120

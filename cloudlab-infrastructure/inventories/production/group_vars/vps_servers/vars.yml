@@ -1,0 +1,57 @@
+---
+# Non-sensitive variables for VPS servers
+timezone: "Europe/Bucharest"
+enable_ntp: true
+enable_ufw: true
+allowed_ssh_port: 22
+
+system_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - ufw
+  - unattended-upgrades
+
+# Docker base dirs — Oracle Cloud layout: /srv/docker/oracle-cloud/<service>
+traefik_docker_dir:      /srv/docker/oracle-cloud/traefik
+guacamole_docker_dir:    /srv/docker/oracle-cloud/guacamole
+authentik_docker_dir:    /srv/docker/oracle-cloud/authentik
+pihole_docker_dir:       /srv/docker/oracle-cloud/pihole
+homepage_docker_dir:     /srv/docker/oracle-cloud/homepage
+portainer_docker_dir:    /srv/docker/oracle-cloud/portainer
+glances_docker_dir:      /srv/docker/oracle-cloud/glances
+garage_docker_dir:       /srv/docker/oracle-cloud/garage
+joplin_docker_dir:       /srv/docker/oracle-cloud/joplin
+uptime_kuma_docker_dir:  /srv/docker/oracle-cloud/uptime-kuma
+beszel_docker_dir:       /srv/docker/oracle-cloud/beszel
+netdata_docker_dir:      /srv/docker/oracle-cloud/netdata
+dozzle_docker_dir:       /srv/docker/oracle-cloud/dozzle
+
+# Routing vars needed by traefik config.yml.j2 regardless of which roles run
+guacamole_domain: "rmt.merox.dev"
+guacamole_ip: "172.25.10.33"
+guacamole_port: 8080
+
+# Vault variable mappings
+# Convention in vault.yml is inconsistent — some keys have vault_ prefix, some don't.
+# Rule: only add a mapping here when the vault key name differs from what the role expects.
+
+# vault has: vault_tailscale_auth_key  →  role expects: tailscale_auth_key
+tailscale_auth_key: "{{ vault_tailscale_auth_key }}"
+
+# vault has: authentik_pg_pass  →  role/template expects: authentik_db_password
+authentik_db_password: "{{ authentik_pg_pass }}"
+
+# vault has: vault_joplin_db_password  →  role expects: joplin_db_password
+joplin_db_password: "{{ vault_joplin_db_password }}"
+
+# All other secrets (cloudflare_api_token, cloudflare_email, traefik_dashboard_credentials,
+# pihole_webpassword, authentik_secret_key, garage_rpc_secret, garage_admin_token,
+# homepage_* vars) are loaded directly from vault with the correct names — no mapping needed.
+
+# Homepage kubernetes integration
+homepage_kubeconfig_enabled: true
+homepage_kubeconfig_path: "/srv/kubernetes/infrastructure/kubeconfig"

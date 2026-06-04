@@ -1,0 +1,43 @@
+---
+- name: Check VPS resource usage
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  tasks:
+    - name: Check disk usage
+      shell: df -h / /srv
+      register: disk_usage
+      changed_when: false
+
+    - name: Check memory usage
+      shell: free -h
+      register: memory_usage
+      changed_when: false
+
+    - name: Check Docker disk usage
+      shell: docker system df
+      register: docker_usage
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Check running containers
+      shell: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Size}}"
+      register: container_status
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display resource summary
+      debug:
+        msg:
+          - "=== DISK USAGE ==="
+          - "{{ disk_usage.stdout_lines }}"
+          - ""
+          - "=== MEMORY USAGE ==="
+          - "{{ memory_usage.stdout_lines }}"
+          - ""
+          - "=== DOCKER USAGE ==="
+          - "{{ docker_usage.stdout_lines }}"
+          - ""
+          - "=== CONTAINERS ==="
+          - "{{ container_status.stdout_lines }}"

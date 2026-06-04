@@ -1,0 +1,8 @@
+---
+beszel_docker_dir: /srv/docker/beszel
+beszel_compose_version: "3.8"
+beszel_image: "henrygd/beszel:latest"
+beszel_domain: "beszel.cloud.merox.dev"
+beszel_port: 8090
+traefik_network_name: network-cloud-merox
+beszel_container_ip: 172.25.10.40

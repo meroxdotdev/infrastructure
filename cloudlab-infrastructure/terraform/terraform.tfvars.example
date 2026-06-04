@@ -1,0 +1,9 @@
+# Copy this to terraform.tfvars and fill in your values
+# terraform.tfvars is gitignored — never commit it
+
+hcloud_token        = "your-hetzner-api-token-here"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+server_name         = "cloudlab-vps"
+server_type         = "cax21"    # 4vCPU ARM, 8GB RAM, €5.39/mo
+server_location     = "nbg1"     # Nuremberg — change to hel1 for Helsinki
+allowed_ips         = ["YOUR_HOME_IP/32"]   # Replace with your actual home IP

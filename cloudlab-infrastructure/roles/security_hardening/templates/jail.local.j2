@@ -1,0 +1,13 @@
+[DEFAULT]
+bantime  = {{ fail2ban_ssh_bantime }}
+findtime = {{ fail2ban_ssh_findtime }}
+maxretry = {{ fail2ban_ssh_maxretry }}
+ignoreip = 127.0.0.1/8 ::1 {{ tailscale_network }}
+
+[sshd]
+enabled  = true
+port     = 22
+logpath  = %(sshd_log)s
+backend  = %(sshd_backend)s
+maxretry = {{ fail2ban_ssh_maxretry }}
+bantime  = {{ fail2ban_ssh_bantime }}

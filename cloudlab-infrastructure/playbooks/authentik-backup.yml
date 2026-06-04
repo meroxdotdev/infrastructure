@@ -1,0 +1,38 @@
+---
+- name: Backup Authentik PostgreSQL database
+  hosts: vps_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    backup_dir: /srv/backups/authentik
+    backup_retention_days: 7
+
+  tasks:
+    - name: Create backup directory
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Dump and compress Authentik database
+      shell: >
+        docker exec -e PGPASSWORD="{{ authentik_db_password }}"
+        authentik-postgresql
+        pg_dump -U {{ authentik_db_user }} {{ authentik_db_name }}
+        | gzip > {{ backup_dir }}/authentik_{{ ansible_date_time.date }}_{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}.sql.gz
+      no_log: true
+
+    - name: Remove backups older than {{ backup_retention_days }} days
+      shell: >
+        find {{ backup_dir }} -name "authentik_*.sql.gz"
+        -mtime +{{ backup_retention_days }} -delete
+
+    - name: List current backups
+      shell: ls -lh {{ backup_dir }}/authentik_*.sql.gz
+      register: backup_list
+      changed_when: false
+
+    - name: Show backups
+      debug:
+        msg: "{{ backup_list.stdout_lines }}"

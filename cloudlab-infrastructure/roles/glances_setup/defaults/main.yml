@@ -1,0 +1,7 @@
+---
+glances_docker_dir: /srv/docker/glances
+glances_image: "nicolargo/glances:latest-full"
+glances_domain: "glances.cloud.merox.dev"
+glances_port: 61208
+glances_ip: "172.25.10.20"
+traefik_network_name: network-cloud-merox

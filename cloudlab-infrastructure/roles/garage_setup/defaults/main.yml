@@ -1,0 +1,16 @@
+---
+garage_docker_dir: /srv/docker/garage
+garage_image: "dxflrs/garage:v2.1.0"
+garage_webui_image: "khairul169/garage-webui:latest"
+garage_domain: "garage.cloud.merox.dev"
+garage_webui_domain: "garage-ui.cloud.merox.dev"
+garage_s3_port: 3900
+garage_rpc_port: 3901
+garage_admin_port: 3903
+garage_webui_port: 3909
+garage_region: "us-east-1"
+garage_replication_factor: 1
+garage_storage_capacity: "100G"
+garage_bucket_name: "longhorn"
+garage_key_name: "longhorn-key"
+traefik_network_name: network-cloud-merox

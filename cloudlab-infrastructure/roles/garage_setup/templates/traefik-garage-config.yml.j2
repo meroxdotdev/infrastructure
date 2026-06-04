@@ -1,0 +1,18 @@
+http:
+  routers:
+    garage-s3:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ garage_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: garage-s3
+
+  services:
+    garage-s3:
+      loadBalancer:
+        servers:
+          - url: "http://localhost:{{ garage_s3_port }}"
+        passHostHeader: true

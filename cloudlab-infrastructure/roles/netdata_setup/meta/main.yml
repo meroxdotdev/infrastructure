@@ -1,0 +1,4 @@
+---
+dependencies:
+  - role: docker_setup
+  - role: traefik_setup

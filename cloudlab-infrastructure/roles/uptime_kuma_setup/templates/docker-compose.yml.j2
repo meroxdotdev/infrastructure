@@ -1,0 +1,27 @@
+services:
+  uptime-kuma:
+    image: {{ uptime_kuma_image }}
+    container_name: uptime-kuma
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - {{ tailscale_ip }}
+    volumes:
+      - uptime_kuma_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      {{ traefik_network_name }}:
+        ipv4_address: {{ uptime_kuma_ip }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.uptime-kuma.rule=Host(`{{ uptime_kuma_domain }}`)"
+      - "traefik.http.routers.uptime-kuma.entrypoints=https"
+      - "traefik.http.routers.uptime-kuma.tls.certresolver=cloudflare"
+      - "traefik.http.services.uptime-kuma.loadbalancer.server.port={{ uptime_kuma_port }}"
+
+volumes:
+  uptime_kuma_data:
+
+networks:
+  {{ traefik_network_name }}:
+    external: true

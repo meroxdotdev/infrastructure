@@ -1,0 +1,30 @@
+---
+# Docker installation configuration
+docker_edition: 'ce'
+docker_channel: 'stable'
+
+# Packages to install
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+# Docker service configuration
+docker_service_state: started
+docker_service_enabled: true
+
+# Docker daemon configuration
+docker_daemon_options:
+  log-driver: "json-file"
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
+  storage-driver: "overlay2"
+
+# Users who can use Docker without sudo (empty by default)
+docker_users: []
+
+# Install Docker Compose V2 plugin
+docker_install_compose_plugin: true

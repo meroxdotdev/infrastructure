@@ -1,0 +1,18 @@
+http:
+  routers:
+    dozzle:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ dozzle_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: dozzle
+
+  services:
+    dozzle:
+      loadBalancer:
+        servers:
+          - url: "http://{{ dozzle_container_ip }}:8080"
+        passHostHeader: true

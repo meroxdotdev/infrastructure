@@ -1,0 +1,49 @@
+
+services:
+  unbound:
+    container_name: unbound
+    image: klutchell/unbound:latest
+    restart: unless-stopped
+    networks:
+      {{ traefik_network_name }}:
+        ipv4_address: {{ unbound_container_ip }}
+
+  pihole:
+    container_name: pihole
+    image: {{ pihole_image }}
+    restart: unless-stopped
+    depends_on:
+      - unbound
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "{{ pihole_web_port }}:80/tcp"
+    environment:
+      TZ: ${TZ}
+      FTLCONF_webserver_api_password: ${FTLCONF_webserver_api_password}
+      FTLCONF_dns_upstreams: "{{ unbound_container_ip }}#5335"
+      FTLCONF_dns_listeningMode: ${FTLCONF_dns_listeningMode}
+      ServerIP: ${ServerIP}
+      IPv6: ${IPv6}
+    env_file: .env
+    volumes:
+      - {{ pihole_docker_dir }}/etc-pihole:/etc/pihole
+      - {{ pihole_docker_dir }}/etc-dnsmasq.d:/etc/dnsmasq.d
+    dns:
+      - {{ unbound_container_ip }}
+      - 1.1.1.1
+    cap_add:
+      - NET_ADMIN
+    networks:
+      {{ traefik_network_name }}:
+        ipv4_address: {{ pihole_container_ip }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pihole.rule=Host(`{{ pihole_domain }}`)"
+      - "traefik.http.routers.pihole.entrypoints=https"
+      - "traefik.http.routers.pihole.tls.certresolver=cloudflare"
+      - "traefik.http.services.pihole.loadbalancer.server.port=80"
+
+networks:
+  {{ traefik_network_name }}:
+    external: true

@@ -1,0 +1,286 @@
+---
+# ============================================================================
+# TAB 1: CLOUD - Cloud Services & Monitoring
+# ============================================================================
+
+# Cloud Infrastructure Services
+- Cloud Infrastructure:
+
+    - Portainer:
+        icon: portainer.png
+        href: https://one.merox.dev
+        description: Container Management Platform
+        widget:
+          type: portainer
+          url: https://172.25.10.30:9443
+          env: 3
+          key: {{ homepage_portainer_api_key }}
+
+    - Cloudflare Tunnel:
+        icon: cloudflare.png
+        href: https://one.dash.cloudflare.com/{{ homepage_cloudflare_account_id }}/home/quick-start
+        description: Cloudflare
+        widget:
+          type: cloudflared
+          accountid: {{ homepage_cloudflare_account_id }}
+          tunnelid: {{ homepage_cloudflare_tunnel_id }}
+          key: {{ homepage_cloudflare_token }}
+          fields: ["status"]
+
+    - Tailscale Mesh:
+        icon: tailscale.png
+        href: https://login.tailscale.com/admin/machines
+        description: Mesh VPN Network
+        widget:
+          type: tailscale
+          deviceid: {{ homepage_tailscale_device_id }}
+          key: {{ homepage_tailscale_api_key }}
+          fields: ["last_seen", "expires"]
+
+    - Traefik:
+        icon: traefik.png
+        href: http://traefik.cloud.merox.dev
+        description: Reverse Proxy & Load Balancer
+
+    - PiHole:
+        icon: sh-pi-hole
+        href: http://pihole.cloud.merox.dev/admin/login
+        description: DNS Resolver
+          
+    - GarageHq:
+        icon: garage.png
+        href: http://garage.cloud.merox.dev
+        description: S3-Compatible Object Storage
+
+    - VS Code:
+        icon: vscode.png
+        href: http://code.cloud.merox.dev
+        description: Cloud IDE & Development
+
+    - Netdata:
+        icon: netdata.png
+        href: https://netdata.cloud.merox.dev
+        description: Real-time Performance Analytics
+        widget:
+          type: netdata
+          url: http://172.25.0.2:19999
+
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: https://status.merox.dev
+        description: Real-time Performance Analytics
+        widget:
+            type: uptimekuma
+            url: http://uptime-kuma:3001 
+            slug: infrastructure
+
+# Real-time System Monitoring Widgets
+- System Monitoring:
+
+    - System Overview:
+        icon: mdi-chip
+        description: Hardware & OS Information
+        widget:
+          type: glances
+          url: http://172.25.10.20:61208
+          version: 4
+          metric: info
+          
+    - CPU Monitor:
+        icon: mdi-cpu-64-bit
+        description: Processor Utilization & Load
+        widget:
+          type: glances
+          url: http://172.25.10.20:61208
+          version: 4
+          metric: cpu
+          
+    - Memory Status:
+        icon: mdi-memory
+        description: RAM & Swap Usage
+        widget:
+          type: glances
+          url: http://172.25.10.20:61208
+          version: 4
+          metric: memory
+          
+    - Network Traffic:
+        icon: mdi-ethernet
+        description: Interface Bandwidth Monitor
+        widget:
+          type: glances
+          url: http://172.25.10.20:61208
+          version: 4
+          metric: network:eth0
+          
+    - Disk Performance:
+        icon: mdi-harddisk
+        description: Storage I/O Operations
+        widget:
+          type: glances
+          url: http://172.25.10.20:61208
+          version: 4
+          metric: disk:sda
+          
+    - Process List:
+        icon: mdi-application-cog
+        description: Active System Processes
+        widget:
+          type: glances
+          url: http://172.25.10.20:61208
+          version: 4
+          metric: process
+
+# ============================================================================
+# TAB 2: ONPREM - Network, Servers & Kubernetes
+# ============================================================================
+
+# Network Infrastructure
+- Network Infrastructure:
+
+    - Speedtest Tracker:
+        icon: https://camo.githubusercontent.com/4ccc83cf6b1f06e999c378bda264433ec83994031c156a5c88876b53eb57b201/68747470733a2f2f692e696d6775722e636f6d2f61436d413672482e706e67
+        href: http://speedtest.merox.dev
+        description: Automated Speed Testing
+        widget:
+          type: myspeed
+          url: http://10.57.57.62:5216
+          
+    - pfSense Firewall:
+        icon: pfsense.png
+        href: https://pfsense.merox.dev
+        description: Network Security Gateway
+        ping: 10.57.57.1
+        widget:
+            type: pfsense
+            url: https://10.57.57.1:8443
+            username: {{ homepage_pfsense_username }}
+            password: {{ homepage_pfsense_password }}
+            headers:
+                X-API-Key: {{ homepage_pfsense_api_key }}
+            wan: igb0
+            version: 2
+            fields: ["load", "memory", "temp", "wanStatus"]
+          
+    - TP-Link WiFi:
+        icon: mdi-wifi
+        href: http://tplink.merox.dev
+        description: Network WiFi
+
+# Core Infrastructure (Servers & Storage)
+- Core Infrastructure:
+
+    - Proxmox VE:
+        icon: proxmox.png
+        href: https://one.cloud.merox.dev
+        description: Virtualization Platform
+        ping: 10.57.57.254
+        widget:
+          type: proxmox
+          url: https://10.57.57.254:8006
+          username: {{ homepage_proxmox_username }}
+          password: {{ homepage_proxmox_password }}
+        
+    - Synology NAS:
+        icon: synology.png
+        href: https://nas.merox.dev
+        description: Centralized Storage System
+        widget:
+          type: diskstation
+          url: https://10.57.57.201:5001/
+          username: {{ homepage_synology_username }}
+          password: {{ homepage_synology_password }}
+          volume: volume_1
+        
+    - iDRAC Console:
+        icon: mdi-server
+        href: https://idrac.merox.dev
+        description: Dell Server Management
+        ping: 10.57.57.249
+
+# Kubernetes Cluster & Tools
+- Kubernetes Ecosystem:
+
+    - K8s Dashboard:
+        icon: kubernetes.png
+        href: https://dashboard.k8s.merox.dev
+        description: Cluster Management UI
+
+    - Longhorn Storage:
+        icon: longhorn.png
+        href: http://longhorn.k8s.merox.dev
+        description: Cloud-Native Block Storage
+        
+    - Grafana:
+        icon: grafana.png
+        href: http://grafana.k8s.merox.dev
+        description: Metrics Visualization
+        
+    - Prometheus:
+        icon: prometheus.png
+        href: http://prometheus.k8s.merox.dev
+        description: Monitoring & Alerting
+          
+    - Alertmanager:
+        icon: mdi-bell-alert
+        href: http://alertmanager.k8s.merox.dev
+        description: Alert Distribution
+
+# ============================================================================
+# TAB 3: MEDIA - Streaming & Content Management
+# ============================================================================
+
+# Media Streaming Services
+- Media Services:
+
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://media.merox.dev
+        description: Personal Media Streaming
+        widget:
+          type: jellyfin
+          url: http://10.57.57.80:30096
+          key: {{ homepage_jellyfin_api_key }}
+          enableBlocks: true
+          enableNowPlaying: true
+          enableUser: true
+          enableMediaControl: false
+          showEpisodeNumber: true
+          expandOneStreamToTwoRows: false
+
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: https://jellyseerr.k8s.merox.dev/login
+        description: Media Request Platform
+        widget:
+          type: jellyseerr
+          url: http://10.57.57.80:30055
+          key: {{ homepage_jellyseerr_api_key }}
+
+    - qBittorrent:
+        icon: qbittorrent.png
+        href: https://qbittorrent.k8s.merox.dev
+        description: Torrent Download Client
+        widget:
+          type: qbittorrent
+          url: http://10.57.57.80:30080
+          username: {{ homepage_qbittorrent_username }}
+          password: {{ homepage_qbittorrent_password }}
+
+# Media Management Tools
+- Media Management:
+
+    - Radarr:
+        icon: radarr.png
+        href: https://radarr.k8s.merox.dev/
+        description: Movie Collection Manager
+        
+    - Sonarr:
+        icon: sonarr.png
+        href: https://sonarr.k8s.merox.dev/
+        description: TV Series Automation
+        
+    - Prowlarr:
+        icon: prowlarr.png
+        href: https://prowlarr.k8s.merox.dev/
+        description: Indexer Aggregator

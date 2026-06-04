@@ -1,0 +1,25 @@
+services:
+  guacamole:
+    image: {{ guacamole_image }}
+    container_name: guacamole
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ guacamole_port }}:{{ guacamole_port }}"
+    volumes:
+      - guacamole_config:/config
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      TZ: "{{ guacamole_timezone }}"
+      EXTENSIONS: "auth-totp"
+    networks:
+      {{ traefik_network_name }}:
+        ipv4_address: {{ guacamole_ip }}
+    labels:
+      - "traefik.enable=false"
+
+volumes:
+  guacamole_config:
+
+networks:
+  {{ traefik_network_name }}:
+    external: true

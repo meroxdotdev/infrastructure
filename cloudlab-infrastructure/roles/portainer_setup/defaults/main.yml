@@ -1,0 +1,9 @@
+---
+portainer_docker_dir: /srv/docker/portainer
+portainer_compose_version: "3.8"
+portainer_image: "portainer/portainer-ee:latest"
+portainer_container_ip: 172.25.10.30
+portainer_domain: "portainer.cloud.merox.dev"
+portainer_http_port: 9000
+portainer_https_port: 9443
+traefik_network_name: network-cloud-merox

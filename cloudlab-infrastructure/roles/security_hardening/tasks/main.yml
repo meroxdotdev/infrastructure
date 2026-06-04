@@ -1,0 +1,80 @@
+---
+- name: Disable SSH password authentication (cloud-init override)
+  lineinfile:
+    path: /etc/ssh/sshd_config.d/60-cloudimg-settings.conf
+    regexp: "^PasswordAuthentication"
+    line: "PasswordAuthentication {{ ssh_password_auth }}"
+    create: yes
+  notify: Reload sshd
+
+- name: Harden SSH configuration
+  blockinfile:
+    path: /etc/ssh/sshd_config
+    marker: "# {mark} ANSIBLE MANAGED — security_hardening"
+    block: |
+      PasswordAuthentication {{ ssh_password_auth }}
+      X11Forwarding {{ ssh_x11_forwarding }}
+      MaxAuthTries {{ ssh_max_auth_tries }}
+      ChallengeResponseAuthentication no
+      PubkeyAuthentication yes
+      PermitRootLogin no
+  notify: Reload sshd
+
+- name: Validate SSH config before reload
+  command: sshd -t
+  changed_when: false
+
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+    update_cache: yes
+
+- name: Deploy fail2ban jail config
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable and start fail2ban
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+
+- name: Deploy sysctl tuning
+  template:
+    src: sysctl-tuning.conf.j2
+    dest: /etc/sysctl.d/99-cloudlab-tuning.conf
+    mode: "0644"
+  notify: Apply sysctl
+
+- name: Configure Docker log rotation
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+  notify: Restart docker
+
+- name: Disable rpcbind (not needed)
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+    masked: yes
+  loop:
+    - rpcbind
+    - rpcbind.socket
+  failed_when: false
+
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+    masked: yes
+  loop:
+    - ModemManager
+    - iscsid
+  failed_when: false

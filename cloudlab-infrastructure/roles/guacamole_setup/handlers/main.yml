@@ -1,0 +1,6 @@
+---
+- name: Restart guacamole
+  when: not ansible_check_mode
+  community.docker.docker_compose_v2:
+    project_src: "{{ guacamole_docker_dir }}"
+    state: restarted

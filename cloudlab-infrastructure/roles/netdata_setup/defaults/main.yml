@@ -1,0 +1,8 @@
+---
+netdata_docker_dir: /srv/docker/netdata
+netdata_compose_version: "3.8"
+netdata_image: "netdata/netdata:latest"
+netdata_domain: "netdata.cloud.merox.dev"
+netdata_port: 19999
+netdata_hostname: "{{ inventory_hostname }}"
+traefik_network_name: network-cloud-merox
