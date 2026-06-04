@@ -199,7 +199,7 @@ verify_phase2() {
         fail "Flux git source not ready: $FLUX_SOURCE"
     fi
 
-    header "Phase 2: Storage"
+    header "Phase 2: Storage — PVCs"
     UNBOUND_PVC=$(kubectl get pvc -A --no-headers 2>/dev/null | grep -v "Bound" || true)
     if [ -z "$UNBOUND_PVC" ]; then
         ok "All PVCs Bound"
@@ -207,11 +207,64 @@ verify_phase2() {
         fail "PVCs not Bound:\n$UNBOUND_PVC"
     fi
 
+    header "Phase 2: Storage — Longhorn nodes"
     LH_NODES=$(kubectl -n longhorn-system get nodes.longhorn.io --no-headers 2>/dev/null | wc -l)
     if [ "$LH_NODES" -ge 3 ]; then
         ok "Longhorn: $LH_NODES nodes registered"
     else
         warn "Longhorn: only $LH_NODES node(s) registered (expected 3)"
+    fi
+
+    header "Phase 2: Storage — CSI driver registration"
+    # CRITICAL: driver.longhorn.io must be registered on all nodes.
+    # If missing, NO volume can attach. Caused by duplicate default/longhorn install.
+    MISSING_DRIVER=0
+    for node in $(kubectl get nodes --no-headers 2>/dev/null | awk '{print $1}'); do
+        HAS_DRIVER=$(kubectl get csinode "$node" -o jsonpath='{.spec.drivers[*].name}' 2>/dev/null | grep -c "driver.longhorn.io" || true)
+        if [ "$HAS_DRIVER" -ge 1 ]; then
+            ok "CSI driver registered on $node"
+        else
+            fail "driver.longhorn.io NOT registered on $node — run: task restore:longhorn (fix-duplicate-longhorn step)"
+            MISSING_DRIVER=$((MISSING_DRIVER + 1))
+        fi
+    done
+
+    header "Phase 2: Storage — Duplicate Longhorn check"
+    if kubectl get helmrelease longhorn -n default &>/dev/null; then
+        fail "Duplicate default/longhorn HelmRelease found — will break ALL volume attachments!"
+        fail "Fix: kubectl delete helmrelease longhorn -n default && helm uninstall longhorn -n default"
+    else
+        ok "No duplicate default/longhorn HelmRelease"
+    fi
+
+    header "Phase 2: Storage — Restore volumes"
+    DETACHED=$(kubectl get volumes.longhorn.io -n longhorn-system --no-headers 2>/dev/null \
+        | grep "restored" | grep -v "attached" | grep -v "detached" || true)
+    ATTACHED=$(kubectl get volumes.longhorn.io -n longhorn-system --no-headers 2>/dev/null \
+        | grep "restored" | grep "attached" | wc -l || echo 0)
+    TOTAL=$(kubectl get volumes.longhorn.io -n longhorn-system --no-headers 2>/dev/null \
+        | grep -c "restored" || echo 0)
+    if [ "$TOTAL" -ge 9 ]; then
+        ok "Restore volumes exist: $TOTAL total, $ATTACHED attached"
+    else
+        fail "Only $TOTAL restore volumes found (expected 9+) — run: task restore:longhorn"
+    fi
+
+    header "Phase 2: Storage — Longhorn BackupTarget"
+    # In Longhorn 1.11.2, BackupTarget is a CRD (not a Setting)
+    BACKUP_URL=$(kubectl get backuptarget default -n longhorn-system \
+        -o jsonpath='{.spec.backupTargetURL}' 2>/dev/null || true)
+    if echo "$BACKUP_URL" | grep -q "s3://"; then
+        ok "BackupTarget CRD configured: $BACKUP_URL"
+    else
+        # Fallback: check legacy Setting (Longhorn < 1.11.2)
+        BACKUP_SETTING=$(kubectl -n longhorn-system get setting backup-target \
+            -o jsonpath='{.value}' 2>/dev/null || true)
+        if echo "$BACKUP_SETTING" | grep -q "s3://"; then
+            ok "Backup target (Setting) configured: $BACKUP_SETTING"
+        else
+            fail "Longhorn backup target not configured — run: task restore:longhorn (patch-backup-target step)"
+        fi
     fi
 
     header "Phase 2: Networking"
@@ -230,14 +283,6 @@ verify_phase2() {
         ok "Certificates ready"
     else
         warn "Certificates not ready:\n$CERT_NOT_READY"
-    fi
-
-    header "Phase 2: Longhorn → Garage S3 backup"
-    BACKUP_TARGET=$(kubectl -n longhorn-system get setting backup-target -o jsonpath='{.value}' 2>/dev/null || true)
-    if echo "$BACKUP_TARGET" | grep -q "s3://"; then
-        ok "Longhorn backup target configured: $BACKUP_TARGET"
-    else
-        fail "Longhorn backup target not configured (value: '$BACKUP_TARGET')"
     fi
 }
 

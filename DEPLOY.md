@@ -241,24 +241,42 @@ git add -A && git commit -m "chore: add secrets" && git push
 ### Shared steps (both Option A and Option B)
 
 ```bash
-# 6. Bootstrap Flux and wait for Longhorn to be ready (do NOT let Flux reconcile apps yet)
+# 6. Bootstrap Flux and wait for Longhorn to be ready
 task bootstrap:apps
-# Wait until Longhorn is fully running before proceeding:
-kubectl -n longhorn-system wait helmrelease/longhorn --for=condition=Ready --timeout=5m
-kubectl -n longhorn-system get nodes.longhorn.io   # All nodes should appear
 
-# 7. Restore all Longhorn volumes from S3 backup (CRITICAL — run BEFORE apps start)
-#    This restores: jellyfin, jellyseerr, prowlarr, qbittorrent, radarr, sonarr,
-#                   loki, prometheus, n8n, grafana
+# Wait until Longhorn HelmRelease is Ready (~3-5 min):
+kubectl -n longhorn-system wait helmrelease/longhorn --for=condition=Ready --timeout=10m
+# Verify all 3 Longhorn nodes appear:
+kubectl -n longhorn-system get nodes.longhorn.io
+
+# 7. CRITICAL: Remove duplicate default/longhorn HelmRelease
+#    Longhorn 1.11.2 namespace-scoped feature creates a spurious copy in default namespace.
+#    This duplicate breaks CSI driver registration and prevents ALL volume attachments.
+#    Must be removed BEFORE proceeding.
+if kubectl get helmrelease longhorn -n default &>/dev/null; then
+  echo "Removing duplicate default/longhorn..."
+  kubectl delete helmrelease longhorn -n default
+  helm uninstall longhorn -n default 2>/dev/null || true
+  kubectl delete deployment csi-attacher csi-provisioner csi-resizer \
+    csi-snapshotter longhorn-driver-deployer longhorn-ui \
+    -n default --ignore-not-found
+  kubectl delete daemonset longhorn-manager longhorn-csi-plugin -n default --ignore-not-found
+  kubectl rollout restart daemonset/longhorn-csi-plugin -n longhorn-system
+  kubectl rollout status daemonset/longhorn-csi-plugin -n longhorn-system --timeout=60s
+  # Verify driver.longhorn.io is registered on all nodes:
+  kubectl get csinodes -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.drivers[*].name}{"\n"}{end}'
+fi
+
+# 8. Restore all Longhorn volumes from S3 backup
+#    This single command handles: BackupTarget patch, volume creation,
+#    pvs.yaml apply, prometheus/alertmanager PVCs, and Flux reconcile.
 task restore:longhorn
-# Wait for all volumes to finish restoring (~5-10 min):
-kubectl get volumes.longhorn.io -n longhorn-system --watch
 
-# 8. Flux reconciles all apps — PVCs will auto-bind to restored PVs
+# Monitor until all pods are Running (~5-10 min):
 kubectl get pods -A --watch
 ```
 
-**Verify:**
+**Verify Phase 2:**
 ```bash
 # One-shot: bash scripts/dr-verify.sh --phase 2
 # Or manually:
@@ -268,9 +286,17 @@ kubectl get nodes                                    # All Ready
 kubectl get kustomizations -A                        # All True
 flux get sources git flux-system                     # READY True
 
-# Storage
-kubectl get pvc -A | grep -v Bound                   # Should be empty (all Bound)
-kubectl -n longhorn-system get nodes.longhorn.io     # All nodes present
+# Storage — all PVCs must be Bound
+kubectl get pvc -A | grep -v Bound | grep -v NAME    # Should be empty
+kubectl get volumes.longhorn.io -n longhorn-system | grep restored  # attached/healthy
+kubectl get pv | grep restored                       # All Bound
+
+# CSI driver registered on all nodes (REQUIRED)
+kubectl get csinodes -o jsonpath='{range .items[*]}{.metadata.name}{": "}{.spec.drivers[*].name}{"\n"}{end}'
+# Expected: each node shows "nfs.csi.k8s.io driver.longhorn.io"
+
+# No duplicate Longhorn in default namespace
+kubectl get helmrelease longhorn -n default 2>/dev/null && echo "ERROR: duplicate found" || echo "OK"
 
 # Networking
 cilium status                                        # All OK
@@ -279,14 +305,12 @@ dig @10.57.57.111 echo.merox.dev                    # Should resolve to 10.57.57
 kubectl -n network describe certificates            # Certificate Ready
 ```
 
-**Reconnect Longhorn → Garage S3 backup target:**
-
+**Longhorn backup target (verify after restore):**
 ```bash
-# Verify backupTarget points to: s3://longhorn@us-east-1/
-# and minio-secret has the new credentials from Phase 1
-kubectl -n longhorn-system get secret minio-secret
-# Trigger a manual backup to verify connectivity:
-# Longhorn UI → Backup → Create Backup (any volume)
+# BackupTarget is a CRD in Longhorn 1.11.2 (not a Setting anymore):
+kubectl get backuptarget default -n longhorn-system -o jsonpath='{.spec}'
+# Expected: backupTargetURL=s3://longhorn@us-east-1/, credentialSecret=minio-secret
+# task restore:longhorn already patches this automatically.
 ```
 
 **GitHub Webhook (optional — enables instant Flux sync on git push):**

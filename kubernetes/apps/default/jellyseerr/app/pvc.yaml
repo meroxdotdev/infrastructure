@@ -5,13 +5,12 @@ metadata:
   name: jellyseerr
   namespace: default
 spec:
-  accessModes: ["ReadWriteOnce"]
+  accessModes:
+    - ReadWriteOnce
   storageClassName: longhorn
-  volumeName: jellyseerr-restored-pv
   resources:
     requests:
-      storage: 2Gi  # Ajustează dimensiunea după nevoie
-  volumeMode: Filesystem
+      storage: 2Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -19,9 +18,9 @@ metadata:
   name: jellyseerr-cache
   namespace: default
 spec:
-  accessModes: ["ReadWriteOnce"]
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
   resources:
     requests:
       storage: 5Gi
-  storageClassName: longhorn
-  volumeMode: Filesystem

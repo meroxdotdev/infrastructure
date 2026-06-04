@@ -5,9 +5,9 @@ metadata:
   name: prowlarr
   namespace: default
 spec:
-  accessModes: ["ReadWriteOnce"]
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
   resources:
     requests:
       storage: 2Gi
-  storageClassName: longhorn
-  volumeName: prowlarr-restored-pv 

@@ -15,6 +15,11 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 10Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: jellyfin
+    namespace: default
   csi:
     driver: driver.longhorn.io
     fsType: ext4
@@ -34,6 +39,11 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 2Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: jellyseerr
+    namespace: default
   csi:
     driver: driver.longhorn.io
     fsType: ext4
@@ -53,6 +63,11 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 2Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: prowlarr
+    namespace: default
   csi:
     driver: driver.longhorn.io
     fsType: ext4
@@ -72,6 +87,11 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: qbittorrent
+    namespace: default
   csi:
     driver: driver.longhorn.io
     fsType: ext4
@@ -91,6 +111,11 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: radarr
+    namespace: default
   csi:
     driver: driver.longhorn.io
     fsType: ext4
@@ -110,6 +135,11 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: sonarr
+    namespace: default
   csi:
     driver: driver.longhorn.io
     fsType: ext4
@@ -129,6 +159,11 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 20Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: storage-loki-0
+    namespace: observability
   csi:
     driver: driver.longhorn.io
     fsType: ext4
@@ -170,6 +205,11 @@ spec:
     - ReadWriteOnce
   capacity:
     storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: n8n
+    namespace: default
   csi:
     driver: driver.longhorn.io
     fsType: ext4

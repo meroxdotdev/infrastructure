@@ -2,82 +2,340 @@
 # yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: "3"
 
+vars:
+  LONGHORN_NS: longhorn-system
+
 tasks:
   restore:
-    desc: Restore Longhorn volumes from S3 backup after a new cluster bootstrap
+    desc: Restore Longhorn volumes from S3 backup (run AFTER bootstrap:apps, BEFORE apps reconcile)
     summary: |
-      Restores all named Longhorn volumes from the latest S3 backup.
-      Run this ONCE after bootstrap:talos + bootstrap:apps, before Flux reconciles apps.
+      Full Phase 2 Longhorn restore procedure for Longhorn 1.11.2+.
 
-      Prerequisites:
-        - Longhorn must be running (wait for helmrelease longhorn to be Ready)
-        - minio-secret must exist in longhorn-system (deployed by Flux)
-        - Backup target must be reachable (Tailscale/Garage S3)
+      Run ONCE after: task bootstrap:apps
+      Run BEFORE:     Flux reconciles any app HelmReleases
 
-      After this task completes:
-        - Apply the PV manifests: kubectl apply -f kubernetes/apps/storage/restore-pvs/pvs.yaml
-        - Flux will bind PVCs to PVs automatically
+      What it does:
+        1. Patches the BackupTarget CRD (required in 1.11.2 — no longer a Setting)
+        2. Waits for BackupVolumes to sync from S3
+        3. Creates restore Volume CRDs in longhorn-system (fromBackup)
+        4. Waits for replicas to initialize
+        5. Applies pvs.yaml with correct claimRefs
+        6. Removes duplicate default/longhorn HelmRelease if present
+        7. Creates prometheus + alertmanager PVCs manually (StatefulSet quirk)
+        8. Force-reconciles all app HelmReleases
+
+      After this task: all pods should start within ~5 min.
+    cmds:
+      - task: patch-backup-target
+      - task: wait-for-backup-volumes
+      - task: restore-all-volumes
+      - task: wait-for-replicas
+      - task: apply-pvs
+      - task: fix-duplicate-longhorn
+      - task: create-statefulset-pvcs
+      - task: reconcile-apps
+      - echo ""
+      - echo "✓ Longhorn restore complete. Watch pods start:"
+      - echo "  kubectl get pods -A --watch"
+
+  patch-backup-target:
+    desc: Patch Longhorn BackupTarget CRD (required in Longhorn 1.11.2+)
+    cmds:
+      - |
+        echo "→ Patching BackupTarget CRD..."
+        kubectl patch backuptarget default -n {{.LONGHORN_NS}} --type merge \
+          -p '{"spec":{"backupTargetURL":"s3://longhorn@us-east-1/","credentialSecret":"minio-secret","pollInterval":"300s"}}' 2>/dev/null \
+          && echo "  ✓ BackupTarget patched" \
+          || echo "  ✓ BackupTarget already configured"
+    silent: true
+
+  wait-for-backup-volumes:
+    desc: Wait until BackupVolumes sync from S3 (~30-60s after BackupTarget patch)
+    cmds:
+      - |
+        echo "→ Waiting for BackupVolumes to sync from S3..."
+        for i in $(seq 1 30); do
+          COUNT=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep -c "restored" || true)
+          if [ "$COUNT" -ge 8 ]; then
+            echo "  ✓ $COUNT backup volumes found"
+            break
+          fi
+          echo "  ... $COUNT/8+ found, waiting 10s (attempt $i/30)"
+          sleep 10
+        done
+        COUNT=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep -c "restored" || true)
+        if [ "$COUNT" -lt 8 ]; then
+          echo "  ✗ Only $COUNT backup volumes found after 5 min. Check S3 connectivity."
+          echo "    kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
+          exit 1
+        fi
+    silent: true
+
+  restore-all-volumes:
+    desc: Create all restore Volume CRDs in longhorn-system
     cmds:
       - task: restore-volume
-        vars: { NAME: jellyfin-restored, BACKUP: "{{.BACKUP_PREFIX}}/jellyfin-restored" }
+        vars: { NAME: jellyfin-restored }
       - task: restore-volume
-        vars: { NAME: jellyseerr-restored, BACKUP: "{{.BACKUP_PREFIX}}/jellyseerr-restored" }
+        vars: { NAME: jellyseerr-restored }
       - task: restore-volume
-        vars: { NAME: prowlarr-restored, BACKUP: "{{.BACKUP_PREFIX}}/prowlarr-restored" }
+        vars: { NAME: prowlarr-restored }
       - task: restore-volume
-        vars: { NAME: qbittorrent-restored, BACKUP: "{{.BACKUP_PREFIX}}/qbittorrent-restored" }
+        vars: { NAME: qbittorrent-restored }
       - task: restore-volume
-        vars: { NAME: radarr-restored, BACKUP: "{{.BACKUP_PREFIX}}/radarr-restored" }
+        vars: { NAME: radarr-restored }
       - task: restore-volume
-        vars: { NAME: sonarr-restored, BACKUP: "{{.BACKUP_PREFIX}}/sonarr-restored" }
+        vars: { NAME: sonarr-restored }
       - task: restore-volume
-        vars: { NAME: loki-restored, BACKUP: "{{.BACKUP_PREFIX}}/loki-restored" }
+        vars: { NAME: loki-restored }
       - task: restore-volume
-        vars: { NAME: prometheus-restored, BACKUP: "{{.BACKUP_PREFIX}}/prometheus-restored" }
+        vars: { NAME: prometheus-restored }
       - task: restore-volume
-        vars: { NAME: n8n-restored, BACKUP: "{{.BACKUP_PREFIX}}/n8n-restored" }
-      - task: restore-volume
-        vars: { NAME: grafana-restored, BACKUP: "{{.BACKUP_PREFIX}}/grafana-restored" }
-      - echo "All volumes restored. Applying PV manifests..."
-      - kubectl apply -f kubernetes/apps/storage/restore-pvs/pvs.yaml
-      - echo "Done. PVCs will bind automatically within 30s."
+        vars: { NAME: grafana-restored }
+      # n8n is disabled by default; uncomment if enabled in default/kustomization.yaml:
+      # - task: restore-volume
+      #   vars: { NAME: n8n-restored }
 
   restore-volume:
     internal: true
-    desc: Restore a single Longhorn volume from latest backup
+    desc: Create a single restore Volume CRD from latest S3 backup
     vars:
       NAME: '{{.NAME}}'
-      BACKUP: '{{.BACKUP}}'
-      BACKUP_PREFIX: "s3://longhorn@us-east-1/"
     cmds:
       - |
-        echo "Restoring volume: {{.NAME}}"
-        LATEST_BACKUP=$(kubectl -n longhorn-system exec -it \
-          $(kubectl -n longhorn-system get pod -l app=longhorn-manager -o jsonpath='{.items[0].metadata.name}') \
-          -- longhorn-manager backup list --volume-name {{.NAME}} 2>/dev/null \
-          | grep {{.NAME}} | sort | tail -1 | awk '{print $1}')
+        echo "→ Restoring {{.NAME}}..."
 
-        if [ -z "$LATEST_BACKUP" ]; then
-          echo "  WARNING: No backup found for {{.NAME}}, skipping"
+        # Find BackupVolume for this volume (name format: {volume-name}-{hash})
+        BV_NAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} \
+          --no-headers 2>/dev/null | awk '{print $1}' | grep "^{{.NAME}}-" | head -1)
+
+        if [ -z "$BV_NAME" ]; then
+          echo "  ✗ No BackupVolume found for {{.NAME}} — skipping"
+          echo "    Check: kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
           exit 0
         fi
 
-        echo "  Using backup: $LATEST_BACKUP"
+        # Get latest backup URL from BackupVolume status
+        BACKUP_URL=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} "$BV_NAME" \
+          -o jsonpath='{.status.lastBackupURL}' 2>/dev/null)
+
+        if [ -z "$BACKUP_URL" ]; then
+          echo "  ✗ No backup URL in BackupVolume $BV_NAME — skipping"
+          exit 0
+        fi
+
+        SIZE=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} "$BV_NAME" \
+          -o jsonpath='{.status.size}' 2>/dev/null)
+
+        echo "  backup: $BACKUP_URL"
+
+        # Check if Volume already exists
+        if kubectl get volumes.longhorn.io {{.NAME}} -n {{.LONGHORN_NS}} &>/dev/null; then
+          echo "  ✓ Volume already exists, skipping"
+          exit 0
+        fi
+
+        # Create Volume CRD in longhorn-system (NOT in default — manager ignores default)
         kubectl apply -f - <<EOF
         apiVersion: longhorn.io/v1beta2
         kind: Volume
         metadata:
           name: {{.NAME}}
-          namespace: longhorn-system
+          namespace: {{.LONGHORN_NS}}
         spec:
           numberOfReplicas: 3
           frontend: blockdev
-          fromBackup: "$LATEST_BACKUP"
+          fromBackup: "$BACKUP_URL"
           restoreVolumeRecurringJob: enabled
+          accessMode: rwo
+          dataEngine: v1
         EOF
-        echo "  Volume {{.NAME}} restore initiated"
+        echo "  ✓ Volume {{.NAME}} restore initiated"
+    silent: true
+
+  wait-for-replicas:
+    desc: Wait until all restore volumes have replicas initialized (~60s)
+    cmds:
+      - |
+        echo "→ Waiting for restore volume replicas to initialize..."
+        VOLUMES="jellyfin-restored jellyseerr-restored prowlarr-restored qbittorrent-restored radarr-restored sonarr-restored loki-restored prometheus-restored grafana-restored"
+        for i in $(seq 1 12); do
+          ALL_READY=true
+          for VOL in $VOLUMES; do
+            REPLICA_COUNT=$(kubectl get replicas.longhorn.io -n {{.LONGHORN_NS}} \
+              --no-headers 2>/dev/null | grep "^${VOL}-" | wc -l)
+            if [ "$REPLICA_COUNT" -lt 1 ]; then
+              ALL_READY=false
+              break
+            fi
+          done
+          if $ALL_READY; then
+            echo "  ✓ All restore volumes have replicas"
+            break
+          fi
+          echo "  ... replicas not all ready yet (attempt $i/12)"
+          sleep 10
+        done
+    silent: true
+
+  apply-pvs:
+    desc: Apply PersistentVolume manifests with correct claimRefs
+    cmds:
+      - |
+        echo "→ Applying PV manifests..."
+        kubectl apply -k kubernetes/apps/storage/restore-pvs/
+        echo "  ✓ PVs applied"
+        echo "  Waiting 10s for PVs to register..."
+        sleep 10
+        echo "  PV status:"
+        kubectl get pv 2>/dev/null | grep restored | awk '{print "   "$1, $5, $6}'
+    silent: true
+
+  fix-duplicate-longhorn:
+    desc: Remove spurious default/longhorn HelmRelease (created by Longhorn 1.11.2 namespace-scoped feature)
+    cmds:
+      - |
+        echo "→ Checking for duplicate default/longhorn HelmRelease..."
+        if kubectl get helmrelease longhorn -n default &>/dev/null; then
+          echo "  ! Found duplicate default/longhorn — removing..."
+          kubectl delete helmrelease longhorn -n default 2>/dev/null || true
+          helm uninstall longhorn -n default 2>/dev/null || true
+          # Force-delete deployments/daemonsets left behind
+          kubectl delete deployment csi-attacher csi-provisioner csi-resizer \
+            csi-snapshotter longhorn-driver-deployer longhorn-ui \
+            -n default --ignore-not-found 2>/dev/null || true
+          kubectl delete daemonset longhorn-manager longhorn-csi-plugin \
+            -n default --ignore-not-found 2>/dev/null || true
+          echo "  ✓ Duplicate removed"
+
+          echo "  → Restarting longhorn-csi-plugin to re-register CSI driver..."
+          kubectl rollout restart daemonset/longhorn-csi-plugin -n {{.LONGHORN_NS}}
+          kubectl rollout status daemonset/longhorn-csi-plugin -n {{.LONGHORN_NS}} --timeout=60s
+
+          echo "  Verifying driver.longhorn.io registered on nodes..."
+          for i in $(seq 1 10); do
+            REGISTERED=$(kubectl get csinodes -o json 2>/dev/null | \
+              python3 -c "import json,sys; d=json.load(sys.stdin); \
+              nodes=[n for n in d['items'] if any(drv['name']=='driver.longhorn.io' for drv in n['spec']['drivers'])]; \
+              print(len(nodes))" 2>/dev/null || echo 0)
+            if [ "$REGISTERED" -eq 3 ]; then
+              echo "  ✓ driver.longhorn.io registered on all 3 nodes"
+              break
+            fi
+            echo "  ... registered on $REGISTERED/3 nodes (attempt $i/10)"
+            sleep 6
+          done
+        else
+          echo "  ✓ No duplicate found"
+        fi
+    silent: true
+
+  create-statefulset-pvcs:
+    desc: Create prometheus and alertmanager PVCs (StatefulSets do not recreate deleted PVCs)
+    cmds:
+      - |
+        echo "→ Creating StatefulSet PVCs..."
+
+        # Prometheus (bound to restore PV)
+        if ! kubectl get pvc prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0 \
+            -n observability &>/dev/null; then
+          kubectl apply -f - <<EOF
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0
+          namespace: observability
+        spec:
+          accessModes: [ReadWriteOnce]
+          storageClassName: longhorn
+          volumeName: prometheus-restored-pv
+          resources:
+            requests:
+              storage: 15Gi
+        EOF
+          echo "  ✓ prometheus PVC created"
+        else
+          echo "  ✓ prometheus PVC already exists"
+        fi
+
+        # Alertmanager (fresh empty volume — no backup)
+        if ! kubectl get pvc alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0 \
+            -n observability &>/dev/null; then
+          kubectl apply -f - <<EOF
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0
+          namespace: observability
+        spec:
+          accessModes: [ReadWriteOnce]
+          storageClassName: longhorn
+          resources:
+            requests:
+              storage: 1Gi
+        EOF
+          echo "  ✓ alertmanager PVC created (fresh, no backup)"
+        else
+          echo "  ✓ alertmanager PVC already exists"
+        fi
+    silent: true
+
+  reconcile-apps:
+    desc: Force-reconcile all app kustomizations and HelmReleases
+    cmds:
+      - |
+        echo "→ Force-reconciling Flux kustomizations..."
+        flux reconcile kustomization cluster-apps 2>/dev/null || true
+        sleep 5
+
+        echo "→ Reconciling media stack HelmReleases..."
+        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr; do
+          flux reconcile helmrelease $app -n default 2>/dev/null &
+        done
+        wait
+
+        echo "→ Reconciling observability HelmReleases..."
+        for app in grafana loki kube-prometheus-stack; do
+          flux reconcile helmrelease $app -n observability 2>/dev/null &
+        done
+        wait
+
+        echo "  ✓ Reconciliation triggered"
+        echo "  Monitor with: kubectl get helmreleases -A"
+    silent: true
 
   status:
-    desc: Check status of all Longhorn volumes being restored
+    desc: Check status of restore volumes and app pods
     cmds:
-      - kubectl get volumes.longhorn.io -n longhorn-system 2>&1
+      - |
+        echo "=== Longhorn Volumes ==="
+        kubectl get volumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep restored
+        echo ""
+        echo "=== PV Bindings ==="
+        kubectl get pv 2>/dev/null | grep restored
+        echo ""
+        echo "=== PVCs ==="
+        kubectl get pvc -A 2>/dev/null | grep -v Bound | grep -v NAME
+        echo ""
+        echo "=== Failed HelmReleases ==="
+        kubectl get helmreleases -A 2>/dev/null | grep -v "True\|READY"
+
+  clean-orphan-volumes:
+    desc: Delete leftover faulted pvc-xxxx volumes from default namespace (safe to run after restore)
+    cmds:
+      - |
+        echo "→ Cleaning orphan faulted volumes from default namespace..."
+        VOLS=$(kubectl get volumes.longhorn.io -n default --no-headers 2>/dev/null \
+          | grep -E "faulted|creating" | awk '{print $1}')
+        if [ -z "$VOLS" ]; then
+          echo "  ✓ No orphan volumes found"
+          exit 0
+        fi
+        for v in $VOLS; do
+          echo "  Removing finalizer + deleting: $v"
+          kubectl patch volumes.longhorn.io $v -n default \
+            -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+          kubectl delete volumes.longhorn.io $v -n default --ignore-not-found 2>/dev/null || true
+        done
+        echo "  ✓ Done"
+    silent: true

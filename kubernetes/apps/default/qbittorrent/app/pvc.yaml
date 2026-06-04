@@ -5,9 +5,9 @@ metadata:
   name: qbittorrent
   namespace: default
 spec:
-  accessModes: ["ReadWriteOnce"]
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
   resources:
     requests:
       storage: 5Gi
-  storageClassName: longhorn
-  volumeName: qbittorrent-restored-pv 
