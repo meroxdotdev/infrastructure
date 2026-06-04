@@ -74,7 +74,7 @@
 - name: Create Traefik dynamic config for Homepage
   template:
     src: traefik-homepage-config.yml.j2
-    dest: /srv/docker/traefik/config/homepage.yml
+    dest: "{{ traefik_docker_dir }}/config/homepage.yml"
     mode: '0644'
   notify: Reload traefik
 

@@ -19,8 +19,6 @@ services:
 {% if homepage_kubeconfig_enabled %}
       - {{ homepage_kubeconfig_path }}:/app/config/kubeconfig.yaml:ro
 {% endif %}
-    env_file:
-      - homepage.env
     environment:
       PUID: {{ homepage_puid }}
       PGID: {{ homepage_pgid }}

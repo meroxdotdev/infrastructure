@@ -39,7 +39,7 @@
 - name: Create Traefik dynamic config for Beszel
   template:
     src: traefik-beszel-config.yml.j2
-    dest: /srv/docker/traefik/config/beszel.yml
+    dest: "{{ traefik_docker_dir }}/config/beszel.yml"
     mode: '0644'
   notify: Reload traefik
 

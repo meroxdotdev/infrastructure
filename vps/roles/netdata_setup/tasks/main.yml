@@ -39,7 +39,7 @@
 - name: Create Traefik dynamic config for Netdata
   template:
     src: traefik-netdata-config.yml.j2
-    dest: /srv/docker/traefik/config/netdata.yml
+    dest: "{{ traefik_docker_dir }}/config/netdata.yml"
     mode: '0644'
   notify: Reload traefik
 

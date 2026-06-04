@@ -17,7 +17,7 @@ variable "server_name" {
 }
 
 variable "server_type" {
-  description = "Hetzner server type. cax21=4vCPU ARM 8GB €5.39 | cax31=8vCPU ARM 16GB €9.19 | cx32=4vCPU x86 8GB €6.49"
+  description = "Hetzner server type. cx33=4vCPU x86 8GB €7.85 | cax21=4vCPU ARM 8GB €9.67 (may be unavailable) | cx23=2vCPU x86 4GB €4.83 | cax31=8vCPU ARM 16GB €19.35"
   type        = string
   default     = "cax21"
 }

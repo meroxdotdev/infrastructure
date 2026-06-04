@@ -51,6 +51,13 @@ if [ -f "$TFVARS" ]; then
     else
         fail "SSH public key not found: $SSH_KEY_PATH"
     fi
+    SSH_PRIVKEY_PATH="${SSH_KEY_PATH%.pub}"
+    SSH_PRIVKEY_EXPANDED="${SSH_PRIVKEY_PATH/#\~/$HOME}"
+    if [ -f "$SSH_PRIVKEY_EXPANDED" ]; then
+        ok "SSH private key exists: $SSH_PRIVKEY_PATH"
+    else
+        fail "SSH private key not found: $SSH_PRIVKEY_PATH — Ansible won't be able to connect after terraform-apply"
+    fi
 else
     fail "terraform.tfvars missing — copy terraform.tfvars.example and fill in values"
 fi

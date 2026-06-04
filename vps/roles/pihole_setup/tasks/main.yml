@@ -72,7 +72,7 @@
 - name: Create Traefik dynamic config with Pi-hole
   template:
     src: traefik-pihole-config.yml.j2
-    dest: /srv/docker/traefik/config/pihole.yml
+    dest: "{{ traefik_docker_dir }}/config/pihole.yml"
     mode: '0644'
   notify: Reload traefik
 

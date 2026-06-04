@@ -21,6 +21,6 @@
 - name: Wait for Uptime Kuma to be ready
   wait_for:
     port: "{{ uptime_kuma_port }}"
-    host: localhost
+    host: "{{ uptime_kuma_ip }}"
     delay: 5
     timeout: 60

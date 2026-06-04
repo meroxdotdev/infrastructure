@@ -42,7 +42,7 @@
 
 - name: Wait for Garage to be ready
   wait_for:
-    port: "{{ garage_admin_port }}"
+    port: "{{ garage_webui_port }}"
     host: localhost
     delay: 5
     timeout: 60
@@ -91,14 +91,14 @@
 - name: Create Traefik dynamic config for Garage S3
   template:
     src: traefik-garage-config.yml.j2
-    dest: /srv/docker/traefik/config/garage.yml
+    dest: "{{ traefik_docker_dir }}/config/garage.yml"
     mode: '0644'
   notify: Reload traefik
 
 - name: Create Traefik dynamic config for Garage WebUI
   template:
     src: traefik-garage-webui-config.yml.j2
-    dest: /srv/docker/traefik/config/garage-webui.yml
+    dest: "{{ traefik_docker_dir }}/config/garage-webui.yml"
     mode: '0644'
   notify: Reload traefik
 

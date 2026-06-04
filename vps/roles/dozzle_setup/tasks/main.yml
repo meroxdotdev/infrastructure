@@ -39,7 +39,7 @@
 - name: Create Traefik dynamic config for Dozzle
   template:
     src: traefik-dozzle-config.yml.j2
-    dest: /srv/docker/traefik/config/dozzle.yml
+    dest: "{{ traefik_docker_dir }}/config/dozzle.yml"
     mode: '0644'
   notify: Reload traefik
 

@@ -191,9 +191,10 @@ terraform-plan:
 terraform-apply:
 	cd terraform && terraform apply -auto-approve
 	@NEW_IP=$$(cd terraform && terraform output -raw server_ip 2>/dev/null); \
+	SSH_KEY=$$(grep ssh_public_key_path terraform/terraform.tfvars | sed 's/.*=\s*"\(.*\)".*/\1/' | sed 's/\.pub//' | tr -d ' '); \
 	if [ -n "$$NEW_IP" ]; then \
-		sed -i "s/^vps01 .*/vps01 ansible_host=$$NEW_IP/" inventories/production/hosts; \
-		echo "Server IP: $$NEW_IP — inventory updated (ansible_connection=local removed for SSH)"; \
+		sed -i "s|^vps01 .*|vps01 ansible_host=$$NEW_IP ansible_ssh_private_key_file=$$SSH_KEY|" inventories/production/hosts; \
+		echo "Server IP: $$NEW_IP — inventory updated (SSH key: $$SSH_KEY)"; \
 		echo "Run: make setup  (after ~30s for cloud-init)"; \
 	fi
 

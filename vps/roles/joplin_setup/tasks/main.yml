@@ -22,6 +22,6 @@
 - name: Wait for Joplin to be ready
   wait_for:
     port: "{{ joplin_app_port }}"
-    host: localhost
+    host: "{{ joplin_server_ip }}"
     delay: 10
-    timeout: 120
+    timeout: 180

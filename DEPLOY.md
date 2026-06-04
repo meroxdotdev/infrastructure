@@ -18,6 +18,19 @@ Before starting, have these ready:
 | Telegram bot token + user ID | BotFather / Telegram |
 | Anthropic API key | console.anthropic.com |
 | OpenClaw `.env` (`~/.openclaw/.env`) | Backed up separately |
+| Hetzner API token | console.hetzner.cloud → Security → API Tokens |
+| DR SSH key pair | `~/.ssh/cloudlab_dr_test` + `.pub` — on the prod VPS |
+
+**`vps/terraform/terraform.tfvars`** (gitignored — must be recreated on fresh machine):
+```hcl
+hcloud_token        = "<hetzner-api-token>"
+ssh_public_key_path = "~/.ssh/cloudlab_dr_test.pub"
+server_name         = "cloudlab-vps"
+server_type         = "cax21"
+server_location     = "nbg1"
+allowed_ips         = ["0.0.0.0/0", "::/0"]
+```
+> Generate SSH key if missing: `ssh-keygen -t ed25519 -f ~/.ssh/cloudlab_dr_test -C "cloudlab-dr-test" -N ""`
 
 ---
 
@@ -55,11 +68,11 @@ make dr-full
 Reads vault password from `.vault_pass` automatically — no prompt.
 Tailscale and Let's Encrypt certs connect automatically.
 
-After deploy completes, restore Joplin and Authentik data:
-```bash
-make restore
-# Interactive: asks which service, optional remote backup host (IP/SSH key), then restores
-```
+After deploy completes:
+- **Joplin:** syncs automatically from clients once the server is up (no manual restore needed)
+- **Authentik:** must be re-configured manually (providers, flows, apps) — there is no automated restore
+  - Shortcut: export before decommissioning: `docker exec authentik-worker python manage.py export_blueprints > authentik-backup.yaml`
+  - Import after: `docker exec -i authentik-worker python manage.py import_blueprints < authentik-backup.yaml`
 
 Verify Phase 1 is healthy:
 ```bash
