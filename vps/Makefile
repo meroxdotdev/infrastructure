@@ -222,13 +222,15 @@ dr-full:
 	@echo "Starting full disaster recovery..."
 	$(MAKE) dr-preflight
 	$(MAKE) terraform-apply
-	@echo "Polling for SSH availability (max 150s)..."
+	@echo "Polling for SSH availability (max 300s)..."
 	@NEW_IP=$$(cd terraform && terraform output -raw server_ip 2>/dev/null); \
-	for i in $$(seq 1 30); do \
-	  ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 root@$$NEW_IP exit 2>/dev/null \
-	    && echo "  Server ready." && break; \
-	  [ $$i -eq 30 ] && echo "ERROR: server unreachable after 150s" && exit 1; \
-	  echo "  Attempt $$i/30 — waiting 5s..."; \
+	ssh-keygen -R $$NEW_IP 2>/dev/null || true; \
+	for i in $$(seq 1 60); do \
+	  ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5 \
+	    -i ~/.ssh/cloudlab_dr_test root@$$NEW_IP exit 2>/dev/null \
+	    && echo "  Server ready after $$((i * 5))s." && break; \
+	  [ $$i -eq 60 ] && echo "ERROR: server unreachable after 300s" && exit 1; \
+	  echo "  Attempt $$i/60 — waiting 5s..."; \
 	  sleep 5; \
 	done
 	$(MAKE) setup
