@@ -34,10 +34,10 @@ kubectl -n longhorn-system get nodes.longhorn.io
 
 ## VPS Docker Services
 
-Managed via Ansible (`cloudlab-infrastructure/`). Services: Traefik, Pi-hole, Portainer, Homepage, Netdata, Garage S3.
+Managed via Ansible (`vps/`). Services: Traefik, Pi-hole, Portainer, Homepage, Garage S3, Authentik, Joplin.
 
 ```bash
-cd /srv/kubernetes/infrastructure/cloudlab-infrastructure
+cd /srv/kubernetes/infrastructure/vps
 make health-check        # Verify all services running
 make check-resources     # Disk, memory, Docker usage
 make setup               # Full redeploy (idempotent, safe to re-run)
