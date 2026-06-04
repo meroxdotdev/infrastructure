@@ -32,12 +32,12 @@ Before starting, have these ready:
 > **Prerequisite:** `vault_tailscale_auth_key` must be valid (Tailscale keys expire).
 > Generate a new one at `tailscale.com/admin/settings/keys` (Reusable, Ephemeral OFF), then:
 > ```bash
-> cd ansible/ && make vault-edit   # update vault_tailscale_auth_key
+> cd vps/ && make vault-edit   # update vault_tailscale_auth_key
 > git add inventories/production/group_vars/all/vault.yml && git commit -m "fix: update tailscale auth key" && git push
 > ```
 
 ```bash
-cd ansible/
+cd vps/
 
 # First time only
 make terraform-init
@@ -305,7 +305,7 @@ sudo -u openclaw openclaw status
 | Kubernetes secrets (SOPS) | Git-encrypted with AGE | ✅ |
 | AGE encryption key | `age.key` (gitignored) | ⚠️ Back up manually |
 | Vault password | Password manager | ⚠️ Stored externally |
-| Ansible vault secrets | `ansible/inventories/production/group_vars/all/vault.yml` (encrypted) | ✅ in git |
+| Ansible vault secrets | `vps/inventories/production/group_vars/all/vault.yml` (encrypted) | ✅ in git |
 | Agent config template + skill | `agent/` in this repo | ✅ |
 | Agent secrets (`~/.openclaw/.env`) | Only on server | ⚠️ Back up manually |
 | Longhorn volumes | Backed up to Garage S3 | ✅ if configured |

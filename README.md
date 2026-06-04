@@ -7,7 +7,7 @@ Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
 
 ## Everything at a glance
 
-### VPS — Oracle Cloud (`ansible/` → `make setup`)
+### VPS — Oracle Cloud (`vps/` → `make setup`)
 
 | Service | URL | Purpose |
 |---|---|---|
@@ -74,7 +74,7 @@ Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
 | What | GitHub repo | Branch | Local path |
 |---|---|---|---|
 | K8s cluster (Flux manifests, Talos config) | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/` |
-| Ansible + Terraform VPS DR | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/ansible/` |
+| Ansible + Terraform VPS DR | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/vps/` |
 | Docker Compose VPS (raw files) | [meroxdotdev/cloudlab-merox](https://github.com/meroxdotdev/cloudlab-merox) | `main` | `/srv/docker/oracle-cloud/` |
 | OpenClaw config template + infra skill | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/agent/` |
 | Blog (Astro) | [meroxdotdev/merox](https://github.com/meroxdotdev/merox) *(private)* | `main` | `/srv/merox/` |
@@ -88,7 +88,7 @@ Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
 |---|---|---|
 | K8s secrets (Cloudflare token, Authentik, Longhorn S3) | SOPS/AGE → `*.sops.yaml` in repo | Flux on apply |
 | **`age.key`** ← **back this up** | `infrastructure/age.key` *(gitignored)* | SOPS decryption |
-| VPS secrets (Tailscale key, Cloudflare, Authentik, Garage) | Ansible Vault → `ansible/.../vault.yml` | `make setup` / `make dr-full` |
+| VPS secrets (Tailscale key, Cloudflare, Authentik, Garage) | Ansible Vault → `vps/.../vault.yml` | `make setup` / `make dr-full` |
 | Pi-hole, Joplin DB, Code Server passwords | `/srv/docker/oracle-cloud/.env` *(gitignored)* | Docker Compose |
 | Telegram token, Tavily API, Anthropic key | `/home/openclaw/.openclaw/.env` *(gitignored)* | OpenClaw agents |
 | Talos bootstrap secrets | `talos/talsecret.sops.yaml` *(SOPS encrypted)* | `task bootstrap:talos` |
@@ -125,7 +125,7 @@ Prerequisites — have these ready:
   ✓ Cloudflare API token
 
 Step 1 — VPS (~15 min)
-  cd ansible && make dr-full
+  cd vps && make dr-full
   make restore   # restore Joplin + Authentik databases
 
 Step 2 — Kubernetes (~20 min)
@@ -156,7 +156,7 @@ Validation:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  VPS (Oracle Cloud)   ansible/                         │
+│  VPS (Oracle Cloud)   vps/                         │
 │  ├── Traefik (reverse proxy + Cloudflare Tunnel)        │
 │  ├── Pi-hole (DNS)                                      │
 │  ├── Portainer EE (container management)                │
@@ -203,7 +203,7 @@ Validation:
 
 ```
 infrastructure/
-├── ansible/    # Ansible — VPS provisioning + Terraform DR
+├── vps/    # Ansible — VPS provisioning + Terraform DR
 ├── kubernetes/
 │   ├── apps/                   # Flux app manifests (namespaced)
 │   ├── flux/                   # Flux bootstrap + HelmRepositories
@@ -225,7 +225,7 @@ infrastructure/
 
 | Scenario | Action |
 |----------|--------|
-| **VPS lost** (Oracle reclaims free tier) | Provision Hetzner fallback: `cd ansible && make dr-full` → `make restore` (~15 min) |
+| **VPS lost** (Oracle reclaims free tier) | Provision Hetzner fallback: `cd vps && make dr-full` → `make restore` (~15 min) |
 | Full rebuild from scratch | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s) → Phase 3 (Agent) |
 | Restore Longhorn volumes from S3 | DEPLOY.md Phase 2: `task restore:longhorn` |
 | New hardware (different IPs / disks) | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
@@ -256,7 +256,7 @@ task talos:upgrade-k8s                      # upgrade Kubernetes version
 ### VPS
 
 ```bash
-cd ansible/
+cd vps/
 
 make health-check       # verify all services are running
 make setup              # full redeploy (idempotent)
@@ -379,5 +379,5 @@ find . -name "*.sops.*" -exec sops updatekeys {} \;
 ### Security
 
 - Kubernetes secrets: SOPS/AGE encrypted (back up `age.key` separately — it's critical)
-- Ansible secrets: encrypted Vault (`ansible/`)
+- Ansible secrets: encrypted Vault (`vps/`)
 - All traffic: Tailscale mesh or Cloudflare Tunnel (zero open ports)
