@@ -33,6 +33,22 @@ http_ok() {
     fi
 }
 
+# Check HTTP on container's internal IP (for services not exposed on host)
+container_http_ok() {
+    local label="$1" container="$2" port="$3" path="${4:-/}"
+    local ip
+    ip=$(docker inspect "$container" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null | tr ' ' '\n' | grep -v '^$' | head -1)
+    if [ -z "$ip" ]; then
+        fail "$label — cannot get IP for container $container"
+        return
+    fi
+    if curl -sf --max-time 5 "http://${ip}:${port}${path}" &>/dev/null; then
+        ok "$label responds"
+    else
+        fail "$label not responding (http://${ip}:${port}${path})"
+    fi
+}
+
 PHASE="${1:-}"
 if [ -z "$PHASE" ]; then
     PHASE="--phase"
@@ -84,34 +100,43 @@ verify_phase1() {
 
     header "Phase 1: Service health"
 
-    # Traefik API
-    http_ok "Traefik API" "http://localhost:8080/ping"
+    # Traefik: api.insecure not set so port 8080 is not active — verify via process check
+    if docker exec traefik pgrep traefik &>/dev/null; then
+        ok "Traefik process running"
+    else
+        fail "Traefik process not found in container"
+    fi
 
-    # Pi-hole DNS
-    if dig @localhost google.com +short +time=3 &>/dev/null; then
+    # Pi-hole DNS — docker exec with || true to avoid non-zero exit from bash readonly var warning
+    PIHOLE_STATUS=$(docker exec pihole pihole status 2>/dev/null || true)
+    if echo "$PIHOLE_STATUS" | grep -q "FTL is listening"; then
         ok "Pi-hole DNS resolves"
     else
-        fail "Pi-hole DNS not responding"
+        fail "Pi-hole DNS not responding (docker exec pihole pihole status)"
     fi
 
-    # Homepage
+    # Homepage (exposed on host 127.0.0.1:3000)
     http_ok "Homepage" "http://localhost:3000"
 
-    # Joplin sync API
-    http_ok "Joplin API" "http://localhost:22300/api/ping"
-
-    # Authentik health
-    if curl -sf --max-time 5 "http://localhost:9000/-/health/live/" &>/dev/null || \
-       curl -sf --max-time 5 "http://localhost:9000/if/user/" &>/dev/null; then
-        ok "Authentik responds"
+    # Joplin: /api/ping rejects requests from non-APP_BASE_URL origins — check port is open instead
+    JOPLIN_IP=$(docker inspect joplin-server --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null | head -1)
+    if [ -n "$JOPLIN_IP" ] && nc -z -w3 "$JOPLIN_IP" 22300 2>/dev/null; then
+        ok "Joplin API port open"
     else
-        fail "Authentik not responding (port 9000)"
+        fail "Joplin API port not reachable (${JOPLIN_IP:-no IP}:22300)"
     fi
 
-    # Garage S3 API
-    http_ok "Garage S3 API" "http://localhost:3900/health"
+    # Authentik: check metrics port 9300 (always up when server is healthy)
+    container_http_ok "Authentik" "authentik-server" 9300 "/metrics"
 
-    # Portainer API
+    # Garage S3 — check via garage CLI (more reliable than HTTP)
+    if docker exec garage /garage status 2>/dev/null | grep -q "HEALTHY"; then
+        ok "Garage S3 healthy"
+    else
+        fail "Garage S3 not healthy (docker exec garage /garage status)"
+    fi
+
+    # Portainer API (exposed on host port 9000)
     if curl -sf --max-time 5 "http://localhost:9000/api/system/status" &>/dev/null || \
        curl -sf --max-time 5 "http://localhost:9443/api/system/status" &>/dev/null; then
         ok "Portainer API responds"

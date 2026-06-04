@@ -55,6 +55,9 @@
     - role: authentik_setup
       tags: ['authentik', 'sso', 'services']
 
+    - role: dozzle_setup
+      tags: ['dozzle', 'monitoring', 'services']
+
   post_tasks:
     - name: Display completion message
       ansible.builtin.debug:
@@ -74,3 +77,4 @@
           - "Glances:      https://glances.cloud.merox.dev"
           - "Garage S3:    https://garage.cloud.merox.dev"
           - "Garage UI:    https://garage-ui.cloud.merox.dev"
+          - "Dozzle:       https://dozzle.cloud.merox.dev"
