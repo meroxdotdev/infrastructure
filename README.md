@@ -104,7 +104,7 @@ Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
 | Cloudflare | DNS + Tunnel + Pages (blog) | Free |
 | Tailscale | Management VPN mesh | Free |
 | Oracle Cloud | Primary VPS (4 vCPU ARM, 24GB) | Free tier |
-| Hetzner | DR standby VPS (`make dr-full`) | ~€5.39/mo |
+| Hetzner | DR VPS — provisioned on-demand via `make dr-full` (not always running) | ~€5.39/mo when active |
 | Anthropic / Claude | AI model for agents (OAuth) | Claude Pro |
 | GitHub | Repos + Actions (CI blog, Renovate) | Free |
 | Let's Encrypt | HTTPS certificates (auto-renew) | Free |
@@ -196,7 +196,6 @@ Validation:
 | Synology DS223+ | NAS / NFS + Backup | 2x2TB HDD RAID1 |
 | XCY X44 | pfSense Firewall | N100, 8GB |
 | Oracle Cloud ARM VPS | Off-site services (primary) | 4 vCPU ARM, 24GB RAM, 200GB |
-| Hetzner CAX21 (DR) | Standby — `make dr-full` | 4 vCPU ARM, 8GB RAM, €5.39/mo |
 
 ---
 
