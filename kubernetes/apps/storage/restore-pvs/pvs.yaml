@@ -184,6 +184,8 @@ spec:
   capacity:
     storage: 15Gi
   claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
     name: prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0
     namespace: observability
   csi:
@@ -230,6 +232,8 @@ spec:
   capacity:
     storage: 10Gi
   claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
     name: grafana
     namespace: observability
   csi:

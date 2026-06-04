@@ -31,6 +31,7 @@ tasks:
       - task: restore-all-volumes
       - task: wait-for-replicas
       - task: apply-pvs
+      - task: fix-pvc-ownership
       - task: fix-duplicate-longhorn
       - task: create-statefulset-pvcs
       - task: reconcile-apps
@@ -191,6 +192,45 @@ tasks:
         kubectl get pv 2>/dev/null | grep restored | awk '{print "   "$1, $5, $6}'
     silent: true
 
+  fix-pvc-ownership:
+    desc: Transfer volumeName field ownership from kustomize-controller to stable pvc-owner manager
+    summary: |
+      After pvs.yaml binds PVCs to restored PVs, kustomize-controller (Flux SSA) may have
+      previously owned the volumeName field (from an old pvc.yaml that had volumeName hardcoded).
+      When the new pvc.yaml omits volumeName, Flux tries to delete it → immutability error.
+
+      This task re-asserts volumeName with field-manager=pvc-owner so Flux can safely release
+      its ownership without triggering the immutable spec constraint.
+    cmds:
+      - |
+        echo "→ Fixing PVC field ownership to prevent Flux SSA volumeName conflicts..."
+        for pvc_item in "default:jellyfin" "default:jellyseerr" "default:prowlarr" "default:qbittorrent" "default:radarr" "default:sonarr"; do
+          NS=${pvc_item%%:*}
+          PVC=${pvc_item##*:}
+          VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null)
+          SIZE=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
+          if [ -z "$VOL" ]; then
+            echo "  ✓ $PVC: no volumeName (dynamic), skipping"
+            continue
+          fi
+          kubectl apply --server-side --field-manager=pvc-owner -f - <<PVEOF
+        apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          name: $PVC
+          namespace: $NS
+        spec:
+          accessModes: [ReadWriteOnce]
+          storageClassName: longhorn
+          resources:
+            requests:
+              storage: $SIZE
+          volumeName: $VOL
+        PVEOF
+          echo "  ✓ $PVC: pvc-owner now holds volumeName=$VOL"
+        done
+    silent: true
+
   fix-duplicate-longhorn:
     desc: Remove spurious default/longhorn HelmRelease (created by Longhorn 1.11.2 namespace-scoped feature)
     cmds:
@@ -231,34 +271,84 @@ tasks:
     silent: true
 
   create-statefulset-pvcs:
-    desc: Create prometheus and alertmanager PVCs (StatefulSets do not recreate deleted PVCs)
+    desc: Create/rebind PVCs for StatefulSets and Deployments that Flux cannot pre-create (prometheus, alertmanager, grafana, loki)
+    summary: |
+      Helm-managed PVCs (grafana, loki, prometheus) are created dynamically by their
+      HelmReleases after bootstrap. By the time apply-pvs runs, Flux may have already
+      bound them to dynamic PVs, bypassing the restored PVs.
+
+      This task forces correct binding by:
+      - Creating the PVC if it does not exist (simple path)
+      - Rebinding to the restored PV if currently bound to a dynamic PV (scale down → delete → recreate)
+
+      Must run BEFORE reconcile-apps so HelmReleases see the correct PVCs on startup.
     cmds:
       - |
-        echo "→ Creating StatefulSet PVCs..."
+        echo "→ Creating/rebinding StatefulSet and Deployment PVCs..."
 
-        # Prometheus (bound to restore PV)
-        if ! kubectl get pvc prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0 \
-            -n observability &>/dev/null; then
-          kubectl apply -f - <<EOF
+        # Helper: bind a PVC to a specific restored PV, rebinding if necessary
+        bind_pvc() {
+          local PVC=$1 NS=$2 PV=$3 SIZE=$4 SCALEDOWN_TYPE=$5 SCALEDOWN_NAME=$6
+
+          CURRENT_VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null || true)
+
+          if [ "$CURRENT_VOL" = "$PV" ]; then
+            echo "  ✓ $PVC already bound to $PV"
+            return
+          fi
+
+          if [ -n "$CURRENT_VOL" ]; then
+            echo "  ! $PVC bound to dynamic PV ($CURRENT_VOL) — rebinding to $PV..."
+            if [ -n "$SCALEDOWN_TYPE" ] && [ -n "$SCALEDOWN_NAME" ]; then
+              kubectl scale "$SCALEDOWN_TYPE" "$SCALEDOWN_NAME" -n "$NS" --replicas=0 2>/dev/null || true
+              sleep 5
+            fi
+            kubectl delete pvc "$PVC" -n "$NS" --ignore-not-found 2>/dev/null || true
+            sleep 2
+          fi
+
+          kubectl apply -f - <<PVEOF
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
-          name: prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0
-          namespace: observability
+          name: $PVC
+          namespace: $NS
         spec:
           accessModes: [ReadWriteOnce]
           storageClassName: longhorn
-          volumeName: prometheus-restored-pv
+          volumeName: $PV
           resources:
             requests:
-              storage: 15Gi
-        EOF
-          echo "  ✓ prometheus PVC created"
-        else
-          echo "  ✓ prometheus PVC already exists"
-        fi
+              storage: $SIZE
+        PVEOF
+          echo "  ✓ $PVC → $PV"
+        }
 
-        # Alertmanager (fresh empty volume — no backup)
+        # Prometheus (StatefulSet — controller does not recreate deleted PVCs)
+        bind_pvc \
+          "prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0" \
+          "observability" \
+          "prometheus-restored-pv" \
+          "15Gi" \
+          "" ""
+
+        # Grafana (Deployment — Flux creates PVC dynamically at HelmRelease install)
+        bind_pvc \
+          "grafana" \
+          "observability" \
+          "grafana-restored-pv" \
+          "10Gi" \
+          "deployment" "grafana"
+
+        # Loki (StatefulSet singleBinary — same timing issue as grafana)
+        bind_pvc \
+          "storage-loki-0" \
+          "observability" \
+          "loki-restored-pv" \
+          "20Gi" \
+          "statefulset" "loki"
+
+        # Alertmanager (fresh empty volume — no backup needed)
         if ! kubectl get pvc alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0 \
             -n observability &>/dev/null; then
           kubectl apply -f - <<EOF
@@ -287,6 +377,12 @@ tasks:
         echo "→ Force-reconciling Flux kustomizations..."
         flux reconcile kustomization cluster-apps 2>/dev/null || true
         sleep 5
+
+        echo "→ Reconciling app Kustomizations (creates cache PVCs + HelmReleases)..."
+        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr; do
+          flux reconcile kustomization $app -n default 2>/dev/null &
+        done
+        wait
 
         echo "→ Reconciling media stack HelmReleases..."
         for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr; do
