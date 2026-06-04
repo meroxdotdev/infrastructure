@@ -19,7 +19,7 @@ Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
 | Joplin Server | joplin.cloud.merox.dev | Notes sync (PostgreSQL backend) |
 | Uptime Kuma | status.merox.dev | Uptime monitoring + alerting |
 | Guacamole | rmt.merox.dev | Remote desktop gateway (Authentik SSO) |
-| Garage S3 | garage.cloud.merox.dev | S3-compatible storage — Longhorn backup target |
+| Garage S3 | garage.cloud.merox.dev | Off-site S3 storage — receives Longhorn volume backups from homelab |
 | Netdata | netdata.cloud.merox.dev | Real-time metrics (parent + 3 child nodes) |
 | Beszel | beszel.cloud.merox.dev | Host monitoring |
 | Dozzle | dozzle.cloud.merox.dev | Docker log aggregation |
@@ -42,7 +42,7 @@ Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
 | Prometheus + Grafana | observability | Metrics + dashboards |
 | Loki + Promtail | observability | Log aggregation |
 | AlertManager | observability | Alerts + healthchecks.io heartbeat |
-| Longhorn | storage | Persistent volumes + backup → Garage S3 |
+| Longhorn | storage | Persistent volumes + off-site backup → Garage S3 on Oracle VPS |
 | Cilium | kube-system | CNI + Gateway API + L2 LoadBalancer |
 | cert-manager | cert-manager | Automated TLS certificates (ACME) |
 | Cloudflare Tunnel | network | External exposure — zero open ports |
@@ -110,6 +110,34 @@ Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
 | Let's Encrypt | HTTPS certificates (auto-renew) | Free |
 | Proxmox | Hypervisor for K8s nodes | Own hardware |
 | Synology DS223+ | NFS for K8s + DB backups | Own hardware (10.57.57.201) |
+
+---
+
+## Backup & off-site strategy
+
+```
+Homelab (on-premise)                    Oracle Cloud VPS (off-site)
+─────────────────────                   ───────────────────────────
+K8s Longhorn volumes  ──── S3 backup ──→  Garage S3 (/srv/docker/oracle-cloud/garage/)
+Synology NAS          ──── NFS mount  ──→  (used by K8s apps directly)
+Authentik PostgreSQL  ──── pg_dump    ──→  /srv/backups/authentik/ (7-day retention)
+Joplin PostgreSQL     ──── pg_dump    ──→  /srv/backups/  (make restore restores it)
+```
+
+**What the VPS protects against:** homelab hardware failure, power outage, disk loss.
+All K8s persistent volume data (Jellyfin, *arr, n8n, Prometheus, Grafana) lives in
+Longhorn and backs up to Garage S3 on the VPS — this IS the off-site copy.
+
+**What a VPS failure loses:** Garage S3 data = the Longhorn backups.
+Risk window: time between last Longhorn backup and VPS failure.
+Mitigation: `make dr-full` provisions a new VPS in ~15 min; restore Longhorn from
+the last good backup with `task restore:longhorn`.
+
+**DB backups schedule:**
+```bash
+make authentik-backup   # manual — run before any Authentik changes
+# Joplin: pg_dump runs automatically, stored in /srv/backups/
+```
 
 ---
 
