@@ -17,7 +17,7 @@
       MaxAuthTries {{ ssh_max_auth_tries }}
       ChallengeResponseAuthentication no
       PubkeyAuthentication yes
-      PermitRootLogin no
+      PermitRootLogin prohibit-password
   notify: Reload sshd
 
 - name: Validate SSH config before reload
