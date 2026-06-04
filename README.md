@@ -104,7 +104,7 @@ Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
 | Cloudflare | DNS + Tunnel + Pages (blog) | Free |
 | Tailscale | Management VPN mesh | Free |
 | Oracle Cloud | Primary VPS (4 vCPU ARM, 24GB) | Free tier |
-| Hetzner | DR VPS — provisioned on-demand via `make dr-full` (not always running) | ~€5.39/mo when active |
+| Hetzner | Fallback VPS — only if Oracle Cloud free tier is lost. Provision on-demand: `make dr-full` | ~€5.39/mo if needed |
 | Anthropic / Claude | AI model for agents (OAuth) | Claude Pro |
 | GitHub | Repos + Actions (CI blog, Renovate) | Free |
 | Let's Encrypt | HTTPS certificates (auto-renew) | Free |
@@ -225,7 +225,7 @@ infrastructure/
 
 | Scenario | Action |
 |----------|--------|
-| **VPS lost** (Oracle reclaimed / provider down) | `cd cloudlab-infrastructure && make dr-full` → `make restore` (~15 min) |
+| **VPS lost** (Oracle reclaims free tier) | Provision Hetzner fallback: `cd cloudlab-infrastructure && make dr-full` → `make restore` (~15 min) |
 | Full rebuild from scratch | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s) → Phase 3 (Agent) |
 | Restore Longhorn volumes from S3 | DEPLOY.md Phase 2: `task restore:longhorn` |
 | New hardware (different IPs / disks) | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
