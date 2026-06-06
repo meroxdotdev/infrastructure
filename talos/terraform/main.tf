@@ -65,8 +65,9 @@ resource "proxmox_virtual_environment_vm" "talos_node" {
   }
 
   network_device {
-    bridge = var.network_bridge
-    model  = "virtio"
+    bridge      = var.network_bridge
+    model       = "virtio"
+    mac_address = upper(var.node_macs[count.index])
   }
 
   boot_order = ["ide2", "scsi0"]

@@ -14,30 +14,23 @@ output "node_gateway" {
 }
 
 output "node_macs" {
-  description = "MAC addresses assigned by Proxmox (needed for talconfig.yaml deviceSelector)"
-  value       = [for vm in proxmox_virtual_environment_vm.talos_node : vm.network_device[0].mac_address]
+  description = "Fixed MAC addresses for DR VMs (match talconfig.yaml hardwareAddr)"
+  value       = var.node_macs
 }
 
 output "next_steps" {
   description = "What to do after terraform apply"
   value       = <<-EOT
-    VMs created. Next steps:
+    VMs created with fixed MACs (same as prod). Next steps:
 
-    1. Wait ~30s for Talos maintenance mode to initialize
-    2. Verify nodes are reachable:
-         nmap -Pn -n -p 50000 ${var.node_ips[0]} ${var.node_ips[1]} ${var.node_ips[2]} -vv | grep Discovered
+    1. Wait ~60s for Talos maintenance mode + DHCP to initialize
+    2. Verify nodes on prod IPs (Pi-hole gives same IPs via MAC reservation):
+         until nmap -Pn -n -p 50000 ${var.node_ips[0]} ${var.node_ips[1]} ${var.node_ips[2]} 2>&1 | grep -c open | grep -q 3; do sleep 5; done
 
-       NOTE: Talos in maintenance mode has NO IP until you apply config.
-       VMs boot from ISO — get IPs via DHCP or check Proxmox console.
-       If DHCP is available, use the DHCP IPs for --insecure bootstrap.
-       Otherwise assign static IPs first via Proxmox console (temporary).
-
-    3. Generate talconfig patch and bootstrap:
-         bash ../../scripts/gen-dr-talconfig.sh
+    3. Bootstrap Talos (no talconfig patching needed — IPs/MACs same as prod):
          task bootstrap:talos
 
     4. After testing — destroy DR cluster:
          terraform destroy
-         cp talos/talconfig.yaml.prod-backup talos/talconfig.yaml
   EOT
 }

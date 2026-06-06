@@ -74,16 +74,22 @@ variable "vm_disk_gb" {
   default     = 50
 }
 
-variable "node_ips" {
-  description = "Static IPs for the 3 DR nodes (must be free in your subnet)"
+variable "node_macs" {
+  description = "Fixed MAC addresses for DR VMs — must match talconfig.yaml hardwareAddr. Set to prod MACs so DHCP gives same IPs and talconfig needs no patching."
   type        = list(string)
-  default     = ["10.57.57.90", "10.57.57.92", "10.57.57.94"]
+  default     = ["bc:24:11:a7:ba:13", "bc:24:11:a5:4b:9e", "bc:24:11:0e:cd:ab"]
+}
+
+variable "node_ips" {
+  description = "Static IPs for the 3 DR nodes — use prod IPs when prod cluster is stopped"
+  type        = list(string)
+  default     = ["10.57.57.80", "10.57.57.82", "10.57.57.84"]
 }
 
 variable "node_vip" {
-  description = "VIP for Kubernetes API (must be free in your subnet)"
+  description = "VIP for Kubernetes API — use prod VIP when prod cluster is stopped"
   type        = string
-  default     = "10.57.57.98"
+  default     = "10.57.57.88"
 }
 
 variable "node_gateway" {

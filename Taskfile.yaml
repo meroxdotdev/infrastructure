@@ -35,16 +35,121 @@ tasks:
       - which flux
 
   dr:create-vms:
-    desc: "DR: create 3 Talos VMs on Proxmox via Terraform"
+    desc: "DR: create 3 Talos VMs on Proxmox via Terraform (fixed MACs = prod MACs)"
     dir: '{{.TALOS_DIR}}/terraform'
     cmds:
       - terraform init -upgrade
-      - terraform apply
+      - terraform apply -auto-approve
     preconditions:
       - test -f {{.TALOS_DIR}}/terraform/terraform.tfvars
 
+  dr:apply-talos-configs:
+    desc: "DR: scan subnet for Talos nodes, match MAC→config, apply (no talconfig patching needed)"
+    summary: |
+      Scans 10.57.57.0/24 for port 50000 (Talos maintenance mode), queries each
+      node for its MAC address via talosctl --insecure, matches it to the correct
+      talhelper-generated config file, and applies the config.
+
+      Required because: VMs boot with DHCP IPs in maintenance mode. Fixed MACs in
+      Terraform + prod talconfig = no talconfig patching, but we still need to apply
+      the configs to the DHCP IPs before nodes reboot to static IPs.
+
+      Run after: task dr:create-vms (wait ~60s for Talos maintenance mode)
+      Run before: task bootstrap:talos
+    cmds:
+      - |
+        set -euo pipefail
+        echo "→ Scanning subnet for Talos maintenance-mode nodes (port 50000)..."
+        DHCP_IPS=$(nmap -Pn -n -p 50000 --open 10.57.57.0/24 2>/dev/null | grep "Nmap scan report" | awk '{print $NF}')
+        COUNT=$(echo "$DHCP_IPS" | grep -c "10\." || true)
+        echo "  Found $COUNT node(s): $DHCP_IPS"
+        if [ "$COUNT" -eq 0 ]; then
+          echo "  ✗ No Talos nodes found. Wait ~60s after terraform apply and retry."
+          exit 1
+        fi
+
+        echo ""
+        echo "→ Generating Talos configs from talconfig.yaml..."
+        cd {{.TALOS_DIR}} && talhelper genconfig 2>&1 | grep -v "WARNING" || true && cd {{.ROOT_DIR}}
+
+        echo ""
+        echo "→ Matching MACs to configs and applying..."
+        python3 - << 'PYEOF'
+        import subprocess, sys, os
+
+        REPO = "{{.ROOT_DIR}}"
+        MAC_CONFIG = {}
+        # Build mapping from talconfig hardwareAddr → clusterconfig file
+        import yaml
+        with open(f"{REPO}/talos/talconfig.yaml") as f:
+            cfg = yaml.safe_load(f)
+        for node in cfg.get("nodes", []):
+            for iface in node.get("networkInterfaces", []):
+                mac = iface.get("deviceSelector", {}).get("hardwareAddr", "").lower()
+                hostname = node["hostname"]
+                # find matching clusterconfig file
+                import glob
+                pattern = f"{REPO}/talos/clusterconfig/*-{hostname}.yaml"
+                files = glob.glob(pattern)
+                if mac and files:
+                    MAC_CONFIG[mac] = files[0]
+
+        dhcp_ips = """{{.DHCP_IPS}}""".split() if "{{.DHCP_IPS}}" else []
+        if not dhcp_ips:
+            # re-scan if not passed as var
+            result = subprocess.run(
+                ["nmap", "-Pn", "-n", "-p", "50000", "--open", "10.57.57.0/24"],
+                capture_output=True, text=True
+            )
+            dhcp_ips = [line.split()[-1] for line in result.stdout.splitlines() if "Nmap scan report" in line]
+
+        applied = 0
+        for ip in dhcp_ips:
+            out = subprocess.run(
+                ["talosctl", "get", "links", "-n", ip, "--insecure"],
+                capture_output=True, text=True
+            ).stdout
+            mac = ""
+            for line in out.splitlines():
+                if "ens18" in line or ("ether" in line and "up" in line.lower() and "dummy" not in line and "bond" not in line):
+                    for part in line.split():
+                        if len(part) == 17 and part.count(":") == 5:
+                            mac = part.lower()
+                            break
+                if mac:
+                    break
+
+            cfg_file = MAC_CONFIG.get(mac, "")
+            print(f"  {ip} → MAC={mac} → {os.path.basename(cfg_file) if cfg_file else 'UNKNOWN'}")
+            if cfg_file:
+                r = subprocess.run(
+                    ["talosctl", "apply-config", "-n", ip, "--insecure", "-f", cfg_file],
+                    capture_output=True, text=True
+                )
+                if r.returncode == 0:
+                    print(f"    ✓ Applied")
+                    applied += 1
+                else:
+                    print(f"    ✗ {r.stderr.strip()}")
+            else:
+                print(f"    ✗ No config found for MAC {mac}")
+
+        print(f"\n  Applied {applied}/{len(dhcp_ips)} configs")
+        if applied < len(dhcp_ips):
+            sys.exit(1)
+        PYEOF
+
+        echo ""
+        echo "→ Waiting for nodes on static IPs (.80/.82/.84)..."
+        for i in $(seq 1 30); do
+          OPEN=$(nmap -Pn -n -p 50000 10.57.57.80 10.57.57.82 10.57.57.84 2>/dev/null | grep -c "open" || true)
+          echo "  [$i/30] $OPEN/3 on static IPs"
+          [ "$OPEN" -eq 3 ] && echo "  ✓ All 3 nodes on static IPs!" && break
+          sleep 10
+        done
+
   dr:patch-talconfig:
-    desc: "DR: patch talconfig.yaml with DR IPs + MACs from Terraform outputs"
+    desc: "DR: patch talconfig.yaml with DR IPs + MACs from Terraform outputs (only needed for non-prod hardware)"
     cmd: bash {{.SCRIPTS_DIR}}/gen-dr-talconfig.sh
     preconditions:
       - test -f {{.TALOS_DIR}}/terraform/terraform.tfstate
@@ -61,7 +166,7 @@ tasks:
   dr:destroy-vms:
     desc: "DR: destroy Talos DR VMs on Proxmox"
     dir: '{{.TALOS_DIR}}/terraform'
-    cmd: terraform destroy
+    cmd: terraform destroy -auto-approve
     preconditions:
       - test -f {{.TALOS_DIR}}/terraform/terraform.tfvars
 

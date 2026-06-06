@@ -5,21 +5,26 @@ proxmox_url          = "https://10.57.57.254:8006"
 proxmox_token_id     = "root@pam!terraform"   # create at: Proxmox → Datacenter → API Tokens
 proxmox_token_secret = "your-token-secret-here"
 
-# Optional overrides (defaults should work for most cases):
-# proxmox_nodes  = ["px-0", "px-1", "px-2"]
+# REQUIRED for DR on Proxmox homelab (fixed MACs = prod node MACs from talconfig.yaml):
+proxmox_nodes = ["px-0", "px-0", "px-0"]
+disk_storage  = "local-data"
+
+# Fixed MACs = prod node MACs (from talos/talconfig.yaml hardwareAddr).
+# This ensures: (a) MAC→config matching in task dr:apply-talos-configs works,
+# and (b) no talconfig patching is needed — prod IPs/MACs are reused.
+# PREREQUISITE: prod cluster VMs must be stopped before DR.
+node_macs = ["bc:24:11:a7:ba:13", "bc:24:11:a5:4b:9e", "bc:24:11:0e:cd:ab"]
+node_ips  = ["10.57.57.80", "10.57.57.82", "10.57.57.84"]
+node_vip  = "10.57.57.88"
+
+# Optional overrides:
 # vmid_start     = 810
 # vm_cores       = 4
 # vm_memory_mb   = 8192
 # vm_disk_gb     = 50
-# node_ips       = ["10.57.57.90", "10.57.57.92", "10.57.57.94"]
-# node_vip       = "10.57.57.98"
-# iso_storage    = "local-data"    # must support 'iso' content on the node hosting the download
-# disk_storage   = "cluster-storage"
+# iso_storage    = "local-data"
 
-# KNOWN WORKING (discovered during DR test 2026-06-04):
+# KNOWN WORKING (discovered during DR tests 2026-06-04/06):
 # - cluster-storage is enabled only on px-0; px-1/px-2 use 'storage' instead
 # - local-data supports iso+images on all nodes but is node-local (not shared)
-# - If distributing VMs across nodes, iso must be available on each node separately
-# - Simplest DR approach: run all VMs on one node with local-data:
-#     proxmox_nodes = ["px-0", "px-0", "px-0"]
-#     disk_storage  = "local-data"
+# - Run all VMs on px-0 with local-data to avoid ISO availability issues
