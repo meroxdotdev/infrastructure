@@ -1,6 +1,9 @@
 # merox.dev Infrastructure
 
-Full homelab: on-premise Kubernetes cluster + VPS services + AI agents + blog.
+Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by an Oracle Cloud VPS for off-site services and S3 storage. Everything is declarative and GitOps-managed — a single `git push` is all it takes to deploy, update, or rebuild any part of the stack.
+
+**What's here:** Flux manifests for the entire K8s cluster (media stack, observability, networking), Talos node configs, Ansible/Terraform for the VPS, and the tools to restore everything from scratch in under 40 minutes using only this repo and a backup of `age.key`.
+
 **Single reference document** — if you don't know where to look, start here.
 
 ---
@@ -249,13 +252,14 @@ infrastructure/
 
 ## Disaster Recovery
 
-> Full step-by-step guide: **[DEPLOY.md](DEPLOY.md)**
+> **K8s cluster restore from S3 backups:** **[DR.md](DR.md)** (~35 min, tested end-to-end)
+> Full rebuild from scratch (VPS + K8s + agents): **[DEPLOY.md](DEPLOY.md)**
 
 | Scenario | Action |
 |----------|--------|
-| **VPS lost** (Oracle reclaims free tier) | Provision Hetzner fallback: `cd vps && make dr-full` → `make restore` (~15 min) |
+| **K8s cluster lost** (nodes dead) | [DR.md](DR.md) — provision DR VMs, bootstrap, restore from S3 |
+| **VPS lost** (Oracle reclaims free tier) | `cd vps && make dr-full` → `make restore` (~15 min) |
 | Full rebuild from scratch | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s) → Phase 3 (Agent) |
-| Restore Longhorn volumes from S3 | DEPLOY.md Phase 2: `task restore:longhorn` |
 | New hardware (different IPs / disks) | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
 | Intel iGPU absent on new hardware | Remove `gpu.intel.com/i915` from Jellyfin HelmRelease, disable intel-device-plugin |
 | Jellyfin streaming slow after restore | [docs/jellyfin-post-restore.md](docs/jellyfin-post-restore.md) — manual UI steps required |
