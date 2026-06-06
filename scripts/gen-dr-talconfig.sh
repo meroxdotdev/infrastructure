@@ -66,6 +66,8 @@ fi
 echo ""
 echo "Patching talconfig.yaml..."
 
+python3 -c "import yaml" 2>/dev/null || python3 -m pip install pyyaml --break-system-packages -q
+
 python3 - "$TALCONFIG" "${IP_ARR[0]}" "${IP_ARR[1]}" "${IP_ARR[2]}" \
                         "${MAC_ARR[0]}" "${MAC_ARR[1]}" "${MAC_ARR[2]}" \
                         "$NODE_VIP" "$NODE_GW" <<'PYEOF'

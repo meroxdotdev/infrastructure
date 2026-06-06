@@ -235,10 +235,15 @@ tasks:
     desc: Remove spurious default/longhorn HelmRelease (created by Longhorn 1.11.2 namespace-scoped feature)
     cmds:
       - |
+        echo "→ Ensuring deleting-confirmation-flag is set (required for uninstall)..."
+        kubectl patch setting deleting-confirmation-flag -n longhorn-system --type=merge -p '{"value":"true"}' 2>/dev/null || \
+          kubectl apply -f <(printf 'apiVersion: longhorn.io/v1beta2\nkind: Setting\nmetadata:\n  name: deleting-confirmation-flag\n  namespace: longhorn-system\nvalue: "true"\n') 2>/dev/null || true
+
         echo "→ Checking for duplicate default/longhorn HelmRelease..."
         if kubectl get helmrelease longhorn -n default &>/dev/null; then
           echo "  ! Found duplicate default/longhorn — removing..."
-          kubectl delete helmrelease longhorn -n default 2>/dev/null || true
+          kubectl patch helmrelease longhorn -n default -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+          kubectl delete helmrelease longhorn -n default --force --grace-period=0 2>/dev/null || true
           helm uninstall longhorn -n default 2>/dev/null || true
           # Force-delete deployments/daemonsets left behind
           kubectl delete deployment csi-attacher csi-provisioner csi-resizer \

@@ -47,7 +47,7 @@ tasks:
     desc: "DR: patch talconfig.yaml with DR IPs + MACs from Terraform outputs"
     cmd: bash {{.SCRIPTS_DIR}}/gen-dr-talconfig.sh
     preconditions:
-      - test -f {{.TALOS_DIR}}/terraform/.terraform/terraform.tfstate
+      - test -f {{.TALOS_DIR}}/terraform/terraform.tfstate
       - test -f {{.TALOS_DIR}}/talconfig.yaml
 
   dr:restore-talconfig:
