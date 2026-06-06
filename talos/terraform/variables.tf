@@ -71,7 +71,7 @@ variable "vm_memory_mb" {
 variable "vm_disk_gb" {
   description = "Root disk size in GB"
   type        = number
-  default     = 50
+  default     = 500
 }
 
 variable "node_macs" {

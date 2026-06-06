@@ -116,9 +116,14 @@ tasks:
           exit 0
         fi
 
-        # Get latest backup URL from BackupVolume status
-        BACKUP_URL=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} "$BV_NAME" \
-          -o jsonpath='{.status.lastBackupURL}' 2>/dev/null)
+        # Get latest backup URL from BackupVolume status (Longhorn 1.12.0+: lastBackupURL removed)
+        BACKUP_NAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} "$BV_NAME" \
+          -o jsonpath='{.status.lastBackupName}' 2>/dev/null)
+        BACKUP_URL=""
+        if [ -n "$BACKUP_NAME" ]; then
+          BACKUP_URL=$(kubectl get backups.longhorn.io "$BACKUP_NAME" -n {{.LONGHORN_NS}} \
+            -o jsonpath='{.status.url}' 2>/dev/null)
+        fi
 
         if [ -z "$BACKUP_URL" ]; then
           echo "  ✗ No backup URL in BackupVolume $BV_NAME — skipping"

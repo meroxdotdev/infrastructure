@@ -33,7 +33,7 @@ spec:
       retries: 3
   values:
     defaultSettings:
-      createDefaultDiskLabeledNodes: true
+      createDefaultDiskLabeledNodes: false
       defaultDataLocality: best-effort
       defaultLonghornStaticStorageClass: longhorn
       defaultReplicaCount: "3"
