@@ -51,7 +51,7 @@ tasks:
     silent: true
 
   wait-for-backup-volumes:
-    desc: Wait until BackupVolumes sync from S3 (~30-60s after BackupTarget patch)
+    desc: Wait until BackupVolumes sync from S3 and Backup CRs have URLs (~60-90s after BackupTarget patch)
     cmds:
       - |
         echo "→ Waiting for BackupVolumes to sync from S3..."
@@ -70,6 +70,24 @@ tasks:
           echo "    kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
           exit 1
         fi
+
+        echo "→ Waiting for Backup CRs to populate URLs (avoid race condition)..."
+        for i in $(seq 1 20); do
+          BNAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} \
+            --no-headers 2>/dev/null | awk '{print $1}' | grep "^jellyfin-restored-" | head -1)
+          LAST=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} "$BNAME" \
+            -o jsonpath='{.status.lastBackupName}' 2>/dev/null)
+          if [ -n "$LAST" ]; then
+            URL=$(kubectl get backups.longhorn.io "$LAST" -n {{.LONGHORN_NS}} \
+              -o jsonpath='{.status.url}' 2>/dev/null)
+            if [ -n "$URL" ]; then
+              echo "  ✓ Backup CRs ready (jellyfin URL confirmed)"
+              break
+            fi
+          fi
+          echo "  ... Backup CRs not ready yet (attempt $i/20)"
+          sleep 10
+        done
     silent: true
 
   restore-all-volumes:
@@ -315,6 +333,14 @@ tasks:
             fi
             kubectl delete pvc "$PVC" -n "$NS" --ignore-not-found 2>/dev/null || true
             sleep 2
+          fi
+
+          # Clear stale claimRef on Released PV so Kubernetes can rebind it to the new PVC
+          PV_STATUS=$(kubectl get pv "$PV" -o jsonpath='{.status.phase}' 2>/dev/null || true)
+          if [ "$PV_STATUS" = "Released" ]; then
+            echo "  → Clearing stale claimRef on Released PV $PV..."
+            kubectl patch pv "$PV" --type=json \
+              -p='[{"op":"remove","path":"/spec/claimRef"}]' 2>/dev/null || true
           fi
 
           kubectl apply -f - <<PVEOF
