@@ -4,3 +4,4 @@ namespace: default
 resources:
 - ./helmrelease.yaml
 - ./pvc.yaml
+- ./nodeport.yaml
