@@ -67,6 +67,7 @@ spec:
         supplementalGroups: [44]
     service:
       app:
+        primary: true
         ports:
           http:
             port: *port
