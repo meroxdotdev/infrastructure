@@ -21,6 +21,8 @@ talos/talconfig.yaml.prod-backup
 # Kubernetes
 kubeconfig
 talosconfig
+# Dashboard secrets
+agent/dashboard/.env
 # Misc.
 .private/
 .task/

@@ -115,6 +115,8 @@ openclaw ALL=(ALL) NOPASSWD: /usr/bin/node
 
 ## Disaster recovery / new server setup
 
+All commands run from `/srv/kubernetes/infrastructure/` (the repo root).
+
 ```bash
 # 1. Install Node.js 24 + OpenClaw
 curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
@@ -140,8 +142,7 @@ sudo chmod 755 /usr/local/bin/openclaw-fix-perms
 # 5. Install talosctl system-wide
 # mise installs talosctl in root's home (~/.local/share/mise/...) which openclaw can't access
 # Copy the binary to /usr/local/bin so all users can run it
-TALOS_VER=$(talosctl version --client 2>/dev/null | grep Tag | awk '{print $2}' | tr -d 'v')
-sudo find ~/.local/share/mise/installs/aqua-siderolabs-talos -name talosctl -newer /tmp \
+sudo find ~/.local/share/mise/installs/aqua-siderolabs-talos -name talosctl \
   | sort -t/ -k9 -V | tail -1 | xargs -I{} sudo cp {} /usr/local/bin/talosctl
 sudo chmod 755 /usr/local/bin/talosctl
 
@@ -152,7 +153,7 @@ sudo cp talos/clusterconfig/talosconfig /home/openclaw/.talos/config
 sudo chown openclaw:openclaw /home/openclaw/.kube/config /home/openclaw/.talos/config
 sudo chmod 600 /home/openclaw/.kube/config /home/openclaw/.talos/config
 
-# 7. Copy all 7 workspace directories + create memory dirs
+# 7. Copy all workspace directories + create memory dirs
 sudo -u openclaw mkdir -p /home/openclaw/.openclaw
 WDIR=/home/openclaw/.openclaw
 REPO_WS=$(pwd)/agent/workspaces
@@ -199,12 +200,27 @@ XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) sudo -u openclaw systemctl --user en
 # 11. Install openclaw user crontab
 sudo -u openclaw crontab agent/scripts/openclaw-crontab
 
-# 12. Initialize data files + start dashboard
+# 12. Install dashboard scripts + secrets
 sudo mkdir -p /srv/dashboard/data
-sudo chown openclaw:openclaw /srv/dashboard /srv/dashboard/data
+sudo cp agent/dashboard/scripts/*.sh /srv/dashboard/
+sudo chmod 755 /srv/dashboard/*.sh
+sudo chmod 750 /srv/dashboard/tg-notify.sh   # restricted: openclaw-only
+sudo chown openclaw:openclaw /srv/dashboard /srv/dashboard/data /srv/dashboard/*.sh
+
+# Create /srv/dashboard/.env from template — fill in real values
+sudo cp agent/dashboard/.env.example /srv/dashboard/.env
+sudo chmod 600 /srv/dashboard/.env
+sudo chown openclaw:openclaw /srv/dashboard/.env
+# Edit: fill in TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GARAGE_TOKEN, GARAGE_BUCKET_ID, APPLE_ID, APPLE_APP_PASSWORD
+sudo -u openclaw nano /srv/dashboard/.env
+
+# Install Python dep for iCloud calendar
+sudo bash /srv/dashboard/setup-deps.sh
+
+# 13. Initialize data files + start dashboard
 echo '{"pending":[],"history":[]}' | sudo -u openclaw tee /srv/dashboard/data/proposals.json
-cd /srv/docker/agents-dashboard && docker compose up -d
-/usr/local/bin/openclaw-fix-perms  # ensure all permissions are correct from the start
+cd /srv/docker/agents-dashboard && docker compose up -d && cd -
+/usr/local/bin/openclaw-fix-perms
 ```
 
 ## Verify everything is working
@@ -213,10 +229,10 @@ cd /srv/docker/agents-dashboard && docker compose up -d
 sudo -u openclaw openclaw doctor
 sudo -u openclaw openclaw status
 sudo -u openclaw openclaw security audit
-# Check gateway is reachable
 sudo -u openclaw openclaw gateway probe
-# Trigger infra data update
+# Trigger a data update to confirm scripts work end-to-end
 sudo -u openclaw bash /srv/dashboard/update-infra.sh
+sudo -u openclaw bash /srv/dashboard/update-backup.sh
 ```
 
 ## Security notes

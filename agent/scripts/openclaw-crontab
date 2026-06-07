@@ -1,7 +1,9 @@
 SHELL=/bin/bash
 HOME=/home/openclaw
 XDG_RUNTIME_DIR=/run/user/1003
-# news — morning briefing, every day at 07:00 EEST (04:00 UTC)
+
+# ── AI Agents ──
+# news — morning briefing every day at 07:00 EEST (04:00 UTC)
 0 4 * * * /srv/dashboard/news-morning-run.sh >> /home/openclaw/.openclaw/logs/heartbeat-news.log 2>&1
 # infra — cluster + VPS health check at 08:00 and 20:00
 0 8 * * * /usr/bin/openclaw agent --agent infra --message "HEARTBEAT" >> /home/openclaw/.openclaw/logs/heartbeat-infra.log 2>&1
@@ -12,26 +14,40 @@ XDG_RUNTIME_DIR=/run/user/1003
 0 23 * * * /usr/bin/openclaw agent --agent dashboard --message 'HEARTBEAT' >> /home/openclaw/.openclaw/logs/heartbeat-dashboard.log 2>&1
 # orchestrator — daily audit + proposals at 12:00 UTC (15:00 EEST)
 0 12 * * * /usr/bin/openclaw agent --agent orchestrator --message 'HEARTBEAT' >> /home/openclaw/.openclaw/logs/heartbeat-orchestrator.log 2>&1
-# blog — weekly drift check for homelab-ai-agent post, every Monday at 09:00 UTC (12:00 EEST)
+# blog — weekly drift check every Monday at 09:00 UTC (12:00 EEST)
 0 9 * * 1 /usr/bin/openclaw agent --agent blog --message 'HEARTBEAT' >> /home/openclaw/.openclaw/logs/heartbeat-blog.log 2>&1
+# renovate — reviews open Renovate PRs every Saturday at 10:00 UTC
+0 10 * * 6 /usr/bin/openclaw agent --agent renovate --message 'HEARTBEAT' >> /home/openclaw/.openclaw/logs/heartbeat-renovate.log 2>&1
+# repo — weekly infra/repo audit every Monday at 07:00 UTC (10:00 EEST)
+0 7 * * 1 /usr/bin/openclaw agent --agent repo --message 'HEARTBEAT' >> /home/openclaw/.openclaw/logs/heartbeat-repo.log 2>&1
+
 # ── Dashboard data — zero AI tokens ──
-# infra-data: K8s nodes/pods/docker/longhorn/namespaces — every 5 minutes
+# infra-data: K8s nodes/pods/docker/longhorn — every 5 minutes
 */5 * * * * /srv/dashboard/update-infra.sh >> /home/openclaw/.openclaw/logs/update-infra.log 2>&1
 # backup-data: NAS/Garage S3/Longhorn backups — every 30 minutes
 */30 * * * * /srv/dashboard/update-backup.sh >> /home/openclaw/.openclaw/logs/update-backup.log 2>&1
-# news-data: GitHub releases pentru tracked projects — la fiecare 6 ore
+# news-data: GitHub releases for tracked projects — every 6 hours
 0 */6 * * * /srv/dashboard/update-news.sh >> /home/openclaw/.openclaw/logs/update-news.log 2>&1
-# upgrades-data: Renovate PRs deschise din infrastructure repo — la fiecare 30 minute
+# upgrades-data: open Renovate PRs from infrastructure repo — every 30 minutes
 */30 * * * * /srv/dashboard/update-upgrades.sh >> /home/openclaw/.openclaw/logs/update-upgrades.log 2>&1
-# self-healing watchdog — runs after infra checks to detect and restart stale agents
+# weather: Open-Meteo forecast — every 30 minutes
+*/30 * * * * /srv/dashboard/update-weather.sh >> /home/openclaw/.openclaw/logs/update-weather.log 2>&1
+# network: LAN + WiFi + Tailscale subnet scan — every hour
+0 * * * * /srv/dashboard/update-network.sh >> /home/openclaw/.openclaw/logs/update-network.log 2>&1
+# calendar: iCloud CalDAV events (next 7 days) — every 30 minutes
+*/30 * * * * /srv/dashboard/update-calendar.sh >> /home/openclaw/.openclaw/logs/update-calendar.log 2>&1
+
+# ── Self-healing + monitoring ──
+# self-healing watchdog — runs after each infra heartbeat to detect/restart stale agents
 5 8 * * * /srv/dashboard/self-healing.sh >> /home/openclaw/.openclaw/logs/self-healing.log 2>&1
 5 20 * * * /srv/dashboard/self-healing.sh >> /home/openclaw/.openclaw/logs/self-healing.log 2>&1
 # log monitoring — error detection every 2 hours
 0 */2 * * * /srv/dashboard/check-logs.sh >> /home/openclaw/.openclaw/logs/check-logs.log 2>&1
+# orchestrator proposals — re-notify pending proposals at 12:15 UTC
 15 12 * * * /srv/dashboard/check-proposals.sh >> /home/openclaw/.openclaw/logs/check-proposals.log 2>&1
-*/30 * * * *  /srv/dashboard/update-weather.sh >> /home/openclaw/.openclaw/logs/update-weather.log 2>&1
-0 * * * *    /srv/dashboard/update-network.sh >> /home/openclaw/.openclaw/logs/update-network.log 2>&1
-*/30 * * * *  /srv/dashboard/update-calendar.sh >> /home/openclaw/.openclaw/logs/update-calendar.log 2>&1
-0 10 * * 6 /usr/bin/openclaw agent --agent renovate --message 'HEARTBEAT' >> /home/openclaw/.openclaw/logs/heartbeat-renovate.log 2>&1
-# repo — weekly infra/repo audit every Monday at 07:00 UTC (10:00 EEST)
-0 7 * * 1 /usr/bin/openclaw agent --agent repo --message 'HEARTBEAT' >> /home/openclaw/.openclaw/logs/heartbeat-repo.log 2>&1
+
+# ── Utility reminders (Telegram) ──
+# Electricitate: transmite index curent între zilele 22-26 ale lunii
+5 7 22 * * /srv/dashboard/tg-notify.sh "⚡ Reminder: transmite indexul de electricitate (zile valabile: 22-26 ale lunii)" >> /home/openclaw/.openclaw/logs/reminder-utilitati.log 2>&1
+# Gaz: transmite index contor gaz între zilele 5-10 ale lunii
+5 7 5 * * /srv/dashboard/tg-notify.sh "🔥 Reminder: transmite indexul de gaz (zile valabile: 5-10 ale lunii)" >> /home/openclaw/.openclaw/logs/reminder-utilitati.log 2>&1
