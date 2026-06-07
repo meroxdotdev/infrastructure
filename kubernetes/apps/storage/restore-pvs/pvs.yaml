@@ -3,8 +3,12 @@
 # These are created AFTER running: task restore:longhorn
 # which restores each volume from S3 backup with the exact name in volumeHandle.
 #
-# Cache volumes (jellyfin-cache, sonarr-cache, etc.) are NOT here
-# because they are ephemeral and recreated empty automatically.
+# Cache volumes (jellyfin-cache, sonarr-cache, radarr-cache) are NOT restored.
+# They are backed up (recurring-job label is set) but under dynamic Longhorn
+# volume names — the restore task cannot locate them by the expected *-restored
+# naming convention. These volumes start empty after DR.
+# Post-restore, run: task longhorn:post-restore-jellyfin
+# Jellyfin images re-download automatically in ~10 min after that task runs.
 ---
 apiVersion: v1
 kind: PersistentVolume

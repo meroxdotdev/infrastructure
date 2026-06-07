@@ -25,6 +25,10 @@ tasks:
         8. Force-reconciles all app HelmReleases
 
       After this task: all pods should start within ~5 min.
+
+      NOTE: Cache volumes (jellyfin-cache, sonarr-cache, radarr-cache) start empty.
+      After pods are up, run: task longhorn:post-restore-jellyfin
+      to re-trigger Jellyfin metadata+image downloads (~10 min).
     cmds:
       - task: patch-backup-target
       - task: wait-for-backup-volumes
@@ -451,6 +455,56 @@ tasks:
         echo ""
         echo "=== Failed HelmReleases ==="
         kubectl get helmreleases -A 2>/dev/null | grep -v "True\|READY"
+
+  post-restore-jellyfin:
+    desc: Re-trigger Jellyfin metadata+image refresh after DR restore (jellyfin-cache PVC starts empty)
+    summary: |
+      Run this AFTER task longhorn:restore, once Jellyfin pod is Running.
+
+      jellyfin-cache is backed up but stored under a dynamic Longhorn volume name,
+      so the restore task cannot find it. This task re-triggers image downloads
+      from TMDB/TVDB for all libraries (~10 min to complete in background).
+
+      Reads the API key from the Jellyfin SQLite DB — no manual token needed.
+    cmds:
+      - |
+        echo "→ Waiting for Jellyfin pod to be Ready..."
+        kubectl wait pod -n default -l app.kubernetes.io/name=jellyfin \
+          --for=condition=Ready --timeout=300s
+
+        POD=$(kubectl get pod -n default -l app.kubernetes.io/name=jellyfin \
+          -o jsonpath='{.items[0].metadata.name}')
+        echo "  pod: $POD"
+
+        echo "→ Copying Jellyfin DB to read API key..."
+        TMP_DB=$(mktemp --suffix=.db)
+        kubectl cp "default/${POD}:/config/data/jellyfin.db" "$TMP_DB" 2>/dev/null
+        TOKEN=$(python3 -c "import sqlite3; conn=sqlite3.connect('$TMP_DB'); row=conn.execute('SELECT AccessToken FROM ApiKeys ORDER BY DateCreated DESC LIMIT 1').fetchone(); print(row[0] if row else '')")
+        rm -f "$TMP_DB"
+
+        if [ -z "$TOKEN" ]; then
+          echo "  ✗ No API key in Jellyfin DB. Go to Admin → API Keys and create one first."
+          exit 1
+        fi
+        echo "  ✓ API key found"
+
+        echo "→ Triggering FullRefresh on all Jellyfin libraries..."
+        LIBS=$(curl -sf "https://media.merox.dev/Library/VirtualFolders" \
+          -H "Authorization: MediaBrowser Token=\"$TOKEN\"")
+
+        echo "$LIBS" | python3 -c "import json,sys; [print('  library: '+l['Name']+' ('+l['ItemId']+')') for l in json.load(sys.stdin)]"
+
+        for ID in $(echo "$LIBS" | python3 -c "import json,sys; [print(l['ItemId']) for l in json.load(sys.stdin)]"); do
+          curl -sf -X POST \
+            "https://media.merox.dev/Items/${ID}/Refresh?metadataRefreshMode=FullRefresh&imageRefreshMode=FullRefresh&replaceAllMetadata=false&replaceAllImages=false" \
+            -H "Authorization: MediaBrowser Token=\"$TOKEN\"" > /dev/null
+          echo "  ✓ $ID refresh triggered"
+        done
+
+        echo ""
+        echo "✓ Jellyfin image refresh running in background. Images appear within ~10 min."
+        echo "  Monitor: kubectl exec -n default $POD -- find /config/metadata -name '*.jpg' | wc -l"
+    silent: true
 
   clean-orphan-volumes:
     desc: Delete leftover faulted pvc-xxxx volumes from default namespace (safe to run after restore)
