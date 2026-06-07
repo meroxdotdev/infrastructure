@@ -70,6 +70,14 @@ spec:
         ports:
           http:
             port: *port
+      nodeport:
+        controller: jellyfin
+        type: NodePort
+        ports:
+          http:
+            port: *port
+            nodePort: 30096
+            protocol: TCP
     route:
       app:
         hostnames:
