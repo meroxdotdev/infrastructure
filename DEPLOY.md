@@ -335,7 +335,7 @@ kubectl -n flux-system get receiver github-webhook \
 
 ## Phase 3 — Agents (OpenClaw)
 
-> ~15 min. 7 specialized agents running as dedicated `openclaw` user (non-root).
+> ~15 min. 9 specialized agents running as dedicated `openclaw` user (non-root).
 > All config templates live in `agent/` in this repo.
 
 **Full setup guide: [agent/README.md](agent/README.md)**
@@ -346,14 +346,15 @@ The agent README is the single source of truth for this phase. It covers:
 - `sudoers-fix-perms` + `openclaw-fix-perms` scripts
 - infra access (kubeconfig, talosconfig)
 - Claude Code OAuth + OpenClaw onboard
-- Telegram config
-- All 7 workspace installs (news, blog, design, infra, costs, dashboard, orchestrator)
-- Dashboard setup + crontab
-- systemd user service
+- Telegram config (`openclaw.json`)
+- All 9 workspace installs (news, blog, design, infra, costs, dashboard, orchestrator, renovate, repo)
+- Dashboard scripts (`agent/dashboard/scripts/`) + `/srv/dashboard/.env` secrets
+- crontab (openclaw user) + systemd user service
 
 **Verify when done:**
 ```bash
-# One-shot: bash scripts/dr-verify.sh --phase 3
+# One-shot (run from vps/ dir):
+make dr-verify-phase3
 # Or manually:
 sudo -u openclaw openclaw doctor
 sudo -u openclaw openclaw status
@@ -396,13 +397,15 @@ sudo -u openclaw openclaw status
 [ ] kubeconfig + talosconfig copied to /home/openclaw/.kube/ and /home/openclaw/.talos/
 [ ] /home/openclaw/.openclaw/openclaw.json configured (Telegram token + user ID filled in)
 [ ] claude login done as openclaw user (Claude Pro OAuth)
-[ ] All 5 workspaces installed (news, blog, design, infra, costs)
-[ ] /srv/dashboard/ created with data/ subdirectory, agents.json initialized
+[ ] All 9 workspaces installed (news, blog, design, infra, costs, dashboard, orchestrator, renovate, repo)
+[ ] Dashboard scripts copied: cp agent/dashboard/scripts/*.sh /srv/dashboard/
+[ ] /srv/dashboard/.env created from agent/dashboard/.env.example (Telegram + Garage + Apple creds)
+[ ] setup-deps.sh run (pip install caldav for iCloud calendar)
+[ ] openclaw user crontab installed (sudo -u openclaw crontab agent/scripts/openclaw-crontab)
 [ ] agents-dashboard nginx container running (docker ps | grep agents-dashboard)
 [ ] openclaw-gateway systemd user service enabled + running as openclaw user
 [ ] https://agents.cloud.merox.dev accessible and showing command center
 [ ] Telegram bot responds to messages
-[ ] All 9 workspaces installed (news, blog, design, infra, costs, dashboard, orchestrator, renovate, repo)
 [ ] openclaw doctor — no warnings (make dr-verify-phase3)
 [ ] Old server decommissioned / Tailscale node removed
 ```

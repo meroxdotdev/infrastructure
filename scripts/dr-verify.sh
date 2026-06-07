@@ -331,6 +331,29 @@ verify_phase3() {
         fi
     done
 
+    header "Phase 3: Dashboard scripts"
+    for script in tg-notify.sh update-infra.sh update-backup.sh update-weather.sh \
+                  update-network.sh update-calendar.sh update-news.sh update-upgrades.sh \
+                  self-healing.sh check-logs.sh check-proposals.sh news-morning-run.sh; do
+        if [ -f "/srv/dashboard/$script" ]; then
+            ok "/srv/dashboard/$script"
+        else
+            fail "/srv/dashboard/$script MISSING — run: cp agent/dashboard/scripts/*.sh /srv/dashboard/"
+        fi
+    done
+    if [ -f "/srv/dashboard/.env" ]; then
+        ok "/srv/dashboard/.env exists"
+    else
+        fail "/srv/dashboard/.env missing — copy from agent/dashboard/.env.example and fill in secrets"
+    fi
+
+    header "Phase 3: Crontab"
+    if sudo -u openclaw crontab -l 2>/dev/null | grep -q "update-infra.sh"; then
+        ok "openclaw crontab installed"
+    else
+        fail "openclaw crontab missing — run: sudo -u openclaw crontab agent/scripts/openclaw-crontab"
+    fi
+
     header "Phase 3: Dashboard"
     container_running "agents-dashboard"
     if [ -f "/srv/dashboard/data/agents.json" ]; then
