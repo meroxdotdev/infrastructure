@@ -1,5 +1,8 @@
 # vps_backup
 
+**Canonical reference for the whole backup strategy** — the main README, DEPLOY.md
+and DR.md link here instead of repeating the schedule.
+
 Backup plumbing for the Oracle VPS. Two pieces, both cron-driven:
 
 | Script | Cron | What it does |
@@ -22,11 +25,24 @@ Synology HyperBackup (`/etc/rsyncd.conf`, managed by this role).
 ## Nightly backup traffic (both directions)
 
 - **22:xx (evening)** — NAS HyperBackup pushes ~25GB to VPS `/backup/synology` (NAS's own off-site).
-- **02:00** — Longhorn (K8s cluster) backs up media/ARR config volumes to Garage S3 on the VPS.
+- **01:15 / 01:20** — Authentik / Joplin pg_dump → `/srv/backups/` (7-day retention).
+- **01:30** — `backup-vps-extras.sh` → `/srv/backups/` (see table above).
+- **02:00** — Longhorn (K8s cluster) backs up media/ARR config volumes to Garage S3 on the VPS (retain 3).
 - **03:30** — this role: NAS pulls `/srv/backups` + Garage to `/volume1/Server/oracle-vps-backups/`.
 
 `/backup/synology` is deliberately NOT in any backup module — syncing the NAS's
 own backup back to the NAS would be circular.
+
+## What Longhorn backs up (K8s side)
+
+Only volumes opted in via PVC label `recurring-job-group.longhorn.io/media: enabled`:
+`jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr` (configs).
+Deliberately NOT backed up: Prometheus/Loki/Grafana/Netdata history, alertmanager,
+all `*-cache` volumes, Uptime-Kuma history — regenerable, were ~35GB of noise.
+
+## Still manual (keep copies off this VPS)
+
+`age.key`, `vps/.vault_pass`, `~/.openclaw/.env`, `/srv/docker/oracle-cloud/.env`.
 
 ## One-time manual provisioning (not managed by Ansible)
 

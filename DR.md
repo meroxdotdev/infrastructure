@@ -11,10 +11,25 @@ Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.
 
 ### Option A — Terraform (automated, recommended)
 
+> **First time on this machine:** Terraform needs a Proxmox API token.
+> Proxmox → Datacenter → API Tokens → Add (user `root@pam`, token name `terraform`,
+> privilege separation OFF — secret shown once). Then:
+> ```bash
+> cp talos/terraform/terraform.tfvars.example talos/terraform/terraform.tfvars
+> # fill in proxmox_token_id and proxmox_token_secret
+> ```
+>
+> **Storage layout on this cluster** (discovered DR 2026-06-04): `cluster-storage`
+> exists only on px-0; `local-data` exists on all nodes but is node-local — an ISO
+> downloaded on one node can't be used by VMs on another. Working DR config:
+> `proxmox_nodes = ["px-0", "px-0", "px-0"]`, `disk_storage = "local-data"`.
+
 ```bash
 cd /srv/kubernetes/infrastructure
 
 # Creates 3 VMs on Proxmox px-0 (500 GB disk, prod MACs → static IPs via talconfig)
+# (runs terraform apply interactively — for non-interactive use:
+#  cd talos/terraform && terraform init && terraform apply -auto-approve)
 task dr:create-vms
 
 # Wait ~60s for Talos maintenance mode, then:
@@ -145,11 +160,11 @@ task dr:destroy-vms
 
 ## Backup schedule
 
-- **Daily at 02:00** — Longhorn RecurringJob (group `media`) backs up opted-in volumes to Garage S3 on Oracle VPS (via Tailscale)
-- **Retention:** 3 backups per volume
-- **Volumes backed up:** `jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr` — opted in via PVC label `recurring-job-group.longhorn.io/media: enabled`
-- **Deliberately NOT backed up:** observability (prometheus/loki/grafana/alertmanager/netdata), all `*-cache` volumes — regenerable, history accepted as lost in DR
-- **Off-site:** the NAS pulls the whole Garage bucket + VPS dumps nightly at 03:30 → `/volume1/Server/oracle-vps-backups/` (see `vps/roles/vps_backup/README.md`)
+Full nightly schedule, what's included/excluded, and the NAS off-site sync:
+**[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**.
+Short version: Longhorn backs up the media/ARR config volumes nightly to Garage
+S3 on the VPS; observability history and caches are deliberately not backed up
+(accepted as lost in DR).
 
 ```bash
 # Check last backup time for each volume

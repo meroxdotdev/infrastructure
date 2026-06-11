@@ -32,7 +32,7 @@ make setup   # first run: applies changes; subsequent runs: verifies state
 
 ## Adding a new service
 
-1. Create `roles/<service>_setup/` with `defaults/`, `tasks/`, `handlers/`, `templates/`, `meta/`, `README.md`
+1. Create `roles/<service>_setup/` with `defaults/`, `tasks/`, `handlers/`, `templates/`, `meta/`
 2. Add `playbooks/<service>-setup.yml`
 3. Add role to `playbooks/site.yml` in correct order (Traefik must come before all services)
 4. Add `<service>-setup` and `<service>-test` targets to `Makefile`
@@ -85,4 +85,6 @@ make setup               # re-deploy
 - Handler naming: `Restart <service>` or `Reload <service>`
 - All role defaults in `defaults/main.yml`, secrets in vault only
 - No hardcoded paths in tasks — use variables (`{{ traefik_docker_dir }}` not `/srv/docker/traefik`)
-- Every role must have a `README.md`
+- `README.md` only for roles with non-obvious behavior (external dependencies,
+  manual provisioning steps, gotchas — see `vps_backup`, `authentik_setup`).
+  Simple deploy-a-container roles don't need one.

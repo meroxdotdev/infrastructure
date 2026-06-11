@@ -140,58 +140,10 @@ make health-check
 
 > ~20 min. Talos Linux + FluxCD + all apps via GitOps.
 
-### Option A — New Proxmox VMs via Terraform (recommended for DR simulation)
-
-```bash
-cd /srv/kubernetes/infrastructure/
-
-# 1. Install tools
-mise trust && mise install
-
-# 2. Place AGE key
-cp /path/to/age.key ./age.key
-
-# 3. Create Proxmox API token for Terraform:
-#    Proxmox → Datacenter → API Tokens → Add
-#    User: root@pam, Token name: terraform, Privilege separation: OFF
-#    Save the secret shown once.
-
-# 4. Configure Terraform for Proxmox VMs
-cp talos/terraform/terraform.tfvars.example talos/terraform/terraform.tfvars
-# Edit: fill in proxmox_token_id and proxmox_token_secret
-#
-# IMPORTANT — storage layout on this cluster (discovered DR 2026-06-04):
-#   cluster-storage → enabled only on px-0
-#   local-data      → enabled on all nodes (iso+images) but node-local, not shared
-#   ISO downloaded on one node cannot be used by VMs on other nodes
-#
-# Working config for DR (all VMs on px-0 with local-data):
-#   proxmox_nodes = ["px-0", "px-0", "px-0"]
-#   disk_storage  = "local-data"
-#
-# task dr:create-vms runs terraform apply interactively — use directly:
-cd talos/terraform && terraform init && terraform apply -auto-approve && cd ../..
-
-# 5. Wait for VMs to boot into Talos maintenance mode (~60s)
-# Verify (loop until open):
-until nmap -Pn -n -p 50000 10.57.57.90 10.57.57.92 10.57.57.94 2>&1 | grep -q "open"; do sleep 10; done
-echo "Talos ready"
-
-# 6. Patch talconfig.yaml with DR IPs + MACs (auto-reads Terraform outputs)
-task dr:patch-talconfig
-
-# 7. Bootstrap Talos
-task bootstrap:talos
-git add -A && git commit -m "chore: add secrets" && git push
-```
-
-After DR test, restore prod config and destroy VMs:
-```bash
-task dr:restore-talconfig
-task dr:destroy-vms
-```
-
-### Option B — Existing hardware / manual IP assignment
+> **DR test or restore onto Proxmox DR VMs?** That's a different procedure — see
+> **[DR.md](DR.md)** (`task dr:create-vms` + `task dr:apply-talos-configs`, restore
+> from S3, ~35 min, tested end-to-end). This phase covers a real rebuild on new
+> or existing hardware.
 
 ```bash
 cd /srv/kubernetes/infrastructure/
@@ -247,7 +199,7 @@ task bootstrap:talos
 git add -A && git commit -m "chore: add secrets" && git push
 ```
 
-### Shared steps (both Option A and Option B)
+### Bootstrap apps + restore volumes
 
 ```bash
 # 6. Bootstrap Flux and wait for Longhorn to be ready
@@ -279,7 +231,7 @@ fi
 # 8. Restore all Longhorn volumes from S3 backup
 #    This single command handles: BackupTarget patch, volume creation,
 #    pvs.yaml apply, prometheus/alertmanager PVCs, and Flux reconcile.
-task restore:longhorn
+task longhorn:restore
 
 # Monitor until all pods are Running (~5-10 min):
 kubectl get pods -A --watch
@@ -319,7 +271,7 @@ kubectl -n network describe certificates            # Certificate Ready
 # BackupTarget is a CRD in Longhorn 1.11.2 (not a Setting anymore):
 kubectl get backuptarget default -n longhorn-system -o jsonpath='{.spec}'
 # Expected: backupTargetURL=s3://longhorn@us-east-1/, credentialSecret=minio-secret
-# task restore:longhorn already patches this automatically.
+# task longhorn:restore already patches this automatically.
 ```
 
 **GitHub Webhook (optional — enables instant Flux sync on git push):**
@@ -394,7 +346,7 @@ sudo -u openclaw openclaw status
     (if no Intel iGPU: remove gpu.intel.com/i915 from jellyfin helmrelease + disable intel-device-plugin-operator)
 [ ] Nodes reachable on port 50000 (nmap verification)
 [ ] Phase 2 complete — all nodes Ready, Flux healthy, cilium status OK (make dr-verify-phase2)
-[ ] Longhorn volumes restored (task restore:longhorn ran successfully)
+[ ] Longhorn volumes restored (task longhorn:restore ran successfully)
 [ ] All PVCs bound (kubectl get pvc -A | grep -v Bound → empty)
 [ ] Gateway TCP connectivity OK (nmap -p 443 on LB_IP_GATEWAY_INTERNAL + LB_IP_GATEWAY_EXTERNAL)
 [ ] DNS resolution OK (dig @LB_IP_K8S_GATEWAY echo.merox.dev)
@@ -432,11 +384,8 @@ sudo -u openclaw openclaw status
 | Ansible vault secrets | `vps/inventories/production/group_vars/all/vault.yml` (encrypted) | ✅ in git |
 | Agent config template + skill | `agent/` in this repo | ✅ |
 | Agent secrets (`~/.openclaw/.env`) | Only on server | ⚠️ Back up manually |
-| Longhorn volumes (media/ARR configs, group `media`) | Backed up to Garage S3, 02:00 | ✅ |
-| Garage S3 data | NAS pulls nightly 03:30 → `/volume1/Server/oracle-vps-backups/garage/` | ✅ off-site on NAS |
-| Authentik PostgreSQL | Daily cron 01:15 → `/srv/backups/authentik/` (7-day retention) | ✅ synced to NAS 03:30 |
-| Joplin PostgreSQL | Daily cron 01:20 → `/srv/backups/joplin/` (7-day retention) | ✅ synced to NAS 03:30 |
-| Guacamole / Traefik certs / Pi-hole config / OpenClaw runtime | Daily cron 01:30 → `/srv/backups/` (`vps_backup` role) | ✅ synced to NAS 03:30 |
+| Longhorn volumes (media/ARR configs, group `media`) | Nightly to Garage S3 on the VPS | ✅ mirrored to NAS |
+| VPS service state (Authentik + Joplin DB dumps, Guacamole, Traefik certs, Pi-hole config, OpenClaw runtime) | Nightly to `/srv/backups/`, NAS pulls it off-site — schedule & details: [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) | ✅ off-site on NAS |
 | Observability history (Prometheus/Loki/Grafana), `*-cache` volumes, Uptime-Kuma | — | ❌ deliberately not backed up (regenerable) |
 
 **The two things to back up manually before decommissioning:**

@@ -224,7 +224,7 @@ verify_phase2() {
         if [ "$HAS_DRIVER" -ge 1 ]; then
             ok "CSI driver registered on $node"
         else
-            fail "driver.longhorn.io NOT registered on $node — run: task restore:longhorn (fix-duplicate-longhorn step)"
+            fail "driver.longhorn.io NOT registered on $node — run: task longhorn:restore (fix-duplicate-longhorn step)"
             MISSING_DRIVER=$((MISSING_DRIVER + 1))
         fi
     done
@@ -247,7 +247,7 @@ verify_phase2() {
     if [ "$TOTAL" -ge 9 ]; then
         ok "Restore volumes exist: $TOTAL total, $ATTACHED attached"
     else
-        fail "Only $TOTAL restore volumes found (expected 9+) — run: task restore:longhorn"
+        fail "Only $TOTAL restore volumes found (expected 9+) — run: task longhorn:restore"
     fi
 
     header "Phase 2: Storage — Longhorn BackupTarget"
@@ -263,7 +263,7 @@ verify_phase2() {
         if echo "$BACKUP_SETTING" | grep -q "s3://"; then
             ok "Backup target (Setting) configured: $BACKUP_SETTING"
         else
-            fail "Longhorn backup target not configured — run: task restore:longhorn (patch-backup-target step)"
+            fail "Longhorn backup target not configured — run: task longhorn:restore (patch-backup-target step)"
         fi
     fi
 

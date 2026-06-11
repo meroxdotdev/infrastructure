@@ -2,7 +2,7 @@
 
 Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by an Oracle Cloud VPS for off-site services and S3 storage. Everything is declarative and GitOps-managed — a single `git push` is all it takes to deploy, update, or rebuild any part of the stack.
 
-**What's here:** Flux manifests for the entire K8s cluster (media stack, observability, networking), Talos node configs, Ansible/Terraform for the VPS, and the tools to restore everything from scratch in under 40 minutes using only this repo and a backup of `age.key`.
+**What's here:** Flux manifests for the entire K8s cluster (media stack, observability, networking), Talos node configs, Ansible/Terraform for the VPS, and the tools to restore everything from scratch in about 50 minutes using only this repo and a backup of `age.key`.
 
 **Single reference document** — if you don't know where to look, start here.
 
@@ -121,28 +121,16 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 Everything declarative (K8s manifests, Ansible, Terraform, SOPS/vault secrets)
 lives in this repo and is **not** backed up separately. Backups only cover
 state that can't be rebuilt from git. Reciprocal off-site: homelab → VPS for
-cluster data, VPS → NAS for VPS data.
+cluster data (Longhorn → Garage S3), VPS → NAS for VPS data (DB dumps + Garage,
+pulled nightly by the NAS). Observability history and caches are deliberately
+not backed up — regenerable.
 
-```
-Nightly cycle (all times VPS-local):
-evening   NAS HyperBackup ──────────────────────→ VPS /backup/synology (~25GB, NAS's off-site)
-01:15/20  Authentik + Joplin pg_dump ───────────→ /srv/backups/{authentik,joplin}/ (7-day retention)
-01:30     backup-vps-extras.sh ─────────────────→ /srv/backups/ (guacamole, traefik certs,
-                                                   pihole config, openclaw runtime — no secrets)
-02:00     Longhorn (media/ARR configs only) ────→ Garage S3 on VPS (retain 3)
-03:30     backup-push-nas.sh: NAS pulls ────────→ NAS /volume1/Server/oracle-vps-backups/
-                                                   (/srv/backups + Garage data/meta-snapshots)
-```
+> **Canonical reference** (nightly schedule, what's included/excluded, why the
+> NAS pulls instead of pushes): **[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**
 
-**Longhorn backs up only volumes opted in via PVC labels**
-(`recurring-job-group.longhorn.io/media: enabled` — jellyfin, radarr, sonarr,
-prowlarr, jellyseerr, qbittorrent configs). Deliberately NOT backed up:
-Prometheus/Loki/Grafana/Netdata history, alertmanager, all `*-cache` volumes,
-Uptime-Kuma history — all regenerable, were ~35GB of noise.
-
-**What a VPS failure loses now:** at most one day of backups — Garage and all
+**What a VPS failure loses:** at most one day of backups — Garage and all
 dumps are mirrored nightly to the NAS. Rebuild: `make dr-full` (~15 min), copy
-backups back, `task restore:longhorn`.
+backups back, `task longhorn:restore`.
 
 **Still manual (keep copies off this VPS):** `age.key`, `vps/.vault_pass`,
 `~/.openclaw/.env`, `/srv/docker/oracle-cloud/.env`.
@@ -175,7 +163,7 @@ Step 2 — Kubernetes (~20 min)
   # Edit: kubernetes/components/common/cluster-vars.yaml (LB IPs, NAS IP)
   task bootstrap:talos
   task bootstrap:apps
-  task restore:longhorn
+  task longhorn:restore
 
 Step 3 — Agents (~15 min)
   sudo useradd -m openclaw && sudo usermod -aG docker openclaw

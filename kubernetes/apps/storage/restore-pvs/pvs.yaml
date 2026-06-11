@@ -1,6 +1,6 @@
 ---
 # PersistentVolumes pointing to named Longhorn volumes.
-# These are created AFTER running: task restore:longhorn
+# These are created AFTER running: task longhorn:restore
 # which restores each volume from S3 backup with the exact name in volumeHandle.
 #
 # Only media/ARR config volumes are backed up (PVC label
