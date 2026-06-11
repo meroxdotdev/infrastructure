@@ -1,0 +1,32 @@
+#!/bin/bash
+# Nightly off-site sync of all VPS backups + Garage S3 data to the Synology NAS.
+# Runs after the Longhorn 02:00 backup cycle so Garage content is current.
+#
+# DSM's patched rsync refuses server-mode over SSH (needs the DSM "rsync
+# service"), so instead of pushing we SSH into the NAS and have it PULL from
+# the read-only rsyncd modules on this VPS (vps_backups, garage_backup —
+# see /etc/rsyncd.conf). Auth: {{ vps_backup_nas_pass_file }} on the NAS.
+# Deployed by ansible (vps_backup role).
+set -euo pipefail
+
+NAS_USER="{{ vps_backup_nas_user }}"
+NAS_HOST="{{ vps_backup_nas_host }}"
+SSH_KEY="{{ vps_backup_nas_ssh_key }}"
+NAS_BASE="{{ vps_backup_nas_base }}"
+VPS_TS_IP="{{ vps_backup_tailscale_ip }}"
+GARAGE_DIR="{{ vps_backup_garage_dir }}"
+PASS_FILE="{{ vps_backup_nas_pass_file }}"
+
+nas() { ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$NAS_USER@$NAS_HOST" "$@"; }
+
+# Consistent Garage metadata snapshot; keep only the 3 newest locally
+docker exec garage /garage meta snapshot --all
+ls -1dt "$GARAGE_DIR"/meta/snapshots/*/ 2>/dev/null | tail -n +4 | xargs -r rm -rf
+
+nas "mkdir -p $NAS_BASE/srv-backups $NAS_BASE/garage/data $NAS_BASE/garage/meta-snapshots
+set -e
+rsync -a --delete --password-file=$PASS_FILE rsync://synology-backup@$VPS_TS_IP/vps_backups/ $NAS_BASE/srv-backups/
+rsync -a --delete --password-file=$PASS_FILE rsync://synology-backup@$VPS_TS_IP/garage_backup/data/ $NAS_BASE/garage/data/
+rsync -a --delete --password-file=$PASS_FILE rsync://synology-backup@$VPS_TS_IP/garage_backup/meta/snapshots/ $NAS_BASE/garage/meta-snapshots/"
+
+echo "$(date -Is) backup sync to NAS completed"

@@ -25,3 +25,22 @@
     host: "{{ joplin_server_ip }}"
     delay: 10
     timeout: 180
+
+- name: Deploy Joplin DB backup script
+  template:
+    src: backup-joplin.sh.j2
+    dest: /usr/local/bin/backup-joplin.sh
+    owner: root
+    group: root
+    mode: "0700"
+  no_log: true
+  tags: backup
+
+- name: Schedule daily Joplin DB backup
+  cron:
+    name: "joplin-db-backup"
+    minute: "20"
+    hour: "1"
+    job: "/usr/local/bin/backup-joplin.sh >> /var/log/joplin-backup.log 2>&1"
+    user: root
+  tags: backup

@@ -58,6 +58,9 @@
     - role: dozzle_setup
       tags: ['dozzle', 'monitoring', 'services']
 
+    - role: vps_backup
+      tags: ['backup', 'services']
+
   post_tasks:
     - name: Display completion message
       ansible.builtin.debug:

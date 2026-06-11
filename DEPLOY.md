@@ -423,8 +423,12 @@ sudo -u openclaw openclaw status
 | Ansible vault secrets | `vps/inventories/production/group_vars/all/vault.yml` (encrypted) | ✅ in git |
 | Agent config template + skill | `agent/` in this repo | ✅ |
 | Agent secrets (`~/.openclaw/.env`) | Only on server | ⚠️ Back up manually |
-| Longhorn volumes | Backed up to Garage S3 | ✅ if configured |
-| Garage S3 data | Only on VPS disk | ⚠️ No off-site backup |
+| Longhorn volumes (media/ARR configs, group `media`) | Backed up to Garage S3, 02:00 | ✅ |
+| Garage S3 data | NAS pulls nightly 03:30 → `/volume1/Server/oracle-vps-backups/garage/` | ✅ off-site on NAS |
+| Authentik PostgreSQL | Daily cron 01:15 → `/srv/backups/authentik/` (7-day retention) | ✅ synced to NAS 03:30 |
+| Joplin PostgreSQL | Daily cron 01:20 → `/srv/backups/joplin/` (7-day retention) | ✅ synced to NAS 03:30 |
+| Guacamole / Traefik certs / Pi-hole config / OpenClaw runtime | Daily cron 01:30 → `/srv/backups/` (`vps_backup` role) | ✅ synced to NAS 03:30 |
+| Observability history (Prometheus/Loki/Grafana), `*-cache` volumes, Uptime-Kuma | — | ❌ deliberately not backed up (regenerable) |
 
 **The two things to back up manually before decommissioning:**
 1. `age.key` — losing this = losing all SOPS-encrypted secrets

@@ -3,10 +3,11 @@
 # These are created AFTER running: task restore:longhorn
 # which restores each volume from S3 backup with the exact name in volumeHandle.
 #
-# Cache volumes (jellyfin-cache, sonarr-cache, radarr-cache) are NOT restored.
-# They are backed up (recurring-job label is set) but under dynamic Longhorn
-# volume names — the restore task cannot locate them by the expected *-restored
-# naming convention. These volumes start empty after DR.
+# Only media/ARR config volumes are backed up (PVC label
+# recurring-job-group.longhorn.io/media) and therefore restorable.
+# Cache volumes, observability (prometheus/loki/grafana/alertmanager) and
+# netdata are deliberately NOT backed up — they start empty after DR via
+# dynamic provisioning.
 # Post-restore, run: task longhorn:post-restore-jellyfin
 # Jellyfin images re-download automatically in ~10 min after that task runs.
 ---
@@ -154,30 +155,10 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: longhorn
 ---
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: loki-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 20Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: storage-loki-0
-    namespace: observability
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: loki-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
+# Legacy: prometheus still runs on the volume restored during the 2026-06-06
+# DR test. Prometheus is no longer backed up — on the next DR this PV must NOT
+# be applied; the restore task creates a fresh PVC instead. Drop this block
+# whenever prometheus gets recreated on a dynamic volume.
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -199,53 +180,5 @@ spec:
       numberOfReplicas: "3"
       staleReplicaTimeout: "30"
     volumeHandle: prometheus-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: n8n-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 5Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: n8n
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: n8n-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: grafana-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: grafana
-    namespace: observability
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: grafana-restored
   persistentVolumeReclaimPolicy: Retain
   storageClassName: longhorn

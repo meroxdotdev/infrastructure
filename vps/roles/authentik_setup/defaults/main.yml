@@ -10,3 +10,4 @@ authentik_redis_ip: "172.25.10.71"
 authentik_server_ip: "172.25.10.72"
 authentik_worker_ip: "172.25.10.73"
 traefik_network_name: network-cloud-merox
+authentik_backup_retention_days: 7

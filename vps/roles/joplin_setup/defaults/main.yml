@@ -9,3 +9,4 @@ joplin_db_name: joplin
 joplin_server_ip: "172.25.10.61"
 joplin_db_ip: "172.25.10.60"
 traefik_network_name: network-cloud-merox
+joplin_backup_retention_days: 7

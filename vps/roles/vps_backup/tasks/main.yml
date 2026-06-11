@@ -1,0 +1,60 @@
+---
+# VPS backup plumbing: local staging of service state not covered by
+# Ansible/git, plus the nightly off-site sync to the Synology NAS.
+# Note: /etc/rsyncd.secrets and the SSH key to the NAS are NOT managed here —
+# they are provisioned once, manually (see role README).
+
+- name: Ensure backup root exists
+  file:
+    path: "{{ vps_backup_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags: backup
+
+- name: Deploy rsyncd config (HyperBackup target + read-only backup modules)
+  template:
+    src: rsyncd.conf.j2
+    dest: /etc/rsyncd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart rsync daemon
+  tags: backup
+
+- name: Deploy VPS extras backup script (guacamole/traefik/pihole/openclaw)
+  template:
+    src: backup-vps-extras.sh.j2
+    dest: /usr/local/bin/backup-vps-extras.sh
+    owner: root
+    group: root
+    mode: "0700"
+  tags: backup
+
+- name: Deploy NAS sync script
+  template:
+    src: backup-push-nas.sh.j2
+    dest: /usr/local/bin/backup-push-nas.sh
+    owner: root
+    group: root
+    mode: "0700"
+  tags: backup
+
+- name: Schedule daily VPS extras backup
+  cron:
+    name: "vps-extras-backup"
+    minute: "30"
+    hour: "1"
+    job: "/usr/local/bin/backup-vps-extras.sh >> /var/log/vps-extras-backup.log 2>&1"
+    user: root
+  tags: backup
+
+- name: Schedule nightly backup sync to NAS (after Longhorn 02:00 cycle)
+  cron:
+    name: "backup-sync-nas"
+    minute: "30"
+    hour: "3"
+    job: "/usr/local/bin/backup-push-nas.sh >> /var/log/backup-nas.log 2>&1"
+    user: root
+  tags: backup

@@ -1,0 +1,13 @@
+#!/bin/bash
+# Daily Authentik PostgreSQL dump. Deployed by ansible (authentik_setup role).
+set -euo pipefail
+
+BACKUP_DIR="/srv/backups/authentik"
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+
+docker exec -e PGPASSWORD='{{ authentik_db_password }}' authentik-postgresql \
+  pg_dump -U {{ authentik_db_user }} {{ authentik_db_name }} \
+  | gzip > "$BACKUP_DIR/authentik_$(date +%F_%H%M).sql.gz"
+
+find "$BACKUP_DIR" -name 'authentik_*.sql.gz' -mtime +{{ authentik_backup_retention_days }} -delete

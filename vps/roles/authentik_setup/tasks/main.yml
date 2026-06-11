@@ -24,3 +24,22 @@
     host: "{{ authentik_server_ip }}"
     delay: 15
     timeout: 120
+
+- name: Deploy Authentik DB backup script
+  template:
+    src: backup-authentik.sh.j2
+    dest: /usr/local/bin/backup-authentik.sh
+    owner: root
+    group: root
+    mode: "0700"
+  no_log: true
+  tags: backup
+
+- name: Schedule daily Authentik DB backup
+  cron:
+    name: "authentik-db-backup"
+    minute: "15"
+    hour: "1"
+    job: "/usr/local/bin/backup-authentik.sh >> /var/log/authentik-backup.log 2>&1"
+    user: root
+  tags: backup

@@ -52,11 +52,17 @@ Authentik runs DB migrations automatically on startup.
 
 ## Backup
 
+A daily cron job (`/usr/local/bin/backup-authentik.sh`, runs at 01:15) dumps PostgreSQL to
+`/srv/backups/authentik/` with 7-day retention. Deployed automatically by this role
+(re-run `make db-backups-setup` to (re)install it).
+
+For an on-demand dump:
+
 ```bash
 make authentik-backup
 ```
 
-Dumps PostgreSQL to `/srv/backups/authentik/` (7-day retention). Optionally uploads to MinIO if vault has `minio_endpoint`, `minio_access_key`, `minio_secret_key`, `minio_bucket`.
+This runs the standalone playbook, which dumps PostgreSQL to `/srv/backups/authentik/` (7-day retention) and optionally uploads to MinIO if vault has `minio_endpoint`, `minio_access_key`, `minio_secret_key`, `minio_bucket`.
 
 ## Restore
 

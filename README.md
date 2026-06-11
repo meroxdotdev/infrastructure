@@ -118,28 +118,38 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 
 ## Backup & off-site strategy
 
+Everything declarative (K8s manifests, Ansible, Terraform, SOPS/vault secrets)
+lives in this repo and is **not** backed up separately. Backups only cover
+state that can't be rebuilt from git. Reciprocal off-site: homelab → VPS for
+cluster data, VPS → NAS for VPS data.
+
 ```
-Homelab (on-premise)                    Oracle Cloud VPS (off-site)
-─────────────────────                   ───────────────────────────
-K8s Longhorn volumes  ──── S3 backup ──→  Garage S3 (/srv/docker/oracle-cloud/garage/)
-Synology NAS          ──── NFS mount  ──→  (used by K8s apps directly)
-Authentik PostgreSQL  ──── pg_dump    ──→  /srv/backups/authentik/ (7-day retention)
-Joplin PostgreSQL     ──── pg_dump    ──→  /srv/backups/  (make restore restores it)
+Nightly cycle (all times VPS-local):
+evening   NAS HyperBackup ──────────────────────→ VPS /backup/synology (~25GB, NAS's off-site)
+01:15/20  Authentik + Joplin pg_dump ───────────→ /srv/backups/{authentik,joplin}/ (7-day retention)
+01:30     backup-vps-extras.sh ─────────────────→ /srv/backups/ (guacamole, traefik certs,
+                                                   pihole config, openclaw runtime — no secrets)
+02:00     Longhorn (media/ARR configs only) ────→ Garage S3 on VPS (retain 3)
+03:30     backup-push-nas.sh: NAS pulls ────────→ NAS /volume1/Server/oracle-vps-backups/
+                                                   (/srv/backups + Garage data/meta-snapshots)
 ```
 
-**What the VPS protects against:** homelab hardware failure, power outage, disk loss.
-All K8s persistent volume data (Jellyfin, *arr, n8n, Prometheus, Grafana) lives in
-Longhorn and backs up to Garage S3 on the VPS — this IS the off-site copy.
+**Longhorn backs up only volumes opted in via PVC labels**
+(`recurring-job-group.longhorn.io/media: enabled` — jellyfin, radarr, sonarr,
+prowlarr, jellyseerr, qbittorrent configs). Deliberately NOT backed up:
+Prometheus/Loki/Grafana/Netdata history, alertmanager, all `*-cache` volumes,
+Uptime-Kuma history — all regenerable, were ~35GB of noise.
 
-**What a VPS failure loses:** Garage S3 data = the Longhorn backups.
-Risk window: time between last Longhorn backup and VPS failure.
-Mitigation: `make dr-full` provisions a new VPS in ~15 min; restore Longhorn from
-the last good backup with `task restore:longhorn`.
+**What a VPS failure loses now:** at most one day of backups — Garage and all
+dumps are mirrored nightly to the NAS. Rebuild: `make dr-full` (~15 min), copy
+backups back, `task restore:longhorn`.
 
-**DB backups schedule:**
+**Still manual (keep copies off this VPS):** `age.key`, `vps/.vault_pass`,
+`~/.openclaw/.env`, `/srv/docker/oracle-cloud/.env`.
+
 ```bash
+make backup-sync-now    # run extras backup + NAS sync immediately
 make authentik-backup   # manual — run before any Authentik changes
-# Joplin: pg_dump runs automatically, stored in /srv/backups/
 ```
 
 ---

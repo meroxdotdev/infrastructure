@@ -83,15 +83,14 @@ task longhorn:restore
 **What it does (automatically):**
 1. Patches BackupTarget → S3
 2. Waits for BackupVolumes + Backup CRs to sync from Garage S3 (~60-90s)
-3. Creates restore Volume CRDs for: `jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr`, `loki`, `prometheus`, `grafana`
+3. Creates restore Volume CRDs for: `jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr`
 4. Waits for replica initialization
 5. Applies PV manifests with correct claimRefs
 6. Fixes PVC field ownership (Flux SSA compatibility)
-7. Rebinds `grafana` + `loki` PVCs to restored PVs (clears stale Released PV claimRef)
-8. Creates `alertmanager` PVC (fresh, no backup needed)
-9. Force-reconciles all app HelmReleases
+7. Creates `prometheus` + `alertmanager` PVCs fresh (observability is deliberately not backed up; `grafana`/`loki` PVCs are provisioned dynamically by their charts)
+8. Force-reconciles all app HelmReleases
 
-**Expected duration:** 15-25 min (depends on volume data size and S3 speed).
+**Expected duration:** ~10 min (only media/ARR config volumes download from S3; observability starts empty).
 
 ---
 
@@ -113,7 +112,7 @@ kubectl get helmreleases -A | grep -v "True\|READY"
 
 **Expected in DR — not failures:**
 - `jellyfin` → Pending: DR VMs have no Intel GPU (`gpu.intel.com/i915`). Jellyfin runs but hardware transcoding unavailable. Fix: patch Jellyfin HelmRelease to remove the GPU resource request.
-- Prometheus pod may take 10-20 min to start while its 15 GB volume downloads from S3.
+- Prometheus/Loki/Grafana/Netdata start with empty volumes — metrics/logs history is deliberately not backed up. Grafana dashboards come from git (sidecar provisioning).
 
 ---
 
@@ -146,9 +145,11 @@ task dr:destroy-vms
 
 ## Backup schedule
 
-- **Daily at 02:00** — Longhorn RecurringJob backs up all volumes to Garage S3 on Oracle VPS (via Tailscale)
-- **Retention:** 7 snapshots per volume
-- **Volumes backed up:** `jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr`, `grafana`, `loki`, `prometheus`
+- **Daily at 02:00** — Longhorn RecurringJob (group `media`) backs up opted-in volumes to Garage S3 on Oracle VPS (via Tailscale)
+- **Retention:** 3 backups per volume
+- **Volumes backed up:** `jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr` — opted in via PVC label `recurring-job-group.longhorn.io/media: enabled`
+- **Deliberately NOT backed up:** observability (prometheus/loki/grafana/alertmanager/netdata), all `*-cache` volumes — regenerable, history accepted as lost in DR
+- **Off-site:** the NAS pulls the whole Garage bucket + VPS dumps nightly at 03:30 → `/volume1/Server/oracle-vps-backups/` (see `vps/roles/vps_backup/README.md`)
 
 ```bash
 # Check last backup time for each volume

@@ -1,0 +1,17 @@
+---
+# Local staging for all VPS backups (dumps + tars), pulled nightly by the NAS
+vps_backup_root: /srv/backups
+vps_backup_retention_days: 7
+
+# Synology NAS (reachable over home LAN via Tailscale subnet / SSH key auth)
+vps_backup_nas_user: admin
+vps_backup_nas_host: 10.57.57.201
+vps_backup_nas_ssh_key: /root/.ssh/nas_backup
+vps_backup_nas_base: /volume1/Server/oracle-vps-backups
+# rsyncd password for the pull, lives on the NAS (chmod 600, not in git)
+vps_backup_nas_pass_file: /var/services/homes/admin/.vps-rsync.pass
+
+# This VPS as seen from the NAS (Tailscale IP) — the NAS pulls from rsyncd here
+vps_backup_tailscale_ip: 100.72.22.38
+
+vps_backup_garage_dir: /srv/docker/oracle-cloud/garage

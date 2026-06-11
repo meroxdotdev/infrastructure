@@ -1,0 +1,34 @@
+#!/bin/bash
+# Daily backup of small VPS state not covered by Ansible/git:
+# Guacamole connections, Traefik certs (acme.json), Pi-hole config,
+# OpenClaw agent runtime (memory/workspaces, secrets excluded).
+# Deployed by ansible (vps_backup role).
+set -euo pipefail
+
+BACKUP_ROOT="{{ vps_backup_root }}"
+RETENTION_DAYS={{ vps_backup_retention_days }}
+STAMP=$(date +%F_%H%M)
+
+backup_tar() {
+  local name="$1" src="$2"; shift 2
+  local dir="$BACKUP_ROOT/$name"
+  mkdir -p "$dir" && chmod 700 "$dir"
+  tar -czf "$dir/${name}_${STAMP}.tar.gz" -C "$src" "$@" .
+  find "$dir" -name "${name}_*.tar.gz" -mtime +$RETENTION_DAYS -delete
+}
+
+# Guacamole: connection config + embedded DB (docker volume)
+backup_tar guacamole /var/lib/docker/volumes/guacamole_guacamole_config/_data
+
+# Traefik: acme.json (LE certs) + static/dynamic config
+backup_tar traefik /srv/docker/oracle-cloud/traefik
+
+# Pi-hole: config only — query history and gravity DBs are regenerable
+backup_tar pihole /srv/docker/oracle-cloud/etc-pihole \
+  --exclude='./pihole-FTL.db*' --exclude='./gravity*.db' \
+  --exclude='./listsCache' --exclude='./gravity_backups' --exclude='./config_backups'
+backup_tar pihole-dnsmasq /srv/docker/oracle-cloud/etc-dnsmasq.d
+
+# OpenClaw: agent memory/workspaces/config — secrets (.env) and logs excluded
+backup_tar openclaw /home/openclaw/.openclaw \
+  --exclude='./.env' --exclude='*.env' --exclude='./logs'

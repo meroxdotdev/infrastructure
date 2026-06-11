@@ -26,7 +26,10 @@ tasks:
 
       After this task: all pods should start within ~5 min.
 
-      NOTE: Cache volumes (jellyfin-cache, sonarr-cache, radarr-cache) start empty.
+      NOTE: Only media/ARR config volumes are backed up (PVC group label
+      "media"). Cache volumes and ALL observability volumes (prometheus, loki,
+      grafana, alertmanager, netdata) start empty — history is deliberately
+      not backed up.
       After pods are up, run: task longhorn:post-restore-jellyfin
       to re-trigger Jellyfin metadata+image downloads (~10 min).
     cmds:
@@ -61,15 +64,15 @@ tasks:
         echo "→ Waiting for BackupVolumes to sync from S3..."
         for i in $(seq 1 30); do
           COUNT=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep -c "restored" || true)
-          if [ "$COUNT" -ge 8 ]; then
+          if [ "$COUNT" -ge 6 ]; then
             echo "  ✓ $COUNT backup volumes found"
             break
           fi
-          echo "  ... $COUNT/8+ found, waiting 10s (attempt $i/30)"
+          echo "  ... $COUNT/6+ found, waiting 10s (attempt $i/30)"
           sleep 10
         done
         COUNT=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep -c "restored" || true)
-        if [ "$COUNT" -lt 8 ]; then
+        if [ "$COUNT" -lt 6 ]; then
           echo "  ✗ Only $COUNT backup volumes found after 5 min. Check S3 connectivity."
           echo "    kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
           exit 1
@@ -109,12 +112,8 @@ tasks:
         vars: { NAME: radarr-restored }
       - task: restore-volume
         vars: { NAME: sonarr-restored }
-      - task: restore-volume
-        vars: { NAME: loki-restored }
-      - task: restore-volume
-        vars: { NAME: prometheus-restored }
-      - task: restore-volume
-        vars: { NAME: grafana-restored }
+      # Observability (loki/prometheus/grafana) is no longer backed up —
+      # those PVCs are provisioned fresh (see create-statefulset-pvcs).
       # n8n is disabled by default; uncomment if enabled in default/kustomization.yaml:
       # - task: restore-volume
       #   vars: { NAME: n8n-restored }
@@ -186,7 +185,7 @@ tasks:
     cmds:
       - |
         echo "→ Waiting for restore volume replicas to initialize..."
-        VOLUMES="jellyfin-restored jellyseerr-restored prowlarr-restored qbittorrent-restored radarr-restored sonarr-restored loki-restored prometheus-restored grafana-restored"
+        VOLUMES="jellyfin-restored jellyseerr-restored prowlarr-restored qbittorrent-restored radarr-restored sonarr-restored"
         for i in $(seq 1 12); do
           ALL_READY=true
           for VOL in $VOLUMES; do
@@ -303,111 +302,56 @@ tasks:
     silent: true
 
   create-statefulset-pvcs:
-    desc: Create/rebind PVCs for StatefulSets and Deployments that Flux cannot pre-create (prometheus, alertmanager, grafana, loki)
+    desc: Create fresh StatefulSet PVCs (prometheus, alertmanager) — observability is not restored from backup
     summary: |
-      Helm-managed PVCs (grafana, loki, prometheus) are created dynamically by their
-      HelmReleases after bootstrap. By the time apply-pvs runs, Flux may have already
-      bound them to dynamic PVs, bypassing the restored PVs.
+      Observability volumes (prometheus, loki, grafana, alertmanager) are
+      deliberately not backed up, so on DR they all start empty:
+      - grafana (Deployment) and loki (StatefulSet) PVCs are created
+        dynamically by their HelmReleases — nothing to do here.
+      - prometheus + alertmanager (prometheus-operator StatefulSets) need
+        their PVCs pre-created or pods stay Pending (operator quirk).
 
-      This task forces correct binding by:
-      - Creating the PVC if it does not exist (simple path)
-      - Rebinding to the restored PV if currently bound to a dynamic PV (scale down → delete → recreate)
+      A leftover prometheus-restored-pv from a pre-2026-06 restore would
+      pre-claim the prometheus PVC and block it (its Longhorn volume no longer
+      exists) — delete it first if present and unbound.
 
       Must run BEFORE reconcile-apps so HelmReleases see the correct PVCs on startup.
     cmds:
       - |
-        echo "→ Creating/rebinding StatefulSet and Deployment PVCs..."
+        echo "→ Creating fresh observability StatefulSet PVCs..."
 
-        # Helper: bind a PVC to a specific restored PV, rebinding if necessary
-        bind_pvc() {
-          local PVC=$1 NS=$2 PV=$3 SIZE=$4 SCALEDOWN_TYPE=$5 SCALEDOWN_NAME=$6
+        # Remove dead legacy PV that would pre-claim the prometheus PVC
+        PV_STATUS=$(kubectl get pv prometheus-restored-pv -o jsonpath='{.status.phase}' 2>/dev/null || true)
+        if [ -n "$PV_STATUS" ] && [ "$PV_STATUS" != "Bound" ] && \
+           ! kubectl get volumes.longhorn.io prometheus-restored -n {{.LONGHORN_NS}} &>/dev/null; then
+          echo "  ! Removing dead prometheus-restored-pv (no backing Longhorn volume)..."
+          kubectl delete pv prometheus-restored-pv --ignore-not-found
+        fi
 
-          CURRENT_VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null || true)
-
-          if [ "$CURRENT_VOL" = "$PV" ]; then
-            echo "  ✓ $PVC already bound to $PV"
+        create_fresh_pvc() {
+          local PVC=$1 SIZE=$2
+          if kubectl get pvc "$PVC" -n observability &>/dev/null; then
+            echo "  ✓ $PVC already exists"
             return
           fi
-
-          if [ -n "$CURRENT_VOL" ]; then
-            echo "  ! $PVC bound to dynamic PV ($CURRENT_VOL) — rebinding to $PV..."
-            if [ -n "$SCALEDOWN_TYPE" ] && [ -n "$SCALEDOWN_NAME" ]; then
-              kubectl scale "$SCALEDOWN_TYPE" "$SCALEDOWN_NAME" -n "$NS" --replicas=0 2>/dev/null || true
-              sleep 5
-            fi
-            kubectl delete pvc "$PVC" -n "$NS" --ignore-not-found 2>/dev/null || true
-            sleep 2
-          fi
-
-          # Clear stale claimRef on Released PV so Kubernetes can rebind it to the new PVC
-          PV_STATUS=$(kubectl get pv "$PV" -o jsonpath='{.status.phase}' 2>/dev/null || true)
-          if [ "$PV_STATUS" = "Released" ]; then
-            echo "  → Clearing stale claimRef on Released PV $PV..."
-            kubectl patch pv "$PV" --type=json \
-              -p='[{"op":"remove","path":"/spec/claimRef"}]' 2>/dev/null || true
-          fi
-
           kubectl apply -f - <<PVEOF
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
           name: $PVC
-          namespace: $NS
-        spec:
-          accessModes: [ReadWriteOnce]
-          storageClassName: longhorn
-          volumeName: $PV
-          resources:
-            requests:
-              storage: $SIZE
-        PVEOF
-          echo "  ✓ $PVC → $PV"
-        }
-
-        # Prometheus (StatefulSet — controller does not recreate deleted PVCs)
-        bind_pvc \
-          "prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0" \
-          "observability" \
-          "prometheus-restored-pv" \
-          "15Gi" \
-          "" ""
-
-        # Grafana (Deployment — Flux creates PVC dynamically at HelmRelease install)
-        bind_pvc \
-          "grafana" \
-          "observability" \
-          "grafana-restored-pv" \
-          "10Gi" \
-          "deployment" "grafana"
-
-        # Loki (StatefulSet singleBinary — same timing issue as grafana)
-        bind_pvc \
-          "storage-loki-0" \
-          "observability" \
-          "loki-restored-pv" \
-          "20Gi" \
-          "statefulset" "loki"
-
-        # Alertmanager (fresh empty volume — no backup needed)
-        if ! kubectl get pvc alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0 \
-            -n observability &>/dev/null; then
-          kubectl apply -f - <<EOF
-        apiVersion: v1
-        kind: PersistentVolumeClaim
-        metadata:
-          name: alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0
           namespace: observability
         spec:
           accessModes: [ReadWriteOnce]
           storageClassName: longhorn
           resources:
             requests:
-              storage: 1Gi
-        EOF
-          echo "  ✓ alertmanager PVC created (fresh, no backup)"
-        else
-          echo "  ✓ alertmanager PVC already exists"
-        fi
+              storage: $SIZE
+        PVEOF
+          echo "  ✓ $PVC created (fresh, no backup)"
+        }
+
+        create_fresh_pvc "prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0" "15Gi"
+        create_fresh_pvc "alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0" "1Gi"
     silent: true
 
   reconcile-apps:

@@ -4,6 +4,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: prowlarr
   namespace: default
+  labels:
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/media: enabled
 spec:
   accessModes:
     - ReadWriteOnce

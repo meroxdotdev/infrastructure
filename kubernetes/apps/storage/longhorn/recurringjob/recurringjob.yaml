@@ -7,7 +7,10 @@ metadata:
 spec:
   cron: "00 02 * * *"
   task: backup
+  # Only volumes opted in via PVC labels are backed up (media/ARR configs).
+  # Opt-in: label the PVC with recurring-job.longhorn.io/source: enabled
+  # and recurring-job-group.longhorn.io/media: enabled
   groups:
-    - default
+    - media
   retain: 3
   concurrency: 1

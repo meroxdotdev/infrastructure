@@ -1,0 +1,41 @@
+uid = synology-backup
+gid = synology-backup
+use chroot = no
+max connections = 10
+pid file = /var/run/rsyncd.pid
+log file = /var/log/rsyncd.log
+timeout = 300
+
+[synology_backup]
+path = /backup/synology
+comment = Synology HyperBackup Storage
+read only = no
+list = yes
+auth users = synology-backup
+secrets file = /etc/rsyncd.secrets
+hosts allow = 100.0.0.0/8
+
+# Read-only modules for the nightly NAS pull (backup-push-nas.sh triggers it
+# over SSH; DSM's patched rsync blocks server-mode over SSH, so the NAS pulls
+# from this daemon instead).
+[vps_backups]
+path = {{ vps_backup_root }}
+comment = VPS service backups (read-only)
+read only = yes
+uid = root
+gid = root
+list = yes
+auth users = synology-backup
+secrets file = /etc/rsyncd.secrets
+hosts allow = 100.0.0.0/8
+
+[garage_backup]
+path = {{ vps_backup_garage_dir }}
+comment = Garage S3 data + metadata snapshots (read-only)
+read only = yes
+uid = root
+gid = root
+list = yes
+auth users = synology-backup
+secrets file = /etc/rsyncd.secrets
+hosts allow = 100.0.0.0/8
