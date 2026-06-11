@@ -7,7 +7,7 @@ Backup plumbing for the Oracle VPS. Two pieces, both cron-driven:
 
 | Script | Cron | What it does |
 |---|---|---|
-| `backup-vps-extras.sh` | 01:30 | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), OpenClaw agent runtime (`.env` and logs excluded). 7-day retention. |
+| `backup-vps-extras.sh` | 01:30 | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), OpenClaw agent runtime (`.env` and logs excluded), agent dashboard state + secrets (`data/*.json`, `.env`). 7-day retention. |
 | `backup-push-nas.sh` | 03:30 | Off-site sync to the Synology NAS: takes a consistent Garage metadata snapshot, then SSHes into the NAS which **pulls** `/srv/backups/` + Garage data/meta-snapshots from the read-only rsyncd modules on this VPS. |
 
 Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via their own
@@ -55,7 +55,15 @@ all `*-cache` volumes, Uptime-Kuma history — regenerable, were ~35GB of noise.
 
 ## Restore
 
-- Dumps/tars: copy back from `NAS:/volume1/Server/oracle-vps-backups/srv-backups/`.
+- Dumps/tars: copy back from `NAS:/volume1/Server/oracle-vps-backups/srv-backups/`
+  into `/srv/backups/` on the new VPS.
+- Authentik/Joplin: `cd vps && make restore` (interactive, drops + re-imports from dump).
+- Guacamole/Traefik/Pi-hole: untar `srv-backups/<service>/` over the deployed
+  dirs/volumes, then restart the container.
+- OpenClaw + dashboard: `agent/README.md`'s DR steps untar
+  `srv-backups/openclaw/` and `srv-backups/dashboard/` automatically if found
+  in `/srv/backups/` — restores agent memory, `openclaw.json`, dashboard
+  `data/*.json` and `.env` in one shot.
 - Garage: copy `garage/data` to the new VPS, restore newest dir from
   `garage/meta-snapshots/` as `meta/db.lmdb` per Garage docs
   (https://garagehq.deuxfleurs.fr/documentation/operations/recovering/), then

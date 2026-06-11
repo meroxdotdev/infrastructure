@@ -172,12 +172,26 @@ for ws in workspace workspace-blog workspace-design workspace-infra \
   sudo -u openclaw mkdir -p $WDIR/$ws/memory
 done
 
+# 7b. Restore agent memory + openclaw.json from NAS backup, if present
+# (assumes /srv/backups/ was already populated from the NAS in Phase 1 — see DEPLOY.md).
+# Overlays each workspace's accumulated memory/ and the configured openclaw.json
+# over the fresh templates above — DR comes back 1:1 instead of starting blank.
+LATEST_OPENCLAW=$(ls -t /srv/backups/openclaw/openclaw_*.tar.gz 2>/dev/null | head -1)
+if [ -n "$LATEST_OPENCLAW" ]; then
+  sudo tar -xzf "$LATEST_OPENCLAW" -C /home/openclaw/.openclaw
+  sudo chown -R openclaw:openclaw /home/openclaw/.openclaw
+fi
+
 # 8. Configure openclaw.json (fill in secrets)
-sudo cp agent/openclaw.json.example /home/openclaw/.openclaw/openclaw.json
-sudo chown openclaw:openclaw /home/openclaw/.openclaw/openclaw.json
-sudo chmod 600 /home/openclaw/.openclaw/openclaw.json
-# Edit: fill in botToken and allowFrom (Telegram user ID)
-sudo -u openclaw nano /home/openclaw/.openclaw/openclaw.json
+# Skip this step entirely if step 7b restored a backup — openclaw.json already has
+# botToken/allowFrom from before.
+if [ -z "$LATEST_OPENCLAW" ]; then
+  sudo cp agent/openclaw.json.example /home/openclaw/.openclaw/openclaw.json
+  sudo chown openclaw:openclaw /home/openclaw/.openclaw/openclaw.json
+  sudo chmod 600 /home/openclaw/.openclaw/openclaw.json
+  # Edit: fill in botToken and allowFrom (Telegram user ID)
+  sudo -u openclaw nano /home/openclaw/.openclaw/openclaw.json
+fi
 
 # 9. Authenticate Claude Code + wire up OpenClaw runtime
 sudo -u openclaw claude login   # opens browser link for OAuth
@@ -200,25 +214,34 @@ XDG_RUNTIME_DIR=/run/user/$(id -u openclaw) sudo -u openclaw systemctl --user en
 # 11. Install openclaw user crontab
 sudo -u openclaw crontab agent/scripts/openclaw-crontab
 
-# 12. Install dashboard scripts + secrets
+# 12. Install dashboard scripts + restore state/secrets
 sudo mkdir -p /srv/dashboard/data
 sudo cp agent/dashboard/scripts/*.sh /srv/dashboard/
 sudo chmod 755 /srv/dashboard/*.sh
 sudo chmod 750 /srv/dashboard/tg-notify.sh   # restricted: openclaw-only
 sudo chown openclaw:openclaw /srv/dashboard /srv/dashboard/data /srv/dashboard/*.sh
 
-# Create /srv/dashboard/.env from template — fill in real values
-sudo cp agent/dashboard/.env.example /srv/dashboard/.env
-sudo chmod 600 /srv/dashboard/.env
-sudo chown openclaw:openclaw /srv/dashboard/.env
-# Edit: fill in TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GARAGE_TOKEN, GARAGE_BUCKET_ID, APPLE_ID, APPLE_APP_PASSWORD
-sudo -u openclaw nano /srv/dashboard/.env
+# Restore .env + data/*.json (shared memory, proposals, history) from NAS backup,
+# if present (assumes /srv/backups/ was already populated from the NAS in Phase 1).
+LATEST_DASHBOARD=$(ls -t /srv/backups/dashboard/dashboard_*.tar.gz 2>/dev/null | head -1)
+if [ -n "$LATEST_DASHBOARD" ]; then
+  sudo tar -xzf "$LATEST_DASHBOARD" -C /srv/dashboard
+  sudo chown -R openclaw:openclaw /srv/dashboard
+  sudo chmod 600 /srv/dashboard/.env
+else
+  # No backup — create .env from template and fill in manually
+  sudo cp agent/dashboard/.env.example /srv/dashboard/.env
+  sudo chmod 600 /srv/dashboard/.env
+  sudo chown openclaw:openclaw /srv/dashboard/.env
+  # Edit: fill in TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GARAGE_TOKEN, GARAGE_BUCKET_ID, APPLE_ID, APPLE_APP_PASSWORD
+  sudo -u openclaw nano /srv/dashboard/.env
+  echo '{"pending":[],"history":[]}' | sudo -u openclaw tee /srv/dashboard/data/proposals.json
+fi
 
 # Install Python dep for iCloud calendar
 sudo bash /srv/dashboard/setup-deps.sh
 
-# 13. Initialize data files + start dashboard
-echo '{"pending":[],"history":[]}' | sudo -u openclaw tee /srv/dashboard/data/proposals.json
+# 13. Start dashboard
 cd /srv/docker/agents-dashboard && docker compose up -d && cd -
 /usr/local/bin/openclaw-fix-perms
 ```

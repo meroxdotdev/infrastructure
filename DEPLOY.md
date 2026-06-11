@@ -88,6 +88,20 @@ Verify Phase 1 is healthy:
 make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 1)
 ```
 
+**Tailscale IP continuity (for a true 1:1 swap):** the goal is that the new VPS ends up
+with the *same* tailnet IP as the old one (`100.72.22.38`), so nothing else needs to
+change. `dr-verify-phase1` checks this automatically and tells you what to do:
+
+- In the Tailscale admin console, remove the old VPS node (it's gone — Oracle reclaimed it).
+- On the new VPS: `tailscale down && tailscale up --reset --authkey=<key> --advertise-exit-node --accept-routes --accept-dns`
+  (re-running the `tailscale_exit_node` role does this). In a small tailnet, the freed
+  `100.72.22.38` is normally handed back out as the lowest free address.
+- Verify: `tailscale ip -4` should print `100.72.22.38`.
+- If it doesn't, update the new IP in: `README.md`, `cloudlab-merox/README.md`, and
+  `kubernetes/apps/default/homepage/app/resources/services.yaml` (Storage Cloud link).
+  The NAS off-site sync (`vps_backup` role) auto-detects its own Tailscale IP, so it
+  needs no manual fix either way.
+
 **IMPORTANT — before Phase 2:** extract Garage S3 credentials and save to vault:
 ```bash
 make garage-extract-creds   # run on the VPS — extracts keys + updates vault automatically
@@ -306,11 +320,17 @@ The agent README is the single source of truth for this phase. It covers:
 - `openclaw` user creation + sudoers
 - `sudoers-fix-perms` + `openclaw-fix-perms` scripts
 - infra access (kubeconfig, talosconfig)
-- Claude Code OAuth + OpenClaw onboard
-- Telegram config (`openclaw.json`)
 - All 9 workspace installs (news, blog, design, infra, costs, dashboard, orchestrator, renovate, repo)
-- Dashboard scripts (`agent/dashboard/scripts/`) + `/srv/dashboard/.env` secrets
+- Restore agent memory + `openclaw.json` from NAS backup if present (1:1 — same
+  history/config as before, no manual Telegram config needed)
+- Claude Code OAuth + OpenClaw onboard
+- Telegram config (`openclaw.json`) — only if no backup was restored above
+- Dashboard scripts (`agent/dashboard/scripts/`) + restore `/srv/dashboard/.env`
+  + `data/*.json` from NAS backup if present
 - crontab (openclaw user) + systemd user service
+
+> Assumes `/srv/backups/` was already populated from the NAS in Phase 1
+> (see Phase 1's restore step above).
 
 **Verify when done:**
 ```bash
@@ -331,6 +351,9 @@ sudo -u openclaw openclaw status
 [ ] vault_tailscale_auth_key valid and pushed before dr-full
 [ ] make dr-preflight — all checks PASS (no FAIL)
 [ ] Phase 1 complete — make dr-full finished, all containers up (make dr-verify-phase1)
+[ ] Tailscale IP is 100.72.22.38 again (dr-verify-phase1 checks this) — old node removed
+    from admin console; if a different IP stuck, update README.md, cloudlab-merox/README.md,
+    kubernetes/apps/default/homepage/app/resources/services.yaml
 [ ] make garage-extract-creds — Garage S3 credentials saved to vault (REQUIRED before Phase 2)
 [ ] Joplin + Authentik data restored — make restore
 [ ] Tailscale connected (verify: ssh root@<IP> tailscale status)
@@ -356,11 +379,13 @@ sudo -u openclaw openclaw status
 [ ] openclaw user created, in docker group, linger enabled
 [ ] sudoers-openclaw installed at /etc/sudoers.d/openclaw
 [ ] kubeconfig + talosconfig copied to /home/openclaw/.kube/ and /home/openclaw/.talos/
-[ ] /home/openclaw/.openclaw/openclaw.json configured (Telegram token + user ID filled in)
-[ ] claude login done as openclaw user (Claude Pro OAuth)
 [ ] All 9 workspaces installed (news, blog, design, infra, costs, dashboard, orchestrator, renovate, repo)
+[ ] OpenClaw memory + openclaw.json restored from NAS backup (srv-backups/openclaw/),
+    or — if no backup — openclaw.json configured manually (Telegram token + user ID)
+[ ] claude login done as openclaw user (Claude Pro OAuth)
 [ ] Dashboard scripts copied: cp agent/dashboard/scripts/*.sh /srv/dashboard/
-[ ] /srv/dashboard/.env created from agent/dashboard/.env.example (Telegram + Garage + Apple creds)
+[ ] /srv/dashboard/.env + data/*.json restored from NAS backup (srv-backups/dashboard/),
+    or — if no backup — .env created manually from agent/dashboard/.env.example
 [ ] setup-deps.sh run (pip install caldav for iCloud calendar)
 [ ] openclaw user crontab installed (sudo -u openclaw crontab agent/scripts/openclaw-crontab)
 [ ] agents-dashboard nginx container running (docker ps | grep agents-dashboard)
@@ -386,6 +411,7 @@ sudo -u openclaw openclaw status
 | Agent secrets (`~/.openclaw/.env`) | Only on server | ⚠️ Back up manually |
 | Longhorn volumes (media/ARR configs, group `media`) | Nightly to Garage S3 on the VPS | ✅ mirrored to NAS |
 | VPS service state (Authentik + Joplin DB dumps, Guacamole, Traefik certs, Pi-hole config, OpenClaw runtime) | Nightly to `/srv/backups/`, NAS pulls it off-site — schedule & details: [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) | ✅ off-site on NAS |
+| Agent dashboard state + secrets (`/srv/dashboard/`: `data/*.json`, `.env`) | Nightly to `/srv/backups/`, NAS pulls it off-site — restored by `agent/README.md` DR steps | ✅ off-site on NAS |
 | Observability history (Prometheus/Loki/Grafana), `*-cache` volumes, Uptime-Kuma | — | ❌ deliberately not backed up (regenerable) |
 
 **The two things to back up manually before decommissioning:**
