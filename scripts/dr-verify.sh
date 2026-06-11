@@ -153,19 +153,11 @@ verify_phase1() {
     fi
 
     if tailscale status &>/dev/null 2>&1; then
-        ok "Tailscale connected"
-
         TS_IP=$(tailscale ip -4 2>/dev/null || true)
-        EXPECTED_TS_IP="100.72.22.38"
-        if [ "$TS_IP" = "$EXPECTED_TS_IP" ]; then
-            ok "Tailscale IP unchanged ($TS_IP) — README/Homepage links still valid"
-        else
-            warn "Tailscale IP is $TS_IP (was $EXPECTED_TS_IP)"
-            warn "  Either fix it in the Tailscale admin console (remove the old VPS node, then"
-            warn "  'tailscale down && tailscale up ...' here so $EXPECTED_TS_IP is reassigned),"
-            warn "  or update the new IP in: README.md, cloudlab-merox/README.md,"
-            warn "  kubernetes/apps/default/homepage/app/resources/services.yaml (Storage Cloud link)"
-            warn "  Note: vps_backup's NAS sync auto-detects this IP, no action needed there."
+        ok "Tailscale connected ($TS_IP)"
+        if [ "$TS_IP" != "100.72.22.38" ]; then
+            warn "  IP changed from 100.72.22.38 — update the Storage Cloud link in"
+            warn "  kubernetes/apps/default/homepage/app/resources/services.yaml"
         fi
     else
         fail "Tailscale not connected (tailscale status)"

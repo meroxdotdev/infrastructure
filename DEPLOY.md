@@ -88,19 +88,11 @@ Verify Phase 1 is healthy:
 make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 1)
 ```
 
-**Tailscale IP continuity (for a true 1:1 swap):** the goal is that the new VPS ends up
-with the *same* tailnet IP as the old one (`100.72.22.38`), so nothing else needs to
-change. `dr-verify-phase1` checks this automatically and tells you what to do:
-
-- In the Tailscale admin console, remove the old VPS node (it's gone — Oracle reclaimed it).
-- On the new VPS: `tailscale down && tailscale up --reset --authkey=<key> --advertise-exit-node --accept-routes --accept-dns`
-  (re-running the `tailscale_exit_node` role does this). In a small tailnet, the freed
-  `100.72.22.38` is normally handed back out as the lowest free address.
-- Verify: `tailscale ip -4` should print `100.72.22.38`.
-- If it doesn't, update the new IP in: `README.md`, `cloudlab-merox/README.md`, and
-  `kubernetes/apps/default/homepage/app/resources/services.yaml` (Storage Cloud link).
-  The NAS off-site sync (`vps_backup` role) auto-detects its own Tailscale IP, so it
-  needs no manual fix either way.
+**Tailscale IP:** the new VPS will likely get a different `100.x.x.x` tailnet IP.
+`dr-verify-phase1` prints it and warns if it changed from `100.72.22.38` — if so,
+update the Storage Cloud link in
+`kubernetes/apps/default/homepage/app/resources/services.yaml` (the only place
+that actually depends on it; the NAS off-site sync auto-detects its own IP).
 
 **IMPORTANT — before Phase 2:** extract Garage S3 credentials and save to vault:
 ```bash
@@ -351,9 +343,8 @@ sudo -u openclaw openclaw status
 [ ] vault_tailscale_auth_key valid and pushed before dr-full
 [ ] make dr-preflight — all checks PASS (no FAIL)
 [ ] Phase 1 complete — make dr-full finished, all containers up (make dr-verify-phase1)
-[ ] Tailscale IP is 100.72.22.38 again (dr-verify-phase1 checks this) — old node removed
-    from admin console; if a different IP stuck, update README.md, cloudlab-merox/README.md,
-    kubernetes/apps/default/homepage/app/resources/services.yaml
+[ ] Tailscale IP noted (dr-verify-phase1 prints it) — if different from 100.72.22.38,
+    update kubernetes/apps/default/homepage/app/resources/services.yaml (Storage Cloud link)
 [ ] make garage-extract-creds — Garage S3 credentials saved to vault (REQUIRED before Phase 2)
 [ ] Joplin + Authentik data restored — make restore
 [ ] Tailscale connected (verify: ssh root@<IP> tailscale status)
