@@ -32,6 +32,15 @@
     mode: "0700"
   tags: backup
 
+- name: Deploy DB restore script (authentik/joplin, interactive)
+  template:
+    src: restore-db.sh.j2
+    dest: /usr/local/bin/restore-db.sh
+    owner: root
+    group: root
+    mode: "0700"
+  tags: backup
+
 - name: Deploy NAS sync script
   template:
     src: backup-push-nas.sh.j2

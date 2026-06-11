@@ -48,6 +48,7 @@ help:
 	@echo "Backups:"
 	@echo "  db-backups-setup   Deploy backup scripts + crons (DB dumps, extras, NAS sync)"
 	@echo "  backup-sync-now    Run extras backup + NAS sync immediately"
+	@echo "  restore            Restore Authentik + Joplin DBs from latest dump (interactive)"
 	@echo ""
 	@echo "Vault:"
 	@echo "  vault-edit         Edit encrypted secrets"
@@ -182,6 +183,15 @@ db-backups-setup:
 
 backup-sync-now:
 	/usr/local/bin/backup-vps-extras.sh && /usr/local/bin/backup-push-nas.sh
+
+restore:
+	/usr/local/bin/restore-db.sh all
+
+restore-authentik:
+	/usr/local/bin/restore-db.sh authentik
+
+restore-joplin:
+	/usr/local/bin/restore-db.sh joplin
 
 # --- Maintenance ---
 cleanup:

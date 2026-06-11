@@ -68,11 +68,20 @@ make dr-full
 Reads vault password from `.vault_pass` automatically — no prompt.
 Tailscale and Let's Encrypt certs connect automatically.
 
-After deploy completes:
-- **Joplin:** syncs automatically from clients once the server is up (no manual restore needed)
-- **Authentik:** must be re-configured manually (providers, flows, apps) — there is no automated restore
-  - Shortcut: export before decommissioning: `docker exec authentik-worker python manage.py export_blueprints > authentik-backup.yaml`
-  - Import after: `docker exec -i authentik-worker python manage.py import_blueprints < authentik-backup.yaml`
+After deploy completes, restore service data from the NAS
+(`admin@10.57.57.201:/volume1/Server/oracle-vps-backups/srv-backups/` — nightly
+dumps, see `vps/roles/vps_backup/README.md`):
+
+```bash
+# copy the dumps from the NAS into /srv/backups/, then:
+cd vps && make restore        # interactive: Authentik + Joplin DBs from latest dump
+```
+
+`make restore` drops and re-imports each DB (asks per service). Authentik comes
+back with full state — providers, flows, apps, users; Joplin clients re-sync
+afterwards. For **Guacamole / Traefik certs / Pi-hole / OpenClaw**: untar from
+`srv-backups/<service>/` over the deployed dirs/volumes, then restart the
+container.
 
 Verify Phase 1 is healthy:
 ```bash

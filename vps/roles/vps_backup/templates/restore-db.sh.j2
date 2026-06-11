@@ -1,0 +1,38 @@
+#!/bin/bash
+# Restore Authentik / Joplin PostgreSQL from a /srv/backups dump.
+# Usage: restore-db.sh {authentik|joplin|all} [dump.sql.gz]
+# Default dump: the newest one in /srv/backups/<service>/.
+# DB password is read at runtime from the container's POSTGRES_PASSWORD.
+# Deployed by ansible (vps_backup role).
+set -euo pipefail
+
+restore_one() {
+  local svc=$1 dump=${2:-} ctr db user apps
+  case $svc in
+    authentik) ctr=authentik-postgresql db=authentik user=authentik apps="authentik-server authentik-worker" ;;
+    joplin)    ctr=joplin-db db=joplin user=joplin apps="joplin-server" ;;
+  esac
+
+  [ -n "$dump" ] || dump=$(ls -1t /srv/backups/$svc/${svc}_*.sql.gz 2>/dev/null | head -1)
+  [ -f "${dump:-}" ] || { echo "✗ no dump found for $svc in /srv/backups/$svc/"; return 1; }
+
+  echo "→ $svc: restore from $dump"
+  read -r -p "  This DROPS the current '$db' database. Continue? [y/N] " a
+  [ "${a,,}" = y ] || { echo "  skipped"; return 0; }
+
+  local pass
+  pass=$(docker exec "$ctr" printenv POSTGRES_PASSWORD)
+
+  docker stop $apps >/dev/null
+  docker exec -e PGPASSWORD="$pass" "$ctr" dropdb -U "$user" --if-exists --force "$db"
+  docker exec -e PGPASSWORD="$pass" "$ctr" createdb -U "$user" "$db"
+  zcat "$dump" | docker exec -i -e PGPASSWORD="$pass" "$ctr" psql -q -U "$user" -d "$db"
+  docker start $apps >/dev/null
+  echo "  ✓ $svc restored ($apps restarted)"
+}
+
+case ${1:-} in
+  authentik|joplin) restore_one "$1" "${2:-}" ;;
+  all) restore_one authentik; restore_one joplin ;;
+  *) echo "Usage: $0 {authentik|joplin|all} [dump.sql.gz]"; exit 1 ;;
+esac
