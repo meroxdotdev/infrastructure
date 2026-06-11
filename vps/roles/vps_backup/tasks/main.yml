@@ -4,6 +4,18 @@
 # Note: /etc/rsyncd.secrets and the SSH key to the NAS are NOT managed here —
 # they are provisioned once, manually (see role README).
 
+- name: Detect Tailscale IP address
+  shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
+  register: tailscale_ip_result
+  changed_when: false
+  failed_when: tailscale_ip_result.stdout == ""
+  tags: backup
+
+- name: Set Tailscale IP as fact
+  set_fact:
+    tailscale_ip: "{{ tailscale_ip_result.stdout }}"
+  tags: backup
+
 - name: Ensure backup root exists
   file:
     path: "{{ vps_backup_root }}"
