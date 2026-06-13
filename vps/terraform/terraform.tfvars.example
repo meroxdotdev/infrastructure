@@ -2,8 +2,8 @@
 # terraform.tfvars is gitignored — never commit it
 
 hcloud_token        = "your-hetzner-api-token-here"
-ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+ssh_public_key_path = "~/.ssh/cloudlab_dr_test.pub"
 server_name         = "cloudlab-vps"
-server_type         = "cax21"    # 4vCPU ARM, 8GB RAM, €5.39/mo
+server_type         = "cx33"     # 4vCPU x86, 8GB RAM — proven to work for DR (cax21/ARM untested)
 server_location     = "nbg1"     # Nuremberg — change to hel1 for Helsinki
 allowed_ips         = ["YOUR_HOME_IP/32"]   # Replace with your actual home IP
