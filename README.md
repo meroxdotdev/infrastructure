@@ -284,6 +284,21 @@ task talos:upgrade-node IP=10.57.57.80      # upgrade Talos on a node
 task talos:upgrade-k8s                      # upgrade Kubernetes version
 ```
 
+### Headlamp (K8s dashboard)
+
+UI at `https://headlamp.k8s.merox.dev` (internal gateway only). Login uses a bearer
+token for the `headlamp` ServiceAccount (bound to `cluster-admin` via the
+`headlamp-admin` ClusterRoleBinding). Generate a new one when the old token expires
+or gets invalidated:
+
+```bash
+kubectl create token headlamp -n default --duration=8760h
+```
+
+Run this directly in your terminal (not copy-pasted through a chat/markdown UI —
+hidden characters in the clipboard can corrupt the cookie and cause
+"Error authenticating").
+
 ### VPS
 
 ```bash
