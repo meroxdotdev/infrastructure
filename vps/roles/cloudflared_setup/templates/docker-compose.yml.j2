@@ -1,0 +1,9 @@
+services:
+  cloudflared:
+    image: {{ cloudflared_image }}
+    container_name: cloudflared
+    restart: unless-stopped
+    network_mode: host
+    command: tunnel --no-autoupdate run
+    env_file:
+      - .env

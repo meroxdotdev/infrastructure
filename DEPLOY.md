@@ -99,6 +99,88 @@ that actually depends on it; the NAS off-site sync auto-detects its own IP).
 make garage-extract-creds   # run on the VPS — extracts keys + updates vault automatically
 ```
 
+> **DR-over-SSH note:** `garage-extract-creds` and `dr-verify-phase1` assume they run
+> *on* the VPS (local `docker ps`/`docker exec`). When running from your Mac/Linux
+> machine via `make dr-full` (SSH mode), they currently fail/false-negative. Workaround
+> used during the 2026-06-13 drill:
+> ```bash
+> # verify (from local machine):
+> scp scripts/dr-verify.sh root@<NEW_IP>:/tmp/ && ssh root@<NEW_IP> "bash /tmp/dr-verify.sh --phase 1"
+>
+> # garage creds (from local machine):
+> ssh root@<NEW_IP> "docker exec garage /garage key info longhorn-key --show-secret"
+> # then manually upsert garage_access_key_id / garage_secret_access_key into vault:
+> cd vps
+> ansible-vault decrypt inventories/production/group_vars/all/vault.yml \
+>   --vault-password-file .vault_pass --output /tmp/vault-plain.yml
+> # edit /tmp/vault-plain.yml, add/update the two garage_* keys, then:
+> ansible-vault encrypt /tmp/vault-plain.yml --vault-password-file .vault_pass \
+>   --encrypt-vault-id default --output inventories/production/group_vars/all/vault.yml
+> shred -u /tmp/vault-plain.yml
+> ```
+> (`--encrypt-vault-id default` is required because `ansible.cfg` already sets
+> `vault_password_file`, which combined with `--vault-password-file` makes
+> `ansible-vault` see two `default` vault-ids.)
+
+**IMPORTANT — Longhorn BackupTarget (K8s side):** the new Garage instance has a
+**new** access key + secret + Tailscale IP. Longhorn's `minio-secret` (used by the
+`BackupTarget` CR) must be updated and resynced, or Longhorn backups/restores will
+silently fail (`BackupTarget available: false`):
+```bash
+export SOPS_AGE_KEY_FILE=./age.key
+sops -d -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
+# edit AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (from garage-extract-creds above)
+# and AWS_ENDPOINTS (http://<new-tailscale-ip>:3900)
+sops -e -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
+
+# apply immediately (Flux will pick it up too, but this is instant):
+sops --decrypt kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml | kubectl apply -f -
+
+# force Longhorn to re-check the backup target now instead of waiting ~5min:
+kubectl -n longhorn-system patch backuptargets.longhorn.io default --type=merge \
+  -p "{\"spec\":{\"syncRequestedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+
+# verify:
+kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.status.available}'
+# expect: true
+```
+
+**Cloudflare Tunnel (cloudflared):** deployed automatically by the `cloudflared_setup`
+role (added 2026-06-13) — runs as a `network_mode: host` container so it can reach
+`localhost:3000` (Homepage), `localhost:3001` (Uptime Kuma), `localhost:443` (Traefik),
+and `172.25.10.72:9000` (Authentik), matching the tunnel's remotely-managed ingress
+rules (`config_src: cloudflare` — ingress is stored on Cloudflare's side, nothing to
+re-configure per-deploy).
+> **Requires `cloudflare_tunnel_token` in vault** (the *connector* token from
+> Cloudflare Zero Trust → Networks → Tunnels → "one" → Configure — looks like
+> `eyJhIjoi...`). This is **different** from `homepage_cloudflare_token` (an API
+> token used only by Homepage's Cloudflared widget). As of 2026-06-13 this var is
+> **not yet in vault** — until it's added, `inside.merox.dev`, `sso.merox.dev`,
+> `rmt.merox.dev`, `status.merox.dev`, and `files.merox.dev` are unreachable from
+> the internet after a fresh deploy (container runs but logs
+> `Provided Tunnel token is not valid`). One-time fix:
+> ```bash
+> cd vps && make vault-edit   # add: cloudflare_tunnel_token: "eyJhIjoi..."
+> ansible-playbook playbooks/site.yml --tags cloudflared
+> ```
+
+> **Known issue — Docker 29.x + fresh install:** on a brand-new Hetzner server, the
+> first `apt install docker-ce` pulls the latest Docker (29.x). The `docker_setup`
+> role's `notify: restart docker` (fired by the daemon.json + package-install tasks)
+> then triggers `systemctl restart docker`, which on this Docker version can come
+> back with **`docker ps -a` showing zero containers** (containerd tasks are torn
+> down and not restored), even though all compose files/volumes under
+> `/srv/docker/oracle-cloud/*/` are intact. This was hit during the 2026-06-13 drill
+> when re-running `ansible-playbook --tags cloudflared,uptime-kuma` after the
+> initial `make dr-full`. Recovery (recreates all containers from existing compose
+> + data, ~30s):
+> ```bash
+> ssh root@<IP> 'for d in /srv/docker/oracle-cloud/*/ /srv/docker/cloudflared/; do (cd "$d" && docker compose up -d); done'
+> ```
+> If running the full `make dr-full` in one shot (not re-running scoped tags
+> afterwards), this has not been observed to cause data loss — only re-triggering
+> `docker_setup`'s handlers on a *second* ansible run on the same fresh box.
+
 ### Option B — Existing server / manual provisioning
 
 > **Note:** The inventory uses `ansible_connection=local` — Ansible must run **on the server itself**, not from a remote machine.
@@ -346,6 +428,11 @@ sudo -u openclaw openclaw status
 [ ] Tailscale IP noted (dr-verify-phase1 prints it) — if different from 100.72.22.38,
     update kubernetes/apps/default/homepage/app/resources/services.yaml (Storage Cloud link)
 [ ] make garage-extract-creds — Garage S3 credentials saved to vault (REQUIRED before Phase 2)
+[ ] kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml updated (new Garage
+    access key + secret + Tailscale IP) and applied; BackupTarget available=true
+[ ] cloudflare_tunnel_token present in vault and cloudflared container connected
+    (docker logs cloudflared — no "Tunnel token is not valid"; check
+    https://inside.merox.dev loads)
 [ ] Joplin + Authentik data restored — make restore
 [ ] Tailscale connected (verify: ssh root@<IP> tailscale status)
 [ ] Portainer admin password set

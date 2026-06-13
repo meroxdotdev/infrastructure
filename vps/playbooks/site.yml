@@ -58,6 +58,9 @@
     - role: dozzle_setup
       tags: ['dozzle', 'monitoring', 'services']
 
+    - role: cloudflared_setup
+      tags: ['cloudflared', 'tunnel', 'services']
+
     - role: vps_backup
       tags: ['backup', 'services']
 

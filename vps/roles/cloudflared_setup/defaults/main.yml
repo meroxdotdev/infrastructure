@@ -1,0 +1,3 @@
+---
+cloudflared_docker_dir: /srv/docker/cloudflared
+cloudflared_image: "cloudflare/cloudflared:latest"
