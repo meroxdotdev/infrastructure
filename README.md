@@ -40,6 +40,7 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Prowlarr | default | Torrent indexer |
 | qBittorrent | default | Torrent client (fixed IP: 10.57.57.102) |
 | n8n | default | Workflow automation |
+| Headlamp | default | Kubernetes dashboard (cluster-admin UI) |
 | Authentik outpost | default | SSO proxy for K8s apps |
 | Portainer agent | default | Portainer agent (fixed IP: 10.57.57.103) |
 | Prometheus + Grafana | observability | Metrics + dashboards |

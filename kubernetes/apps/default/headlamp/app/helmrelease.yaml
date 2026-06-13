@@ -1,0 +1,35 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: headlamp
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: headlamp
+      version: 0.42.0
+      sourceRef:
+        kind: HelmRepository
+        name: headlamp
+        namespace: flux-system
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    # Full cluster-admin access via the bundled ServiceAccount + ClusterRoleBinding.
+    clusterRoleBinding:
+      create: true
+      clusterRoleName: cluster-admin
+    httpRoute:
+      enabled: true
+      hostnames: ["headlamp.k8s.merox.dev"]
+      parentRefs:
+        - name: internal
+          namespace: kube-system
+          sectionName: https

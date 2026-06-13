@@ -20,6 +20,7 @@ resources:
   # Monitoring
   - ./netdata/ks.yaml
   # Management
+  - ./headlamp/ks.yaml
   - ./portainer-agent/ks.yaml
   # Auth
   - ./authentik-outpost/ks.yaml
