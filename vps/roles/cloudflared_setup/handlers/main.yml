@@ -1,0 +1,6 @@
+---
+- name: Restart cloudflared
+  when: not ansible_check_mode
+  community.docker.docker_compose_v2:
+    project_src: "{{ cloudflared_docker_dir }}"
+    state: restarted

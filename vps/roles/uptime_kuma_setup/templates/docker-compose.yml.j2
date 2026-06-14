@@ -6,6 +6,8 @@ services:
     dns:
       - 1.1.1.1
       - {{ tailscale_ip }}
+    ports:
+      - "127.0.0.1:{{ uptime_kuma_port }}:3001"
     volumes:
       - uptime_kuma_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro

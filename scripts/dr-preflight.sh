@@ -44,7 +44,7 @@ if [ -f "$TFVARS" ]; then
     else
         ok "hcloud_token is set (non-placeholder)"
     fi
-    SSH_KEY_PATH=$(grep "ssh_public_key_path" "$TFVARS" | sed 's/.*=\s*"\(.*\)".*/\1/' | tr -d ' ')
+    SSH_KEY_PATH=$(grep "ssh_public_key_path" "$TFVARS" | sed 's/.*=[[:space:]]*"\(.*\)".*/\1/' | tr -d ' ')
     SSH_KEY_EXPANDED="${SSH_KEY_PATH/#\~/$HOME}"
     if [ -f "$SSH_KEY_EXPANDED" ]; then
         ok "SSH public key exists: $SSH_KEY_PATH"

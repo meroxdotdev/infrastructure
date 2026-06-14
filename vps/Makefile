@@ -163,9 +163,9 @@ terraform-plan:
 terraform-apply:
 	cd terraform && terraform apply -auto-approve
 	@NEW_IP=$$(cd terraform && terraform output -raw server_ip 2>/dev/null); \
-	SSH_KEY=$$(grep ssh_public_key_path terraform/terraform.tfvars | sed 's/.*=\s*"\(.*\)".*/\1/' | sed 's/\.pub//' | tr -d ' '); \
+	SSH_KEY=$$(grep ssh_public_key_path terraform/terraform.tfvars | sed 's/.*=[[:space:]]*"\(.*\)".*/\1/' | sed 's/\.pub//' | tr -d ' '); \
 	if [ -n "$$NEW_IP" ]; then \
-		sed -i "s|^vps01 .*|vps01 ansible_host=$$NEW_IP ansible_ssh_private_key_file=$$SSH_KEY|" inventories/production/hosts; \
+		sed "s|^vps01 .*|vps01 ansible_host=$$NEW_IP ansible_ssh_private_key_file=$$SSH_KEY|" inventories/production/hosts > inventories/production/hosts.tmp && mv inventories/production/hosts.tmp inventories/production/hosts; \
 		echo "Server IP: $$NEW_IP — inventory updated (SSH key: $$SSH_KEY)"; \
 		echo "Run: make setup  (after ~30s for cloud-init)"; \
 	fi
@@ -222,6 +222,12 @@ vault-show-required:
 	@echo "  cloudflare_api_token:          '<from cloudflare dashboard>'"
 	@echo "  cloudflare_email:              '<your cloudflare email>'"
 	@echo "  traefik_dashboard_credentials: '<htpasswd -nb user pass>'"
+	@echo ""
+	@echo "  # Cloudflare Tunnel connector (cloudflared) — no vault_ prefix"
+	@echo "  cloudflare_tunnel_token:       '<Zero Trust > Networks > Tunnels > one > Configure>'"
+	@echo "                                  NOTE: this is the connector token (eyJ...), NOT"
+	@echo "                                  homepage_cloudflare_token (that's an API token"
+	@echo "                                  used only by the Homepage Cloudflared widget)."
 	@echo ""
 	@echo "  # Tailscale — HAS vault_ prefix"
 	@echo "  vault_tailscale_auth_key:      '<from tailscale admin panel>'"

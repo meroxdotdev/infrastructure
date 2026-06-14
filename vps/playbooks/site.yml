@@ -40,6 +40,9 @@
     - role: authentik_setup
       tags: ['authentik', 'sso', 'services']
 
+    - role: cloudflared_setup
+      tags: ['cloudflared', 'tunnel', 'services']
+
     - role: vps_backup
       tags: ['backup', 'services']
 
