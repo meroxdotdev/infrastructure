@@ -1,10 +1,8 @@
-.PHONY: help install ping setup quick update check facts lint \
-        traefik-setup traefik-test pihole-setup pihole-test \
-        portainer-setup portainer-test homepage-setup homepage-test \
-        garage-setup garage-test joplin-setup joplin-test \
+.PHONY: help install ping setup update check facts lint \
+        traefik-setup traefik-test \
+        garage-setup garage-test \
         uptime-kuma-setup uptime-kuma-test guacamole-setup guacamole-test \
-        glances-setup glances-test netdata-setup netdata-test \
-        beszel-setup beszel-test dozzle-setup dozzle-test \
+        netdata-setup netdata-test \
         authentik-setup authentik-test authentik-backup \
         cleanup check-resources health-check \
         terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
@@ -34,11 +32,8 @@ help:
 	@echo "  health-check       Post-deploy verification"
 	@echo ""
 	@echo "Individual services:"
-	@echo "  traefik-setup      pihole-setup       portainer-setup"
-	@echo "  homepage-setup     garage-setup       joplin-setup"
-	@echo "  uptime-kuma-setup  guacamole-setup    glances-setup"
-	@echo "  netdata-setup      beszel-setup       dozzle-setup"
-	@echo "  authentik-setup"
+	@echo "  traefik-setup      garage-setup       uptime-kuma-setup"
+	@echo "  guacamole-setup    netdata-setup      authentik-setup"
 	@echo ""
 	@echo "Authentik SSO:"
 	@echo "  authentik-setup    Deploy Authentik (sso.merox.dev)"
@@ -70,9 +65,6 @@ ping:
 setup:
 	ansible-playbook playbooks/site.yml
 
-quick:
-	ansible-playbook playbooks/quick-setup.yml
-
 update:
 	ansible-playbook playbooks/update.yml
 
@@ -100,35 +92,11 @@ traefik-setup:
 traefik-test:
 	ansible vps_servers -m shell -a "docker ps | grep traefik && docker logs traefik --tail 20"
 
-pihole-setup:
-	ansible-playbook playbooks/pihole-setup.yml
-
-pihole-test:
-	ansible vps_servers -m shell -a "docker ps | grep pihole && dig @localhost google.com +short"
-
-portainer-setup:
-	ansible-playbook playbooks/portainer-setup.yml
-
-portainer-test:
-	ansible vps_servers -m shell -a "docker ps | grep portainer && curl -I http://localhost:9000"
-
-homepage-setup:
-	ansible-playbook playbooks/homepage-setup.yml
-
-homepage-test:
-	ansible vps_servers -m shell -a "docker ps | grep homepage && curl -I http://localhost:3000"
-
 garage-setup:
 	ansible-playbook playbooks/garage-setup.yml
 
 garage-test:
 	ansible vps_servers -m shell -a "docker ps | grep -E 'garage|garage-webui' && docker exec garage /garage status"
-
-joplin-setup:
-	ansible-playbook playbooks/site.yml --tags joplin
-
-joplin-test:
-	ansible vps_servers -m shell -a "docker ps | grep -E 'joplin'"
 
 uptime-kuma-setup:
 	ansible-playbook playbooks/site.yml --tags uptime-kuma
@@ -142,29 +110,11 @@ guacamole-setup:
 guacamole-test:
 	ansible vps_servers -m shell -a "docker ps | grep guacamole"
 
-glances-setup:
-	ansible-playbook playbooks/site.yml --tags glances
-
-glances-test:
-	ansible vps_servers -m shell -a "docker ps | grep glances"
-
 netdata-setup:
 	ansible-playbook playbooks/netdata-setup.yml
 
 netdata-test:
 	ansible vps_servers -m shell -a "docker ps | grep netdata && curl -I http://localhost:19999"
-
-beszel-setup:
-	ansible-playbook playbooks/beszel-setup.yml
-
-beszel-test:
-	ansible vps_servers -m shell -a "docker ps | grep beszel"
-
-dozzle-setup:
-	ansible-playbook playbooks/dozzle-setup.yml
-
-dozzle-test:
-	ansible vps_servers -m shell -a "docker ps | grep dozzle"
 
 # --- Authentik SSO ---
 authentik-setup:
@@ -279,9 +229,6 @@ vault-show-required:
 	@echo "  # Pi-hole — no vault_ prefix"
 	@echo "  pihole_webpassword:            '<strong password>'"
 	@echo ""
-	@echo "  # Joplin — HAS vault_ prefix"
-	@echo "  vault_joplin_db_password:      '<openssl rand -base64 32>'"
-	@echo ""
 	@echo "  # Garage S3 — no vault_ prefix"
 	@echo "  garage_rpc_secret:             '<openssl rand -hex 32>'"
 	@echo "  garage_admin_token:            '<openssl rand -hex 32>'"
@@ -293,6 +240,5 @@ vault-show-required:
 	@echo "Recover from live server (before it disappears):"
 	@echo "  docker exec authentik-postgresql env | grep POSTGRES_PASSWORD"
 	@echo "  docker exec authentik-server env | grep SECRET_KEY"
-	@echo "  docker exec joplin-db env | grep POSTGRES_PASSWORD"
 	@echo ""
 	@echo "Edit: make vault-edit"

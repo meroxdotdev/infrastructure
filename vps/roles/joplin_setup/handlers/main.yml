@@ -1,6 +1,0 @@
----
-- name: Restart joplin
-  when: not ansible_check_mode
-  community.docker.docker_compose_v2:
-    project_src: "{{ joplin_docker_dir }}"
-    state: restarted

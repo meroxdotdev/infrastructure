@@ -28,20 +28,8 @@
     - role: traefik_setup
       tags: ['traefik', 'proxy', 'services']
 
-    - role: pihole_setup
-      tags: ['pihole', 'dns', 'services']
-
-    - role: portainer_setup
-      tags: ['portainer', 'management', 'services']
-
-    - role: homepage_setup
-      tags: ['homepage', 'dashboard', 'services']
-
     - role: garage_setup
       tags: ['garage', 'storage', 'services']
-
-    - role: joplin_setup
-      tags: ['joplin', 'notes', 'services']
 
     - role: uptime_kuma_setup
       tags: ['uptime-kuma', 'monitoring', 'services']
@@ -49,14 +37,8 @@
     - role: guacamole_setup
       tags: ['guacamole', 'remote', 'services']
 
-    - role: glances_setup
-      tags: ['glances', 'monitoring', 'services']
-
     - role: authentik_setup
       tags: ['authentik', 'sso', 'services']
-
-    - role: dozzle_setup
-      tags: ['dozzle', 'monitoring', 'services']
 
     - role: vps_backup
       tags: ['backup', 'services']
@@ -64,20 +46,14 @@
   post_tasks:
     - name: Display completion message
       ansible.builtin.debug:
-        msg: "Setup finished for {{ inventory_hostname }} — all services deployed"
+        msg: "Setup finished for {{ inventory_hostname }} — infrastructure services deployed"
 
     - name: Display service URLs
       ansible.builtin.debug:
         msg:
-          - "Homepage:     https://homepage.cloud.merox.dev"
           - "Traefik:      https://traefik.cloud.merox.dev"
-          - "Pi-hole:      https://pihole.cloud.merox.dev/admin"
-          - "Portainer:    https://portainer.cloud.merox.dev"
-          - "Joplin:       https://joplin.cloud.merox.dev"
           - "Uptime Kuma:  https://status.cloud.merox.dev"
           - "Guacamole:    https://rmt.merox.dev"
           - "Authentik:    https://sso.merox.dev"
-          - "Glances:      https://glances.cloud.merox.dev"
           - "Garage S3:    https://garage.cloud.merox.dev"
           - "Garage UI:    https://garage-ui.cloud.merox.dev"
-          - "Dozzle:       https://dozzle.cloud.merox.dev"

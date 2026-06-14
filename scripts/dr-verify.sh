@@ -89,14 +89,6 @@ verify_phase1() {
     container_running "garage"
     container_running "uptime-kuma"
     container_running "guacamole"
-    container_running "dozzle"
-
-    # Joplin managed by Ansible (not in main compose)
-    if docker ps --filter "name=joplin" --format "{{.Names}}" 2>/dev/null | grep -q "joplin"; then
-        ok "container joplin running"
-    else
-        warn "container joplin not found — managed by Ansible (may need: cd vps && make joplin-setup)"
-    fi
 
     header "Phase 1: Service health"
 
@@ -161,13 +153,6 @@ verify_phase1() {
         fi
     else
         fail "Tailscale not connected (tailscale status)"
-    fi
-
-    # Cloudflare tunnel (check cloudflared container)
-    if docker ps --filter "name=cloudflared" --format "{{.Names}}" 2>/dev/null | grep -q "cloudflared"; then
-        ok "Cloudflare tunnel container running"
-    else
-        warn "cloudflared container not found — public access via Traefik+Cloudflare may be down"
     fi
 }
 

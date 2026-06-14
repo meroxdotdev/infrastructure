@@ -1,8 +1,0 @@
----
-- name: Setup Portainer container management
-  hosts: vps_servers
-  become: yes
-  gather_facts: yes
-
-  roles:
-    - portainer_setup

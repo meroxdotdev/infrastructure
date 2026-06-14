@@ -10,9 +10,9 @@ Backup plumbing for the Oracle VPS. Two pieces, both cron-driven:
 | `backup-vps-extras.sh` | 01:30 | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), OpenClaw agent runtime (`.env` and logs excluded), agent dashboard state + secrets (`data/*.json`, `.env`). 7-day retention. |
 | `backup-push-nas.sh` | 03:30 | Off-site sync to the Synology NAS: takes a consistent Garage metadata snapshot, then SSHes into the NAS which **pulls** `/srv/backups/` + Garage data/meta-snapshots from the read-only rsyncd modules on this VPS. |
 
-Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via their own
-roles (`authentik_setup` / `joplin_setup`, 01:15 / 01:20) and ride along in the
-03:30 sync.
+Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via the
+`authentik_setup` role and this role's own Joplin backup cron (01:15 / 01:20)
+and ride along in the 03:30 sync.
 
 ## Why pull instead of push
 

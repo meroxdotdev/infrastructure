@@ -62,7 +62,7 @@ For an on-demand dump:
 make authentik-backup
 ```
 
-This runs the standalone playbook, which dumps PostgreSQL to `/srv/backups/authentik/` (7-day retention) and optionally uploads to MinIO if vault has `minio_endpoint`, `minio_access_key`, `minio_secret_key`, `minio_bucket`.
+This runs the standalone playbook, which dumps PostgreSQL to `/srv/backups/authentik/` (7-day retention).
 
 ## Restore
 

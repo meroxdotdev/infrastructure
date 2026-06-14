@@ -28,7 +28,7 @@
     - name: Verify expected containers are running
       shell: >
         for c in traefik pihole unbound homepage glances portainer
-                 authentik-server authentik-worker garage uptime-kuma dozzle; do
+                 authentik-server authentik-worker garage uptime-kuma; do
           docker ps --filter "name=^${c}$" --filter "status=running" --format "{% raw %}{{.Names}}{% endraw %}" | grep -q "^${c}$" \
             && echo "OK: $c" \
             || echo "MISSING: $c";

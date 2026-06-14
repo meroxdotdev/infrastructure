@@ -1,0 +1,16 @@
+#!/bin/bash
+# Daily Joplin PostgreSQL dump. Deployed by ansible (vps_backup role).
+# DB password is read at runtime from the container's POSTGRES_PASSWORD
+# (same approach as restore-db.sh) — no vault dependency.
+set -euo pipefail
+
+BACKUP_DIR="/srv/backups/joplin"
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+
+PASS=$(docker exec joplin-db printenv POSTGRES_PASSWORD)
+docker exec -e PGPASSWORD="$PASS" joplin-db \
+  pg_dump -U joplin joplin \
+  | gzip > "$BACKUP_DIR/joplin_$(date +%F_%H%M).sql.gz"
+
+find "$BACKUP_DIR" -name 'joplin_*.sql.gz' -mtime +{{ vps_backup_retention_days }} -delete
