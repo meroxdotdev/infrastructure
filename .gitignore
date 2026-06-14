@@ -24,6 +24,7 @@ talosconfig
 # Dashboard secrets
 agent/dashboard/.env
 # Misc.
+/SCRATCHPAD.md
 .private/
 .task/
 .venv/
