@@ -1,4 +1,17 @@
 ---
+- name: Check if legacy systemd cloudflared service is active
+  systemd:
+    name: cloudflared
+  register: cloudflared_systemd_status
+  failed_when: false
+
+- name: Stop and disable legacy systemd cloudflared service
+  systemd:
+    name: cloudflared
+    state: stopped
+    enabled: false
+  when: cloudflared_systemd_status.status.ActiveState == "active"
+
 - name: Create cloudflared directory
   file:
     path: "{{ cloudflared_docker_dir }}"
