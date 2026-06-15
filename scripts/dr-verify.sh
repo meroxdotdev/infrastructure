@@ -10,6 +10,11 @@ set -euo pipefail
 RED='\033[0;31m'; YELLOW='\033[1;33m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
 PASS=0; WARN=0; FAIL=0
 
+# Resolve paths regardless of where script is called from
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+VARS_FILE="$REPO_ROOT/vps/inventories/production/group_vars/vps_servers/vars.yml"
+
 ok()    { echo -e "  ${GREEN}✓${NC} $1"; PASS=$((PASS + 1)); }
 warn()  { echo -e "  ${YELLOW}⚠${NC}  $1"; WARN=$((WARN + 1)); }
 fail()  { echo -e "  ${RED}✗${NC} $1"; FAIL=$((FAIL + 1)); }
@@ -82,6 +87,9 @@ verify_phase1() {
     container_running "unbound"
     container_running "traefik"
 
+    # Cloudflare Tunnel (cloudflared_setup role — own compose at /srv/docker/cloudflared/)
+    container_running "cloudflared"
+
     header "Phase 1: VPS Containers (sub-composes)"
     container_running "authentik-server"
     container_running "authentik-worker"
@@ -147,8 +155,10 @@ verify_phase1() {
     if tailscale status &>/dev/null 2>&1; then
         TS_IP=$(tailscale ip -4 2>/dev/null || true)
         ok "Tailscale connected ($TS_IP)"
-        if [ "$TS_IP" != "100.72.22.38" ]; then
-            warn "  IP changed from 100.72.22.38 — update the Storage Cloud link in"
+        TS_EXPECTED=$(grep "^tailscale_expected_ip:" "$VARS_FILE" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
+        if [ -n "$TS_EXPECTED" ] && [ "$TS_IP" != "$TS_EXPECTED" ]; then
+            warn "  IP changed from $TS_EXPECTED to $TS_IP — update tailscale_expected_ip in"
+            warn "  vars.yml AND the Storage Cloud link in"
             warn "  kubernetes/apps/default/homepage/app/resources/services.yaml"
         fi
     else
