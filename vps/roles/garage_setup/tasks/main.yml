@@ -58,11 +58,20 @@
   changed_when: false
   failed_when: false
 
+# Only "no role assigned yet" should trigger (re-)configuring the layout.
+# A non-zero rc from the check above can happen for unrelated reasons (e.g.
+# RPC not ready yet) and must NOT be treated as "layout missing", otherwise
+# a re-run where the layout was already applied retries `layout apply
+# --version 1` and fails ("Unable to connect to destination RPC host").
 - name: Configure Garage node layout
-  shell: |
-    docker exec garage /garage layout assign {{ garage_node_id.stdout }} -z default -c {{ garage_storage_capacity }}
-    docker exec garage /garage layout apply --version 1
-  when: "'No nodes currently have a role' in garage_layout_check.stdout or garage_layout_check.rc != 0"
+  shell: docker exec garage /garage layout assign {{ garage_node_id.stdout }} -z default -c {{ garage_storage_capacity }}
+  when: garage_layout_check.rc == 0 and 'No nodes currently have a role' in garage_layout_check.stdout
+
+- name: Apply Garage layout
+  shell: >-
+    docker exec garage /garage layout apply --version
+    {{ (((garage_layout_check.stdout | regex_search('Current cluster layout version: ([0-9]+)', '\\1')) or ['0']) | first | int) + 1 }}
+  when: garage_layout_check.rc == 0 and 'No nodes currently have a role' in garage_layout_check.stdout
 
 - name: Check if bucket exists
   shell: docker exec garage /garage bucket list | grep {{ garage_bucket_name }}
