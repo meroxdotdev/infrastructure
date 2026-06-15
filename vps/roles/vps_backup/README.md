@@ -71,11 +71,17 @@ kubeconfig` for the new cluster into both paths.
 
 ## Restore
 
+`make dr-restore` runs the three steps below in order via
+`playbooks/dr-restore.yml`. Run it after `make setup` (and `app-stack.yml`)
+have deployed all containers on the fresh DR VPS.
+
 - **Step 0**: `make restore-pull-nas` — pulls `srv-backups/` back into
   `/srv/backups/` and Garage `data/`/`meta-snapshots/` back into
   `/srv/docker/oracle-cloud/garage/` from the NAS's copy. Run this first on a
   fresh DR VPS; everything below reads from these local paths.
-- Authentik/Joplin: `cd vps && make restore` (interactive, drops + re-imports from dump).
+- Authentik/Joplin: `make restore-auto` — non-interactive (`restore-db.sh
+  --yes all`), drops + re-imports each DB from its latest dump. `make restore`
+  is the interactive equivalent (asks per service) for manual use outside DR.
 - Guacamole/Traefik/Pi-hole/Homepage/Portainer/dashboard/OpenClaw:
   `make restore-extras` — non-interactive, untars the newest
   `srv-backups/<name>/` archive over each deployed dir/volume and

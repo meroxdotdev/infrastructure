@@ -63,7 +63,7 @@
     mode: "0700"
   tags: backup
 
-- name: Deploy DB restore script (authentik/joplin, interactive)
+- name: Deploy DB restore script (authentik/joplin, interactive or --yes)
   template:
     src: restore-db.sh.j2
     dest: /usr/local/bin/restore-db.sh

@@ -46,6 +46,7 @@ make cleanup            # prune unused Docker images/volumes
 make restore            # interactive DB restore wizard (Authentik / Joplin)
 make backup-sync-now    # run extras backup + NAS sync immediately
 make dr-full            # provision Hetzner fallback + deploy everything
+make dr-restore         # DR: restore all data from NAS (non-interactive)
 
 make <service>-setup    # individual service, e.g. make authentik-setup
 make help               # everything else
@@ -57,7 +58,8 @@ make help               # everything else
 updates the inventory with the new IP (and drops `ansible_connection=local`),
 waits for cloud-init, then runs the full deploy. Cloudflare Tunnel, Tailscale
 and Let's Encrypt reconnect automatically with the existing tokens. Afterwards
-restore data from the NAS: `make restore` (DBs) + untar service state — see
+restore data from the NAS: `make dr-restore` runs the full restore sequence
+(pull from NAS, DB restore, extras restore) non-interactively — see
 [DEPLOY.md Phase 1](../DEPLOY.md) and [roles/vps_backup/README.md](roles/vps_backup/README.md).
 
 ## Conventions & layout

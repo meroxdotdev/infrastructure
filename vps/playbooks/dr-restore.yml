@@ -1,0 +1,37 @@
+---
+# DR: restore data onto a freshly provisioned VPS after `make setup` (site.yml)
+# and `app-stack.yml` have deployed all services. Pulls the NAS's backup
+# copies, restores Authentik/Joplin DBs, then restores
+# Guacamole/Traefik/Pi-hole/Homepage/Portainer/dashboard/OpenClaw state.
+- name: DR — restore service state from NAS backups
+  hosts: vps_servers
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Pull backup copies back from NAS (DBs, extras, Garage)
+      ansible.builtin.command: /usr/local/bin/restore-pull-from-nas.sh
+      register: pull_result
+      changed_when: true
+
+    - name: Show NAS pull output
+      ansible.builtin.debug:
+        var: pull_result.stdout_lines
+
+    - name: Restore Authentik + Joplin databases (non-interactive)
+      ansible.builtin.command: /usr/local/bin/restore-db.sh --yes all
+      register: db_result
+      changed_when: true
+
+    - name: Show DB restore output
+      ansible.builtin.debug:
+        var: db_result.stdout_lines
+
+    - name: Restore Guacamole/Traefik/Pi-hole/Homepage/Portainer/dashboard/OpenClaw state
+      ansible.builtin.command: /usr/local/bin/restore-extras.sh
+      register: extras_result
+      changed_when: true
+
+    - name: Show restore-extras output
+      ansible.builtin.debug:
+        var: extras_result.stdout_lines

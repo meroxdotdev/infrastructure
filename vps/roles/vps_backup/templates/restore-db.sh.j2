@@ -1,10 +1,14 @@
 #!/bin/bash
 # Restore Authentik / Joplin PostgreSQL from a /srv/backups dump.
-# Usage: restore-db.sh {authentik|joplin|all} [dump.sql.gz]
+# Usage: restore-db.sh [--yes] {authentik|joplin|all} [dump.sql.gz]
+# --yes skips the drop-confirmation prompt (DR/automation use).
 # Default dump: the newest one in /srv/backups/<service>/.
 # DB password is read at runtime from the container's POSTGRES_PASSWORD.
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
+
+YES=0
+if [ "${1:-}" = "--yes" ]; then YES=1; shift; fi
 
 restore_one() {
   local svc=$1 dump=${2:-} ctr db user apps
@@ -17,8 +21,10 @@ restore_one() {
   [ -f "${dump:-}" ] || { echo "✗ no dump found for $svc in /srv/backups/$svc/"; return 1; }
 
   echo "→ $svc: restore from $dump"
-  read -r -p "  This DROPS the current '$db' database. Continue? [y/N] " a
-  [ "${a,,}" = y ] || { echo "  skipped"; return 0; }
+  if [ "$YES" -ne 1 ]; then
+    read -r -p "  This DROPS the current '$db' database. Continue? [y/N] " a
+    [ "${a,,}" = y ] || { echo "  skipped"; return 0; }
+  fi
 
   local pass
   pass=$(docker exec "$ctr" printenv POSTGRES_PASSWORD)
@@ -34,5 +40,5 @@ restore_one() {
 case ${1:-} in
   authentik|joplin) restore_one "$1" "${2:-}" ;;
   all) restore_one authentik; restore_one joplin ;;
-  *) echo "Usage: $0 {authentik|joplin|all} [dump.sql.gz]"; exit 1 ;;
+  *) echo "Usage: $0 [--yes] {authentik|joplin|all} [dump.sql.gz]"; exit 1 ;;
 esac
