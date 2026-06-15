@@ -22,6 +22,12 @@ agents-dashboard (nginx container via Traefik)
   └── https://agents.cloud.merox.dev
         ├── /index.html     — command center (all agents status)
         └── /news.html      — latest news briefing
+
+agents-api (python container via Traefik)
+  └── https://agents.cloud.merox.dev/api/*
+        ├── /api/health   — health check (no auth)
+        ├── /api/logs     — tail an agent's heartbeat log (Bearer auth)
+        └── /api/run      — create a run-trigger for an agent (Bearer auth)
 ```
 
 ## Channels
@@ -80,9 +86,12 @@ openclaw ALL=(ALL) NOPASSWD: /usr/bin/node
 /usr/local/bin/talosctl              # system-wide binary (mise installs per-user, not accessible)
 /usr/local/bin/openclaw-fix-perms    # fixes root ownership after Claude Code sessions
 
+/home/openclaw/agents-api/           # agents-api container (docker-compose.yml from this repo)
+
 /srv/dashboard/                      # web dashboard (nginx container)
 ├── index.html                       # command center (written by dashboard agent nightly)
 ├── news.html                        # news briefing (written by news agent)
+├── api-server.py                    # agents-api container code (from this repo)
 ├── update-infra.sh                  # bash: updates infra.json every 5 min (root-owned)
 ├── update-backup.sh                 # bash: updates backup.json every 30 min (root-owned)
 ├── update-news.sh                   # bash: pre-fetches GitHub releases every 6h (root-owned)
@@ -233,7 +242,7 @@ else
   sudo cp agent/dashboard/.env.example /srv/dashboard/.env
   sudo chmod 600 /srv/dashboard/.env
   sudo chown openclaw:openclaw /srv/dashboard/.env
-  # Edit: fill in TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GARAGE_TOKEN, GARAGE_BUCKET_ID, APPLE_ID, APPLE_APP_PASSWORD
+  # Edit: fill in TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GARAGE_TOKEN, GARAGE_BUCKET_ID, APPLE_ID, APPLE_APP_PASSWORD, DASHBOARD_API_TOKEN
   sudo -u openclaw nano /srv/dashboard/.env
   echo '{"pending":[],"history":[]}' | sudo -u openclaw tee /srv/dashboard/data/proposals.json
 fi
@@ -242,8 +251,13 @@ fi
 sudo bash /srv/dashboard/setup-deps.sh
 
 # 13. Start dashboard
-cd /srv/docker/agents-dashboard && docker compose up -d && cd -
+cd /srv/docker/oracle-cloud/agents-dashboard && docker compose up -d && cd -
 /usr/local/bin/openclaw-fix-perms
+
+# 14. Deploy agents-api (log tail / run-trigger API used by the dashboard
+# frontend) and bring up the rest of the agents stack (agents-dashboard,
+# openclaw-gateway). Idempotent — safe to re-run any time.
+sudo bash agent/scripts/dr-restore-agents.sh
 ```
 
 ## Verify everything is working
