@@ -90,10 +90,17 @@ make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 
 ```
 
 **Tailscale IP:** the new VPS will likely get a different `100.x.x.x` tailnet IP.
-`dr-verify-phase1` prints it and warns if it changed from `100.72.22.38` — if so,
-update the Storage Cloud link in
-`kubernetes/apps/default/homepage/app/resources/services.yaml` (the only place
-that actually depends on it; the NAS off-site sync auto-detects its own IP).
+`dr-verify-phase1` prints it and warns if it changed from `100.72.22.38`. The
+`make dr-restore` step above already auto-repoints Pi-hole's `*.cloud.merox.dev`
+local DNS records (joplin, agents, traefik, status, garage, etc.) to the new
+IP — see `vps/roles/vps_backup/README.md`. Two things still need a manual
+update if the IP changed:
+- the Storage Cloud link in
+  `kubernetes/apps/default/homepage/app/resources/services.yaml`
+  (the NAS off-site sync auto-detects its own IP, so nothing else there).
+- `tailscale_expected_ip` in `vps/inventories/production/group_vars/vps_servers/vars.yml`
+  — bump it to the new IP so the *next* DR's auto-repoint diffs from the
+  right baseline.
 
 **IMPORTANT — before Phase 2:** extract Garage S3 credentials and save to vault:
 ```bash

@@ -29,8 +29,10 @@ guacamole_ip: "172.25.10.33"
 guacamole_port: 8080
 
 # Tailscale — single source of truth for the VPS's expected tailnet identity.
-# tailscale_expected_ip: used by dr-verify to detect IP drift after a DR rebuild
-#   (Split DNS for *.cloud.merox.dev must be repointed if this changes).
+# tailscale_expected_ip: used by dr-verify to detect IP drift after a DR rebuild,
+#   AND by restore-extras.sh as the "old IP" to sed-replace with the live
+#   tailscale IP in Pi-hole's *.cloud.merox.dev records (auto-repoint on DR).
+#   Bump this to the new IP after a DR rebuild so the NEXT DR diffs correctly.
 # tailscale_authkey_expires: dr-preflight hard-fails if today >= this date —
 #   renew the reusable auth key at tailscale.com/admin/settings/keys and bump
 #   this date when you do.

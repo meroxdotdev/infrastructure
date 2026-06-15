@@ -90,7 +90,12 @@ have deployed all containers on the fresh DR VPS.
   stops/starts the affected container. Run after the app stack, Guacamole,
   Traefik and Pi-hole containers exist (i.e. after `make setup`). OpenClaw's
   archive is restored but its `openclaw-gateway` service is left for
-  `agent/README.md`'s DR steps to start.
+  `agent/README.md`'s DR steps to start. Afterwards it also diffs
+  `tailscale_expected_ip` (vars.yml) against the live `tailscale ip -4` and,
+  if the DR VPS got a new tailnet IP, sed-repoints Pi-hole's
+  `*.cloud.merox.dev` local DNS records (pihole.toml, custom.list,
+  02-custom.conf) to the new IP and restarts Pi-hole — see DEPLOY.md's
+  Tailscale IP note for the one remaining manual step.
 - Garage: copy `garage/data` to the new VPS, restore newest dir from
   `garage/meta-snapshots/` as `meta/db.lmdb` per Garage docs
   (https://garagehq.deuxfleurs.fr/documentation/operations/recovering/), then
