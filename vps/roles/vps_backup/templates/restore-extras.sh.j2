@@ -34,6 +34,24 @@ restore_tar guacamole /var/lib/docker/volumes/guacamole_guacamole_config/_data g
 restore_tar traefik /srv/docker/oracle-cloud/traefik traefik
 restore_tar pihole /srv/docker/oracle-cloud/etc-pihole pihole
 restore_tar pihole-dnsmasq /srv/docker/oracle-cloud/etc-dnsmasq.d pihole
+
+# Repoint *.cloud.merox.dev local DNS (Pi-hole) from the tailscale IP baked
+# into the backup (this VPS's tailscale_expected_ip at backup time) to this
+# VPS's CURRENT tailscale IP. Every DR rebuild gets a new tailnet IP, but the
+# restored Pi-hole config still has the old one hardcoded - without this fix,
+# every *.cloud.merox.dev hostname resolves to a dead tailnet peer.
+OLD_TS_IP="{{ tailscale_expected_ip }}"
+NEW_TS_IP=$(tailscale ip -4 2>/dev/null || true)
+if [ -n "$NEW_TS_IP" ] && [ "$NEW_TS_IP" != "$OLD_TS_IP" ]; then
+  echo "→ pihole-dns: repointing *.cloud.merox.dev from $OLD_TS_IP to $NEW_TS_IP"
+  sed -i "s/$OLD_TS_IP/$NEW_TS_IP/g" \
+    /srv/docker/oracle-cloud/etc-dnsmasq.d/02-custom.conf \
+    /srv/docker/oracle-cloud/etc-pihole/pihole.toml \
+    /srv/docker/oracle-cloud/etc-pihole/hosts/custom.list
+  docker restart pihole >/dev/null
+  echo "  ✓ pihole restarted - remember to update tailscale_expected_ip to $NEW_TS_IP in vars.yml for the next DR"
+fi
+
 restore_tar homepage /srv/docker/oracle-cloud/config homepage
 restore_tar portainer /var/lib/docker/volumes/oracle-cloud_portainer_data/_data portainer
 restore_tar dashboard /srv/dashboard agents-dashboard
