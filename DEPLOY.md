@@ -36,9 +36,9 @@ allowed_ips         = ["0.0.0.0/0", "::/0"]
 
 ## Phase 1 — VPS
 
-> ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Pi-hole + Unbound,
-> Portainer, Homepage, Joplin + Postgres, Uptime Kuma, Guacamole, Glances, Authentik SSO,
-> Garage S3, Netdata, Beszel, Dozzle.
+> ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Cloudflare Tunnel,
+> Pi-hole + Unbound, Portainer, Homepage, Joplin + Postgres, Uptime Kuma, Guacamole, Glances,
+> Authentik SSO, Garage S3, Netdata, Beszel, Dozzle.
 >
 > **How it works:** Terraform provisions the Hetzner server (cloud-init installs python3 + creates dirs).
 > `make dr-full` then runs Ansible from your local machine over SSH to deploy all services.
@@ -62,26 +62,26 @@ make terraform-init
 
 # Run pre-flight checks, then provision + deploy
 make dr-full
-# dr-full = dr-preflight + terraform apply + SSH poll until ready + Ansible setup
+# dr-full = dr-preflight + terraform apply + SSH poll until ready + Ansible setup + app-stack-setup
 ```
 
 Reads vault password from `.vault_pass` automatically — no prompt.
 Tailscale and Let's Encrypt certs connect automatically.
 
-After deploy completes, restore service data from the NAS
+After deploy completes, restore all service data from the NAS
 (`admin@10.57.57.201:/volume1/Server/oracle-vps-backups/srv-backups/` — nightly
 dumps, see `vps/roles/vps_backup/README.md`):
 
 ```bash
-# copy the dumps from the NAS into /srv/backups/, then:
-cd vps && make restore        # interactive: Authentik + Joplin DBs from latest dump
+cd vps && make dr-restore     # non-interactive: pulls from NAS, restores DBs + extras
 ```
 
-`make restore` drops and re-imports each DB (asks per service). Authentik comes
-back with full state — providers, flows, apps, users; Joplin clients re-sync
-afterwards. For **Guacamole / Traefik certs / Pi-hole / OpenClaw**: untar from
-`srv-backups/<service>/` over the deployed dirs/volumes, then restart the
-container.
+`make dr-restore` runs the full restore sequence: pulls `srv-backups/` from the
+NAS, drops + re-imports the Authentik + Joplin DBs from the latest dump
+(Authentik comes back with full state — providers, flows, apps, users; Joplin
+clients re-sync afterwards), and restores Guacamole / Traefik certs / Pi-hole /
+Homepage / Portainer / OpenClaw from their tarballs. See
+`vps/roles/vps_backup/README.md` for the full breakdown of each step.
 
 Verify Phase 1 is healthy:
 ```bash
@@ -197,6 +197,10 @@ make install
 
 # 3. Full deploy
 make setup
+
+# 4. Deploy the app stack (Homepage, Pi-hole, Portainer, Joplin, Glances,
+#    agents-dashboard — cloudlab-merox repo, not part of `make setup`)
+make app-stack-setup
 ```
 
 > **DNS note:** all web traffic goes through Cloudflare Tunnel — no A records to update.
@@ -402,6 +406,8 @@ The agent README is the single source of truth for this phase. It covers:
 - Dashboard scripts (`agent/dashboard/scripts/`) + restore `/srv/dashboard/.env`
   + `data/*.json` from NAS backup if present
 - crontab (openclaw user) + systemd user service
+- Final step: `agent/scripts/dr-restore-agents.sh` deploys agents-api, brings
+  up agents-dashboard + openclaw-gateway, and verifies via gateway probe
 
 > Assumes `/srv/backups/` was already populated from the NAS in Phase 1
 > (see Phase 1's restore step above).
@@ -433,7 +439,7 @@ sudo -u openclaw openclaw status
 [ ] cloudflare_tunnel_token present in vault and cloudflared container connected
     (docker logs cloudflared — no "Tunnel token is not valid"; check
     https://inside.merox.dev loads)
-[ ] Joplin + Authentik data restored — make restore
+[ ] All data restored — make dr-restore (pulls from NAS, restores DBs + extras)
 [ ] Tailscale connected (verify: ssh root@<IP> tailscale status)
 [ ] Portainer admin password set
 [ ] Guacamole default credentials changed (guacadmin / guacadmin → new password)

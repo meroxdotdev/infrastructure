@@ -130,8 +130,8 @@ not backed up — regenerable.
 > NAS pulls instead of pushes): **[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**
 
 **What a VPS failure loses:** at most one day of backups — Garage and all
-dumps are mirrored nightly to the NAS. Rebuild: `make dr-full` (~15 min), copy
-backups back, `task longhorn:restore`.
+dumps are mirrored nightly to the NAS. Rebuild: `make dr-full` (~15 min),
+`make dr-restore`, `task longhorn:restore`.
 
 **Still manual (keep copies off this VPS):** `age.key`, `vps/.vault_pass`,
 `~/.openclaw/.env`, `/srv/docker/oracle-cloud/.env`.
@@ -156,7 +156,7 @@ Prerequisites — have these ready:
 
 Step 1 — VPS (~15 min)
   cd vps && make dr-full
-  make restore   # restore Joplin + Authentik databases
+  make dr-restore   # restore all data from NAS (DBs + extras, non-interactive)
 
 Step 2 — Kubernetes (~20 min)
   cp /backup/age.key .
@@ -257,7 +257,7 @@ infrastructure/
 | Scenario | Action |
 |----------|--------|
 | **K8s cluster lost** (nodes dead) | [DR.md](DR.md) — provision DR VMs, bootstrap, restore from S3 |
-| **VPS lost** (Oracle reclaims free tier) | `cd vps && make dr-full` → `make restore` (~15 min) |
+| **VPS lost** (Oracle reclaims free tier) | `cd vps && make dr-full` → `make dr-restore` (~15 min) |
 | Full rebuild from scratch | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s) → Phase 3 (Agent) |
 | New hardware (different IPs / disks) | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
 | Intel iGPU absent on new hardware | Remove `gpu.intel.com/i915` from Jellyfin HelmRelease, disable intel-device-plugin |
