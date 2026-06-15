@@ -1,0 +1,32 @@
+---
+- name: Clone or update cloudlab-merox app stack repository
+  ansible.builtin.git:
+    repo: "{{ app_stack_repo_url }}"
+    dest: "{{ app_stack_dir }}"
+    version: "{{ app_stack_repo_branch }}"
+    update: yes
+  become: yes
+
+- name: Deploy app stack .env file
+  template:
+    src: env.j2
+    dest: "{{ app_stack_dir }}/.env"
+    mode: '0600'
+    owner: root
+    group: root
+  become: yes
+  notify: Restart app stack
+
+- name: Start app stack containers (root compose)
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_stack_dir }}"
+    state: present
+  become: yes
+  when: not ansible_check_mode
+
+- name: Start agents-dashboard containers
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_stack_dir }}/agents-dashboard"
+    state: present
+  become: yes
+  when: not ansible_check_mode

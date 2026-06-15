@@ -1,0 +1,8 @@
+---
+- name: Deploy app stack (cloudlab-merox)
+  hosts: vps_servers
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - app_stack_setup
