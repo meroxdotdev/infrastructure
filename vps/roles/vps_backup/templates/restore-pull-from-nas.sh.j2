@@ -1,0 +1,27 @@
+#!/bin/bash
+# DR: pull the NAS's backup copies back onto a fresh VPS, before restore-db.sh
+# or restore-extras.sh run (both read from /srv/backups, which is empty on a
+# fresh VPS).
+#
+# Mirror of backup-push-nas.sh, opposite direction: SSH into the NAS and have
+# it PUSH (as an rsync client) from its synced copies into the writable
+# rsyncd modules this VPS exposes (vps_restore, garage_restore — see
+# /etc/rsyncd.conf). Auth: {{ vps_backup_nas_pass_file }} on the NAS.
+# Deployed by ansible (vps_backup role).
+set -euo pipefail
+
+NAS_USER="{{ vps_backup_nas_user }}"
+NAS_HOST="{{ vps_backup_nas_host }}"
+SSH_KEY="{{ vps_backup_nas_ssh_key }}"
+NAS_BASE="{{ vps_backup_nas_base }}"
+VPS_TS_IP="{{ tailscale_ip }}"
+PASS_FILE="{{ vps_backup_nas_pass_file }}"
+
+nas() { ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$NAS_USER@$NAS_HOST" "$@"; }
+
+nas "set -e
+rsync -a --password-file=$PASS_FILE $NAS_BASE/srv-backups/ rsync://synology-backup@$VPS_TS_IP/vps_restore/
+rsync -a --password-file=$PASS_FILE $NAS_BASE/garage/data/ rsync://synology-backup@$VPS_TS_IP/garage_restore/data/
+rsync -a --password-file=$PASS_FILE $NAS_BASE/garage/meta-snapshots/ rsync://synology-backup@$VPS_TS_IP/garage_restore/meta/snapshots/"
+
+echo "$(date -Is) restore pull from NAS completed"

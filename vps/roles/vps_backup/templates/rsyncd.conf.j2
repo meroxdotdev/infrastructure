@@ -39,3 +39,28 @@ list = yes
 auth users = synology-backup
 secrets file = /etc/rsyncd.secrets
 hosts allow = 100.0.0.0/8
+
+# Writable modules for DR restore (restore-pull-from-nas.sh triggers the NAS
+# over SSH; the NAS pushes its backup copies into these as an rsync client,
+# same indirection as the read-only modules above but reversed).
+[vps_restore]
+path = {{ vps_backup_root }}
+comment = Restore staging: NAS pushes /srv/backups contents back here (DR)
+read only = no
+uid = root
+gid = root
+list = yes
+auth users = synology-backup
+secrets file = /etc/rsyncd.secrets
+hosts allow = 100.0.0.0/8
+
+[garage_restore]
+path = {{ vps_backup_garage_dir }}
+comment = Restore staging: NAS pushes Garage data/meta-snapshots back here (DR)
+read only = no
+uid = root
+gid = root
+list = yes
+auth users = synology-backup
+secrets file = /etc/rsyncd.secrets
+hosts allow = 100.0.0.0/8

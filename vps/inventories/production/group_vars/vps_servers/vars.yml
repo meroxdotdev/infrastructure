@@ -44,6 +44,9 @@ tailscale_authkey_expires: "2027-06-14"
 # vault has: vault_tailscale_auth_key  →  role expects: tailscale_auth_key
 tailscale_auth_key: "{{ vault_tailscale_auth_key }}"
 
+# vault has: vault_nas_backup_ssh_key  →  role expects: nas_backup_ssh_key_content
+nas_backup_ssh_key_content: "{{ vault_nas_backup_ssh_key }}"
+
 # vault has: authentik_pg_pass  →  role/template expects: authentik_db_password
 authentik_db_password: "{{ authentik_pg_pass }}"
 

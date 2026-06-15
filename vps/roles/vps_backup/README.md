@@ -14,6 +14,9 @@ Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via the
 `authentik_setup` role and this role's own Joplin backup cron (01:15 / 01:20)
 and ride along in the 03:30 sync.
 
+A third script, `restore-pull-from-nas.sh`, is DR-only (no cron) — see
+"Restore" below.
+
 ## Why pull instead of push
 
 Synology DSM ships a patched rsync that refuses server-mode over SSH unless the
@@ -21,6 +24,13 @@ DSM "rsync service" is enabled (it isn't, and enabling it needs UI/root). Plain
 SSH and *client*-mode rsync work fine on the NAS, so the VPS triggers the NAS
 over SSH and the NAS pulls from the rsyncd daemon this VPS already runs for
 Synology HyperBackup (`/etc/rsyncd.conf`, managed by this role).
+
+`restore-pull-from-nas.sh` is the same indirection in reverse: the VPS SSHes
+into the NAS, and the NAS *pushes* (still rsync client-mode on the NAS side)
+into two additional **writable** modules on this VPS's rsyncd
+(`vps_restore` → `/srv/backups`, `garage_restore` → Garage `data/` +
+`meta/snapshots/`), restricted to the Tailscale subnet with the same
+password auth as the read-only modules.
 
 ## Nightly backup traffic (both directions)
 
@@ -46,7 +56,8 @@ all `*-cache` volumes, Uptime-Kuma history — regenerable, were ~35GB of noise.
 
 ## One-time manual provisioning (not managed by Ansible)
 
-1. SSH keypair `/root/.ssh/nas_backup` on the VPS, public key in
+1. SSH keypair for `/root/.ssh/nas_backup` — private half is in vault
+   (`vault_nas_backup_ssh_key`, deployed by this role); public key must be in
    `admin@NAS:~/.ssh/authorized_keys`.
 2. `/etc/rsyncd.secrets` on the VPS (`synology-backup:<password>`, mode 600) —
    shared with HyperBackup.
@@ -55,8 +66,10 @@ all `*-cache` volumes, Uptime-Kuma history — regenerable, were ~35GB of noise.
 
 ## Restore
 
-- Dumps/tars: copy back from `NAS:/volume1/Server/oracle-vps-backups/srv-backups/`
-  into `/srv/backups/` on the new VPS.
+- **Step 0**: `make restore-pull-nas` — pulls `srv-backups/` back into
+  `/srv/backups/` and Garage `data/`/`meta-snapshots/` back into
+  `/srv/docker/oracle-cloud/garage/` from the NAS's copy. Run this first on a
+  fresh DR VPS; everything below reads from these local paths.
 - Authentik/Joplin: `cd vps && make restore` (interactive, drops + re-imports from dump).
 - Guacamole/Traefik/Pi-hole: untar `srv-backups/<service>/` over the deployed
   dirs/volumes, then restart the container.

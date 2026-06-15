@@ -25,6 +25,25 @@
     mode: "0700"
   tags: backup
 
+- name: Ensure /root/.ssh directory exists
+  file:
+    path: /root/.ssh
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags: backup
+
+- name: Deploy NAS backup SSH private key
+  copy:
+    content: "{{ nas_backup_ssh_key_content }}"
+    dest: "{{ vps_backup_nas_ssh_key }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  tags: backup
+
 - name: Deploy rsyncd config (HyperBackup target + read-only backup modules)
   template:
     src: rsyncd.conf.j2
@@ -57,6 +76,15 @@
   template:
     src: backup-push-nas.sh.j2
     dest: /usr/local/bin/backup-push-nas.sh
+    owner: root
+    group: root
+    mode: "0700"
+  tags: backup
+
+- name: Deploy restore-pull-from-nas script (DR)
+  template:
+    src: restore-pull-from-nas.sh.j2
+    dest: /usr/local/bin/restore-pull-from-nas.sh
     owner: root
     group: root
     mode: "0700"

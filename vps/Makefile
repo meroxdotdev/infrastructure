@@ -7,6 +7,7 @@
         cleanup check-resources health-check \
         terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
         dr-verify-phase1 dr-verify-phase2 dr-verify-phase3 garage-extract-creds \
+        restore-pull-nas \
         vault-edit vault-show-required view-vault
 
 help:
@@ -43,6 +44,7 @@ help:
 	@echo "Backups:"
 	@echo "  db-backups-setup   Deploy backup scripts + crons (DB dumps, extras, NAS sync)"
 	@echo "  backup-sync-now    Run extras backup + NAS sync immediately"
+	@echo "  restore-pull-nas   DR: pull NAS backup copies back to /srv/backups + garage"
 	@echo "  restore            Restore Authentik + Joplin DBs from latest dump (interactive)"
 	@echo ""
 	@echo "Vault:"
@@ -142,6 +144,9 @@ restore-authentik:
 
 restore-joplin:
 	/usr/local/bin/restore-db.sh joplin
+
+restore-pull-nas:
+	/usr/local/bin/restore-pull-from-nas.sh
 
 # --- Maintenance ---
 cleanup:
