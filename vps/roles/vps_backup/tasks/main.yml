@@ -1,8 +1,9 @@
 ---
 # VPS backup plumbing: local staging of service state not covered by
 # Ansible/git, plus the nightly off-site sync to the Synology NAS.
-# Note: /etc/rsyncd.secrets and the SSH key to the NAS are NOT managed here —
-# they are provisioned once, manually (see role README).
+# Note: the matching password file on the NAS
+# (/var/services/homes/admin/.vps-rsync.pass) is NOT managed here — it's
+# provisioned once, manually (see role README).
 
 - name: Detect Tailscale IP address
   shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
@@ -51,6 +52,17 @@
     owner: root
     group: root
     mode: "0644"
+  notify: Restart rsync daemon
+  tags: backup
+
+- name: Deploy rsyncd secrets file (HyperBackup + NAS pull/push auth)
+  copy:
+    content: "synology-backup:{{ rsyncd_password }}\n"
+    dest: /etc/rsyncd.secrets
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
   notify: Restart rsync daemon
   tags: backup
 

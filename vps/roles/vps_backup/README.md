@@ -64,10 +64,12 @@ kubeconfig` for the new cluster into both paths.
 1. SSH keypair for `/root/.ssh/nas_backup` — private half is in vault
    (`vault_nas_backup_ssh_key`, deployed by this role); public key must be in
    `admin@NAS:~/.ssh/authorized_keys`.
-2. `/etc/rsyncd.secrets` on the VPS (`synology-backup:<password>`, mode 600) —
-   shared with HyperBackup.
-3. Password file on the NAS: `/var/services/homes/admin/.vps-rsync.pass`
-   containing just the password, mode 600.
+2. Password file on the NAS: `/var/services/homes/admin/.vps-rsync.pass`
+   containing just the password, mode 600. Must match `vault_rsyncd_password`.
+
+`/etc/rsyncd.secrets` on the VPS (`synology-backup:<password>`, mode 600) is
+deployed by this role from `vault_rsyncd_password` — no manual step needed
+on the VPS side anymore.
 
 ## Restore
 

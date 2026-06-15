@@ -20,6 +20,7 @@ Before starting, have these ready:
 | OpenClaw `.env` (`~/.openclaw/.env`) | Backed up separately |
 | Hetzner API token | console.hetzner.cloud → Security → API Tokens |
 | DR SSH key pair | `~/.ssh/cloudlab_dr_test` + `.pub` — on the prod VPS |
+| NAS rsync password file | `admin@NAS:/var/services/homes/admin/.vps-rsync.pass` — must match `vault_rsyncd_password` (deployed to `/etc/rsyncd.secrets` by `vps_backup`) |
 
 **`vps/terraform/terraform.tfvars`** (gitignored — must be recreated on fresh machine):
 ```hcl
