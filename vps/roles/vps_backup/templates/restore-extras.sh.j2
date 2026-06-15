@@ -7,6 +7,7 @@
 # after the app stack / Guacamole / Traefik / Pi-hole containers exist.
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
+trap 'echo "✗ restore-extras failed at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 BACKUP_ROOT="{{ vps_backup_root }}"
 

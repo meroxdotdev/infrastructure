@@ -1,4 +1,5 @@
 ---
+# docker_setup runs once, at the start of site.yml's first play - see
+# roles/traefik_setup/meta/main.yml for why this dependency was removed.
 dependencies:
-  - role: docker_setup
   - role: traefik_setup
