@@ -89,7 +89,28 @@ if [ -f "$VPS_DIR/.vault_pass" ]; then
         fail "vault_tailscale_auth_key looks like a placeholder value"
     else
         KEY_PREFIX="${TS_KEY:0:12}..."
-        warn "vault_tailscale_auth_key is set ($KEY_PREFIX) — verify it has NOT expired at tailscale.com/admin/settings/keys (90-day keys expire silently)"
+        ok "vault_tailscale_auth_key is set ($KEY_PREFIX)"
+    fi
+fi
+
+VARS_FILE="$VPS_DIR/inventories/production/group_vars/vps_servers/vars.yml"
+TS_EXPIRES=$(grep "^tailscale_authkey_expires:" "$VARS_FILE" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
+if [ -z "$TS_EXPIRES" ]; then
+    warn "tailscale_authkey_expires not set in vars.yml — can't check reminder date"
+else
+    TODAY_EPOCH=$(date -d "today" +%s)
+    EXPIRES_EPOCH=$(date -d "$TS_EXPIRES" +%s 2>/dev/null || echo "")
+    if [ -z "$EXPIRES_EPOCH" ]; then
+        warn "tailscale_authkey_expires ($TS_EXPIRES) is not a valid date"
+    elif [ "$TODAY_EPOCH" -ge "$EXPIRES_EPOCH" ]; then
+        fail "Tailscale auth key reminder date has passed ($TS_EXPIRES) — rotate the reusable key at tailscale.com/admin/settings/keys, update vault_tailscale_auth_key (make vault-edit), and bump tailscale_authkey_expires in vars.yml"
+    else
+        DAYS_LEFT=$(( (EXPIRES_EPOCH - TODAY_EPOCH) / 86400 ))
+        if [ "$DAYS_LEFT" -le 14 ]; then
+            warn "Tailscale auth key reminder date is in $DAYS_LEFT day(s) ($TS_EXPIRES) — plan to rotate soon"
+        else
+            ok "Tailscale auth key reminder date OK ($TS_EXPIRES, ${DAYS_LEFT}d remaining)"
+        fi
     fi
 fi
 
