@@ -67,10 +67,11 @@
   shell: docker exec garage /garage layout assign {{ garage_node_id.stdout }} -z default -c {{ garage_storage_capacity }}
   when: garage_layout_check.rc == 0 and 'No nodes currently have a role' in garage_layout_check.stdout
 
+# The when: condition above already guarantees no layout/role exists yet,
+# so the next version to apply is always 1 — no need to parse the current
+# version out of `layout show` (which doesn't print one on a fresh node).
 - name: Apply Garage layout
-  shell: >-
-    docker exec garage /garage layout apply --version
-    {{ (((garage_layout_check.stdout | regex_search('Current cluster layout version: ([0-9]+)', '\\1')) or ['0']) | first | int) + 1 }}
+  shell: docker exec garage /garage layout apply --version 1
   when: garage_layout_check.rc == 0 and 'No nodes currently have a role' in garage_layout_check.stdout
 
 - name: Check if bucket exists
