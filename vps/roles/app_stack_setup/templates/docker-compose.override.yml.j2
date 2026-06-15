@@ -1,0 +1,23 @@
+# network-cloud-merox is created by traefik_setup (via the Ansible
+# docker_network module) before this stack's compose runs, so it lacks the
+# com.docker.compose.network/project labels Compose expects on networks it
+# manages itself. Marking it external tells Compose to use the existing
+# network as-is instead of failing with a label-mismatch error.
+networks:
+  network-cloud-merox:
+    external: true
+
+# portainer's ports/dns are hardcoded in the cloudlab-merox repo to the
+# Tailscale IP of the original server (100.72.22.38), which changes on every
+# DR rebuild (Tailscale assigns a fresh IP to each new node). !override
+# replaces the base lists instead of merging into them, so the stale IP
+# doesn't stick around alongside the current one.
+services:
+  portainer:
+    ports: !override
+      - "{{ tailscale_ip }}:9000:9000"
+      - "{{ tailscale_ip }}:9443:9443"
+    dns: !override
+      - 1.1.1.1
+      - 8.8.8.8
+      - "{{ tailscale_ip }}"

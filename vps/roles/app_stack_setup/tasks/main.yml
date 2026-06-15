@@ -1,4 +1,14 @@
 ---
+- name: Detect Tailscale IP address
+  shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
+  register: tailscale_ip_result
+  changed_when: false
+  failed_when: tailscale_ip_result.stdout == ""
+
+- name: Set Tailscale IP as fact
+  set_fact:
+    tailscale_ip: "{{ tailscale_ip_result.stdout }}"
+
 # The git module can only clone into a missing or empty directory. On a
 # fresh server (or after a DR restore) other roles create subdirectories
 # under app_stack_dir (e.g. authentik/, guacamole/, garage/) before this
@@ -67,12 +77,14 @@
   become: yes
   notify: Restart app stack
 
-# network-cloud-merox is created by traefik_setup outside of Compose, so the
-# root compose's own (non-external) network definition would otherwise fail
-# with a com.docker.compose.network label mismatch.
-- name: Mark network-cloud-merox as external for the root compose
-  ansible.builtin.copy:
-    src: docker-compose.override.yml
+# - network-cloud-merox is created by traefik_setup outside of Compose, so
+#   the root compose's own (non-external) network definition would otherwise
+#   fail with a com.docker.compose.network label mismatch.
+# - portainer's ports/dns are hardcoded in the cloudlab-merox repo to the
+#   previous server's Tailscale IP, which changes on every DR rebuild.
+- name: Deploy docker-compose.override.yml (external network + Tailscale IP)
+  ansible.builtin.template:
+    src: docker-compose.override.yml.j2
     dest: "{{ app_stack_dir }}/docker-compose.override.yml"
     mode: '0644'
     owner: root

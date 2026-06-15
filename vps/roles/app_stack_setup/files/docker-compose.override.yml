@@ -1,8 +1,0 @@
-# network-cloud-merox is created by traefik_setup (via the Ansible
-# docker_network module) before this stack's compose runs, so it lacks the
-# com.docker.compose.network/project labels Compose expects on networks it
-# manages itself. Marking it external tells Compose to use the existing
-# network as-is instead of failing with a label-mismatch error.
-networks:
-  network-cloud-merox:
-    external: true
