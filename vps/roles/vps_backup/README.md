@@ -7,15 +7,15 @@ Backup plumbing for the Oracle VPS. Two pieces, both cron-driven:
 
 | Script | Cron | What it does |
 |---|---|---|
-| `backup-vps-extras.sh` | 01:30 | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), OpenClaw agent runtime (`.env` and logs excluded), agent dashboard state + secrets (`data/*.json`, `.env`). 7-day retention. |
+| `backup-vps-extras.sh` | 01:30 | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), OpenClaw agent runtime (`.env` and logs excluded), agent dashboard state + secrets (`data/*.json`, `.env`), Homepage config (`kubeconfig.yaml`/`kube.config` excluded), Portainer state. 7-day retention. |
 | `backup-push-nas.sh` | 03:30 | Off-site sync to the Synology NAS: takes a consistent Garage metadata snapshot, then SSHes into the NAS which **pulls** `/srv/backups/` + Garage data/meta-snapshots from the read-only rsyncd modules on this VPS. |
 
 Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via the
 `authentik_setup` role and this role's own Joplin backup cron (01:15 / 01:20)
 and ride along in the 03:30 sync.
 
-A third script, `restore-pull-from-nas.sh`, is DR-only (no cron) — see
-"Restore" below.
+Two further scripts are DR-only (no cron) — see "Restore" below:
+`restore-pull-from-nas.sh` and `restore-extras.sh`.
 
 ## Why pull instead of push
 
@@ -54,6 +54,11 @@ all `*-cache` volumes, Uptime-Kuma history — regenerable, were ~35GB of noise.
 
 `age.key`, `vps/.vault_pass`, `~/.openclaw/.env`, `/srv/docker/oracle-cloud/.env`.
 
+Also still manual: `/srv/docker/oracle-cloud/config/kubeconfig.yaml` and
+`kube.config` (Homepage's Kubernetes widget) — excluded from the `homepage`
+backup since they're regenerable. After a DR rebuild, recopy a `talosctl
+kubeconfig` for the new cluster into both paths.
+
 ## One-time manual provisioning (not managed by Ansible)
 
 1. SSH keypair for `/root/.ssh/nas_backup` — private half is in vault
@@ -71,12 +76,13 @@ all `*-cache` volumes, Uptime-Kuma history — regenerable, were ~35GB of noise.
   `/srv/docker/oracle-cloud/garage/` from the NAS's copy. Run this first on a
   fresh DR VPS; everything below reads from these local paths.
 - Authentik/Joplin: `cd vps && make restore` (interactive, drops + re-imports from dump).
-- Guacamole/Traefik/Pi-hole: untar `srv-backups/<service>/` over the deployed
-  dirs/volumes, then restart the container.
-- OpenClaw + dashboard: `agent/README.md`'s DR steps untar
-  `srv-backups/openclaw/` and `srv-backups/dashboard/` automatically if found
-  in `/srv/backups/` — restores agent memory, `openclaw.json`, dashboard
-  `data/*.json` and `.env` in one shot.
+- Guacamole/Traefik/Pi-hole/Homepage/Portainer/dashboard/OpenClaw:
+  `make restore-extras` — non-interactive, untars the newest
+  `srv-backups/<name>/` archive over each deployed dir/volume and
+  stops/starts the affected container. Run after the app stack, Guacamole,
+  Traefik and Pi-hole containers exist (i.e. after `make setup`). OpenClaw's
+  archive is restored but its `openclaw-gateway` service is left for
+  `agent/README.md`'s DR steps to start.
 - Garage: copy `garage/data` to the new VPS, restore newest dir from
   `garage/meta-snapshots/` as `meta/db.lmdb` per Garage docs
   (https://garagehq.deuxfleurs.fr/documentation/operations/recovering/), then

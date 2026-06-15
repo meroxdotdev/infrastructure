@@ -90,6 +90,15 @@
     mode: "0700"
   tags: backup
 
+- name: Deploy restore-extras script (DR)
+  template:
+    src: restore-extras.sh.j2
+    dest: /usr/local/bin/restore-extras.sh
+    owner: root
+    group: root
+    mode: "0700"
+  tags: backup
+
 - name: Deploy Joplin DB backup script
   template:
     src: backup-joplin.sh.j2

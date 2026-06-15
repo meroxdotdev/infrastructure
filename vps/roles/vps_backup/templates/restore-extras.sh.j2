@@ -1,0 +1,41 @@
+#!/bin/bash
+# DR: restore the small service state captured by backup-vps-extras.sh.
+# For each target, untars the newest /srv/backups/<name>/<name>_*.tar.gz over
+# its live path, stopping/starting the affected container around the untar
+# (same stop/restore/start pattern as restore-db.sh). Non-interactive — DR
+# use only, OVERWRITES current state. Run after restore-pull-from-nas.sh and
+# after the app stack / Guacamole / Traefik / Pi-hole containers exist.
+# Deployed by ansible (vps_backup role).
+set -euo pipefail
+
+BACKUP_ROOT="{{ vps_backup_root }}"
+
+restore_tar() {
+  local name="$1" dest="$2" container="${3:-}"
+  local archive
+  archive=$(ls -1t "$BACKUP_ROOT/$name/${name}_"*.tar.gz 2>/dev/null | head -1)
+  if [ -z "$archive" ]; then
+    echo "✗ $name: no backup found in $BACKUP_ROOT/$name/, skipping"
+    return 0
+  fi
+
+  echo "→ $name: restoring $archive -> $dest"
+  [ -n "$container" ] && docker stop "$container" >/dev/null
+  mkdir -p "$dest"
+  tar -xzf "$archive" -C "$dest"
+  if [ -n "$container" ]; then
+    docker start "$container" >/dev/null
+    echo "  ✓ $container restarted"
+  fi
+}
+
+restore_tar guacamole /var/lib/docker/volumes/guacamole_guacamole_config/_data guacamole
+restore_tar traefik /srv/docker/oracle-cloud/traefik traefik
+restore_tar pihole /srv/docker/oracle-cloud/etc-pihole pihole
+restore_tar pihole-dnsmasq /srv/docker/oracle-cloud/etc-dnsmasq.d pihole
+restore_tar homepage /srv/docker/oracle-cloud/config homepage
+restore_tar portainer /var/lib/docker/volumes/oracle-cloud_portainer_data/_data portainer
+restore_tar dashboard /srv/dashboard agents-dashboard
+restore_tar openclaw /home/openclaw/.openclaw
+
+echo "$(date -Is) restore-extras completed"

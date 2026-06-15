@@ -2,7 +2,7 @@
 # Daily backup of small VPS state not covered by Ansible/git:
 # Guacamole connections, Traefik certs (acme.json), Pi-hole config,
 # OpenClaw agent runtime (memory/workspaces, secrets excluded), agent dashboard
-# state + secrets.
+# state + secrets, Homepage config, Portainer state.
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
 
@@ -36,3 +36,12 @@ backup_tar openclaw /home/openclaw/.openclaw \
 
 # Agent dashboard: shared memory, history, proposals + .env (Telegram/Garage/Apple secrets)
 backup_tar dashboard /srv/dashboard --exclude='./node_modules'
+
+# Homepage: dashboard config (bookmarks, services, settings, widgets, custom css/js)
+# kubeconfig.yaml/kube.config excluded — regenerate manually post-DR (talosctl kubeconfig)
+backup_tar homepage /srv/docker/oracle-cloud/config \
+  --exclude='./.claude' --exclude='./logs' --exclude='*.bak' \
+  --exclude='./kubeconfig.yaml' --exclude='./kube.config'
+
+# Portainer: embedded state (users, endpoints, stacks) — docker volume
+backup_tar portainer /var/lib/docker/volumes/oracle-cloud_portainer_data/_data

@@ -7,7 +7,7 @@
         cleanup check-resources health-check \
         terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
         dr-verify-phase1 dr-verify-phase2 dr-verify-phase3 garage-extract-creds \
-        restore-pull-nas \
+        restore-pull-nas restore-extras \
         vault-edit vault-show-required view-vault
 
 help:
@@ -46,6 +46,7 @@ help:
 	@echo "  backup-sync-now    Run extras backup + NAS sync immediately"
 	@echo "  restore-pull-nas   DR: pull NAS backup copies back to /srv/backups + garage"
 	@echo "  restore            Restore Authentik + Joplin DBs from latest dump (interactive)"
+	@echo "  restore-extras     DR: restore Guacamole/Traefik/Pi-hole/Homepage/Portainer/etc from /srv/backups (non-interactive)"
 	@echo ""
 	@echo "Vault:"
 	@echo "  vault-edit         Edit encrypted secrets"
@@ -147,6 +148,9 @@ restore-joplin:
 
 restore-pull-nas:
 	/usr/local/bin/restore-pull-from-nas.sh
+
+restore-extras:
+	/usr/local/bin/restore-extras.sh
 
 # --- Maintenance ---
 cleanup:

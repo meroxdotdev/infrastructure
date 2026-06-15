@@ -17,6 +17,16 @@
   become: yes
   notify: Restart app stack
 
+- name: Deploy Homepage widget secrets (homepage.env)
+  template:
+    src: homepage-env.j2
+    dest: "{{ app_stack_dir }}/homepage.env"
+    mode: '0600'
+    owner: root
+    group: root
+  become: yes
+  notify: Restart app stack
+
 - name: Start app stack containers (root compose)
   community.docker.docker_compose_v2:
     project_src: "{{ app_stack_dir }}"
