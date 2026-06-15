@@ -13,7 +13,7 @@ BACKUP_ROOT="{{ vps_backup_root }}"
 restore_tar() {
   local name="$1" dest="$2" container="${3:-}"
   local archive
-  archive=$(ls -1t "$BACKUP_ROOT/$name/${name}_"*.tar.gz 2>/dev/null | head -1)
+  archive=$(ls -1t "$BACKUP_ROOT/$name/${name}_"*.tar.gz 2>/dev/null | head -1) || true
   if [ -z "$archive" ]; then
     echo "✗ $name: no backup found in $BACKUP_ROOT/$name/, skipping"
     return 0

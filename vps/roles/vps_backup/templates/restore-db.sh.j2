@@ -17,7 +17,7 @@ restore_one() {
     joplin)    ctr=joplin-db db=joplin user=joplin apps="joplin-server" ;;
   esac
 
-  [ -n "$dump" ] || dump=$(ls -1t /srv/backups/$svc/${svc}_*.sql.gz 2>/dev/null | head -1)
+  [ -n "$dump" ] || dump=$(ls -1t /srv/backups/$svc/${svc}_*.sql.gz 2>/dev/null | head -1) || true
   [ -f "${dump:-}" ] || { echo "✗ no dump found for $svc in /srv/backups/$svc/"; return 1; }
 
   echo "→ $svc: restore from $dump"
