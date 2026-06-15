@@ -98,19 +98,16 @@ TS_EXPIRES=$(grep "^tailscale_authkey_expires:" "$VARS_FILE" 2>/dev/null | sed '
 if [ -z "$TS_EXPIRES" ]; then
     warn "tailscale_authkey_expires not set in vars.yml — can't check reminder date"
 else
-    TODAY_EPOCH=$(date -d "today" +%s)
-    EXPIRES_EPOCH=$(date -d "$TS_EXPIRES" +%s 2>/dev/null || echo "")
-    if [ -z "$EXPIRES_EPOCH" ]; then
+    DAYS_LEFT=$(python3 -c "import sys; from datetime import date; \
+print((date.fromisoformat('$TS_EXPIRES') - date.today()).days)" 2>/dev/null)
+    if [ -z "$DAYS_LEFT" ]; then
         warn "tailscale_authkey_expires ($TS_EXPIRES) is not a valid date"
-    elif [ "$TODAY_EPOCH" -ge "$EXPIRES_EPOCH" ]; then
+    elif [ "$DAYS_LEFT" -le 0 ]; then
         fail "Tailscale auth key reminder date has passed ($TS_EXPIRES) — rotate the reusable key at tailscale.com/admin/settings/keys, update vault_tailscale_auth_key (make vault-edit), and bump tailscale_authkey_expires in vars.yml"
+    elif [ "$DAYS_LEFT" -le 14 ]; then
+        warn "Tailscale auth key reminder date is in $DAYS_LEFT day(s) ($TS_EXPIRES) — plan to rotate soon"
     else
-        DAYS_LEFT=$(( (EXPIRES_EPOCH - TODAY_EPOCH) / 86400 ))
-        if [ "$DAYS_LEFT" -le 14 ]; then
-            warn "Tailscale auth key reminder date is in $DAYS_LEFT day(s) ($TS_EXPIRES) — plan to rotate soon"
-        else
-            ok "Tailscale auth key reminder date OK ($TS_EXPIRES, ${DAYS_LEFT}d remaining)"
-        fi
+        ok "Tailscale auth key reminder date OK ($TS_EXPIRES, ${DAYS_LEFT}d remaining)"
     fi
 fi
 

@@ -2,3 +2,4 @@
 app_stack_dir: /srv/docker/oracle-cloud
 app_stack_repo_url: "https://github.com/meroxdotdev/cloudlab-merox.git"
 app_stack_repo_branch: main
+app_stack_tmp_clone_dir: /tmp/cloudlab-merox-clone

@@ -1,5 +1,45 @@
 ---
-- name: Clone or update cloudlab-merox app stack repository
+# The git module can only clone into a missing or empty directory. On a
+# fresh server (or after a DR restore) other roles create subdirectories
+# under app_stack_dir (e.g. authentik/, guacamole/, garage/) before this
+# role runs, so a plain `git: clone` here fails with "destination path
+# already exists and is not an empty directory". Work around it by cloning
+# to a temp dir and merging it in when app_stack_dir isn't a git repo yet.
+- name: Check if app stack directory is already a git repository
+  ansible.builtin.stat:
+    path: "{{ app_stack_dir }}/.git"
+  register: app_stack_git_check
+
+- name: Clone cloudlab-merox repository into a temporary directory (first-time setup)
+  ansible.builtin.git:
+    repo: "{{ app_stack_repo_url }}"
+    dest: "{{ app_stack_tmp_clone_dir }}"
+    version: "{{ app_stack_repo_branch }}"
+  become: yes
+  when: not app_stack_git_check.stat.exists
+
+- name: Ensure app stack directory exists
+  ansible.builtin.file:
+    path: "{{ app_stack_dir }}"
+    state: directory
+    mode: '0755'
+  become: yes
+  when: not app_stack_git_check.stat.exists
+
+- name: Merge cloned repository into app stack directory
+  ansible.builtin.command: cp -a {{ app_stack_tmp_clone_dir }}/. {{ app_stack_dir }}/
+  become: yes
+  changed_when: true
+  when: not app_stack_git_check.stat.exists
+
+- name: Clean up temporary clone directory
+  ansible.builtin.file:
+    path: "{{ app_stack_tmp_clone_dir }}"
+    state: absent
+  become: yes
+  when: not app_stack_git_check.stat.exists
+
+- name: Update cloudlab-merox app stack repository
   ansible.builtin.git:
     repo: "{{ app_stack_repo_url }}"
     dest: "{{ app_stack_dir }}"
@@ -22,6 +62,19 @@
     src: homepage-env.j2
     dest: "{{ app_stack_dir }}/homepage.env"
     mode: '0600'
+    owner: root
+    group: root
+  become: yes
+  notify: Restart app stack
+
+# network-cloud-merox is created by traefik_setup outside of Compose, so the
+# root compose's own (non-external) network definition would otherwise fail
+# with a com.docker.compose.network label mismatch.
+- name: Mark network-cloud-merox as external for the root compose
+  ansible.builtin.copy:
+    src: docker-compose.override.yml
+    dest: "{{ app_stack_dir }}/docker-compose.override.yml"
+    mode: '0644'
     owner: root
     group: root
   become: yes
