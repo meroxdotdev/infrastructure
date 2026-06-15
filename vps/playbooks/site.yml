@@ -1,5 +1,11 @@
 ---
-- name: Complete VPS Setup - Infrastructure & Services
+# Split into two plays so handlers queued by docker_setup/security_hardening
+# (Docker daemon restarts triggered by /etc/docker/daemon.json changes) flush
+# at the end of the first play - BEFORE any service role below creates
+# containers. A flush at the normal end-of-roles point (single play) happens
+# AFTER traefik/garage/guacamole/authentik/etc. have already created their
+# containers, and a docker daemon restart at that point can wipe them.
+- name: Complete VPS Setup - Base OS, Docker & Security
   hosts: vps_servers
   become: true
   gather_facts: true
@@ -19,6 +25,11 @@
     - role: security_hardening
       tags: ['security', 'infra']
 
+- name: Complete VPS Setup - Services
+  hosts: vps_servers
+  become: true
+
+  roles:
     - role: tailscale_exit_node
       tags: ['tailscale', 'vpn']
 
