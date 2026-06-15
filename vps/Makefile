@@ -3,6 +3,7 @@
         garage-setup garage-test \
         uptime-kuma-setup uptime-kuma-test guacamole-setup guacamole-test \
         netdata-setup netdata-test \
+        cloudflared-setup cloudflared-test app-stack-setup app-stack-test \
         authentik-setup authentik-test authentik-backup \
         cleanup check-resources health-check \
         terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
@@ -36,6 +37,7 @@ help:
 	@echo "Individual services:"
 	@echo "  traefik-setup      garage-setup       uptime-kuma-setup"
 	@echo "  guacamole-setup    netdata-setup      authentik-setup"
+	@echo "  cloudflared-setup  app-stack-setup    (cloudlab-merox app stack)"
 	@echo ""
 	@echo "Authentik SSO:"
 	@echo "  authentik-setup    Deploy Authentik (sso.merox.dev)"
@@ -120,6 +122,18 @@ netdata-setup:
 
 netdata-test:
 	ansible vps_servers -m shell -a "docker ps | grep netdata && curl -I http://localhost:19999"
+
+cloudflared-setup:
+	ansible-playbook playbooks/site.yml --tags cloudflared
+
+cloudflared-test:
+	ansible vps_servers -m shell -a "docker ps | grep cloudflared && docker logs cloudflared --tail 20"
+
+app-stack-setup:
+	ansible-playbook playbooks/app-stack.yml
+
+app-stack-test:
+	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer|joplin|glances|agents-dashboard'"
 
 # --- Authentik SSO ---
 authentik-setup:
@@ -223,6 +237,7 @@ dr-full:
 	  sleep 5; \
 	done
 	$(MAKE) setup
+	$(MAKE) app-stack-setup
 
 # --- Vault ---
 vault-edit:
