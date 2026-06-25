@@ -8,21 +8,22 @@ Complete rebuild procedure for a new server: VPS → Kubernetes cluster → Agen
 
 Before starting, have these ready:
 
-| Item | Where to find it |
-|------|-----------------|
-| Vault password | Password manager |
-| AGE key (`age.key`) | Backed up separately — **critical** |
-| Tailscale reusable auth key | Tailscale admin console |
-| Cloudflare API token | Cloudflare dashboard |
-| Portainer EE license | Portainer account |
-| Telegram bot token + user ID | BotFather / Telegram |
-| Anthropic API key | console.anthropic.com |
-| OpenClaw `.env` (`~/.openclaw/.env`) | Backed up separately |
-| Hetzner API token | console.hetzner.cloud → Security → API Tokens |
-| DR SSH key pair | `~/.ssh/cloudlab_dr_test` + `.pub` — on the prod VPS |
-| NAS rsync password file | `admin@NAS:/var/services/homes/admin/.vps-rsync.pass` — must match `vault_rsyncd_password` (deployed to `/etc/rsyncd.secrets` by `vps_backup`) |
+| Item                                 | Where to find it                                                                                                                               |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vault password                       | Password manager                                                                                                                               |
+| AGE key (`age.key`)                  | Backed up separately — **critical**                                                                                                            |
+| Tailscale reusable auth key          | Tailscale admin console                                                                                                                        |
+| Cloudflare API token                 | Cloudflare dashboard                                                                                                                           |
+| Portainer EE license                 | Portainer account                                                                                                                              |
+| Telegram bot token + user ID         | BotFather / Telegram                                                                                                                           |
+| Anthropic API key                    | console.anthropic.com                                                                                                                          |
+| OpenClaw `.env` (`~/.openclaw/.env`) | Backed up separately                                                                                                                           |
+| Hetzner API token                    | console.hetzner.cloud → Security → API Tokens                                                                                                  |
+| DR SSH key pair                      | `~/.ssh/cloudlab_dr_test` + `.pub` — on the prod VPS                                                                                           |
+| NAS rsync password file              | `admin@NAS:/var/services/homes/admin/.vps-rsync.pass` — must match `vault_rsyncd_password` (deployed to `/etc/rsyncd.secrets` by `vps_backup`) |
 
 **`vps/terraform/terraform.tfvars`** (gitignored — must be recreated on fresh machine):
+
 ```hcl
 hcloud_token        = "<hetzner-api-token>"
 ssh_public_key_path = "~/.ssh/cloudlab_dr_test.pub"
@@ -31,6 +32,7 @@ server_type         = "cax21"
 server_location     = "nbg1"
 allowed_ips         = ["0.0.0.0/0", "::/0"]
 ```
+
 > Generate SSH key if missing: `ssh-keygen -t ed25519 -f ~/.ssh/cloudlab_dr_test -C "cloudlab-dr-test" -N ""`
 
 ---
@@ -50,6 +52,7 @@ allowed_ips         = ["0.0.0.0/0", "::/0"]
 
 > **Prerequisite:** `vault_tailscale_auth_key` must be valid (Tailscale keys expire after 90 days).
 > Verify at `tailscale.com/admin/settings/keys` before starting. Then:
+>
 > ```bash
 > cd vps/ && make vault-edit   # update vault_tailscale_auth_key
 > git add inventories/production/group_vars/all/vault.yml && git commit -m "fix: update tailscale auth key" && git push
@@ -85,6 +88,7 @@ Homepage / Portainer / OpenClaw from their tarballs. See
 `vps/roles/vps_backup/README.md` for the full breakdown of each step.
 
 Verify Phase 1 is healthy:
+
 ```bash
 make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 1)
 ```
@@ -95,22 +99,25 @@ make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 
 local DNS records (joplin, agents, traefik, status, garage, etc.) to the new
 IP — see `vps/roles/vps_backup/README.md`. Two things still need a manual
 update if the IP changed:
+
 - the Storage Cloud link in
   `kubernetes/apps/default/homepage/app/resources/services.yaml`
   (the NAS off-site sync auto-detects its own IP, so nothing else there).
 - `tailscale_expected_ip` in `vps/inventories/production/group_vars/vps_servers/vars.yml`
-  — bump it to the new IP so the *next* DR's auto-repoint diffs from the
+  — bump it to the new IP so the _next_ DR's auto-repoint diffs from the
   right baseline.
 
 **IMPORTANT — before Phase 2:** extract Garage S3 credentials and save to vault:
+
 ```bash
 make garage-extract-creds   # run on the VPS — extracts keys + updates vault automatically
 ```
 
 > **DR-over-SSH note:** `garage-extract-creds` and `dr-verify-phase1` assume they run
-> *on* the VPS (local `docker ps`/`docker exec`). When running from your Mac/Linux
+> _on_ the VPS (local `docker ps`/`docker exec`). When running from your Mac/Linux
 > machine via `make dr-full` (SSH mode), they currently fail/false-negative. Workaround
 > used during the 2026-06-13 drill:
+>
 > ```bash
 > # verify (from local machine):
 > scp scripts/dr-verify.sh root@<NEW_IP>:/tmp/ && ssh root@<NEW_IP> "bash /tmp/dr-verify.sh --phase 1"
@@ -126,6 +133,7 @@ make garage-extract-creds   # run on the VPS — extracts keys + updates vault a
 >   --encrypt-vault-id default --output inventories/production/group_vars/all/vault.yml
 > shred -u /tmp/vault-plain.yml
 > ```
+>
 > (`--encrypt-vault-id default` is required because `ansible.cfg` already sets
 > `vault_password_file`, which combined with `--vault-password-file` makes
 > `ansible-vault` see two `default` vault-ids.)
@@ -134,6 +142,7 @@ make garage-extract-creds   # run on the VPS — extracts keys + updates vault a
 **new** access key + secret + Tailscale IP. Longhorn's `minio-secret` (used by the
 `BackupTarget` CR) must be updated and resynced, or Longhorn backups/restores will
 silently fail (`BackupTarget available: false`):
+
 ```bash
 export SOPS_AGE_KEY_FILE=./age.key
 sops -d -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
@@ -159,7 +168,8 @@ role (added 2026-06-13) — runs as a `network_mode: host` container so it can r
 and `172.25.10.72:9000` (Authentik), matching the tunnel's remotely-managed ingress
 rules (`config_src: cloudflare` — ingress is stored on Cloudflare's side, nothing to
 re-configure per-deploy).
-> **Requires `cloudflare_tunnel_token` in vault** (the *connector* token from
+
+> **Requires `cloudflare_tunnel_token` in vault** (the _connector_ token from
 > Cloudflare Zero Trust → Networks → Tunnels → "one" → Configure — looks like
 > `eyJhIjoi...`). This is **different** from `homepage_cloudflare_token` (an API
 > token used only by Homepage's Cloudflared widget). As of 2026-06-13 this var is
@@ -167,6 +177,7 @@ re-configure per-deploy).
 > `rmt.merox.dev`, `status.merox.dev`, and `files.merox.dev` are unreachable from
 > the internet after a fresh deploy (container runs but logs
 > `Provided Tunnel token is not valid`). One-time fix:
+>
 > ```bash
 > cd vps && make vault-edit   # add: cloudflare_tunnel_token: "eyJhIjoi..."
 > ansible-playbook playbooks/site.yml --tags cloudflared
@@ -181,13 +192,16 @@ re-configure per-deploy).
 > `/srv/docker/oracle-cloud/*/` are intact. This was hit during the 2026-06-13 drill
 > when re-running `ansible-playbook --tags cloudflared,uptime-kuma` after the
 > initial `make dr-full`. Recovery (recreates all containers from existing compose
-> + data, ~30s):
+>
+> - data, ~30s):
+>
 > ```bash
 > ssh root@<IP> 'for d in /srv/docker/oracle-cloud/*/ /srv/docker/cloudflared/; do (cd "$d" && docker compose up -d); done'
 > ```
+>
 > If running the full `make dr-full` in one shot (not re-running scoped tags
 > afterwards), this has not been observed to cause data loss — only re-triggering
-> `docker_setup`'s handlers on a *second* ansible run on the same fresh box.
+> `docker_setup`'s handlers on a _second_ ansible run on the same fresh box.
 
 ### Option B — Existing server / manual provisioning
 
@@ -230,6 +244,7 @@ ansible-vault edit inventories/production/group_vars/all/vault.yml
 ```
 
 **Verify:**
+
 ```bash
 make health-check
 ```
@@ -303,6 +318,9 @@ git add -A && git commit -m "chore: add secrets" && git push
 
 ```bash
 # 6. Bootstrap Flux and wait for Longhorn to be ready
+#    helmfile.yaml installs: cilium, coredns, spegel, cert-manager,
+#    prometheus-operator-crds (pre-installs CRDs before Flux reconciles
+#    kube-prometheus-stack), flux-operator, flux-instance
 task bootstrap:apps
 
 # Wait until Longhorn HelmRelease is Ready (~3-5 min):
@@ -338,6 +356,7 @@ kubectl get pods -A --watch
 ```
 
 **Verify Phase 2:**
+
 ```bash
 # One-shot: bash scripts/dr-verify.sh --phase 2
 # Or manually:
@@ -367,6 +386,7 @@ kubectl -n network describe certificates            # Certificate Ready
 ```
 
 **Longhorn backup target (verify after restore):**
+
 ```bash
 # BackupTarget is a CRD in Longhorn 1.11.2 (not a Setting anymore):
 kubectl get backuptarget default -n longhorn-system -o jsonpath='{.spec}'
@@ -402,6 +422,7 @@ kubectl -n flux-system get receiver github-webhook \
 **Full setup guide: [agent/README.md](agent/README.md)**
 
 The agent README is the single source of truth for this phase. It covers:
+
 - Node.js 24 + OpenClaw install
 - `openclaw` user creation + sudoers
 - `sudoers-fix-perms` + `openclaw-fix-perms` scripts
@@ -412,7 +433,7 @@ The agent README is the single source of truth for this phase. It covers:
 - Claude Code OAuth + OpenClaw onboard
 - Telegram config (`openclaw.json`) — only if no backup was restored above
 - Dashboard scripts (`agent/dashboard/scripts/`) + restore `/srv/dashboard/.env`
-  + `data/*.json` from NAS backup if present
+    - `data/*.json` from NAS backup if present
 - crontab (openclaw user) + systemd user service
 - Final step: `agent/scripts/dr-restore-agents.sh` deploys agents-api, brings
   up agents-dashboard + openclaw-gateway, and verifies via gateway probe
@@ -421,6 +442,7 @@ The agent README is the single source of truth for this phase. It covers:
 > (see Phase 1's restore step above).
 
 **Verify when done:**
+
 ```bash
 # One-shot (run from vps/ dir):
 make dr-verify-phase3
@@ -492,20 +514,21 @@ sudo -u openclaw openclaw status
 
 ## What lives where
 
-| Asset | Location | Backed up? |
-|-------|----------|------------|
-| K8s manifests + Ansible roles | This git repo | ✅ |
-| Kubernetes secrets (SOPS) | Git-encrypted with AGE | ✅ |
-| AGE encryption key | `age.key` (gitignored) | ⚠️ Back up manually |
-| Vault password | Password manager | ⚠️ Stored externally |
-| Ansible vault secrets | `vps/inventories/production/group_vars/all/vault.yml` (encrypted) | ✅ in git |
-| Agent config template + skill | `agent/` in this repo | ✅ |
-| Agent secrets (`~/.openclaw/.env`) | Only on server | ⚠️ Back up manually |
-| Longhorn volumes (media/ARR configs, group `media`) | Nightly to Garage S3 on the VPS | ✅ mirrored to NAS |
-| VPS service state (Authentik + Joplin DB dumps, Guacamole, Traefik certs, Pi-hole config, OpenClaw runtime) | Nightly to `/srv/backups/`, NAS pulls it off-site — schedule & details: [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) | ✅ off-site on NAS |
-| Agent dashboard state + secrets (`/srv/dashboard/`: `data/*.json`, `.env`) | Nightly to `/srv/backups/`, NAS pulls it off-site — restored by `agent/README.md` DR steps | ✅ off-site on NAS |
-| Observability history (Prometheus/Loki/Grafana), `*-cache` volumes, Uptime-Kuma | — | ❌ deliberately not backed up (regenerable) |
+| Asset                                                                                                       | Location                                                                                                                                 | Backed up?                                  |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| K8s manifests + Ansible roles                                                                               | This git repo                                                                                                                            | ✅                                          |
+| Kubernetes secrets (SOPS)                                                                                   | Git-encrypted with AGE                                                                                                                   | ✅                                          |
+| AGE encryption key                                                                                          | `age.key` (gitignored)                                                                                                                   | ⚠️ Back up manually                         |
+| Vault password                                                                                              | Password manager                                                                                                                         | ⚠️ Stored externally                        |
+| Ansible vault secrets                                                                                       | `vps/inventories/production/group_vars/all/vault.yml` (encrypted)                                                                        | ✅ in git                                   |
+| Agent config template + skill                                                                               | `agent/` in this repo                                                                                                                    | ✅                                          |
+| Agent secrets (`~/.openclaw/.env`)                                                                          | Only on server                                                                                                                           | ⚠️ Back up manually                         |
+| Longhorn volumes (media/ARR configs, group `media`)                                                         | Nightly to Garage S3 on the VPS                                                                                                          | ✅ mirrored to NAS                          |
+| VPS service state (Authentik + Joplin DB dumps, Guacamole, Traefik certs, Pi-hole config, OpenClaw runtime) | Nightly to `/srv/backups/`, NAS pulls it off-site — schedule & details: [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) | ✅ off-site on NAS                          |
+| Agent dashboard state + secrets (`/srv/dashboard/`: `data/*.json`, `.env`)                                  | Nightly to `/srv/backups/`, NAS pulls it off-site — restored by `agent/README.md` DR steps                                               | ✅ off-site on NAS                          |
+| Observability history (Prometheus/Loki/Grafana), `*-cache` volumes, Uptime-Kuma                             | —                                                                                                                                        | ❌ deliberately not backed up (regenerable) |
 
 **The two things to back up manually before decommissioning:**
+
 1. `age.key` — losing this = losing all SOPS-encrypted secrets
 2. `~/.openclaw/.env` — Anthropic API key, Telegram tokens
