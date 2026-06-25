@@ -1,0 +1,18 @@
+[pre-commit]
+parallel = true
+skip = ["merge", "rebase"]
+
+[pre-commit.commands.format-json]
+glob = ["*.json", "*.json5", "*.jsonc"]
+run = "PATH=$HOME/.local/share/mise/shims:$PATH oxfmt {staged_files}"
+stage_fixed = true
+
+[pre-commit.commands.format-markdown]
+glob = ["*.md", "*.markdown", "*.mdx"]
+run = "PATH=$HOME/.local/share/mise/shims:$PATH oxfmt {staged_files}"
+stage_fixed = true
+
+[pre-commit.commands.format-yaml]
+glob = ["*.yaml", "*.yml"]
+run = "PATH=$HOME/.local/share/mise/shims:$PATH oxfmt {staged_files}"
+stage_fixed = true
