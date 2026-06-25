@@ -42,13 +42,22 @@ releases:
     values: ['../kubernetes/apps/cert-manager/cert-manager/app/helm/values.yaml']
     needs: ['kube-system/spegel']
 
+  # Install Prometheus CRDs out-of-band so they exist before Flux reconciles
+  # kube-prometheus-stack, avoiding "no matches for kind" errors on fresh bootstrap.
+  - name: prometheus-operator-crds
+    namespace: observability
+    atomic: true
+    chart: oci://ghcr.io/prometheus-community/charts/prometheus-operator-crds
+    version: 30.0.0
+    needs: ['cert-manager/cert-manager']
+
   - name: flux-operator
     namespace: flux-system
     atomic: true
     chart: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator
     version: 0.52.0
     values: ['../kubernetes/apps/flux-system/flux-operator/app/helm/values.yaml']
-    needs: ['cert-manager/cert-manager']
+    needs: ['observability/prometheus-operator-crds']
 
   - name: flux-instance
     namespace: flux-system
