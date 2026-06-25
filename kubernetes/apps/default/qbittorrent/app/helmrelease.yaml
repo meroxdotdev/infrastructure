@@ -34,7 +34,6 @@ spec:
               FIREWALL_OUTBOUND_SUBNETS: "10.0.0.0/8"
               DNS_KEEP_NAMESERVER: "on"
               DOT: "off"
-              WIREGUARD_IMPLEMENTATION: userspace
               VPN_IPV6_DISABLED: "on"
               # Refresh server list every 24h so Gluetun picks healthy servers
               UPDATER_PERIOD: 24h
