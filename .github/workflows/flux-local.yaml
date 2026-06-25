@@ -10,15 +10,21 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   pre-job:
     name: Flux Local Pre-Job
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       any_changed: ${{ steps.changed-files.outputs.any_changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Get Changed Files
         id: changed-files
@@ -30,10 +36,14 @@ jobs:
     name: Flux Local Test
     needs: pre-job
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: ${{ needs.pre-job.outputs.any_changed == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Run flux-local test
         uses: docker://ghcr.io/allenporter/flux-local:v8.3.0
@@ -58,12 +68,14 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           path: pull
+          persist-credentials: false
 
       - name: Checkout Default Branch
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: "${{ github.event.repository.default_branch }}"
           path: default
+          persist-credentials: false
 
       - name: Run flux-local diff
         uses: docker://ghcr.io/allenporter/flux-local:v8.3.0
@@ -111,6 +123,7 @@ jobs:
     name: Flux Local Success
     needs: ["test", "diff"]
     runs-on: ubuntu-latest
+    permissions: {}
     if: ${{ always() }}
     steps:
       - name: Any jobs failed?

@@ -16,3 +16,7 @@ stage_fixed = true
 glob = ["*.yaml", "*.yml"]
 run = "PATH=$HOME/.local/share/mise/shims:$PATH oxfmt {staged_files}"
 stage_fixed = true
+
+[pre-commit.commands.zizmor]
+glob = [".github/workflows/*.yaml", ".github/workflows/*.yml"]
+run = "PATH=$HOME/.local/share/mise/shims:$PATH zizmor --offline {staged_files}"
