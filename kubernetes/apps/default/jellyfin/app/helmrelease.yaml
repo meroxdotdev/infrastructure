@@ -21,6 +21,11 @@ spec:
       jellyfin:
         annotations:
           reloader.stakater.com/auto: "true"
+        pod:
+          # Nvidia Quadro P2200 transcoding (containerd runtime registered by the
+          # nvidia-container-toolkit Talos extension). See docs/gpu-transcoding.md
+          # to revert to the previous Intel QSV setup.
+          runtimeClassName: nvidia
         containers:
           app:
             image:
@@ -55,7 +60,7 @@ spec:
               requests:
                 cpu: 100m
               limits:
-                gpu.intel.com/i915: 1
+                nvidia.com/gpu: 1
                 memory: 8Gi
     defaultPodOptions:
       securityContext:
@@ -73,7 +78,7 @@ spec:
     route:
       app:
         hostnames:
-#          - "{{ .Release.Name }}.k8s.merox.dev"
+          #          - "{{ .Release.Name }}.k8s.merox.dev"
           - "media.merox.dev"
         parentRefs:
           - name: internal

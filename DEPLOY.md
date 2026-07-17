@@ -479,8 +479,9 @@ sudo -u openclaw openclaw status
 [ ] talos/talconfig.yaml updated (node IPs, VIP, installDisk, talosImageURL if changed)
 [ ] kubernetes/components/common/cluster-vars.yaml updated (all infrastructure IPs — NFS, router, LB IPs)
 [ ] kubernetes/apps/kube-system/cilium/app/networks.yaml updated (subnet cidr, must contain all LB IPs)
-[ ] Intel iGPU (i915) present on new hardware — required for Jellyfin HW transcoding
-    (if no Intel iGPU: remove gpu.intel.com/i915 from jellyfin helmrelease + disable intel-device-plugin-operator)
+[ ] Nvidia Quadro P2200 passthrough present on new hardware for controlplane-1 — required for Jellyfin HW transcoding
+    (if no GPU: remove nvidia.com/gpu + runtimeClassName from jellyfin helmrelease + suspend nvidia-device-plugin;
+    see docs/gpu-transcoding.md for the Intel QSV rollback path, kept suspended in git for this scenario)
 [ ] Nodes reachable on port 50000 (nmap verification)
 [ ] Phase 2 complete — all nodes Ready, Flux healthy, cilium status OK (make dr-verify-phase2)
 [ ] Longhorn volumes restored (task longhorn:restore ran successfully)

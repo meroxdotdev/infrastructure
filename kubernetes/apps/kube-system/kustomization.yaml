@@ -12,7 +12,10 @@ resources:
   # Storage
   - ./csi-driver-nfs/ks.yaml
   # Hardware
+  # Intel iGPU passthrough — currently suspended, kept for rollback.
+  # See docs/gpu-transcoding.md to switch transcoding back to Intel QSV.
   - ./intel-device-plugin-operator/ks.yaml
+  - ./nvidia-device-plugin/ks.yaml
   # Utilities
   - ./metrics-server/ks.yaml
   - ./reloader/ks.yaml

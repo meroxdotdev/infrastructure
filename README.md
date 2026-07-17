@@ -12,90 +12,90 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 
 ### VPS — Oracle Cloud (`vps/` → `make setup`)
 
-| Service | URL | Purpose |
-|---|---|---|
-| Traefik | traefik.cloud.merox.dev | Reverse proxy + ACME certs |
-| Pi-hole + Unbound | pihole.cloud.merox.dev/admin | DNS ad-blocking + DoH resolver |
-| Authentik | sso.merox.dev | SSO / identity provider |
-| Portainer EE | 100.72.22.38:9000 *(Tailscale)* | Container management UI |
-| Homepage | inside.merox.dev *(Tailscale)* | Internal dashboard (K8s + Proxmox + router) |
-| Joplin Server | joplin.cloud.merox.dev | Notes sync (PostgreSQL backend) |
-| Uptime Kuma | status.merox.dev | Uptime monitoring + alerting |
-| Guacamole | rmt.merox.dev | Remote desktop gateway (Authentik SSO) |
-| Garage S3 | garage.cloud.merox.dev | Off-site S3 storage — receives Longhorn volume backups from homelab |
-| Netdata | netdata.cloud.merox.dev | Real-time metrics (parent + 3 child nodes) |
-| Beszel | beszel.cloud.merox.dev | Host monitoring |
-| Dozzle | dozzle.cloud.merox.dev | Docker log aggregation |
-| Glances | glances.cloud.merox.dev | System monitoring |
-| OpenClaw Dashboard | agents.cloud.merox.dev | AI agent control panel |
-| Code Server | code.cloud.merox.dev | Browser-based VS Code |
+| Service            | URL                             | Purpose                                                             |
+| ------------------ | ------------------------------- | ------------------------------------------------------------------- |
+| Traefik            | traefik.cloud.merox.dev         | Reverse proxy + ACME certs                                          |
+| Pi-hole + Unbound  | pihole.cloud.merox.dev/admin    | DNS ad-blocking + DoH resolver                                      |
+| Authentik          | sso.merox.dev                   | SSO / identity provider                                             |
+| Portainer EE       | 100.72.22.38:9000 _(Tailscale)_ | Container management UI                                             |
+| Homepage           | inside.merox.dev _(Tailscale)_  | Internal dashboard (K8s + Proxmox + router)                         |
+| Joplin Server      | joplin.cloud.merox.dev          | Notes sync (PostgreSQL backend)                                     |
+| Uptime Kuma        | status.merox.dev                | Uptime monitoring + alerting                                        |
+| Guacamole          | rmt.merox.dev                   | Remote desktop gateway (Authentik SSO)                              |
+| Garage S3          | garage.cloud.merox.dev          | Off-site S3 storage — receives Longhorn volume backups from homelab |
+| Netdata            | netdata.cloud.merox.dev         | Real-time metrics (parent + 3 child nodes)                          |
+| Beszel             | beszel.cloud.merox.dev          | Host monitoring                                                     |
+| Dozzle             | dozzle.cloud.merox.dev          | Docker log aggregation                                              |
+| Glances            | glances.cloud.merox.dev         | System monitoring                                                   |
+| OpenClaw Dashboard | agents.cloud.merox.dev          | AI agent control panel                                              |
+| Code Server        | code.cloud.merox.dev            | Browser-based VS Code                                               |
 
 ### Kubernetes — on-premise (`kubernetes/` → Flux GitOps)
 
-| Service | Namespace | Purpose |
-|---|---|---|
-| Jellyfin | default | Media server (Intel i915 GPU) |
-| Jellyseerr | default | Media request management |
-| Radarr / Sonarr | default | Movie / TV show automation |
-| Prowlarr | default | Torrent indexer |
-| qBittorrent | default | Torrent client (fixed IP: 10.57.57.102) |
-| n8n | default | Workflow automation |
-| Headlamp | default | Kubernetes dashboard (cluster-admin UI) |
-| Authentik outpost | default | SSO proxy for K8s apps |
-| Portainer agent | default | Portainer agent (fixed IP: 10.57.57.103) |
-| Prometheus + Grafana | observability | Metrics + dashboards |
-| Loki + Promtail | observability | Log aggregation |
-| AlertManager | observability | Alerts + healthchecks.io heartbeat |
-| Longhorn | storage | Persistent volumes + off-site backup → Garage S3 on Oracle VPS |
-| Cilium | kube-system | CNI + Gateway API + L2 LoadBalancer |
-| cert-manager | cert-manager | Automated TLS certificates (ACME) |
-| Cloudflare Tunnel | network | External exposure — zero open ports |
-| k8s-gateway | network | Internal DNS for `*.merox.dev` |
+| Service              | Namespace     | Purpose                                                        |
+| -------------------- | ------------- | -------------------------------------------------------------- |
+| Jellyfin             | default       | Media server (Intel i915 GPU)                                  |
+| Jellyseerr           | default       | Media request management                                       |
+| Radarr / Sonarr      | default       | Movie / TV show automation                                     |
+| Prowlarr             | default       | Torrent indexer                                                |
+| qBittorrent          | default       | Torrent client (fixed IP: 10.57.57.102)                        |
+| n8n                  | default       | Workflow automation                                            |
+| Headlamp             | default       | Kubernetes dashboard (cluster-admin UI)                        |
+| Authentik outpost    | default       | SSO proxy for K8s apps                                         |
+| Portainer agent      | default       | Portainer agent (fixed IP: 10.57.57.103)                       |
+| Prometheus + Grafana | observability | Metrics + dashboards                                           |
+| Loki + Promtail      | observability | Log aggregation                                                |
+| AlertManager         | observability | Alerts + healthchecks.io heartbeat                             |
+| Longhorn             | storage       | Persistent volumes + off-site backup → Garage S3 on Oracle VPS |
+| Cilium               | kube-system   | CNI + Gateway API + L2 LoadBalancer                            |
+| cert-manager         | cert-manager  | Automated TLS certificates (ACME)                              |
+| Cloudflare Tunnel    | network       | External exposure — zero open ports                            |
+| k8s-gateway          | network       | Internal DNS for `*.merox.dev`                                 |
 
 ### Blog — Cloudflare Pages (private repo `meroxdotdev/merox`)
 
-| Service | URL | Deploy |
-|---|---|---|
+| Service   | URL       | Deploy                                |
+| --------- | --------- | ------------------------------------- |
 | merox.dev | merox.dev | Auto on `git push` via GitHub Actions |
 
 ### AI Agents — OpenClaw (`agent/` → `/home/openclaw/.openclaw/`)
 
-| Agent | Purpose | Triggered by |
-|---|---|---|
-| news | Daily briefing (HackerNews + RSS) | Cron / Telegram |
-| blog | Publishes posts to merox.dev | Telegram |
-| infra | Runs kubectl / docker commands | Telegram |
-| costs | Infrastructure cost tracking | Telegram |
-| design | Visual content generation | Telegram |
-| orchestrator | Routes between agents + scheduled tasks | Internal |
-| dashboard | Updates agents.cloud.merox.dev | Internal |
-| renovate | Git dependency sync | Internal |
+| Agent        | Purpose                                 | Triggered by    |
+| ------------ | --------------------------------------- | --------------- |
+| news         | Daily briefing (HackerNews + RSS)       | Cron / Telegram |
+| blog         | Publishes posts to merox.dev            | Telegram        |
+| infra        | Runs kubectl / docker commands          | Telegram        |
+| costs        | Infrastructure cost tracking            | Telegram        |
+| design       | Visual content generation               | Telegram        |
+| orchestrator | Routes between agents + scheduled tasks | Internal        |
+| dashboard    | Updates agents.cloud.merox.dev          | Internal        |
+| renovate     | Git dependency sync                     | Internal        |
 
 ---
 
 ## Where the code lives
 
-| What | GitHub repo | Branch | Local path |
-|---|---|---|---|
-| K8s cluster (Flux manifests, Talos config) | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/` |
-| Ansible + Terraform VPS DR | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/vps/` |
-| Docker Compose VPS (raw files) | [meroxdotdev/cloudlab-merox](https://github.com/meroxdotdev/cloudlab-merox) | `main` | `/srv/docker/oracle-cloud/` |
-| OpenClaw config template + infra skill | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/agent/` |
-| Blog (Astro) | [meroxdotdev/merox](https://github.com/meroxdotdev/merox) *(private)* | `main` | `/srv/merox/` |
-| Agent runtime state (logs, memory) | — not in Git — | | `/home/openclaw/.openclaw/` |
+| What                                       | GitHub repo                                                                 | Branch | Local path                              |
+| ------------------------------------------ | --------------------------------------------------------------------------- | ------ | --------------------------------------- |
+| K8s cluster (Flux manifests, Talos config) | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/`       |
+| Ansible + Terraform VPS DR                 | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/vps/`   |
+| Docker Compose VPS (raw files)             | [meroxdotdev/cloudlab-merox](https://github.com/meroxdotdev/cloudlab-merox) | `main` | `/srv/docker/oracle-cloud/`             |
+| OpenClaw config template + infra skill     | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/agent/` |
+| Blog (Astro)                               | [meroxdotdev/merox](https://github.com/meroxdotdev/merox) _(private)_       | `main` | `/srv/merox/`                           |
+| Agent runtime state (logs, memory)         | — not in Git —                                                              |        | `/home/openclaw/.openclaw/`             |
 
 ---
 
 ## Where secrets live
 
-| Secret | Location | Used by |
-|---|---|---|
-| K8s secrets (Cloudflare token, Authentik, Longhorn S3) | SOPS/AGE → `*.sops.yaml` in repo | Flux on apply |
-| **`age.key`** ← **back this up** | `infrastructure/age.key` *(gitignored)* | SOPS decryption |
-| VPS secrets (Tailscale key, Cloudflare, Authentik, Garage) | Ansible Vault → `vps/.../vault.yml` | `make setup` / `make dr-full` |
-| Pi-hole, Joplin DB, Code Server passwords | `/srv/docker/oracle-cloud/.env` *(gitignored)* | Docker Compose |
-| Telegram token, Tavily API, Anthropic key | `/home/openclaw/.openclaw/.env` *(gitignored)* | OpenClaw agents |
-| Talos bootstrap secrets | `talos/talsecret.sops.yaml` *(SOPS encrypted)* | `task bootstrap:talos` |
+| Secret                                                     | Location                                       | Used by                       |
+| ---------------------------------------------------------- | ---------------------------------------------- | ----------------------------- |
+| K8s secrets (Cloudflare token, Authentik, Longhorn S3)     | SOPS/AGE → `*.sops.yaml` in repo               | Flux on apply                 |
+| **`age.key`** ← **back this up**                           | `infrastructure/age.key` _(gitignored)_        | SOPS decryption               |
+| VPS secrets (Tailscale key, Cloudflare, Authentik, Garage) | Ansible Vault → `vps/.../vault.yml`            | `make setup` / `make dr-full` |
+| Pi-hole, Joplin DB, Code Server passwords                  | `/srv/docker/oracle-cloud/.env` _(gitignored)_ | Docker Compose                |
+| Telegram token, Tavily API, Anthropic key                  | `/home/openclaw/.openclaw/.env` _(gitignored)_ | OpenClaw agents               |
+| Talos bootstrap secrets                                    | `talos/talsecret.sops.yaml` _(SOPS encrypted)_ | `task bootstrap:talos`        |
 
 > **If you lose `age.key`, you cannot decrypt any K8s secret. Back it up separately.**
 
@@ -103,17 +103,17 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 
 ## External dependencies
 
-| Service | Purpose | Cost |
-|---|---|---|
-| Cloudflare | DNS + Tunnel + Pages (blog) | Free |
-| Tailscale | Management VPN mesh | Free |
-| Oracle Cloud | Primary VPS (4 vCPU ARM, 24GB) | Free tier |
-| Hetzner | Fallback VPS — only if Oracle Cloud free tier is lost. Provision on-demand: `make dr-full` | ~€5.39/mo if needed |
-| Anthropic / Claude | AI model for agents (OAuth) | Claude Pro |
-| GitHub | Repos + Actions (CI blog, Renovate) | Free |
-| Let's Encrypt | HTTPS certificates (auto-renew) | Free |
-| Proxmox | Hypervisor for K8s nodes | Own hardware |
-| Synology DS223+ | NFS for K8s + DB backups | Own hardware (10.57.57.201) |
+| Service            | Purpose                                                                                    | Cost                        |
+| ------------------ | ------------------------------------------------------------------------------------------ | --------------------------- |
+| Cloudflare         | DNS + Tunnel + Pages (blog)                                                                | Free                        |
+| Tailscale          | Management VPN mesh                                                                        | Free                        |
+| Oracle Cloud       | Primary VPS (4 vCPU ARM, 24GB)                                                             | Free tier                   |
+| Hetzner            | Fallback VPS — only if Oracle Cloud free tier is lost. Provision on-demand: `make dr-full` | ~€5.39/mo if needed         |
+| Anthropic / Claude | AI model for agents (OAuth)                                                                | Claude Pro                  |
+| GitHub             | Repos + Actions (CI blog, Renovate)                                                        | Free                        |
+| Let's Encrypt      | HTTPS certificates (auto-renew)                                                            | Free                        |
+| Proxmox            | Hypervisor for K8s nodes                                                                   | Own hardware                |
+| Synology DS223+    | NFS for K8s + DB backups                                                                   | Own hardware (10.57.57.201) |
 
 ---
 
@@ -217,15 +217,15 @@ Validation:
 
 ## Hardware
 
-| Device | Role | Specs |
-|--------|------|-------|
-| Dell OptiPlex 3050 #1 | K8s node (Proxmox VM) | i5-6500T, 16GB, 128GB NVMe |
-| Dell OptiPlex 3050 #2 | K8s node (Proxmox VM) | i5-6500T, 16GB, 128GB NVMe |
-| Beelink GTi 13 Pro | K8s node (Proxmox VM) | i9-13900H, 64GB, 2x2TB NVMe |
-| Dell PowerEdge R720 | Proxmox Backup Server | 2x Xeon E5-2697v2, 192GB |
-| Synology DS223+ | NAS / NFS + Backup | 2x2TB HDD RAID1 |
-| XCY X44 | pfSense Firewall | N100, 8GB |
-| Oracle Cloud ARM VPS | Off-site services (primary) | 4 vCPU ARM, 24GB RAM, 200GB |
+| Device                                     | Role                                                                                                                                                                                                | Specs                                       |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Dell PowerEdge R730xd (`10.57.57.250`)     | Proxmox host — all 3 K8s control-plane VMs + Nvidia Quadro P2200 (Jellyfin transcoding, passthrough to controlplane-1)                                                                              | 2x Xeon E5-2630 v3, 251GB RAM, Quadro P2200 |
+| Beelink GTi 13 Pro / px-0 (`10.57.57.254`) | Proxmox host — standby. Previously ran controlplane-1 with Intel iGPU passthrough (Jellyfin QSV); VM kept powered off, not deleted, as GPU-transcoding rollback path. See `docs/gpu-transcoding.md` | i9-13900H, 64GB, 2x2TB NVMe                 |
+| Dell OptiPlex 3050 #1/#2 (px-1 / px-2)     | Retired — formerly Proxmox cluster members hosting controlplane-2/3, workloads consolidated onto the R730xd                                                                                         | i5-6500T, 16GB, 128GB NVMe                  |
+| Dell PowerEdge R720                        | Proxmox Backup Server                                                                                                                                                                               | 2x Xeon E5-2697v2, 192GB                    |
+| Synology DS223+                            | NAS / NFS + Backup                                                                                                                                                                                  | 2x2TB HDD RAID1                             |
+| XCY X44                                    | pfSense Firewall                                                                                                                                                                                    | N100, 8GB                                   |
+| Oracle Cloud ARM VPS                       | Off-site services (primary)                                                                                                                                                                         | 4 vCPU ARM, 24GB RAM, 200GB                 |
 
 ---
 
@@ -254,15 +254,15 @@ infrastructure/
 > **K8s cluster restore from S3 backups:** **[DR.md](DR.md)** (~35 min, tested end-to-end)
 > Full rebuild from scratch (VPS + K8s + agents): **[DEPLOY.md](DEPLOY.md)**
 
-| Scenario | Action |
-|----------|--------|
-| **K8s cluster lost** (nodes dead) | [DR.md](DR.md) — provision DR VMs, bootstrap, restore from S3 |
-| **VPS lost** (Oracle reclaims free tier) | `cd vps && make dr-full` → `make dr-restore` (~15 min) |
-| Full rebuild from scratch | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s) → Phase 3 (Agent) |
-| New hardware (different IPs / disks) | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml` |
-| Intel iGPU absent on new hardware | Remove `gpu.intel.com/i915` from Jellyfin HelmRelease, disable intel-device-plugin |
-| Jellyfin streaming slow after restore | [docs/jellyfin-post-restore.md](docs/jellyfin-post-restore.md) — manual UI steps required |
-| Reinstall OpenClaw agents only | DEPLOY.md Phase 3 |
+| Scenario                                 | Action                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **K8s cluster lost** (nodes dead)        | [DR.md](DR.md) — provision DR VMs, bootstrap, restore from S3                             |
+| **VPS lost** (Oracle reclaims free tier) | `cd vps && make dr-full` → `make dr-restore` (~15 min)                                    |
+| Full rebuild from scratch                | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s) → Phase 3 (Agent)                                |
+| New hardware (different IPs / disks)     | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml`                  |
+| Intel iGPU absent on new hardware        | Remove `gpu.intel.com/i915` from Jellyfin HelmRelease, disable intel-device-plugin        |
+| Jellyfin streaming slow after restore    | [docs/jellyfin-post-restore.md](docs/jellyfin-post-restore.md) — manual UI steps required |
+| Reinstall OpenClaw agents only           | DEPLOY.md Phase 3                                                                         |
 
 ---
 
@@ -408,6 +408,7 @@ kubectl get nodes --watch
 ### Automatic updates (Renovate)
 
 Renovate runs every weekend and opens PRs automatically for:
+
 - Helm chart versions (all HelmReleases)
 - Container image tags (annotated with `# renovate:`)
 - Talos / Kubernetes versions (`.mise.toml`)

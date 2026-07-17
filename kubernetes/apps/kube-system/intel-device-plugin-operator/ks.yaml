@@ -6,6 +6,11 @@ metadata:
   name: &app intel-device-plugin-operator
   namespace: &namespace kube-system
 spec:
+  # Suspended: transcoding moved to Nvidia (see nvidia-device-plugin and
+  # docs/gpu-transcoding.md). Kept in git, not deleted, as the rollback path
+  # to Intel QSV — the old controlplane-1 VM with the iGPU passthrough is
+  # also kept powered off (not deleted) on px-0 for the same reason.
+  suspend: true
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
@@ -32,6 +37,8 @@ metadata:
   name: &app intel-device-plugin-gpu
   namespace: &namespace kube-system
 spec:
+  # Suspended: see note on intel-device-plugin-operator above.
+  suspend: true
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app

@@ -24,11 +24,16 @@ nodes:
     installDisk: "/dev/sda"
     nodeLabels:
       node.kubernetes.io/exclude-from-external-load-balancers: ""
-      intel.feature.node.kubernetes.io/gpu: "true"
+      nvidia.com/gpu: "true"
+      nvidia.com/gpu.present: "true"
     machineSpec:
       secureboot: false
-    talosImageURL: factory.talos.dev/installer/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510
+    # Nvidia LTS (580.x) schematic — Quadro P2200 (Pascal) is unsupported on the
+    # "production" driver branch (595.x dropped Pascal). See docs/gpu-transcoding.md.
+    talosImageURL: factory.talos.dev/installer/914e76a6752e45504176b24f0f6a0a06f993c2dfa4cd314224f822f34730c2dc
     controlPlane: true
+    patches:
+      - "@./patches/controller/nvidia-kernel-modules.yaml"
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:a7:ba:13"
@@ -69,7 +74,7 @@ nodes:
     controlPlane: true
     networkInterfaces:
       - deviceSelector:
-          hardwareAddr: "bc:24:11:0e:cd:ab"
+          hardwareAddr: "bc:24:11:96:87:40"
         dhcp: false
         addresses:
           - "10.57.57.84/24"
@@ -79,7 +84,6 @@ nodes:
         mtu: 1500
         vip:
           ip: "10.57.57.88"
-
 
 # Global patches
 patches:
