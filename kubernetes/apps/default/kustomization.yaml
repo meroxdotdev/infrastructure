@@ -6,6 +6,7 @@ namespace: default
 components:
   - ../../components/common
 resources:
+  - ./namespace.yaml
   # Dashboard
   - ./homepage/ks.yaml
   # Media Stack
