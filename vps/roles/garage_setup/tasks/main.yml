@@ -4,10 +4,12 @@
   register: tailscale_ip_result
   changed_when: false
   failed_when: tailscale_ip_result.stdout == ""
+  when: garage_require_tailscale
 
 - name: Set Tailscale IP as fact
   set_fact:
     tailscale_ip: "{{ tailscale_ip_result.stdout }}"
+  when: garage_require_tailscale
 
 - name: Create Garage directory structure
   file:
@@ -42,7 +44,7 @@
 
 - name: Wait for Garage to be ready
   wait_for:
-    port: "{{ garage_webui_port }}"
+    port: "{{ garage_s3_port }}"
     host: localhost
     delay: 5
     timeout: 60
@@ -104,6 +106,7 @@
     dest: "{{ traefik_docker_dir }}/config/garage.yml"
     mode: '0644'
   notify: Reload traefik
+  when: garage_webui_enabled
 
 - name: Create Traefik dynamic config for Garage WebUI
   template:
@@ -111,6 +114,7 @@
     dest: "{{ traefik_docker_dir }}/config/garage-webui.yml"
     mode: '0644'
   notify: Reload traefik
+  when: garage_webui_enabled
 
 - name: Display Garage access information
   debug:

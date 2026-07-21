@@ -8,6 +8,7 @@ services:
       - ./garage.toml:/etc/garage.toml
       - ./meta:/var/lib/garage/meta
       - ./data:/var/lib/garage/data
+{% if garage_webui_enabled %}
 
   webui:
     image: {{ garage_webui_image }}
@@ -32,3 +33,4 @@ services:
 networks:
   {{ traefik_network_name }}:
     external: true
+{% endif %}

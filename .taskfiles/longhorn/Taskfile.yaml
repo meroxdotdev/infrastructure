@@ -103,15 +103,13 @@ tasks:
       - task: restore-volume
         vars: { NAME: jellyfin-restored }
       - task: restore-volume
-        vars: { NAME: jellyseerr-restored }
-      - task: restore-volume
         vars: { NAME: prowlarr-restored }
-      - task: restore-volume
-        vars: { NAME: qbittorrent-restored }
       - task: restore-volume
         vars: { NAME: radarr-restored }
       - task: restore-volume
         vars: { NAME: sonarr-restored }
+      # jellyseerr/qbittorrent dropped from backup 2026-07-21 — session
+      # state/easily-reconfigured settings, not worth the restore weight.
       # Observability (loki/prometheus/grafana) is no longer backed up —
       # those PVCs are provisioned fresh (see create-statefulset-pvcs).
       # n8n is disabled by default; uncomment if enabled in default/kustomization.yaml:
@@ -185,7 +183,7 @@ tasks:
     cmds:
       - |
         echo "→ Waiting for restore volume replicas to initialize..."
-        VOLUMES="jellyfin-restored jellyseerr-restored prowlarr-restored qbittorrent-restored radarr-restored sonarr-restored"
+        VOLUMES="jellyfin-restored prowlarr-restored radarr-restored sonarr-restored"
         for i in $(seq 1 12); do
           ALL_READY=true
           for VOL in $VOLUMES; do
@@ -230,7 +228,7 @@ tasks:
     cmds:
       - |
         echo "→ Fixing PVC field ownership to prevent Flux SSA volumeName conflicts..."
-        for pvc_item in "default:jellyfin" "default:jellyseerr" "default:prowlarr" "default:qbittorrent" "default:radarr" "default:sonarr"; do
+        for pvc_item in "default:jellyfin" "default:prowlarr" "default:radarr" "default:sonarr"; do
           NS=${pvc_item%%:*}
           PVC=${pvc_item##*:}
           VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null)

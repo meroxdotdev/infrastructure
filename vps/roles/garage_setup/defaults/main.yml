@@ -14,3 +14,9 @@ garage_storage_capacity: "100G"
 garage_bucket_name: "longhorn"
 garage_key_name: "longhorn-key"
 traefik_network_name: network-cloud-merox
+
+# LAN-only deployments (e.g. the R730xd instance) don't run on the tailnet
+# and have no Traefik to publish through — both default to the VPS's
+# existing behavior so this role stays a no-op change for that host.
+garage_require_tailscale: true
+garage_webui_enabled: true

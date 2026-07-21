@@ -46,9 +46,11 @@ own backup back to the NAS would be circular.
 ## What Longhorn backs up (K8s side)
 
 Only volumes opted in via PVC label `recurring-job-group.longhorn.io/media: enabled`:
-`jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr` (configs).
-Deliberately NOT backed up: Prometheus/Loki/Grafana/Netdata history, alertmanager,
-all `*-cache` volumes, Uptime-Kuma history — regenerable, were ~35GB of noise.
+`jellyfin`, `prowlarr`, `radarr`, `sonarr` (configs, ~3GB total actual size).
+Deliberately NOT backed up: `jellyseerr`/`qbittorrent` (dropped 2026-07-21 —
+session state and easily-reconfigured settings, not worth restoring),
+Prometheus/Loki/Grafana/Netdata history, alertmanager, all `*-cache` volumes,
+Uptime-Kuma history — regenerable, were ~35GB of noise.
 
 ## Still manual (keep copies off this VPS)
 

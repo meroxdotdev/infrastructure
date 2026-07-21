@@ -1,5 +1,8 @@
 ---
 # docker_setup runs once, at the start of site.yml's first play - see
 # roles/traefik_setup/meta/main.yml for why this dependency was removed.
+# traefik_setup itself is only needed when this instance publishes through
+# it (garage_webui_enabled) — LAN-only deployments skip it entirely.
 dependencies:
   - role: traefik_setup
+    when: garage_webui_enabled | default(true)

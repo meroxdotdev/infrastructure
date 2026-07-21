@@ -160,13 +160,46 @@ task dr:destroy-vms
 
 ## Backup schedule
 
-Full nightly schedule, what's included/excluded, and the NAS off-site sync:
-**[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**.
-Short version: Longhorn backs up the media/ARR config volumes nightly to Garage
-S3 on the VPS; observability history and caches are deliberately not backed up
-(accepted as lost in DR).
+Full nightly schedule, what's included/excluded: VPS-side —
+**[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**; R730xd-side —
+**[proxmox/r730xd/README.md](proxmox/r730xd/README.md)**.
+Short version: Longhorn backs up the media/ARR config volumes nightly to a
+self-hosted Garage instance on the R730xd (`10.57.57.61:3900`, bucket
+`longhorn`) — not the VPS anymore. From there, R730xd relays a curated copy
+on-prem to the Synology (weekly cold clone) and off-site to Oracle Cloud
+(encrypted, restic). Observability history and caches are deliberately not
+backed up (accepted as lost in DR).
 
 ```bash
 # Check last backup time for each volume
 kubectl get backupvolumes.longhorn.io -n longhorn-system | awk '{print $1, $6}'
 ```
+
+## R730xd / Garage total loss fallback
+
+Longhorn's primary backup target now lives on the same physical host as
+`kubernetes-controlplane-1` (the R730xd) — a real change from the old
+setup, where the backup target was an independently-hosted VPS. If the
+R730xd is lost entirely, `task longhorn:restore` has nothing to read from
+until a Garage instance is rebuilt from one of the two downstream copies:
+
+1. **Prefer the Synology copy** (`/volume1/Server/r730xd-backups/longhorn-garage/`)
+   if the NAS was reachable at the last weekly sync — it's the more complete,
+   unencrypted, directly-usable copy.
+2. **Otherwise, restore from the Oracle restic repository** (bucket
+   `r730xd-backups` on the VPS's Garage instance) — `restic restore latest
+   --target /srv/docker/garage` using the password from
+   `proxmox/r730xd/restic-env.sops.yaml`, then extract just the
+   `longhorn-garage/{data,meta}` subtree.
+3. Stand up a fresh Garage instance anywhere reachable from the cluster
+   (a new LXC on `px-0`, or temporarily the VPS itself) with the recovered
+   `data`/`meta` directories bind-mounted in — reusing
+   `vps/roles/garage_setup` (`garage_require_tailscale`/`garage_webui_enabled`
+   set per the new host, same as `vps/playbooks/garage-setup-r730xd.yml`).
+4. Repoint `minio-secret.sops.yaml`'s `AWS_ENDPOINTS` at the new instance
+   (same recipe as the "Longhorn BackupTarget" step in [DEPLOY.md](DEPLOY.md)),
+   patch `backuptargets.longhorn.io default`'s `syncRequestedAt`, verify
+   `status.available: true`, then `task longhorn:restore` as normal.
+
+This procedure hasn't been drilled end-to-end yet — treat it as a documented
+starting point, not a tested runbook, until it's actually rehearsed once.

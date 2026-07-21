@@ -113,7 +113,7 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | GitHub             | Repos + Actions (CI blog, Renovate)                                                        | Free                        |
 | Let's Encrypt      | HTTPS certificates (auto-renew)                                                            | Free                        |
 | Proxmox            | Hypervisor for K8s nodes                                                                   | Own hardware                |
-| Synology DS223+    | NFS for K8s + DB backups                                                                   | Own hardware (10.57.57.201) |
+| Synology DS223+    | NFS for K8s + DB backups + weekly WoL cold clone of R730xd's backups                       | Own hardware (10.57.57.201) |
 
 ---
 
@@ -121,16 +121,23 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 
 Everything declarative (K8s manifests, Ansible, Terraform, SOPS/vault secrets)
 lives in this repo and is **not** backed up separately. Backups only cover
-state that can't be rebuilt from git. Reciprocal off-site: homelab → VPS for
-cluster data (Longhorn → Garage S3), VPS → NAS for VPS data (DB dumps + Garage,
-pulled nightly by the NAS). Observability history and caches are deliberately
-not backed up — regenerable.
+state that can't be rebuilt from git. **R730xd is the hub**: Longhorn (K8s
+cluster data) now backs up nightly to a self-hosted Garage instance on the
+R730xd itself (`proxmox/r730xd/`, not the VPS) — from there it fans out
+on-prem to the Synology (cold clone) and off-site to Oracle Cloud (encrypted).
+Separately, VPS → NAS still covers the VPS's own service state (DB dumps +
+its own Garage instance, pulled nightly by the NAS). Observability history
+and caches are deliberately not backed up — regenerable.
 
-> **Canonical reference** (nightly schedule, what's included/excluded, why the
-> NAS pulls instead of pushes): **[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**
+> **Canonical references**: VPS-side schedule —
+> **[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**;
+> R730xd-side schedule — **[proxmox/r730xd/README.md](proxmox/r730xd/README.md)**.
 
-**What a VPS failure loses:** at most one day of backups — Garage and all
-dumps are mirrored nightly to the NAS. Rebuild: `make dr-full` (~15 min),
+**What an R730xd failure loses:** now the primary Longhorn backup target, not
+just a hypervisor — see the "R730xd/Garage total loss" runbook in
+[DR.md](DR.md) before treating this as equivalent to the old VPS-hosted setup.
+**What a VPS failure loses:** at most one day of its own service backups —
+mirrored nightly to the NAS. Rebuild: `make dr-full` (~15 min),
 `make dr-restore`, `task longhorn:restore`.
 
 **Still manual (keep copies off this VPS):** `age.key`, `vps/.vault_pass`,
