@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebrowser-config
+  namespace: default
+data:
+  config.yaml: |
+    server:
+      port: 80
+      cacheDir: /home/filebrowser/data/tmp
+      sources:
+        - path: /srv/media
+          name: media
+          config:
+            defaultEnabled: true
+        - path: /srv/backups
+          name: backups

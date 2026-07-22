@@ -31,6 +31,7 @@ spec:
                   name: filebrowser-secret
             env:
               TZ: Europe/Bucharest
+              FILEBROWSER_CONFIG: /config/config.yaml
             probes:
               liveness: &probes
                 enabled: true
@@ -78,6 +79,13 @@ spec:
         existingClaim: filebrowser
         globalMounts:
           - path: /home/filebrowser/data
+      static-config:
+        type: configMap
+        name: filebrowser-config
+        globalMounts:
+          - path: /config/config.yaml
+            subPath: config.yaml
+            readOnly: true
       library:
         type: nfs
         # Deliberately hardcoded, not ${NFS_SERVER}: Filebrowser's whole
