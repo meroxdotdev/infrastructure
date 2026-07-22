@@ -16,7 +16,13 @@ data:
             defaultEnabled: true
         - path: /srv/backups
           name: backups
+          config:
+            defaultEnabled: true
         - path: /srv/photos
           name: photos
+          config:
+            defaultEnabled: true
         - path: /srv/isos
           name: isos
+          config:
+            defaultEnabled: true
