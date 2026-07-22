@@ -16,6 +16,10 @@ resources:
   - ./qbittorrent/ks.yaml
   - ./radarr/ks.yaml
   - ./sonarr/ks.yaml
+  # Photos
+  - ./immich/ks.yaml
+  # File management
+  - ./filebrowser/ks.yaml
   # Automation (disabled - uncomment to re-enable)
   # - ./n8n/ks.yaml
   # Monitoring

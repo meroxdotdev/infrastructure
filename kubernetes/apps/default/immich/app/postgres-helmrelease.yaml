@@ -1,0 +1,80 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+# Standalone Postgres + VectorChord (not CNPG) — this is the only app in the
+# cluster needing a database, so a single-instance Postgres matches this
+# cluster's low-complexity style better than a full HA operator. See
+# docs/immich-post-restore.md for one-time extension setup after first boot.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: immich-postgres
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      immich-postgres:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/tensorchord/cloudnative-vectorchord
+              tag: 15-0.3.0
+            args:
+              - "-c"
+              - "shared_preload_libraries=vchord.so"
+            env:
+              POSTGRES_USER: immich
+              POSTGRES_DB: immich
+              POSTGRES_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: immich-postgres-secret
+                    key: password
+              PGDATA: /var/lib/postgresql/data/pgdata
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command: ["pg_isready", "-U", "immich"]
+                  initialDelaySeconds: 15
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *probes
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities: { drop: ["ALL"] }
+            resources:
+              requests:
+                cpu: 100m
+              limits:
+                memory: 2Gi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: 5432
+    persistence:
+      data:
+        existingClaim: immich-postgres
+        globalMounts:
+          - path: /var/lib/postgresql/data

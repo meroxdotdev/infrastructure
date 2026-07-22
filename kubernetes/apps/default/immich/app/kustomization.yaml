@@ -2,6 +2,10 @@
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: default
 resources:
-  - ./app-template
-  - ./immich
+  - ./secret.sops.yaml
+  - ./pvc.yaml
+  - ./postgres-helmrelease.yaml
+  - ./helmrelease.yaml
+  - ./cronjob-postgres-backup.yaml

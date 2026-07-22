@@ -1,0 +1,57 @@
+---
+# Nightly pg_dump of Immich's Postgres. The DB itself is small (1-3GB) but
+# holds real metadata (albums, face tags, favorites, sharing links) that
+# isn't just derived from the photo files — worth a real backup even though
+# a full HA operator (CNPG) wasn't justified for a single-instance DB.
+# Runs after the other 02:xx-03:xx backup jobs on pve to avoid I/O contention
+# on the same SAS spindles.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: immich-postgres-backup
+  namespace: default
+spec:
+  schedule: "30 3 * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+          containers:
+            - name: pg-dump
+              image: postgres:16-alpine
+              env:
+                - name: PGHOST
+                  value: immich-postgres
+                - name: PGUSER
+                  value: immich
+                - name: PGDATABASE
+                  value: immich
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: immich-postgres-secret
+                      key: password
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  DEST=/backups/immich-postgres
+                  mkdir -p "$DEST"
+                  FILE="$DEST/immich-$(date +%Y-%m-%d).sql.gz"
+                  pg_dump | gzip > "$FILE"
+                  find "$DEST" -name '*.sql.gz' -mtime +30 -delete
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: backups
+              nfs:
+                server: ${NFS_SERVER}
+                path: /media/backups
