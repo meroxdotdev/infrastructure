@@ -60,7 +60,7 @@ spec:
       route:
         main:
           hostnames:
-            - "photos.merox.dev"
+            - "photos.k8s.merox.dev"
           parentRefs:
             - name: internal
               namespace: kube-system

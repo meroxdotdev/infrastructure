@@ -69,7 +69,7 @@ spec:
     route:
       app:
         hostnames:
-          - "files.merox.dev"
+          - "files.k8s.merox.dev"
         parentRefs:
           - name: internal
             namespace: kube-system
