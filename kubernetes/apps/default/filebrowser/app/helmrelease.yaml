@@ -21,14 +21,34 @@ spec:
       filebrowser:
         annotations:
           reloader.stakater.com/auto: "true"
-        containers:
-          app:
+        initContainers:
+          # FILEBROWSER_ADMIN_PASSWORD alone is unreliable in this image (see
+          # gtsteffaniak/filebrowser#625 — password resets/DB-lock issues
+          # setting credentials while the main process holds the sqlite db
+          # open). Setting the admin user via CLI in an initContainer runs
+          # sequentially before the main container opens the database, is
+          # idempotent (safe on every restart), and needs no manual/ad-hoc
+          # fixup outside git.
+          set-admin-password:
             image:
               repository: docker.io/gtstef/filebrowser
               tag: stable
             envFrom:
               - secretRef:
                   name: filebrowser-secret
+            command:
+              - sh
+              - -c
+              - /home/filebrowser/filebrowser -c /config/config.yaml set -u "admin,$FILEBROWSER_ADMIN_PASSWORD" -a
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities: { drop: ["ALL"] }
+        containers:
+          app:
+            image:
+              repository: docker.io/gtstef/filebrowser
+              tag: stable
             env:
               TZ: Europe/Bucharest
               FILEBROWSER_CONFIG: /config/config.yaml
