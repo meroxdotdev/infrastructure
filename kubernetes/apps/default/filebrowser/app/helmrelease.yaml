@@ -132,3 +132,20 @@ spec:
         globalMounts:
           - path: /srv/backups
             readOnly: true
+      photos:
+        type: nfs
+        # Deliberately hardcoded, see library/backups above. Read-only:
+        # this is Immich's own managed storage, browsing only.
+        server: "10.57.57.250"
+        path: /media/photos
+        globalMounts:
+          - path: /srv/photos
+            readOnly: true
+      isos:
+        type: nfs
+        # Deliberately hardcoded, see library/backups above.
+        server: "10.57.57.250"
+        path: /media/isos
+        globalMounts:
+          - path: /srv/isos
+            readOnly: true
