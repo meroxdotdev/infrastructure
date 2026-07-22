@@ -5,8 +5,18 @@ kind: Kustomization
 namespace: default
 components:
   - ../../components/common
+patches:
+  # The 'common' component provides a placeholder Namespace (named "not-used"
+  # pre-rename, renamed to this kustomization's target namespace) — this
+  # merges PodSecurity labels onto it rather than declaring a second,
+  # colliding Namespace/default resource (which broke `cluster-apps`'s
+  # kustomize build). Must target the pre-rename name "not-used": patches
+  # are matched before the namespace transform runs.
+  - path: ./namespace.yaml
+    target:
+      kind: Namespace
+      name: not-used
 resources:
-  - ./namespace.yaml
   # Dashboard
   - ./homepage/ks.yaml
   # Media Stack
