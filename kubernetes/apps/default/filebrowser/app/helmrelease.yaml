@@ -80,13 +80,21 @@ spec:
           - path: /home/filebrowser/data
       library:
         type: nfs
-        server: ${NFS_SERVER}
+        # Deliberately hardcoded, not ${NFS_SERVER}: Filebrowser's whole
+        # purpose is browsing what's on the R730xd SAS pool specifically,
+        # independent of wherever the arr-stack apps' shared NFS_SERVER var
+        # currently points during the Synology->SAS media migration.
+        server: "10.57.57.250"
         path: /media/library
         globalMounts:
           - path: /srv/media
       backups:
         type: nfs
-        server: ${NFS_SERVER}
+        # Deliberately hardcoded, not ${NFS_SERVER}: Filebrowser's whole
+        # purpose is browsing what's on the R730xd SAS pool specifically,
+        # independent of wherever the arr-stack apps' shared NFS_SERVER var
+        # currently points during the Synology->SAS media migration.
+        server: "10.57.57.250"
         path: /media/backups
         globalMounts:
           - path: /srv/backups
