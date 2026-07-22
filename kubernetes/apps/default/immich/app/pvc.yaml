@@ -30,7 +30,10 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
   nfs:
-    server: ${NFS_SERVER}
+    # Hardcoded, not ${NFS_SERVER}: /media/photos only exists on the R730xd,
+    # independent of wherever the arr-stack's shared NFS_SERVER var currently
+    # points during the Synology->SAS media migration.
+    server: "10.57.57.250"
     path: /media/photos/upload
 ---
 apiVersion: v1

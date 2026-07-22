@@ -68,7 +68,8 @@ spec:
       persistence:
         external-library:
           type: nfs
-          server: ${NFS_SERVER}
+          # Hardcoded, see pvc.yaml for why.
+          server: "10.57.57.250"
           path: /media/photos/external
           globalMounts:
             - path: /mnt/external-library
