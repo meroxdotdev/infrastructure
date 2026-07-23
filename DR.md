@@ -177,18 +177,33 @@ kubectl get backupvolumes.longhorn.io -n longhorn-system | awk '{print $1, $6}'
 
 ### Immich Postgres backup
 
-Separate from Longhorn/Garage — Immich's Postgres (albums, face tags,
-favorites, sharing links; not the photo files themselves, which are covered
-by the SAS pool's own RAIDZ2 redundancy) gets a nightly `pg_dump` via a k8s
-CronJob (`immich-postgres-backup`, 03:30, after the other 02:xx-03:xx jobs),
-landing gzipped on `/media/backups/immich-postgres/` on the R730xd, 30-day
-retention. See [docs/immich-post-restore.md](docs/immich-post-restore.md)
-for the restore procedure and the one-time VectorChord extension setup a
-fresh Postgres needs. **This backup currently only exists on the R730xd
-itself** — it does not yet fan out to Synology/Oracle the way Longhorn's
-does, since Phases 2-4 of the backup restructure (Synology cold clone,
-Oracle offsite) are still paused/not implemented despite the "Backup
-schedule" section above describing the target design.
+Immich's Postgres (albums, face tags, favorites, sharing links — the
+metadata, not the photo files themselves) has **two independent backup
+paths**, deliberately not just one:
+
+1. **Longhorn → Garage S3**, same mechanism as Jellyfin/Sonarr/Radarr/
+   Prowlarr — `immich-postgres`'s PVC carries the `media` recurring-job-group
+   label, so it's included automatically in `task longhorn:restore` on a
+   full cluster rebuild (see `.taskfiles/longhorn/Taskfile.yaml`).
+2. **Nightly `pg_dump`** via a k8s CronJob (`immich-postgres-backup`, 03:30,
+   after the other 02:xx-03:xx jobs), landing gzipped on
+   `/media/backups/immich-postgres/` on the R730xd, 30-day retention — an
+   independent, storage-format-agnostic path that survives even if Longhorn/
+   Garage itself has a bad day. See
+   [docs/immich-post-restore.md](docs/immich-post-restore.md) for the manual
+   restore procedure and the one-time VectorChord extension setup a fresh
+   Postgres needs.
+
+**What neither path covers**: the actual photo/video files, which live on
+`/media/photos` — not a Longhorn volume at all, just an NFS mount from the
+R730xd's SAS pool. Those are protected only by RAIDZ2 (survives 1-2 disk
+failures) and, for anything migrated in before 2026-07-23, the pre-migration
+Synology copy. **Neither backup path here, nor RAIDZ2, protects against
+losing the R730xd itself** — that's still the same Phases 2-4 gap (Synology
+cold clone, Oracle offsite) as the rest of this section, and it's not yet
+implemented for the photo files even in the target design, since that fan-
+out has never been scoped to include `/media/photos` specifically — worth
+remembering when Phases 2-4 actually get built.
 
 ## R730xd / Garage total loss fallback
 

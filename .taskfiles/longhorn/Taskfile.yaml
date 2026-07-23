@@ -26,10 +26,17 @@ tasks:
 
       After this task: all pods should start within ~5 min.
 
-      NOTE: Only media/ARR config volumes are backed up (PVC group label
-      "media"). Cache volumes and ALL observability volumes (prometheus, loki,
-      grafana, alertmanager, netdata) start empty — history is deliberately
-      not backed up.
+      NOTE: Only PVCs in the "media" recurring-job-group are backed up —
+      currently jellyfin/prowlarr/radarr/sonarr configs plus immich-postgres
+      (the group name predates Immich; it just means "worth Longhorn-
+      backing-up", not literally media-only). Cache volumes and ALL
+      observability volumes (prometheus, loki, grafana, alertmanager,
+      netdata) start empty — history is deliberately not backed up. Immich's
+      photo files themselves are NOT covered here either — they're not a
+      Longhorn volume at all (NFS-mounted from the R730xd SAS pool
+      directly), so R730xd hardware survival is what protects them, not
+      this restore flow.
+
       After pods are up, run: task longhorn:post-restore-jellyfin
       to re-trigger Jellyfin metadata+image downloads (~10 min).
     cmds:
@@ -64,15 +71,15 @@ tasks:
         echo "→ Waiting for BackupVolumes to sync from S3..."
         for i in $(seq 1 30); do
           COUNT=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep -c "restored" || true)
-          if [ "$COUNT" -ge 6 ]; then
+          if [ "$COUNT" -ge 5 ]; then
             echo "  ✓ $COUNT backup volumes found"
             break
           fi
-          echo "  ... $COUNT/6+ found, waiting 10s (attempt $i/30)"
+          echo "  ... $COUNT/5+ found, waiting 10s (attempt $i/30)"
           sleep 10
         done
         COUNT=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep -c "restored" || true)
-        if [ "$COUNT" -lt 6 ]; then
+        if [ "$COUNT" -lt 5 ]; then
           echo "  ✗ Only $COUNT backup volumes found after 5 min. Check S3 connectivity."
           echo "    kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
           exit 1
@@ -108,6 +115,8 @@ tasks:
         vars: { NAME: radarr-restored }
       - task: restore-volume
         vars: { NAME: sonarr-restored }
+      - task: restore-volume
+        vars: { NAME: immich-postgres-restored }
       # jellyseerr/qbittorrent dropped from backup 2026-07-21 — session
       # state/easily-reconfigured settings, not worth the restore weight.
       # Observability (loki/prometheus/grafana) is no longer backed up —
@@ -183,7 +192,7 @@ tasks:
     cmds:
       - |
         echo "→ Waiting for restore volume replicas to initialize..."
-        VOLUMES="jellyfin-restored prowlarr-restored radarr-restored sonarr-restored"
+        VOLUMES="jellyfin-restored prowlarr-restored radarr-restored sonarr-restored immich-postgres-restored"
         for i in $(seq 1 12); do
           ALL_READY=true
           for VOL in $VOLUMES; do
@@ -228,7 +237,7 @@ tasks:
     cmds:
       - |
         echo "→ Fixing PVC field ownership to prevent Flux SSA volumeName conflicts..."
-        for pvc_item in "default:jellyfin" "default:prowlarr" "default:radarr" "default:sonarr"; do
+        for pvc_item in "default:jellyfin" "default:prowlarr" "default:radarr" "default:sonarr" "default:immich-postgres"; do
           NS=${pvc_item%%:*}
           PVC=${pvc_item##*:}
           VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null)
@@ -361,13 +370,13 @@ tasks:
         sleep 5
 
         echo "→ Reconciling app Kustomizations (creates cache PVCs + HelmReleases)..."
-        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr; do
+        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich; do
           flux reconcile kustomization $app -n default 2>/dev/null &
         done
         wait
 
         echo "→ Reconciling media stack HelmReleases..."
-        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr; do
+        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich-postgres immich; do
           flux reconcile helmrelease $app -n default 2>/dev/null &
         done
         wait
