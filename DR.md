@@ -196,14 +196,14 @@ paths**, deliberately not just one:
 
 **What neither path covers**: the actual photo/video files, which live on
 `/media/photos` — not a Longhorn volume at all, just an NFS mount from the
-R730xd's SAS pool. Those are protected only by RAIDZ2 (survives 1-2 disk
-failures) and, for anything migrated in before 2026-07-23, the pre-migration
-Synology copy. **Neither backup path here, nor RAIDZ2, protects against
-losing the R730xd itself** — that's still the same Phases 2-4 gap (Synology
-cold clone, Oracle offsite) as the rest of this section, and it's not yet
-implemented for the photo files even in the target design, since that fan-
-out has never been scoped to include `/media/photos` specifically — worth
-remembering when Phases 2-4 actually get built.
+R730xd's SAS pool. Those are protected by RAIDZ2 (survives 1-2 disk
+failures) and, as of 2026-07-23, a weekly versioned copy pushed to Synology
+(see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) —
+the old pre-migration Synology copy was deleted the same day once this new
+push was verified). **Still no offsite (Oracle) copy** — if both the R730xd
+and Synology are lost, everything here goes with them. That's the one
+remaining leg of the original Phases 2-4 plan; Synology→Oracle restic push
+is scoped but not yet built.
 
 ## R730xd / Garage total loss fallback
 

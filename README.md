@@ -113,7 +113,7 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | GitHub             | Repos + Actions (CI blog, Renovate)                                                        | Free                        |
 | Let's Encrypt      | HTTPS certificates (auto-renew)                                                            | Free                        |
 | Proxmox            | Hypervisor for K8s nodes                                                                   | Own hardware                |
-| Synology DS223+    | No longer the K8s NFS/media host (moved to R730xd SAS) — still runs Synology Photos live and holds the pre-migration media copy until Immich is validated; target end-state is backup-only | Own hardware (10.57.57.201) |
+| Synology DS223+    | Cold storage only (2026-07-23) — Photos/Drive/Docker decommissioned, no live services. Asleep except Sunday 02:50-03:40 (DSM Power Schedule + WoL), receiving a weekly versioned/deduped push from the R730xd | Own hardware (10.57.57.201) |
 
 ---
 
@@ -137,10 +137,12 @@ and caches are deliberately not backed up — regenerable.
 the K8s media/photos host, not just a hypervisor — see the "R730xd/Garage
 total loss" runbook in [DR.md](DR.md) before treating this as equivalent to
 the old VPS-hosted setup. The media library (`/media/library`) is treated as
-replaceable "cattle" (re-downloadable) and deliberately has no second copy;
-Immich's photo library (`/media/photos`) is backed by the pre-migration
-Synology copy until that's formally decommissioned — see
-[docs/immich-post-restore.md](docs/immich-post-restore.md).
+replaceable "cattle" (re-downloadable) and deliberately has no second copy.
+Immich's photo library (`/media/photos`) is backed by the weekly R730xd→
+Synology push (see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs))
+— the old pre-migration Synology copy was deleted 2026-07-23 once that push
+was verified working; see [docs/immich-post-restore.md](docs/immich-post-restore.md)
+for the restore procedure.
 **What a VPS failure loses:** at most one day of its own service backups —
 mirrored nightly to the NAS. Rebuild: `make dr-full` (~15 min),
 `make dr-restore`, `task longhorn:restore`.
@@ -235,7 +237,7 @@ Validation:
 | Beelink GTi 13 Pro / px-0 (`10.57.57.254`) | Proxmox host — standby. Previously ran controlplane-1 with Intel iGPU passthrough (Jellyfin QSV); VM kept powered off, not deleted, as GPU-transcoding rollback path. See `docs/gpu-transcoding.md` | i9-13900H, 64GB, 2x2TB NVMe                 |
 | Dell OptiPlex 3050 #1/#2 (px-1 / px-2)     | Retired — formerly Proxmox cluster members hosting controlplane-2/3, workloads consolidated onto the R730xd                                                                                         | i5-6500T, 16GB, 128GB NVMe                  |
 | Dell PowerEdge R720                        | Proxmox Backup Server                                                                                                                                                                               | 2x Xeon E5-2697v2, 192GB                    |
-| Synology DS223+                            | Was NAS/NFS for K8s media, now backup-target-in-progress + still runs Synology Photos live pending Immich validation (see [docs/immich-post-restore.md](docs/immich-post-restore.md))            | 2x2TB HDD RAID1                             |
+| Synology DS223+                            | Cold storage only — see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for the weekly push mechanism and Power Schedule                                                     | 2x2TB HDD RAID1                             |
 | XCY X44                                    | pfSense Firewall                                                                                                                                                                                    | N100, 8GB                                   |
 | Oracle Cloud ARM VPS                       | Off-site services (primary)                                                                                                                                                                         | 4 vCPU ARM, 24GB RAM, 200GB                 |
 

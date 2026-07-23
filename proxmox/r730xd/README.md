@@ -5,8 +5,9 @@ DR.md link here instead of repeating the schedule.
 
 R730xd (`pve`, `10.57.57.250`) is the hub of the homelab backup mesh: it's
 both the primary Longhorn (K8s) backup target and the landing spot for its
-own VM/pfSense backups, then relays a curated copy on-prem to the Synology
-and off-site to Oracle Cloud.
+own VM/pfSense backups, and (as of 2026-07-23) relays a curated, versioned
+copy weekly to the Synology (now cold-storage only). Off-site to Oracle
+Cloud is the one leg still not built — see "Downstream legs" below.
 
 ## The backup-orchestration LXC
 
@@ -51,11 +52,17 @@ this instance is LAN-only, no public domain, no Traefik. Both toggles default
 
 ```
 /media/backups/
-├── home-assistant/       vzdump, nightly 02:30
-├── pdm/                  vzdump from px-0, nightly 02:00
+├── dump/                 vzdump — home-assistant (101) nightly 02:30. VM 100
+│                         (windows11) and orphaned VM 106 backups removed
+│                         2026-07-23 — windows11 doesn't need backup, and 106
+│                         was a leftover from a VM that no longer exists.
 ├── pfsense/              config.xml.gz, nightly 03:00 (0700 root:root — deliberately locked down)
 ├── longhorn-garage/      Garage data+meta (Longhorn's live backup store)
-├── synology-home/        rsync pull of Synology's homes/merox (incl. Photos), nightly 04:00, 30-day ZFS snapshots
+├── synology-home/        NOT a pull anymore as of 2026-07-23 — this is now
+│                         the live, writable documents location (former
+│                         Synology Drive content), exposed via Filebrowser's
+│                         WebDAV (/dav/documents/). It's the source, not a
+│                         mirror, so it flows outward in the weekly push below.
 └── immich-postgres/      pg_dump of Immich's Postgres, nightly 03:30, 30-day retention (see DR.md)
 ```
 
@@ -120,12 +127,51 @@ cache-poisoning pattern before spending time on the export config again.
 
 ## Downstream legs
 
-*Still not built* — Synology weekly cold clone and Oracle Cloud encrypted
-restic push (Phases 2-4 of the backup restructure) were paused mid-session
-2026-07-21 and haven't been resumed. Everything in the source tree above
-(including the newer `synology-home/` and `immich-postgres/` additions)
-currently only exists on the R730xd itself — this section will gain
-schedule/retention details once those phases are actually implemented.
+### R730xd → Synology (DONE, 2026-07-23)
+
+Synology is now a **cold-storage-only** target — no live services (Photos,
+Drive, Docker/HyperBackup all decommissioned), asleep except for a weekly
+window.
+
+- **DSM Power Schedule** (set directly in DSM, not scriptable — no root/API
+  access to Synology was available): wake Sunday 02:50, shutdown Sunday
+  03:40. WoL confirmed enabled (Control Panel → Hardware & Power → General).
+- **Push script**: `/root/scripts/weekly-push-to-synology.sh` on `pve`,
+  cron `0 3 * * 0` (03:00 Sunday — 10 min after wake for margin, comfortably
+  inside the 50-min window before shutdown).
+- **Destination**: `admin@10.57.57.201:/volume1/NetBackup/<category>/`,
+  reusing an existing empty share rather than creating a new one.
+- **Versioned + deduplicated**: each category gets a dated snapshot dir
+  (`<category>/YYYY-MM-DD/`) via `rsync --link-dest=../<previous-date>` —
+  unchanged files are hardlinked from the prior snapshot (near-zero extra
+  space), changed/new files cost real space. 21-day retention, pruned by
+  **parsing the date from the folder name**, not filesystem mtime.
+
+  ⚠️ **Footgun found and fixed**: the first version of this script pruned by
+  `find -mtime`, which broke immediately — `rsync -a` preserves the *source*
+  directory's own mtime onto the destination snapshot dir, which has nothing
+  to do with when the snapshot was actually taken. This deleted a same-day
+  snapshot right after creating it (silently — `rm` succeeded, no error).
+  Confirmed via a from-scratch re-run after the fix; if the same "vanishes
+  immediately after creation" symptom shows up in any other rsync-based
+  retention script, suspect this exact class of bug first.
+
+- **What's pushed**: `/media/photos` (Immich upload+external),
+  `/media/backups/synology-home` (documents), `/media/backups/dump` (VM
+  backups), `/media/backups/pfsense`, `/media/backups/longhorn-garage`.
+  Movies/TV/Downloads are deliberately excluded — replaceable "cattle",
+  doesn't need a second copy.
+
+### Synology → Oracle Cloud (NOT built yet)
+
+This is the actual remaining gap. Synology only becomes safe to treat as
+disposable once this leg exists — right now, if the R730xd is lost between
+Sunday backup windows, Synology has a copy, but if *both* are lost, there's
+still no offsite copy. Plan (per the user, 2026-07-23): once R730xd→Synology
+is proven stable, build an encrypted restic push from Synology to a new
+Oracle Garage bucket, covering the same weekly snapshot content — this
+finally completes Phase 3 of the original backup-restructure plan. Not
+started as of this writing.
 
 ## Total-loss recovery
 
