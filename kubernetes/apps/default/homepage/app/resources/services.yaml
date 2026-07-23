@@ -25,10 +25,13 @@
         icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@master/svg/synology.svg
         href: https://storage.${SECRET_DOMAIN}
         description: Network Storage & Backup
-        ping: ${NFS_SERVER}
+        # Hardcoded, not ${NFS_SERVER}: this widget talks to Synology's own
+        # DSM API specifically (diskstation type) — must stay pointed at the
+        # real Synology regardless of where the arr-stack's media lives.
+        ping: "10.57.57.201"
         widget:
           type: diskstation
-          url: https://${NFS_SERVER}:5001
+          url: "https://10.57.57.201:5001"
           username: "{{HOMEPAGE_VAR_SYNOLOGY_USERNAME}}"
           password: "{{HOMEPAGE_VAR_SYNOLOGY_PASSWORD}}"
           volume: volume_1
