@@ -53,16 +53,52 @@ this instance is LAN-only, no public domain, no Traefik. Both toggles default
 /media/backups/
 ├── home-assistant/       vzdump, nightly 02:30
 ├── pdm/                  vzdump from px-0, nightly 02:00
-├── pfsense/              config.xml.gz, nightly 03:00
-└── longhorn-garage/      Garage data+meta (Longhorn's live backup store)
+├── pfsense/              config.xml.gz, nightly 03:00 (0700 root:root — deliberately locked down)
+├── longhorn-garage/      Garage data+meta (Longhorn's live backup store)
+├── synology-home/        rsync pull of Synology's homes/merox (incl. Photos), nightly 04:00, 30-day ZFS snapshots
+└── immich-postgres/      pg_dump of Immich's Postgres, nightly 03:30, 30-day retention (see DR.md)
 ```
+
+## Media/photos/isos NFS exports (K8s storage, not backup)
+
+Separate purpose from the backup tree above, but same host/pool — the
+`media` ZFS pool (RAIDZ2, 6x600GB SAS) also serves the K8s cluster's live
+media and photo storage, migrated off Synology 2026-07-22/23:
+
+| ZFS dataset      | NFS export         | Consumed by                                                  |
+| ----------------- | ------------------- | ------------------------------------------------------------- |
+| `media/library`   | `/media/library` (rw)  | Jellyfin (ro), Sonarr/Radarr/qBittorrent (rw) — `NFS_SERVER` var |
+| `media/photos`    | `/media/photos` (rw)   | Immich — `upload` subdir (its own writable library), `external` subdir (read-only import of the migrated Synology Photos content) |
+| `media/isos`      | `/media/isos` (ro)     | Filebrowser only (browsing) |
+| `media/backups`   | `/media/backups` (rw)  | Filebrowser (ro), Immich's pg_dump CronJob, the vzdump/rsync jobs above |
+
+`/etc/exports` ACL is `10.57.57.0/24` for all four (covers all three K8s
+node IPs). Jellyfin/Sonarr/Radarr/qBittorrent get their server IP from the
+shared `NFS_SERVER` cluster-var (now `10.57.57.250`); Immich and Filebrowser
+hardcode `10.57.57.250` directly since their mounts are R730xd-specific by
+design, independent of wherever `NFS_SERVER` points during any future
+migration.
+
+`media/library` is a single unified dataset/export (not split per
+Movies/Shows/Downloads) specifically so Sonarr/Radarr/qBittorrent's
+hardlink-based instant import still works — splitting it would force
+copy+delete instead (same filesystem/export required for `rename()`/hardlink
+to work).
+
+Movies/TV/Downloads are treated as replaceable "cattle" (re-downloadable) —
+deliberately no second copy anywhere, unlike the backup tree above. Photos
+are "pets" — the pre-migration Synology copy is kept as a safety net until
+Immich is validated end-to-end (see
+[docs/immich-post-restore.md](../../docs/immich-post-restore.md)).
 
 ## Downstream legs
 
-*To be filled in as built — Synology weekly cold clone and Oracle Cloud
-encrypted restic push are tracked in the same implementation pass as this
-Garage setup; this section will gain their schedule/retention details once
-they're live.*
+*Still not built* — Synology weekly cold clone and Oracle Cloud encrypted
+restic push (Phases 2-4 of the backup restructure) were paused mid-session
+2026-07-21 and haven't been resumed. Everything in the source tree above
+(including the newer `synology-home/` and `immich-postgres/` additions)
+currently only exists on the R730xd itself — this section will gain
+schedule/retention details once those phases are actually implemented.
 
 ## Total-loss recovery
 

@@ -175,6 +175,21 @@ backed up (accepted as lost in DR).
 kubectl get backupvolumes.longhorn.io -n longhorn-system | awk '{print $1, $6}'
 ```
 
+### Immich Postgres backup
+
+Separate from Longhorn/Garage — Immich's Postgres (albums, face tags,
+favorites, sharing links; not the photo files themselves, which are covered
+by the SAS pool's own RAIDZ2 redundancy) gets a nightly `pg_dump` via a k8s
+CronJob (`immich-postgres-backup`, 03:30, after the other 02:xx-03:xx jobs),
+landing gzipped on `/media/backups/immich-postgres/` on the R730xd, 30-day
+retention. See [docs/immich-post-restore.md](docs/immich-post-restore.md)
+for the restore procedure and the one-time VectorChord extension setup a
+fresh Postgres needs. **This backup currently only exists on the R730xd
+itself** — it does not yet fan out to Synology/Oracle the way Longhorn's
+does, since Phases 2-4 of the backup restructure (Synology cold clone,
+Oracle offsite) are still paused/not implemented despite the "Backup
+schedule" section above describing the target design.
+
 ## R730xd / Garage total loss fallback
 
 Longhorn's primary backup target now lives on the same physical host as
