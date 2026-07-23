@@ -1,1 +1,0 @@
-openclaw ALL=(root) NOPASSWD: /usr/local/bin/openclaw-fix-perms

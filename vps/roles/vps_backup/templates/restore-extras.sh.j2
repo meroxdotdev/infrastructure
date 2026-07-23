@@ -3,7 +3,7 @@
 # For each target, untars the newest /srv/backups/<name>/<name>_*.tar.gz over
 # its live path, stopping/starting the affected container around the untar
 # (same stop/restore/start pattern as restore-db.sh). Non-interactive — DR
-# use only, OVERWRITES current state. Run after restore-pull-from-nas.sh and
+# use only, OVERWRITES current state. Run after restore-pull-from-r730xd.sh and
 # after the app stack / Guacamole / Traefik / Pi-hole containers exist.
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
@@ -54,7 +54,5 @@ fi
 
 restore_tar homepage /srv/docker/oracle-cloud/config homepage
 restore_tar portainer /var/lib/docker/volumes/oracle-cloud_portainer_data/_data portainer
-restore_tar dashboard /srv/dashboard agents-dashboard
-restore_tar openclaw /home/openclaw/.openclaw
 
 echo "$(date -Is) restore-extras completed"

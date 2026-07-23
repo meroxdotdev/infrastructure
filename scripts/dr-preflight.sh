@@ -70,13 +70,6 @@ else
     fail "age.key missing — K8s SOPS secrets will be unrecoverable without it"
 fi
 
-OPENCLAW_ENV="/home/openclaw/.openclaw/.env"
-if [ -f "$OPENCLAW_ENV" ]; then
-    ok "openclaw .env exists at $OPENCLAW_ENV"
-else
-    warn "openclaw .env not found at $OPENCLAW_ENV — agents won't work after Phase 3 without it"
-fi
-
 echo ""
 echo "[ Tailscale auth key ]"
 if [ -f "$VPS_DIR/.vault_pass" ]; then
@@ -136,20 +129,6 @@ if command -v kubectl &>/dev/null; then
     ok "kubectl available"
 else
     warn "kubectl not found — needed for Phase 2 (install via mise)"
-fi
-
-echo ""
-echo "[ Agents prerequisites (Phase 3) ]"
-if command -v node &>/dev/null; then
-    NODE_VER=$(node --version 2>/dev/null)
-    ok "Node.js available: $NODE_VER"
-else
-    warn "Node.js not installed — needed for Phase 3 (curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -)"
-fi
-if command -v openclaw &>/dev/null; then
-    ok "openclaw CLI available"
-else
-    warn "openclaw not installed — needed for Phase 3 (sudo npm install -g openclaw@latest)"
 fi
 
 echo ""

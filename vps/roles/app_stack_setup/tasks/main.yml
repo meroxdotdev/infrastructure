@@ -98,10 +98,3 @@
     state: present
   become: yes
   when: not ansible_check_mode
-
-- name: Start agents-dashboard containers
-  community.docker.docker_compose_v2:
-    project_src: "{{ app_stack_dir }}/agents-dashboard"
-    state: present
-  become: yes
-  when: not ansible_check_mode

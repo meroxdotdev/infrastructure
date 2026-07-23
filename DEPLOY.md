@@ -414,47 +414,6 @@ kubectl -n flux-system get receiver github-webhook \
 
 ---
 
-## Phase 3 — Agents (OpenClaw)
-
-> ~15 min. 9 specialized agents running as dedicated `openclaw` user (non-root).
-> All config templates live in `agent/` in this repo.
-
-**Full setup guide: [agent/README.md](agent/README.md)**
-
-The agent README is the single source of truth for this phase. It covers:
-
-- Node.js 24 + OpenClaw install
-- `openclaw` user creation + sudoers
-- `sudoers-fix-perms` + `openclaw-fix-perms` scripts
-- infra access (kubeconfig, talosconfig)
-- All 9 workspace installs (news, blog, design, infra, costs, dashboard, orchestrator, renovate, repo)
-- Restore agent memory + `openclaw.json` from NAS backup if present (1:1 — same
-  history/config as before, no manual Telegram config needed)
-- Claude Code OAuth + OpenClaw onboard
-- Telegram config (`openclaw.json`) — only if no backup was restored above
-- Dashboard scripts (`agent/dashboard/scripts/`) + restore `/srv/dashboard/.env`
-    - `data/*.json` from NAS backup if present
-- crontab (openclaw user) + systemd user service
-- Final step: `agent/scripts/dr-restore-agents.sh` deploys agents-api, brings
-  up agents-dashboard + openclaw-gateway, and verifies via gateway probe
-
-> Assumes `/srv/backups/` was already populated from the NAS in Phase 1
-> (see Phase 1's restore step above).
-
-**Verify when done:**
-
-```bash
-# One-shot (run from vps/ dir):
-make dr-verify-phase3
-# Or manually:
-sudo -u openclaw openclaw doctor
-sudo -u openclaw openclaw status
-# Telegram: send "hello" to your bot — news agent should respond
-# Dashboard: https://agents.cloud.merox.dev
-```
-
----
-
 ## Migration Checklist
 
 ```
@@ -491,23 +450,6 @@ sudo -u openclaw openclaw status
 [ ] Wildcard certificate Ready (kubectl -n network describe certificates)
 [ ] Longhorn backup target working (test a manual backup)
 [ ] GitHub Webhook configured (optional — for instant Flux sync on git push)
-[ ] openclaw user created, in docker group, linger enabled
-[ ] sudoers-openclaw installed at /etc/sudoers.d/openclaw
-[ ] kubeconfig + talosconfig copied to /home/openclaw/.kube/ and /home/openclaw/.talos/
-[ ] All 9 workspaces installed (news, blog, design, infra, costs, dashboard, orchestrator, renovate, repo)
-[ ] OpenClaw memory + openclaw.json restored from NAS backup (srv-backups/openclaw/),
-    or — if no backup — openclaw.json configured manually (Telegram token + user ID)
-[ ] claude login done as openclaw user (Claude Pro OAuth)
-[ ] Dashboard scripts copied: cp agent/dashboard/scripts/*.sh /srv/dashboard/
-[ ] /srv/dashboard/.env + data/*.json restored from NAS backup (srv-backups/dashboard/),
-    or — if no backup — .env created manually from agent/dashboard/.env.example
-[ ] setup-deps.sh run (pip install caldav for iCloud calendar)
-[ ] openclaw user crontab installed (sudo -u openclaw crontab agent/scripts/openclaw-crontab)
-[ ] agents-dashboard nginx container running (docker ps | grep agents-dashboard)
-[ ] openclaw-gateway systemd user service enabled + running as openclaw user
-[ ] https://agents.cloud.merox.dev accessible and showing command center
-[ ] Telegram bot responds to messages
-[ ] openclaw doctor — no warnings (make dr-verify-phase3)
 [ ] Old server decommissioned / Tailscale node removed
 ```
 

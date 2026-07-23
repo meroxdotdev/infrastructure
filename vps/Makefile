@@ -7,8 +7,8 @@
         authentik-setup authentik-test authentik-backup \
         cleanup check-resources health-check \
         terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
-        dr-verify-phase1 dr-verify-phase2 dr-verify-phase3 garage-extract-creds \
-        restore-pull-nas restore-extras restore-auto dr-restore \
+        dr-verify-phase1 dr-verify-phase2 garage-extract-creds \
+        restore-pull-r730xd restore-extras restore-auto dr-restore \
         vault-edit vault-show-required view-vault
 
 help:
@@ -20,7 +20,6 @@ help:
 	@echo "  dr-full            Pre-flight + provision Hetzner + full deploy (~15 min)"
 	@echo "  dr-verify-phase1   Verify VPS phase (run on the VPS)"
 	@echo "  dr-verify-phase2   Verify K8s phase (run from local machine)"
-	@echo "  dr-verify-phase3   Verify Agents phase (run on the VPS)"
 	@echo "  dr-restore         DR: restore all data from NAS (pull + DB + extras, non-interactive)"
 	@echo "  garage-extract-creds  Extract Garage S3 creds + update vault (between Phase 1+2)"
 	@echo "  terraform-apply    Provision server on Hetzner only"
@@ -47,7 +46,7 @@ help:
 	@echo "Backups:"
 	@echo "  db-backups-setup   Deploy backup scripts + crons (DB dumps, extras, NAS sync)"
 	@echo "  backup-sync-now    Run extras backup + NAS sync immediately"
-	@echo "  restore-pull-nas   DR: pull NAS backup copies back to /srv/backups + garage"
+	@echo "  restore-pull-r730xd DR: pull R730xd backup copies back to /srv/backups + garage"
 	@echo "  restore            Restore Authentik + Joplin DBs from latest dump (interactive)"
 	@echo "  restore-auto       DR: restore Authentik + Joplin DBs from latest dump (non-interactive)"
 	@echo "  restore-extras     DR: restore Guacamole/Traefik/Pi-hole/Homepage/Portainer/etc from /srv/backups (non-interactive)"
@@ -133,7 +132,7 @@ app-stack-setup:
 	ansible-playbook playbooks/app-stack.yml
 
 app-stack-test:
-	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer|joplin|glances|agents-dashboard'"
+	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer|joplin|glances'"
 
 # --- Authentik SSO ---
 authentik-setup:
@@ -145,13 +144,13 @@ authentik-test:
 authentik-backup:
 	ansible-playbook playbooks/authentik-backup.yml
 
-# --- Backups (DB dumps + VPS extras + nightly NAS sync) ---
+# --- Backups (DB dumps + VPS extras + nightly R730xd push) ---
 db-backups-setup:
 	ansible-playbook playbooks/authentik-setup.yml --tags backup
 	ansible-playbook playbooks/site.yml --tags backup
 
 backup-sync-now:
-	/usr/local/bin/backup-vps-extras.sh && /usr/local/bin/backup-push-nas.sh
+	/usr/local/bin/backup-vps-extras.sh && /usr/local/bin/backup-push-r730xd.sh
 
 restore:
 	/usr/local/bin/restore-db.sh all
@@ -162,8 +161,8 @@ restore-authentik:
 restore-joplin:
 	/usr/local/bin/restore-db.sh joplin
 
-restore-pull-nas:
-	/usr/local/bin/restore-pull-from-nas.sh
+restore-pull-r730xd:
+	/usr/local/bin/restore-pull-from-r730xd.sh
 
 restore-auto:
 	/usr/local/bin/restore-db.sh --yes all
@@ -214,9 +213,6 @@ dr-verify-phase1:
 
 dr-verify-phase2:
 	@bash ../scripts/dr-verify.sh --phase 2
-
-dr-verify-phase3:
-	@bash ../scripts/dr-verify.sh --phase 3
 
 garage-extract-creds:
 	@bash ../scripts/garage-extract-creds.sh

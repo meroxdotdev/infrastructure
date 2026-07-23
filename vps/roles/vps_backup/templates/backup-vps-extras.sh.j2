@@ -1,8 +1,7 @@
 #!/bin/bash
 # Daily backup of small VPS state not covered by Ansible/git:
 # Guacamole connections, Traefik certs (acme.json), Pi-hole config,
-# OpenClaw agent runtime (memory/workspaces, secrets excluded), agent dashboard
-# state + secrets, Homepage config, Portainer state.
+# Homepage config, Portainer state.
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
 
@@ -29,13 +28,6 @@ backup_tar pihole /srv/docker/oracle-cloud/etc-pihole \
   --exclude='./pihole-FTL.db*' --exclude='./gravity*.db' \
   --exclude='./listsCache' --exclude='./gravity_backups' --exclude='./config_backups'
 backup_tar pihole-dnsmasq /srv/docker/oracle-cloud/etc-dnsmasq.d
-
-# OpenClaw: agent memory/workspaces/config — secrets (.env) and logs excluded
-backup_tar openclaw /home/openclaw/.openclaw \
-  --exclude='./.env' --exclude='*.env' --exclude='./logs'
-
-# Agent dashboard: shared memory, history, proposals + .env (Telegram/Garage/Apple secrets)
-backup_tar dashboard /srv/dashboard --exclude='./node_modules'
 
 # Homepage: dashboard config (bookmarks, services, settings, widgets, custom css/js)
 # kubeconfig.yaml/kube.config excluded — regenerate manually post-DR (talosctl kubeconfig)
