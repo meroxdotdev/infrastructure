@@ -1,32 +1,33 @@
 #!/bin/bash
-# Nightly off-site sync of all VPS backups + Garage S3 data to the Synology NAS.
-# Runs after the Longhorn 02:00 backup cycle so Garage content is current.
+# Off-site push of VPS service backups (Authentik/Joplin/Guacamole/Traefik/
+# Pi-hole/Homepage/Portainer) to R730xd (the always-on backup hub). From
+# there, R730xd's own weekly push relays a copy to Synology cold storage,
+# and Synology's HyperBackup relays onward to this same Oracle VPS - see
+# proxmox/r730xd/README.md for the full loop.
 #
-# DSM's patched rsync refuses server-mode over SSH (needs the DSM "rsync
-# service"), so instead of pushing we SSH into the NAS and have it PULL from
-# the read-only rsyncd modules on this VPS (vps_backups, garage_backup —
-# see /etc/rsyncd.conf). Auth: {{ vps_backup_nas_pass_file }} on the NAS.
+# Deliberately does NOT touch this VPS's own local Garage instance - that's
+# a temporary rollback safety net from the pre-2026-07-21 Longhorn cutover,
+# not the live backup target anymore (that's R730xd's own Garage LXC, already
+# covered by the existing longhorn-garage category on R730xd). Relaying it
+# through R730xd -> Synology -> Oracle would just ship this VPS's own
+# soon-to-be-decommissioned data back to itself.
+#
+# Plain SSH rsync push - no rsyncd daemon indirection needed here (that was
+# only required for Synology's patched rsync refusing server-mode over SSH;
+# R730xd is plain Debian). The SSH key is restricted server-side via rrsync +
+# from= to only touch {{ vps_backup_r730xd_base }} - not ansible-managed,
+# pve isn't in this inventory (see proxmox/r730xd/README.md for the exact
+# authorized_keys line).
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
 
-NAS_USER="{{ vps_backup_nas_user }}"
-NAS_HOST="{{ vps_backup_nas_host }}"
-SSH_KEY="{{ vps_backup_nas_ssh_key }}"
-NAS_BASE="{{ vps_backup_nas_base }}"
-VPS_TS_IP="{{ tailscale_ip }}"
-GARAGE_DIR="{{ vps_backup_garage_dir }}"
-PASS_FILE="{{ vps_backup_nas_pass_file }}"
+R730XD_USER="{{ vps_backup_r730xd_user }}"
+R730XD_HOST="{{ vps_backup_r730xd_host }}"
+SSH_KEY="{{ vps_backup_r730xd_ssh_key }}"
+SSH_OPTS="ssh -i $SSH_KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
-nas() { ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$NAS_USER@$NAS_HOST" "$@"; }
+# rrsync on the pve side restricts this key to {{ vps_backup_r730xd_base }}
+# as its root, so the remote path below is relative to that, not absolute.
+rsync -a --delete -e "$SSH_OPTS" "{{ vps_backup_root }}/" "$R730XD_USER@$R730XD_HOST:/srv-backups/"
 
-# Consistent Garage metadata snapshot; keep only the 3 newest locally
-docker exec garage /garage meta snapshot --all
-ls -1dt "$GARAGE_DIR"/meta/snapshots/*/ 2>/dev/null | tail -n +4 | xargs -r rm -rf
-
-nas "mkdir -p $NAS_BASE/srv-backups $NAS_BASE/garage/data $NAS_BASE/garage/meta-snapshots
-set -e
-rsync -a --delete --password-file=$PASS_FILE rsync://synology-backup@$VPS_TS_IP/vps_backups/ $NAS_BASE/srv-backups/
-rsync -a --delete --password-file=$PASS_FILE rsync://synology-backup@$VPS_TS_IP/garage_backup/data/ $NAS_BASE/garage/data/ || [ \$? -eq 24 ]
-rsync -a --delete --password-file=$PASS_FILE rsync://synology-backup@$VPS_TS_IP/garage_backup/meta/snapshots/ $NAS_BASE/garage/meta-snapshots/"
-
-echo "$(date -Is) backup sync to NAS completed"
+echo "$(date -Is) backup push to R730xd completed"

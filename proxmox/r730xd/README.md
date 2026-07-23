@@ -63,7 +63,13 @@ this instance is LAN-only, no public domain, no Traefik. Both toggles default
 │                         Synology Drive content), exposed via Filebrowser's
 │                         WebDAV (/dav/documents/). It's the source, not a
 │                         mirror, so it flows outward in the weekly push below.
-└── immich-postgres/      pg_dump of Immich's Postgres, nightly 03:30, 30-day retention (see DR.md)
+├── immich-postgres/      pg_dump of Immich's Postgres, nightly 03:30, 30-day retention (see DR.md)
+└── oracle-vps/           Nightly SSH-rsync push FROM the Oracle VPS (Authentik/
+                          Joplin DB dumps, Guacamole/Traefik/Pi-hole/Homepage/
+                          Portainer state) — see "Oracle VPS → R730xd" below.
+                          R730xd is the landing point, not the source; this
+                          directory only ever receives, the weekly push below
+                          is what relays it onward.
 ```
 
 ## Media/photos/isos NFS exports (K8s storage, not backup)
@@ -158,20 +164,73 @@ window.
 
 - **What's pushed**: `/media/photos` (Immich upload+external),
   `/media/backups/synology-home` (documents), `/media/backups/dump` (VM
-  backups), `/media/backups/pfsense`, `/media/backups/longhorn-garage`.
-  Movies/TV/Downloads are deliberately excluded — replaceable "cattle",
-  doesn't need a second copy.
+  backups), `/media/backups/pfsense`, `/media/backups/longhorn-garage`,
+  `/media/backups/immich-postgres`, `/media/backups/oracle-vps` (the Oracle
+  VPS's own service backups — see below). Movies/TV/Downloads are
+  deliberately excluded — replaceable "cattle", doesn't need a second copy.
 
-### Synology → Oracle Cloud (NOT built yet)
+### Oracle VPS → R730xd (DONE, 2026-07-23)
 
-This is the actual remaining gap. Synology only becomes safe to treat as
-disposable once this leg exists — right now, if the R730xd is lost between
-Sunday backup windows, Synology has a copy, but if *both* are lost, there's
-still no offsite copy. Plan (per the user, 2026-07-23): once R730xd→Synology
-is proven stable, build an encrypted restic push from Synology to a new
-Oracle Garage bucket, covering the same weekly snapshot content — this
-finally completes Phase 3 of the original backup-restructure plan. Not
-started as of this writing.
+The Oracle VPS backs up its own service state (Authentik/Joplin DB dumps,
+Guacamole/Traefik/Pi-hole/Homepage/Portainer tarballs) nightly at 03:30,
+landing at `/media/backups/oracle-vps/srv-backups/` on pve. Deliberately
+excludes the VPS's own local Garage instance (temporary rollback safety net
+from the pre-cutover Longhorn setup, not the live backup target — that's the
+LXC below). Full detail (script, cron, what's included) lives in
+[vps/roles/vps_backup/README.md](../../vps/roles/vps_backup/README.md) —
+canonical reference, don't duplicate here.
+
+**Why this exists**: previously the VPS pushed straight to Synology
+(`/volume1/Server/oracle-vps-backups/`), bypassing R730xd entirely — a
+second, parallel backup path with its own logic, and one that never reached
+Oracle's own offsite copy (below) since it wrote to a folder outside
+`/media/backups`. Rerouting through R730xd means the VPS's own backups now
+ride the same weekly Synology relay and the same offsite HyperBackup leg as
+everything else — one mesh, not two.
+
+**How the VPS reaches pve**: plain SSH rsync push (no rsyncd daemon — that
+indirection was only ever needed for Synology's patched rsync refusing
+server-mode over SSH; R730xd is plain Debian, doesn't need it). The VPS's
+key (`oracle-vps-to-r730xd`) is restricted in pve's `authorized_keys`:
+
+```
+restrict,command="rrsync /media/backups/oracle-vps",from="10.57.57.1" ssh-ed25519 AAAA... oracle-vps-to-r730xd
+```
+
+⚠️ **Footgun**: `from=` is `10.57.57.1` (pfSense's LAN address), **not** the
+VPS's own Tailscale IP (`100.72.22.38`) — pfSense NATs Tailscale-routed
+traffic before it reaches the LAN, so pve sees the connection as if it came
+from pfSense itself. Using the VPS's real Tailscale IP here fails silently
+with "not from a permitted host" (check `journalctl -u ssh` on pve, not
+`/var/log/auth.log` — this Proxmox host uses `sshd-session` logging via
+journald, no traditional auth.log file exists). If this key ever needs
+recreating (new VPS, DR rebuild), regenerate on the VPS
+(`ssh-keygen -t ed25519 -f /root/.ssh/oracle-vps-to-r730xd -N ""`), add the
+public half to pve's `authorized_keys` with the line above, and update
+`vault_oracle_vps_to_r730xd_ssh_key` in the vps Ansible vault to match.
+
+### Synology → Oracle Cloud (DONE, 2026-07-23)
+
+DSM Hyper Backup, task type **Rsync** (not S3 — simpler, and a purpose-built
+rsyncd module for this already existed): source `/volume1/NetBackup`
+(everything above, now including `oracle-vps/`), destination the
+`synology_backup` module on the VPS's own rsyncd (`/etc/rsyncd.conf`,
+port 873, module maps to `/backup/synology`, credentials in
+`vault_rsyncd_password`). Client-side encryption enabled (password in
+Joplin). Rotation: "from the earliest versions", 3 kept versions (~3 weeks
+at weekly cadence). Schedule: Sunday 03:20 — 20 min after pve's own push
+(03:00) and the VPS's own extras push (03:10), giving both a head start.
+DSM shutdown extended from 03:40 → **04:30** to give HyperBackup real room;
+tighten later once steady-state run duration is known from DSM's task
+history (first run is a one-off multi-hour full copy, run manually with
+Synology kept awake — not on the weekly schedule).
+
+This closes the loop: R730xd is now backed up to Synology *and* Oracle;
+Synology is backed up to Oracle; and the Oracle VPS's own state flows back
+through R730xd to reach both. The only remaining single point of failure is
+R730xd's own local disk failure mode being covered by RAIDZ2 rather than a
+second independent site — accepted risk, matches the original design intent
+(R730xd is the hub, not disposable, but not a single disk either).
 
 ## Total-loss recovery
 

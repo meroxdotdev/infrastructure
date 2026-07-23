@@ -1,14 +1,15 @@
 ---
-# Local staging for all VPS backups (dumps + tars), pulled nightly by the NAS
+# Local staging for all VPS backups (dumps + tars), pushed nightly to R730xd
 vps_backup_root: /srv/backups
 vps_backup_retention_days: 7
 
-# Synology NAS (reachable over home LAN via Tailscale subnet / SSH key auth)
-vps_backup_nas_user: admin
-vps_backup_nas_host: 10.57.57.201
-vps_backup_nas_ssh_key: /root/.ssh/nas_backup
-vps_backup_nas_base: /volume1/Server/oracle-vps-backups
-# rsyncd password for the pull, lives on the NAS (chmod 600, not in git)
-vps_backup_nas_pass_file: /var/services/homes/admin/.vps-rsync.pass
-
-vps_backup_garage_dir: /srv/docker/oracle-cloud/garage
+# R730xd (pve) - always-on backup hub, reachable over the Tailscale-routed LAN.
+# Plain SSH rsync push, no daemon indirection - that was only needed for
+# Synology's patched rsync refusing server-mode over SSH; R730xd is plain
+# Debian and has no such restriction. Public key is restricted on the pve side
+# via rrsync + from= (see proxmox/r730xd/README.md) - not ansible-managed,
+# pve isn't in this inventory.
+vps_backup_r730xd_user: root
+vps_backup_r730xd_host: 10.57.57.250
+vps_backup_r730xd_ssh_key: /root/.ssh/oracle-vps-to-r730xd
+vps_backup_r730xd_base: /media/backups/oracle-vps

@@ -1,20 +1,20 @@
 ---
 # DR: restore data onto a freshly provisioned VPS after `make setup` (site.yml)
-# and `app-stack.yml` have deployed all services. Pulls the NAS's backup
+# and `app-stack.yml` have deployed all services. Pulls R730xd's backup
 # copies, restores Authentik/Joplin DBs, then restores
-# Guacamole/Traefik/Pi-hole/Homepage/Portainer/dashboard/OpenClaw state.
-- name: DR — restore service state from NAS backups
+# Guacamole/Traefik/Pi-hole/Homepage/Portainer state.
+- name: DR — restore service state from R730xd backups
   hosts: vps_servers
   become: yes
   gather_facts: no
 
   tasks:
-    - name: Pull backup copies back from NAS (DBs, extras, Garage)
-      ansible.builtin.command: /usr/local/bin/restore-pull-from-nas.sh
+    - name: Pull backup copies back from R730xd (DBs, extras, Garage)
+      ansible.builtin.command: /usr/local/bin/restore-pull-from-r730xd.sh
       register: pull_result
       changed_when: true
 
-    - name: Show NAS pull output
+    - name: Show R730xd pull output
       ansible.builtin.debug:
         var: pull_result.stdout_lines
 
@@ -27,7 +27,7 @@
       ansible.builtin.debug:
         var: db_result.stdout_lines
 
-    - name: Restore Guacamole/Traefik/Pi-hole/Homepage/Portainer/dashboard/OpenClaw state
+    - name: Restore Guacamole/Traefik/Pi-hole/Homepage/Portainer state
       ansible.builtin.command: /usr/local/bin/restore-extras.sh
       register: extras_result
       changed_when: true

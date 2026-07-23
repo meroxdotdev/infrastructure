@@ -1,27 +1,20 @@
 #!/bin/bash
-# DR: pull the NAS's backup copies back onto a fresh VPS, before restore-db.sh
-# or restore-extras.sh run (both read from /srv/backups, which is empty on a
-# fresh VPS).
+# DR: pull R730xd's copy of VPS service backups back onto a fresh VPS, before
+# restore-db.sh or restore-extras.sh run (both read from /srv/backups, which
+# is empty on a fresh VPS).
 #
-# Mirror of backup-push-nas.sh, opposite direction: SSH into the NAS and have
-# it PUSH (as an rsync client) from its synced copies into the writable
-# rsyncd modules this VPS exposes (vps_restore, garage_restore — see
-# /etc/rsyncd.conf). Auth: {{ vps_backup_nas_pass_file }} on the NAS.
+# Mirror of backup-push-r730xd.sh, opposite direction: plain SSH rsync pull
+# straight from R730xd - no daemon indirection, R730xd is plain Debian.
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
 
-NAS_USER="{{ vps_backup_nas_user }}"
-NAS_HOST="{{ vps_backup_nas_host }}"
-SSH_KEY="{{ vps_backup_nas_ssh_key }}"
-NAS_BASE="{{ vps_backup_nas_base }}"
-VPS_TS_IP="{{ tailscale_ip }}"
-PASS_FILE="{{ vps_backup_nas_pass_file }}"
+R730XD_USER="{{ vps_backup_r730xd_user }}"
+R730XD_HOST="{{ vps_backup_r730xd_host }}"
+SSH_KEY="{{ vps_backup_r730xd_ssh_key }}"
+SSH_OPTS="ssh -i $SSH_KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
-nas() { ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$NAS_USER@$NAS_HOST" "$@"; }
+mkdir -p "{{ vps_backup_root }}"
 
-nas "set -e
-rsync -a --password-file=$PASS_FILE $NAS_BASE/srv-backups/ rsync://synology-backup@$VPS_TS_IP/vps_restore/
-rsync -a --password-file=$PASS_FILE $NAS_BASE/garage/data/ rsync://synology-backup@$VPS_TS_IP/garage_restore/data/
-rsync -a --password-file=$PASS_FILE $NAS_BASE/garage/meta-snapshots/ rsync://synology-backup@$VPS_TS_IP/garage_restore/meta/snapshots/"
+rsync -a -e "$SSH_OPTS" "$R730XD_USER@$R730XD_HOST:/srv-backups/" "{{ vps_backup_root }}/"
 
-echo "$(date -Is) restore pull from NAS completed"
+echo "$(date -Is) restore pull from R730xd completed"

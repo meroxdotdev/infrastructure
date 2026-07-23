@@ -166,9 +166,11 @@ Full nightly schedule, what's included/excluded: VPS-side —
 Short version: Longhorn backs up the media/ARR config volumes nightly to a
 self-hosted Garage instance on the R730xd (`10.57.57.61:3900`, bucket
 `longhorn`) — not the VPS anymore. From there, R730xd relays a curated copy
-on-prem to the Synology (weekly cold clone) and off-site to Oracle Cloud
-(encrypted, restic). Observability history and caches are deliberately not
-backed up (accepted as lost in DR).
+weekly to Synology (cold storage), and Synology relays that same copy
+onward to the Oracle VPS via Hyper Backup — the full mesh is documented in
+[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs).
+Observability history and caches are deliberately not backed up (accepted as
+lost in DR).
 
 ```bash
 # Check last backup time for each volume
@@ -197,13 +199,12 @@ paths**, deliberately not just one:
 **What neither path covers**: the actual photo/video files, which live on
 `/media/photos` — not a Longhorn volume at all, just an NFS mount from the
 R730xd's SAS pool. Those are protected by RAIDZ2 (survives 1-2 disk
-failures) and, as of 2026-07-23, a weekly versioned copy pushed to Synology
-(see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) —
-the old pre-migration Synology copy was deleted the same day once this new
-push was verified). **Still no offsite (Oracle) copy** — if both the R730xd
-and Synology are lost, everything here goes with them. That's the one
-remaining leg of the original Phases 2-4 plan; Synology→Oracle restic push
-is scoped but not yet built.
+failures), a weekly versioned copy pushed to Synology, and (as of
+2026-07-23) Synology's own Hyper Backup relay onward to the Oracle VPS — see
+[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for the
+full chain. Both offsite legs (R730xd→Synology, Synology→Oracle) are built
+and running; the R730xd→Synology→Oracle chain still hasn't been drilled as
+a full restore end-to-end (see "R730xd / Garage total loss fallback" below).
 
 ## R730xd / Garage total loss fallback
 

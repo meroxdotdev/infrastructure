@@ -35,10 +35,10 @@
     mode: "0700"
   tags: backup
 
-- name: Deploy NAS backup SSH private key
+- name: Deploy R730xd backup push SSH private key
   copy:
-    content: "{{ nas_backup_ssh_key_content }}"
-    dest: "{{ vps_backup_nas_ssh_key }}"
+    content: "{{ vault_oracle_vps_to_r730xd_ssh_key }}"
+    dest: "{{ vps_backup_r730xd_ssh_key }}"
     owner: root
     group: root
     mode: "0600"
@@ -84,19 +84,19 @@
     mode: "0700"
   tags: backup
 
-- name: Deploy NAS sync script
+- name: Deploy R730xd push script
   template:
-    src: backup-push-nas.sh.j2
-    dest: /usr/local/bin/backup-push-nas.sh
+    src: backup-push-r730xd.sh.j2
+    dest: /usr/local/bin/backup-push-r730xd.sh
     owner: root
     group: root
     mode: "0700"
   tags: backup
 
-- name: Deploy restore-pull-from-nas script (DR)
+- name: Deploy restore-pull-from-r730xd script (DR)
   template:
-    src: restore-pull-from-nas.sh.j2
-    dest: /usr/local/bin/restore-pull-from-nas.sh
+    src: restore-pull-from-r730xd.sh.j2
+    dest: /usr/local/bin/restore-pull-from-r730xd.sh
     owner: root
     group: root
     mode: "0700"
@@ -138,11 +138,13 @@
     user: root
   tags: backup
 
-- name: Schedule nightly backup sync to NAS (after Longhorn 02:00 cycle)
+- name: Schedule nightly backup push to R730xd (always-on hub, no wake
+    window to work around - unlike the old Synology-direct path this
+    replaces)
   cron:
-    name: "backup-sync-nas"
+    name: "backup-push-r730xd"
     minute: "30"
     hour: "3"
-    job: "/usr/local/bin/backup-push-nas.sh >> /var/log/backup-nas.log 2>&1"
+    job: "/usr/local/bin/backup-push-r730xd.sh >> /var/log/backup-r730xd.log 2>&1"
     user: root
   tags: backup
