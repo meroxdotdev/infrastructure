@@ -20,9 +20,8 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Portainer EE       | 100.72.22.38:9000 _(Tailscale)_ | Container management UI                                             |
 | Homepage           | inside.merox.dev _(Tailscale)_  | Internal dashboard (K8s + Proxmox + router)                         |
 | Joplin Server      | joplin.cloud.merox.dev          | Notes sync (PostgreSQL backend)                                     |
-| Uptime Kuma        | status.merox.dev                | Uptime monitoring + alerting                                        |
 | Guacamole          | rmt.merox.dev                   | Remote desktop gateway (Authentik SSO)                              |
-| Garage S3          | garage.cloud.merox.dev          | Off-site S3 storage — receives Longhorn volume backups from homelab |
+| Garage S3          | garage.cloud.merox.dev          | Rollback safety net only — Longhorn's real target is now on R730xd, see below |
 | Netdata            | netdata.cloud.merox.dev         | Real-time metrics (parent + 3 child nodes)                          |
 | Beszel             | beszel.cloud.merox.dev          | Host monitoring                                                     |
 | Dozzle             | dozzle.cloud.merox.dev          | Docker log aggregation                                              |
@@ -194,7 +193,7 @@ Validation:
 │  VPS (Oracle Cloud)   vps/                                │
 │  ├── Traefik (reverse proxy + Cloudflare Tunnel)          │
 │  ├── Pi-hole (DNS), Portainer EE, Homepage                │
-│  ├── Joplin Server + Postgres (notes), Uptime Kuma        │
+│  ├── Joplin Server + Postgres (notes)                     │
 │  ├── Guacamole (remote desktop gateway), Glances          │
 │  └── nightly service-state push → R730xd                 │
 └────────────────────┬─────────────────────────────────────┘
@@ -210,10 +209,9 @@ Validation:
 
 | Device                                     | Role                                                                                                                                                                                                | Specs                                       |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Dell PowerEdge R730xd (`10.57.57.250`)     | Proxmox host — all 3 K8s control-plane VMs + Nvidia Quadro P2200 (Jellyfin transcoding, passthrough to controlplane-1). Also the K8s NFS server (`media` SAS ZFS pool, RAIDZ2): `/media/library` (Jellyfin/*arr), `/media/photos` (Immich), `/media/backups` (Longhorn/Garage/VM/Immich-DB backups), `/media/isos` | 2x Xeon E5-2630 v3, 251GB RAM, Quadro P2200 |
-| Beelink GTi 13 Pro / px-0 (`10.57.57.254`) | Proxmox host — standby. Previously ran controlplane-1 with Intel iGPU passthrough (Jellyfin QSV); VM kept powered off, not deleted, as GPU-transcoding rollback path. See `docs/gpu-transcoding.md` | i9-13900H, 64GB, 2x2TB NVMe                 |
-| Dell OptiPlex 3050 #1/#2 (px-1 / px-2)     | Retired — formerly Proxmox cluster members hosting controlplane-2/3, workloads consolidated onto the R730xd                                                                                         | i5-6500T, 16GB, 128GB NVMe                  |
-| Dell PowerEdge R720                        | Proxmox Backup Server                                                                                                                                                                               | 2x Xeon E5-2697v2, 192GB                    |
+| Dell PowerEdge R730xd (`10.57.57.250`)     | Proxmox host — **controlplane-1 only** (not all 3 — see note below) + Nvidia Quadro P2200 (Jellyfin transcoding, passthrough to controlplane-1). Also the K8s NFS server (`media` SAS ZFS pool, RAIDZ2): `/media/library` (Jellyfin/*arr), `/media/photos` (Immich), `/media/backups` (Longhorn/Garage/VM/Immich-DB backups), `/media/isos`, and the Garage LXC (Longhorn's S3 backup target) | 2x Xeon E5-2630 v3, 251GB RAM, Quadro P2200 |
+| Beelink GTi 13 Pro / px-0 (`10.57.57.254`) | Proxmox host — **controlplane-2 and controlplane-3**, plus the Proxmox Datacenter Manager appliance VM (links `pve`+`px-0` without a corosync cluster). Not standby — actively runs 2 of the 3 K8s control-plane nodes | i9-13900H, 64GB, 2x2TB NVMe                 |
+| Dell OptiPlex 3050 #1/#2 (px-1 / px-2)     | Retired — formerly Proxmox cluster members hosting controlplane-2/3 before that role moved to px-0 (not the R730xd)                                                                                 | i5-6500T, 16GB, 128GB NVMe                  |
 | Synology DS223+                            | Cold storage only — see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for the weekly push mechanism and Power Schedule                                                     | 2x2TB HDD RAID1                             |
 | XCY X44                                    | pfSense Firewall                                                                                                                                                                                    | N100, 8GB                                   |
 | Oracle Cloud ARM VPS                       | Off-site services (primary)                                                                                                                                                                         | 4 vCPU ARM, 24GB RAM, 200GB                 |

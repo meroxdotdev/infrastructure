@@ -37,7 +37,7 @@ allowed_ips         = ["0.0.0.0/0", "::/0"]
 ## Phase 1 — VPS
 
 > ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Cloudflare Tunnel,
-> Pi-hole + Unbound, Portainer, Homepage, Joplin + Postgres, Uptime Kuma, Guacamole, Glances,
+> Pi-hole + Unbound, Portainer, Homepage, Joplin + Postgres, Guacamole, Glances,
 > Authentik SSO, Garage S3, Netdata, Beszel, Dozzle.
 >
 > **How it works:** Terraform provisions the Hetzner server (cloud-init installs python3 + creates dirs).
@@ -165,19 +165,26 @@ kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.
 # expect: true
 ```
 
-**Cloudflare Tunnel (cloudflared):** deployed automatically by the `cloudflared_setup`
-role (added 2026-06-13) — runs as a `network_mode: host` container so it can reach
-`localhost:3000` (Homepage), `localhost:3001` (Uptime Kuma), `localhost:443` (Traefik),
-and `172.25.10.72:9000` (Authentik), matching the tunnel's remotely-managed ingress
-rules (`config_src: cloudflare` — ingress is stored on Cloudflare's side, nothing to
-re-configure per-deploy).
+**Cloudflare Tunnel (cloudflared):** runs as a native systemd service on the VPS
+(`systemctl status cloudflared`), not a Docker container — confirmed 2026-07-23,
+contradicting older notes here that described it as `network_mode: host`
+container-based. Full host network access either way, so it reaches
+`localhost:3000` (Homepage), `localhost:443` (Traefik), and `172.25.10.72:9000`
+(Authentik) the same way, matching the tunnel's remotely-managed ingress rules
+(`config_src: cloudflare` — ingress is stored on Cloudflare's side, nothing to
+re-configure per-deploy in this repo). **Note**: some tunnel ingress rules
+(e.g. `inside.merox.dev`) route directly to a service port, bypassing Traefik
+entirely — no Traefik middleware (headers, IP allowlist, Authentik forward-auth)
+applies to those hostnames. Verify on Cloudflare's own dashboard (Zero Trust →
+Networks → Tunnels) which hostnames go direct vs through Traefik if that matters
+for a given service.
 
 > **Requires `cloudflare_tunnel_token` in vault** (the _connector_ token from
 > Cloudflare Zero Trust → Networks → Tunnels → "one" → Configure — looks like
 > `eyJhIjoi...`). This is **different** from `homepage_cloudflare_token` (an API
 > token used only by Homepage's Cloudflared widget). As of 2026-06-13 this var is
 > **not yet in vault** — until it's added, `inside.merox.dev`, `sso.merox.dev`,
-> `rmt.merox.dev`, and `status.merox.dev` are unreachable from
+> and `rmt.merox.dev` are unreachable from
 > the internet after a fresh deploy (container runs but logs
 > `Provided Tunnel token is not valid`). One-time fix:
 >
@@ -193,7 +200,7 @@ re-configure per-deploy).
 > back with **`docker ps -a` showing zero containers** (containerd tasks are torn
 > down and not restored), even though all compose files/volumes under
 > `/srv/docker/oracle-cloud/*/` are intact. This was hit during the 2026-06-13 drill
-> when re-running `ansible-playbook --tags cloudflared,uptime-kuma` after the
+> when re-running `ansible-playbook --tags cloudflared` after the
 > initial `make dr-full`. Recovery (recreates all containers from existing compose
 >
 > - data, ~30s):
@@ -471,7 +478,7 @@ kubectl -n flux-system get receiver github-webhook \
 | VPS service state (Authentik + Joplin DB dumps, Guacamole, Traefik certs, Pi-hole config, Homepage, Portainer) | Nightly push to R730xd (`/media/backups/oracle-vps/`) — schedule & details: [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) | ✅ relayed to Synology + Oracle, see below  |
 | R730xd's own backup tree (the row above + photos, documents, VM backups, pfSense config, Garage data, Immich Postgres dumps) | Weekly to Synology (cold storage) — [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)                                | ✅ 3 versions kept                          |
 | Synology's copy of the above                                                                                | Weekly to Oracle Cloud via Hyper Backup (rsync, encrypted) — same README, "Synology → Oracle Cloud"                                      | ✅ 3 versions kept, off-site                |
-| Observability history (Prometheus/Loki/Grafana), `*-cache` volumes, Uptime-Kuma                             | —                                                                                                                                        | ❌ deliberately not backed up (regenerable) |
+| Observability history (Prometheus/Loki/Grafana), `*-cache` volumes                                          | —                                                                                                                                        | ❌ deliberately not backed up (regenerable) |
 
 **The one thing to back up manually, off this VPS entirely:**
 

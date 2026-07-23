@@ -20,7 +20,6 @@ traefik_docker_dir:      /srv/docker/oracle-cloud/traefik
 guacamole_docker_dir:    /srv/docker/oracle-cloud/guacamole
 authentik_docker_dir:    /srv/docker/oracle-cloud/authentik
 garage_docker_dir:       /srv/docker/oracle-cloud/garage
-uptime_kuma_docker_dir:  /srv/docker/oracle-cloud/uptime-kuma
 netdata_docker_dir:      /srv/docker/oracle-cloud/netdata
 
 # Routing vars needed by traefik config.yml.j2 regardless of which roles run

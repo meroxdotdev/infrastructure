@@ -16,7 +16,7 @@ Two deployment modes:
 ## Stack
 
 Traefik (reverse proxy + ACME), Pi-hole + Unbound, Authentik SSO, Portainer EE,
-Homepage, Joplin Server + Postgres, Uptime Kuma, Guacamole, Garage S3, Netdata,
+Homepage, Joplin Server + Postgres, Guacamole, Garage S3, Netdata,
 Beszel, Dozzle, Glances — one role per service under `roles/`, full URL table in
 the [main README](../README.md#everything-at-a-glance). All web traffic goes
 through Cloudflare Tunnel — no open inbound ports.

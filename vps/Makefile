@@ -1,7 +1,7 @@
 .PHONY: help install ping setup update check facts lint \
         traefik-setup traefik-test \
         garage-setup garage-test \
-        uptime-kuma-setup uptime-kuma-test guacamole-setup guacamole-test \
+        guacamole-setup guacamole-test \
         netdata-setup netdata-test \
         cloudflared-setup cloudflared-test app-stack-setup app-stack-test \
         authentik-setup authentik-test authentik-backup \
@@ -34,8 +34,8 @@ help:
 	@echo "  health-check       Post-deploy verification"
 	@echo ""
 	@echo "Individual services:"
-	@echo "  traefik-setup      garage-setup       uptime-kuma-setup"
-	@echo "  guacamole-setup    netdata-setup      authentik-setup"
+	@echo "  traefik-setup      garage-setup       guacamole-setup"
+	@echo "  netdata-setup      authentik-setup"
 	@echo "  cloudflared-setup  app-stack-setup    (cloudlab-merox app stack)"
 	@echo ""
 	@echo "Authentik SSO:"
@@ -103,12 +103,6 @@ garage-setup:
 
 garage-test:
 	ansible vps_servers -m shell -a "docker ps | grep -E 'garage|garage-webui' && docker exec garage /garage status"
-
-uptime-kuma-setup:
-	ansible-playbook playbooks/site.yml --tags uptime-kuma
-
-uptime-kuma-test:
-	ansible vps_servers -m shell -a "docker ps | grep uptime-kuma"
 
 guacamole-setup:
 	ansible-playbook playbooks/site.yml --tags guacamole

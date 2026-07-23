@@ -138,9 +138,10 @@ kubectl get helmreleases -A | grep -v "True\|READY"
 task dr:destroy-vms
 
 # Restart prod nodes via Proxmox UI:
-# VM 800 → kubernetes-controlplane-1 (px-0)
-# VM 801 → kubernetes-controlplane-2 (px-1)
-# VM 104 → kubernetes-controlplane-3 (px-2)
+# VM 800 → kubernetes-controlplane-1 (pve / R730xd)
+# VM 802 → kubernetes-controlplane-2 (px-0 / Beelink)
+# VM 804 → kubernetes-controlplane-3 (px-0 / Beelink)
+# (px-1/px-2 OptiPlexes are retired - controlplane-2/3 live on px-0 now, not there)
 ```
 
 ---

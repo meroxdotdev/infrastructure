@@ -49,7 +49,7 @@ make setup   # first run: applies changes; subsequent runs: verifies state
 | .30 | portainer |
 | .33 | guacamole |
 | .40 | code-server |
-| .50 | uptime-kuma |
+| .50 | free (was uptime-kuma, decommissioned) |
 | .51 | dozzle |
 | .53 | pihole |
 | .60 | joplin-db |

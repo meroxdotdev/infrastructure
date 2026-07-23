@@ -77,8 +77,8 @@ Only volumes opted in via PVC label `recurring-job-group.longhorn.io/media: enab
 `jellyfin`, `prowlarr`, `radarr`, `sonarr` (configs, ~3GB total actual size).
 Deliberately NOT backed up: `jellyseerr`/`qbittorrent` (dropped 2026-07-21 —
 session state and easily-reconfigured settings, not worth restoring),
-Prometheus/Loki/Grafana/Netdata history, alertmanager, all `*-cache` volumes,
-Uptime-Kuma history — regenerable, were ~35GB of noise.
+Prometheus/Loki/Grafana/Netdata history, alertmanager, all `*-cache` volumes —
+regenerable, were ~35GB of noise.
 
 ## Still manual (keep copies off this VPS)
 
