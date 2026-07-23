@@ -15,7 +15,9 @@ data:
   # -----------------------------------------------------------------------
 
   # -- NAS / NFS server (app-specific, not in cluster.yaml)
-  NFS_SERVER: "10.57.57.201"
+  # R730xd (pve) as of the Synology->SAS media migration — was 10.57.57.201
+  # (Synology). Synology is now cold-backup only, no longer the media host.
+  NFS_SERVER: "10.57.57.250"
 
   # -- Homepage widget IPs (app-specific, not in cluster.yaml)
   HOMEPAGE_PROXMOX_IP: "10.57.57.254"

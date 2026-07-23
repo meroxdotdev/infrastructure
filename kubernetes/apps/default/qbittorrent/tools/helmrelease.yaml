@@ -137,7 +137,7 @@ spec:
       media:
         type: nfs
         server: ${NFS_SERVER}
-        path: /volume1/Server/Kubernetes/Media/Download
+        path: /media/library/Download
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: Downloads/qbittorrent
