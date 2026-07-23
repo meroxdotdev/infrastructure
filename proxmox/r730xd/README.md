@@ -91,6 +91,33 @@ are "pets" — the pre-migration Synology copy is kept as a safety net until
 Immich is validated end-to-end (see
 [docs/immich-post-restore.md](../../docs/immich-post-restore.md)).
 
+### Footgun: nested ZFS datasets need `crossmnt`, and stale k8s node NFS caches don't self-heal
+
+`media/backups` has child ZFS datasets nested inside it (`longhorn-garage`,
+`synology-home`) that mount at their own paths under the parent dataset's
+directory tree. **NFS does not expose nested mount points to clients by
+default** — from a client's view they just look like permanently empty
+directories, even though `ls` on `pve` itself shows real content. Fix: add
+`crossmnt` to the parent export in `/etc/exports` (belt-and-suspenders: also
+add explicit export lines for each nested dataset path). Applies to any
+future nested-dataset-under-an-export setup on this pool, not just backups.
+
+**The much nastier part**: fixing the export server-side is not enough by
+itself. The Linux NFS client on a k8s node caches dentries/attributes for a
+given server+export combo, and **new pod-level mounts on a node that already
+had a stale (pre-fix) mount of that export can inherit the stale cached view
+of specific nested paths** — confirmed by testing the identical k8s NFS
+volume mount from a different, never-previously-mounted node
+(`kubernetes-controlplane-2`), which worked immediately, while the
+already-tainted node (`kubernetes-controlplane-1`) kept returning empty
+listings for the nested paths no matter how many times the consuming pod
+was deleted/recreated. `exportfs -ra` and even a full
+`systemctl restart nfs-kernel-server` on `pve` did **not** clear this —
+only a reboot of the affected k8s node did (`talosctl reboot -n <node-ip>`).
+If a similar "works everywhere except this one node, and only for paths that
+existed before an export change" symptom shows up again, suspect this same
+cache-poisoning pattern before spending time on the export config again.
+
 ## Downstream legs
 
 *Still not built* — Synology weekly cold clone and Oracle Cloud encrypted
