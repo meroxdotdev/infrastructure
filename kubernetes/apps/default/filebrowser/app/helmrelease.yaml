@@ -137,6 +137,18 @@ spec:
         globalMounts:
           - path: /srv/backups
             readOnly: true
+      documents:
+        type: nfs
+        # Deliberately hardcoded, see library/backups above. Read-write and
+        # separate from the "backups" mount above (which stays read-only) —
+        # this is the live, editable documents location (former Synology
+        # Drive content), exposed here for WebDAV access. Same underlying
+        # NFS export as "backups", just scoped to one writable subpath so
+        # dump/longhorn-garage/pfsense stay protected from accidental edits.
+        server: "10.57.57.250"
+        path: /media/backups/synology-home
+        globalMounts:
+          - path: /srv/documents
       photos:
         type: nfs
         # Deliberately hardcoded, see library/backups above. Read-only:

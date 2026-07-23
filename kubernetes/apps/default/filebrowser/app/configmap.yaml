@@ -26,3 +26,7 @@ data:
           name: isos
           config:
             defaultEnabled: true
+        - path: /srv/documents
+          name: documents
+          config:
+            defaultEnabled: true
