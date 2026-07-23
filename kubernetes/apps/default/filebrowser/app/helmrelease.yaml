@@ -78,7 +78,12 @@ spec:
               requests:
                 cpu: 50m
               limits:
-                memory: 256Mi
+                # 256Mi was sized for "trivial single-container app" and was
+                # wrong — this fork builds an in-memory index of every file
+                # across all sources, and synology-home alone has ~108k
+                # files. Confirmed via OOMKilled (exit 137) crash loop that
+                # left large sources permanently mid-index/empty-looking.
+                memory: 1Gi
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
