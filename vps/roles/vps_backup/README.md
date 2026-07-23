@@ -61,7 +61,7 @@ R730xd's own weekly push — see
 
 - **01:15 / 01:20** — Authentik / Joplin pg_dump → `/srv/backups/` (7-day retention).
 - **01:30** — `backup-vps-extras.sh` → `/srv/backups/` (see table above).
-- **02:00** — Longhorn (K8s cluster) backs up media/ARR config volumes to Garage S3 on the VPS (retain 3).
+- **02:00** — Longhorn (K8s cluster) backs up media/ARR config volumes to Garage S3 on R730xd (retain 3).
 - **03:30** — this role: push `/srv/backups` + Garage snapshot to R730xd (`/media/backups/oracle-vps/`).
 
 From there, R730xd's own weekly Sunday push relays a copy on to Synology

@@ -1,6 +1,6 @@
 # Infrastructure Deploy Guide
 
-Complete rebuild procedure for a new server: VPS → Kubernetes cluster → Agent.
+Complete rebuild procedure for a new server: VPS → Kubernetes cluster.
 
 ---
 
@@ -15,12 +15,9 @@ Before starting, have these ready:
 | Tailscale reusable auth key          | Tailscale admin console                                                                                                                        |
 | Cloudflare API token                 | Cloudflare dashboard                                                                                                                           |
 | Portainer EE license                 | Portainer account                                                                                                                              |
-| Telegram bot token + user ID         | BotFather / Telegram                                                                                                                           |
-| Anthropic API key                    | console.anthropic.com                                                                                                                          |
-| OpenClaw `.env` (`~/.openclaw/.env`) | Backed up separately                                                                                                                           |
 | Hetzner API token                    | console.hetzner.cloud → Security → API Tokens                                                                                                  |
 | DR SSH key pair                      | `~/.ssh/cloudlab_dr_test` + `.pub` — on the prod VPS                                                                                           |
-| NAS rsync password file              | `admin@NAS:/var/services/homes/admin/.vps-rsync.pass` — must match `vault_rsyncd_password` (deployed to `/etc/rsyncd.secrets` by `vps_backup`) |
+| R730xd backup push SSH key           | `vault_oracle_vps_to_r730xd_ssh_key` in vault — public half must be authorized on `root@pve` (see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#oracle-vps--r730xd-done-2026-07-23)) |
 
 **`vps/terraform/terraform.tfvars`** (gitignored — must be recreated on fresh machine):
 
@@ -72,20 +69,26 @@ make dr-full
 Reads vault password from `.vault_pass` automatically — no prompt.
 Tailscale and Let's Encrypt certs connect automatically.
 
-After deploy completes, restore all service data from the NAS
-(`admin@10.57.57.201:/volume1/Server/oracle-vps-backups/srv-backups/` — nightly
-dumps, see `vps/roles/vps_backup/README.md`):
+After deploy completes, restore all service data from R730xd
+(`root@10.57.57.250:/media/backups/oracle-vps/srv-backups/` — nightly pushes
+from the VPS, see `vps/roles/vps_backup/README.md`):
 
 ```bash
-cd vps && make dr-restore     # non-interactive: pulls from NAS, restores DBs + extras
+cd vps && make dr-restore     # non-interactive: pulls from R730xd, restores DBs + extras
 ```
 
-`make dr-restore` runs the full restore sequence: pulls `srv-backups/` from the
-NAS, drops + re-imports the Authentik + Joplin DBs from the latest dump
+`make dr-restore` runs the full restore sequence: pulls `srv-backups/` from
+R730xd, drops + re-imports the Authentik + Joplin DBs from the latest dump
 (Authentik comes back with full state — providers, flows, apps, users; Joplin
 clients re-sync afterwards), and restores Guacamole / Traefik certs / Pi-hole /
-Homepage / Portainer / OpenClaw from their tarballs. See
+Homepage / Portainer from their tarballs. See
 `vps/roles/vps_backup/README.md` for the full breakdown of each step.
+
+If R730xd itself is also gone, the same data is one hop further out on
+Synology (`/volume1/NetBackup/oracle-vps/<latest-date>/`) or, failing that,
+in Oracle's own Hyper Backup copy — see
+[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for
+that chain.
 
 Verify Phase 1 is healthy:
 
@@ -174,7 +177,7 @@ re-configure per-deploy).
 > `eyJhIjoi...`). This is **different** from `homepage_cloudflare_token` (an API
 > token used only by Homepage's Cloudflared widget). As of 2026-06-13 this var is
 > **not yet in vault** — until it's added, `inside.merox.dev`, `sso.merox.dev`,
-> `rmt.merox.dev`, `status.merox.dev`, and `files.merox.dev` are unreachable from
+> `rmt.merox.dev`, and `status.merox.dev` are unreachable from
 > the internet after a fresh deploy (container runs but logs
 > `Provided Tunnel token is not valid`). One-time fix:
 >
@@ -220,8 +223,8 @@ make install
 # 3. Full deploy
 make setup
 
-# 4. Deploy the app stack (Homepage, Pi-hole, Portainer, Joplin, Glances,
-#    agents-dashboard — cloudlab-merox repo, not part of `make setup`)
+# 4. Deploy the app stack (Homepage, Pi-hole, Portainer, Joplin, Glances —
+#    cloudlab-merox repo, not part of `make setup`)
 make app-stack-setup
 ```
 
@@ -287,7 +290,7 @@ cp /path/to/age.key ./age.key
 
 # --- b) All infrastructure IPs used by apps (Flux postBuild substitution) ---
 # Edit: kubernetes/components/common/cluster-vars.yaml
-#   NFS_SERVER              → NAS/NFS server IP
+#   NFS_SERVER              → R730xd (pve) IP - serves media/photos/backups NFS exports
 #   HOMEPAGE_PROXMOX_IP     → Proxmox host IP
 #   HOMEPAGE_ROUTER_IP      → Router/gateway IP
 #   HOMEPAGE_MYSPEED_IP     → MySpeed service IP
@@ -428,7 +431,7 @@ kubectl -n flux-system get receiver github-webhook \
 [ ] cloudflare_tunnel_token present in vault and cloudflared container connected
     (docker logs cloudflared — no "Tunnel token is not valid"; check
     https://inside.merox.dev loads)
-[ ] All data restored — make dr-restore (pulls from NAS, restores DBs + extras)
+[ ] All data restored — make dr-restore (pulls from R730xd, restores DBs + extras)
 [ ] Tailscale connected (verify: ssh root@<IP> tailscale status)
 [ ] Portainer admin password set
 [ ] Guacamole default credentials changed (guacadmin / guacadmin → new password)
@@ -464,14 +467,13 @@ kubectl -n flux-system get receiver github-webhook \
 | AGE encryption key                                                                                          | `age.key` (gitignored)                                                                                                                   | ⚠️ Back up manually                         |
 | Vault password                                                                                              | Password manager                                                                                                                         | ⚠️ Stored externally                        |
 | Ansible vault secrets                                                                                       | `vps/inventories/production/group_vars/all/vault.yml` (encrypted)                                                                        | ✅ in git                                   |
-| Agent config template + skill                                                                               | `agent/` in this repo                                                                                                                    | ✅                                          |
-| Agent secrets (`~/.openclaw/.env`)                                                                          | Only on server                                                                                                                           | ⚠️ Back up manually                         |
-| Longhorn volumes (media/ARR configs, group `media`)                                                         | Nightly to Garage S3 on the VPS                                                                                                          | ✅ mirrored to NAS                          |
-| VPS service state (Authentik + Joplin DB dumps, Guacamole, Traefik certs, Pi-hole config, OpenClaw runtime) | Nightly to `/srv/backups/`, NAS pulls it off-site — schedule & details: [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) | ✅ off-site on NAS                          |
-| Agent dashboard state + secrets (`/srv/dashboard/`: `data/*.json`, `.env`)                                  | Nightly to `/srv/backups/`, NAS pulls it off-site — restored by `agent/README.md` DR steps                                               | ✅ off-site on NAS                          |
+| Longhorn volumes (media/ARR configs + Immich's Postgres, group `media`)                                     | Nightly to a self-hosted Garage instance on R730xd (`proxmox/r730xd/`) — moved off the VPS 2026-07-21                                    | ✅ relayed to Synology + Oracle, see below  |
+| VPS service state (Authentik + Joplin DB dumps, Guacamole, Traefik certs, Pi-hole config, Homepage, Portainer) | Nightly push to R730xd (`/media/backups/oracle-vps/`) — schedule & details: [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) | ✅ relayed to Synology + Oracle, see below  |
+| R730xd's own backup tree (the row above + photos, documents, VM backups, pfSense config, Garage data, Immich Postgres dumps) | Weekly to Synology (cold storage) — [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)                                | ✅ 3 versions kept                          |
+| Synology's copy of the above                                                                                | Weekly to Oracle Cloud via Hyper Backup (rsync, encrypted) — same README, "Synology → Oracle Cloud"                                      | ✅ 3 versions kept, off-site                |
 | Observability history (Prometheus/Loki/Grafana), `*-cache` volumes, Uptime-Kuma                             | —                                                                                                                                        | ❌ deliberately not backed up (regenerable) |
 
-**The two things to back up manually before decommissioning:**
+**The one thing to back up manually, off this VPS entirely:**
 
-1. `age.key` — losing this = losing all SOPS-encrypted secrets
-2. `~/.openclaw/.env` — Anthropic API key, Telegram tokens
+`age.key` — losing this means losing all SOPS-encrypted K8s secrets. Not
+covered by any of the above since it never touches the VPS or R730xd.

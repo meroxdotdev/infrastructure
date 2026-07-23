@@ -208,29 +208,73 @@ a full restore end-to-end (see "R730xd / Garage total loss fallback" below).
 
 ## R730xd / Garage total loss fallback
 
-Longhorn's primary backup target now lives on the same physical host as
-`kubernetes-controlplane-1` (the R730xd) — a real change from the old
-setup, where the backup target was an independently-hosted VPS. If the
-R730xd is lost entirely, `task longhorn:restore` has nothing to read from
-until a Garage instance is rebuilt from one of the two downstream copies:
+Longhorn's primary backup target lives on the same physical host as
+`kubernetes-controlplane-1` (the R730xd, Garage LXC 103). If R730xd is lost
+entirely, `task longhorn:restore` has nothing to read from until a Garage
+instance is rebuilt from one of the downstream copies. In order of
+preference:
 
-1. **Prefer the Synology copy** (`/volume1/Server/r730xd-backups/longhorn-garage/`)
-   if the NAS was reachable at the last weekly sync — it's the more complete,
-   unencrypted, directly-usable copy.
-2. **Otherwise, restore from the Oracle restic repository** (bucket
-   `r730xd-backups` on the VPS's Garage instance) — `restic restore latest
-   --target /srv/docker/garage` using the password from
-   `proxmox/r730xd/restic-env.sops.yaml`, then extract just the
-   `longhorn-garage/{data,meta}` subtree.
-3. Stand up a fresh Garage instance anywhere reachable from the cluster
-   (a new LXC on `px-0`, or temporarily the VPS itself) with the recovered
-   `data`/`meta` directories bind-mounted in — reusing
-   `vps/roles/garage_setup` (`garage_require_tailscale`/`garage_webui_enabled`
-   set per the new host, same as `vps/playbooks/garage-setup-r730xd.yml`).
-4. Repoint `minio-secret.sops.yaml`'s `AWS_ENDPOINTS` at the new instance
-   (same recipe as the "Longhorn BackupTarget" step in [DEPLOY.md](DEPLOY.md)),
-   patch `backuptargets.longhorn.io default`'s `syncRequestedAt`, verify
-   `status.available: true`, then `task longhorn:restore` as normal.
+**1. Synology's copy** (fastest, most complete, no decryption needed):
+
+```bash
+# Wake Synology if asleep (it's only awake Sun 02:50-03:40 otherwise):
+wakeonlan 90:09:d0:50:08:4b
+# wait ~1-2 min, then confirm it's up:
+ping 10.57.57.201
+
+# The data:
+ssh admin@10.57.57.201 "ls /volume1/NetBackup/longhorn-garage/"
+# Pick the latest dated folder, e.g. 2026-07-23 — copy data/ and meta/ from
+# it to wherever the new Garage instance (step 3 below) will read from:
+scp -r admin@10.57.57.201:/volume1/NetBackup/longhorn-garage/<latest-date>/ \
+  /tmp/garage-recovered/
+```
+
+**2. Oracle's copy, if Synology is ALSO gone** — this is NOT a plain file
+mirror. It went there via DSM Hyper Backup (see
+[proxmox/r730xd/README.md](proxmox/r730xd/README.md#synology--oracle-cloud-done-2026-07-23)),
+which stores backups in its own versioned/chunked vault format on the VPS's
+`/backup/synology` rsync destination — you cannot just `rsync` the files
+back out. **You need a working DSM instance** (a spare physical Synology, or
+a temporary [Virtual DSM](https://www.synology.com/en-global/dsm/virtual_dsm)
+VM) to run Hyper Backup's own restore wizard:
+
+```
+1. On any DSM instance: Hyper Backup → "Restore" → data source type "Rsync"
+   → same connection details as the original task (see
+   proxmox/r730xd/README.md for server/port/module/credentials — the
+   password is vault_rsyncd_password, same VPS, same synology_backup module).
+2. Pick the longhorn-garage folder from within the restored NetBackup tree,
+   restore it to a local path.
+3. Proceed with step 3 below using that restored data.
+```
+
+If this DSM-dependency turns out to be too fragile as a real fallback,
+revisit — a plain rsync/restic based offsite leg (no proprietary restore
+tool needed) may be worth adding specifically for Garage's data, even
+though the DSM-based leg is fine for everything else.
+
+**3. Stand up a fresh Garage instance** anywhere reachable from the cluster
+(a new LXC on `px-0`, or temporarily the VPS itself) with the recovered
+`data`/`meta` directories bind-mounted in — reusing `vps/roles/garage_setup`
+(`garage_require_tailscale`/`garage_webui_enabled` set per the new host,
+same as `vps/playbooks/garage-setup-r730xd.yml`).
+
+**4. Repoint Longhorn at it:**
+
+```bash
+export SOPS_AGE_KEY_FILE=./age.key
+sops -d -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
+# edit AWS_ENDPOINTS to the new instance's address:port
+sops -e -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
+kubectl -n longhorn-system patch backuptargets.longhorn.io default --type=merge \
+  -p "{\"spec\":{\"syncRequestedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
+kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.status.available}'
+# expect: true, then:
+task longhorn:restore
+```
 
 This procedure hasn't been drilled end-to-end yet — treat it as a documented
 starting point, not a tested runbook, until it's actually rehearsed once.
+Path 1 (Synology reachable) is the realistic common case; path 2 (both
+R730xd and Synology gone) is the untested, DSM-dependent edge case.

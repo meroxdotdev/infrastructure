@@ -2,7 +2,7 @@
 
 Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by an Oracle Cloud VPS for off-site services and S3 storage. Everything is declarative and GitOps-managed — a single `git push` is all it takes to deploy, update, or rebuild any part of the stack.
 
-**What's here:** Flux manifests for the entire K8s cluster (media stack, observability, networking), Talos node configs, Ansible/Terraform for the VPS, and the tools to restore everything from scratch in about 50 minutes using only this repo and a backup of `age.key`.
+**What's here:** Flux manifests for the entire K8s cluster (media stack, observability, networking), Talos node configs, Ansible/Terraform for the VPS, and the tools to restore everything from scratch in about 35 minutes using only this repo and a backup of `age.key`.
 
 **Single reference document** — if you don't know where to look, start here.
 
@@ -27,18 +27,19 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Beszel             | beszel.cloud.merox.dev          | Host monitoring                                                     |
 | Dozzle             | dozzle.cloud.merox.dev          | Docker log aggregation                                              |
 | Glances            | glances.cloud.merox.dev         | System monitoring                                                   |
-| OpenClaw Dashboard | agents.cloud.merox.dev          | AI agent control panel                                              |
 | Code Server        | code.cloud.merox.dev            | Browser-based VS Code                                               |
 
 ### Kubernetes — on-premise (`kubernetes/` → Flux GitOps)
 
 | Service              | Namespace     | Purpose                                                        |
 | -------------------- | ------------- | -------------------------------------------------------------- |
-| Jellyfin             | default       | Media server (Intel i915 GPU)                                  |
+| Jellyfin             | default       | Media server (Nvidia Quadro P2200 transcoding)                  |
 | Jellyseerr           | default       | Media request management                                       |
 | Radarr / Sonarr      | default       | Movie / TV show automation                                     |
 | Prowlarr             | default       | Torrent indexer                                                |
 | qBittorrent          | default       | Torrent client (fixed IP: 10.57.57.102)                        |
+| Immich               | default       | Photo/video library (photos.k8s.merox.dev) — replaces Synology Photos |
+| Filebrowser          | default       | Web browser for the R730xd SAS pool (files.k8s.merox.dev), incl. WebDAV |
 | n8n                  | default       | Workflow automation                                            |
 | Headlamp             | default       | Kubernetes dashboard (cluster-admin UI)                        |
 | Authentik outpost    | default       | SSO proxy for K8s apps                                         |
@@ -46,7 +47,7 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Prometheus + Grafana | observability | Metrics + dashboards                                           |
 | Loki + Promtail      | observability | Log aggregation                                                |
 | AlertManager         | observability | Alerts + healthchecks.io heartbeat                             |
-| Longhorn             | storage       | Persistent volumes + off-site backup → Garage S3 on Oracle VPS |
+| Longhorn             | storage       | Persistent volumes + off-site backup → Garage S3 on R730xd     |
 | Cilium               | kube-system   | CNI + Gateway API + L2 LoadBalancer                            |
 | cert-manager         | cert-manager  | Automated TLS certificates (ACME)                              |
 | Cloudflare Tunnel    | network       | External exposure — zero open ports                            |
@@ -58,19 +59,6 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | --------- | --------- | ------------------------------------- |
 | merox.dev | merox.dev | Auto on `git push` via GitHub Actions |
 
-### AI Agents — OpenClaw (`agent/` → `/home/openclaw/.openclaw/`)
-
-| Agent        | Purpose                                 | Triggered by    |
-| ------------ | --------------------------------------- | --------------- |
-| news         | Daily briefing (HackerNews + RSS)       | Cron / Telegram |
-| blog         | Publishes posts to merox.dev            | Telegram        |
-| infra        | Runs kubectl / docker commands          | Telegram        |
-| costs        | Infrastructure cost tracking            | Telegram        |
-| design       | Visual content generation               | Telegram        |
-| orchestrator | Routes between agents + scheduled tasks | Internal        |
-| dashboard    | Updates agents.cloud.merox.dev          | Internal        |
-| renovate     | Git dependency sync                     | Internal        |
-
 ---
 
 ## Where the code lives
@@ -80,9 +68,7 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | K8s cluster (Flux manifests, Talos config) | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/`       |
 | Ansible + Terraform VPS DR                 | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/vps/`   |
 | Docker Compose VPS (raw files)             | [meroxdotdev/cloudlab-merox](https://github.com/meroxdotdev/cloudlab-merox) | `main` | `/srv/docker/oracle-cloud/`             |
-| OpenClaw config template + infra skill     | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/agent/` |
 | Blog (Astro)                               | [meroxdotdev/merox](https://github.com/meroxdotdev/merox) _(private)_       | `main` | `/srv/merox/`                           |
-| Agent runtime state (logs, memory)         | — not in Git —                                                              |        | `/home/openclaw/.openclaw/`             |
 
 ---
 
@@ -94,7 +80,6 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | **`age.key`** ← **back this up**                           | `infrastructure/age.key` _(gitignored)_        | SOPS decryption               |
 | VPS secrets (Tailscale key, Cloudflare, Authentik, Garage) | Ansible Vault → `vps/.../vault.yml`            | `make setup` / `make dr-full` |
 | Pi-hole, Joplin DB, Code Server passwords                  | `/srv/docker/oracle-cloud/.env` _(gitignored)_ | Docker Compose                |
-| Telegram token, Tavily API, Anthropic key                  | `/home/openclaw/.openclaw/.env` _(gitignored)_ | OpenClaw agents               |
 | Talos bootstrap secrets                                    | `talos/talsecret.sops.yaml` _(SOPS encrypted)_ | `task bootstrap:talos`        |
 
 > **If you lose `age.key`, you cannot decrypt any K8s secret. Back it up separately.**
@@ -109,7 +94,6 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Tailscale          | Management VPN mesh                                                                        | Free                        |
 | Oracle Cloud       | Primary VPS (4 vCPU ARM, 24GB)                                                             | Free tier                   |
 | Hetzner            | Fallback VPS — only if Oracle Cloud free tier is lost. Provision on-demand: `make dr-full` | ~€5.39/mo if needed         |
-| Anthropic / Claude | AI model for agents (OAuth)                                                                | Claude Pro                  |
 | GitHub             | Repos + Actions (CI blog, Renovate)                                                        | Free                        |
 | Let's Encrypt      | HTTPS certificates (auto-renew)                                                            | Free                        |
 | Proxmox            | Hypervisor for K8s nodes                                                                   | Own hardware                |
@@ -122,42 +106,46 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 Everything declarative (K8s manifests, Ansible, Terraform, SOPS/vault secrets)
 lives in this repo and is **not** backed up separately. Backups only cover
 state that can't be rebuilt from git. **R730xd is the hub**: Longhorn (K8s
-cluster data) now backs up nightly to a self-hosted Garage instance on the
-R730xd itself (`proxmox/r730xd/`, not the VPS) — from there it fans out
-on-prem to the Synology (cold clone) and off-site to Oracle Cloud (encrypted).
-Separately, VPS → NAS still covers the VPS's own service state (DB dumps +
-its own Garage instance, pulled nightly by the NAS). Observability history
-and caches are deliberately not backed up — regenerable.
+cluster data) backs up nightly to a self-hosted Garage instance on R730xd
+itself (`proxmox/r730xd/`, not the VPS — moved there 2026-07-21), alongside
+photos, documents, VM backups, pfSense config, and the Oracle VPS's own
+nightly service-state push (Authentik/Joplin/Guacamole/Traefik/Pi-hole/
+Homepage/Portainer — rerouted through R730xd 2026-07-23, no longer straight
+to Synology). From R730xd, one weekly push (Sunday) relays all of that to
+Synology (cold storage, asleep except during the push window), and Synology
+relays the same set onward to Oracle Cloud via Hyper Backup — closing the
+loop back to where the VPS backup originated. Observability history and
+caches are deliberately not backed up — regenerable.
 
 > **Canonical references**: VPS-side schedule —
 > **[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**;
-> R730xd-side schedule — **[proxmox/r730xd/README.md](proxmox/r730xd/README.md)**.
+> R730xd-side schedule (incl. the Synology + Oracle legs) —
+> **[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)**.
 
-**What an R730xd failure loses:** now the primary Longhorn backup target *and*
+**What an R730xd failure loses:** the primary Longhorn backup target *and*
 the K8s media/photos host, not just a hypervisor — see the "R730xd/Garage
 total loss" runbook in [DR.md](DR.md) before treating this as equivalent to
 the old VPS-hosted setup. The media library (`/media/library`) is treated as
 replaceable "cattle" (re-downloadable) and deliberately has no second copy.
-Immich's photo library (`/media/photos`) is backed by the weekly R730xd→
-Synology push (see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs))
-— the old pre-migration Synology copy was deleted 2026-07-23 once that push
-was verified working; see [docs/immich-post-restore.md](docs/immich-post-restore.md)
-for the restore procedure.
-**What a VPS failure loses:** at most one day of its own service backups —
-mirrored nightly to the NAS. Rebuild: `make dr-full` (~15 min),
-`make dr-restore`, `task longhorn:restore`.
+Immich's photo library (`/media/photos`) is covered by the same weekly
+R730xd→Synology→Oracle chain; see
+[docs/immich-post-restore.md](docs/immich-post-restore.md) for the restore
+procedure.
+**What a VPS failure loses:** at most one night of its own service backups —
+pushed nightly to R730xd, from which it rides the same weekly relay above.
+Rebuild: `make dr-full` (~15 min), `make dr-restore`, `task longhorn:restore`.
 
 **Still manual (keep copies off this VPS):** `age.key`, `vps/.vault_pass`,
-`~/.openclaw/.env`, `/srv/docker/oracle-cloud/.env`.
+`/srv/docker/oracle-cloud/.env`.
 
 ```bash
-make backup-sync-now    # run extras backup + NAS sync immediately
+make backup-sync-now    # run extras backup + R730xd push immediately
 make authentik-backup   # manual — run before any Authentik changes
 ```
 
 ---
 
-## Full rebuild from scratch (~50 minutes)
+## Full rebuild from scratch (~35 minutes)
 
 > Detailed step-by-step guide: **[DEPLOY.md](DEPLOY.md)**
 
@@ -170,28 +158,20 @@ Prerequisites — have these ready:
 
 Step 1 — VPS (~15 min)
   cd vps && make dr-full
-  make dr-restore   # restore all data from NAS (DBs + extras, non-interactive)
+  make dr-restore   # restore all data from R730xd (DBs + extras, non-interactive)
 
 Step 2 — Kubernetes (~20 min)
   cp /backup/age.key .
   # Edit: talos/talconfig.yaml (node IPs, install disk)
-  # Edit: kubernetes/components/common/cluster-vars.yaml (LB IPs, NAS IP)
+  # Edit: kubernetes/components/common/cluster-vars.yaml (LB IPs, R730xd IP)
   task bootstrap:talos
   task bootstrap:apps
   task longhorn:restore
 
-Step 3 — Agents (~15 min)
-  sudo useradd -m openclaw && sudo usermod -aG docker openclaw
-  sudo -u openclaw claude login   # Anthropic OAuth
-  sudo -u openclaw openclaw onboard --mode local --auth-choice anthropic-cli
-  # Fill in /home/openclaw/.openclaw/.env (Telegram token, Tavily key)
-  systemctl --user enable --now openclaw-gateway
-
 Validation:
   kubectl get nodes               # all Ready
-  docker ps | wc -l               # ~16 containers
-  curl -s https://agents.cloud.merox.dev  # dashboard reachable
-  # Send Telegram message to bot → it replies
+  docker ps | wc -l               # ~14 containers
+  kubectl get pods -A | grep -v Running   # should be empty (+ Completed jobs)
 ```
 
 ---
@@ -200,31 +180,28 @@ Validation:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  VPS (Oracle Cloud)   vps/                         │
-│  ├── Traefik (reverse proxy + Cloudflare Tunnel)        │
-│  ├── Pi-hole (DNS)                                      │
-│  ├── Portainer EE (container management)                │
-│  ├── Homepage (dashboard)                               │
-│  ├── Joplin Server + Postgres (notes)                   │
-│  ├── Uptime Kuma (monitoring)                           │
-│  ├── Guacamole (remote desktop gateway)                 │
-│  ├── Glances (system monitoring)                        │
-│  └── Garage S3 (Longhorn backup target)                 │
-└────────────────────┬────────────────────────────────────┘
+│  R730xd (Proxmox host, 10.57.57.250) — the hub           │
+│  ├── Kubernetes Cluster (Talos Linux + Flux, 3 CP VMs)   │
+│  │   ├── Cilium (CNI + Gateway API)                      │
+│  │   ├── Longhorn (storage → backs up to Garage LXC)     │
+│  │   ├── cert-manager, k8s-gateway                       │
+│  │   └── Apps: see kubernetes/apps/                      │
+│  ├── Garage S3 (LXC 103 — Longhorn's backup target)      │
+│  └── NFS: media/photos/backups (SAS ZFS pool, RAIDZ2)    │
+└────────────────────┬─────────────────────────────────────┘
                      │ Tailscale mesh VPN
-┌────────────────────▼────────────────────────────────────┐
-│  Kubernetes Cluster (Talos Linux + Flux)                │
-│  ├── Cilium (CNI + Gateway API)                         │
-│  ├── Longhorn (storage → backs up to Garage S3)         │
-│  ├── cert-manager, external-dns, k8s-gateway            │
-│  └── Apps: see kubernetes/apps/                         │
-└─────────────────────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│  OpenClaw — openclaw.ai                                 │
-│  Telegram bot → Claude API → kubectl/docker             │
-│  Config: agent/openclaw.json  Skill: agent/skills/infra │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────▼─────────────────────────────────────┐
+│  VPS (Oracle Cloud)   vps/                                │
+│  ├── Traefik (reverse proxy + Cloudflare Tunnel)          │
+│  ├── Pi-hole (DNS), Portainer EE, Homepage                │
+│  ├── Joplin Server + Postgres (notes), Uptime Kuma        │
+│  ├── Guacamole (remote desktop gateway), Glances          │
+│  └── nightly service-state push → R730xd                 │
+└────────────────────┬─────────────────────────────────────┘
+                     │ weekly relay
+┌────────────────────▼─────────────────────────────────────┐
+│  Synology (cold storage) → Oracle Hyper Backup (offsite)  │
+└────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -254,9 +231,7 @@ infrastructure/
 │   └── components/             # Shared Kustomize components (common, repos)
 ├── talos/                      # Talos node configs + patches
 ├── bootstrap/                  # Cluster bootstrap helmfile
-├── agent/                      # OpenClaw config template + infra skill
-│   ├── openclaw.json           # Gateway config (no secrets — use ~/.openclaw/.env)
-│   └── skills/infra/           # kubectl/docker skill definition
+├── proxmox/r730xd/             # R730xd backup hub docs (Garage, NFS exports, downstream relays)
 ├── DEPLOY.md                   # Full rebuild + DR guide
 └── Taskfile.yaml               # Task runner (talosctl, flux, longhorn)
 ```
@@ -266,17 +241,18 @@ infrastructure/
 ## Disaster Recovery
 
 > **K8s cluster restore from S3 backups:** **[DR.md](DR.md)** (~35 min, tested end-to-end)
-> Full rebuild from scratch (VPS + K8s + agents): **[DEPLOY.md](DEPLOY.md)**
+> Full rebuild from scratch (VPS + K8s): **[DEPLOY.md](DEPLOY.md)**
 
 | Scenario                                 | Action                                                                                    |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------- |
 | **K8s cluster lost** (nodes dead)        | [DR.md](DR.md) — provision DR VMs, bootstrap, restore from S3                             |
 | **VPS lost** (Oracle reclaims free tier) | `cd vps && make dr-full` → `make dr-restore` (~15 min)                                    |
-| Full rebuild from scratch                | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s) → Phase 3 (Agent)                                |
+| **R730xd lost** (hardware failure)       | [DR.md "R730xd/Garage total loss fallback"](DR.md#r730xd--garage-total-loss-fallback) — rebuild Garage from Synology/Oracle copy, repoint Longhorn, `task longhorn:restore` |
+| Full rebuild from scratch                | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s)                                                  |
 | New hardware (different IPs / disks)     | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml`                  |
 | Intel iGPU absent on new hardware        | Remove `gpu.intel.com/i915` from Jellyfin HelmRelease, disable intel-device-plugin        |
 | Jellyfin streaming slow after restore    | [docs/jellyfin-post-restore.md](docs/jellyfin-post-restore.md) — manual UI steps required |
-| Reinstall OpenClaw agents only           | DEPLOY.md Phase 3                                                                         |
+| Immich photos/albums missing after restore | [docs/immich-post-restore.md](docs/immich-post-restore.md) — VectorChord extension + External Library re-scan |
 
 ---
 
