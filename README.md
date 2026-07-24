@@ -96,7 +96,7 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | GitHub             | Repos + Actions (CI blog, Renovate)                                                        | Free                        |
 | Let's Encrypt      | HTTPS certificates (auto-renew)                                                            | Free                        |
 | Proxmox            | Hypervisor for K8s nodes                                                                   | Own hardware                |
-| Synology DS223+    | Cold storage only (2026-07-23) — Photos/Drive/Docker decommissioned, no live services. Asleep except Sunday 02:50-03:40 (DSM Power Schedule + WoL), receiving a weekly versioned/deduped push from the R730xd | Own hardware (10.57.57.201) |
+| Synology DS223+    | Cold storage only (2026-07-23) — Photos/Drive/Docker decommissioned, no live services. Receiving a weekly versioned/deduped push from the R730xd | Own hardware (10.57.57.201) |
 
 ---
 
