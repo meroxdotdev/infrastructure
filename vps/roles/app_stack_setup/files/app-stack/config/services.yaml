@@ -1,0 +1,181 @@
+---
+# ============================================================================
+# CLOUD
+# ============================================================================
+- Cloud:
+
+    - Authentik:
+        icon: authentik.png
+        href: https://sso.merox.dev
+        description: SSO
+
+    - Portainer:
+        icon: portainer.png
+        href: https://one.merox.dev
+        description: Containers
+
+    - Traefik:
+        icon: traefik.png
+        href: http://traefik.cloud.merox.dev
+        description: Reverse Proxy
+
+    - Guacamole:
+        icon: guacamole.png
+        href: https://rmt.merox.dev
+        description: Remote Desktop
+
+    - Joplin:
+        icon: joplin.png
+        href: http://joplin.cloud.merox.dev
+        description: Notes
+
+    - VS Code:
+        icon: vscode.png
+        href: http://code.cloud.merox.dev
+        description: Cloud IDE
+
+    - Tailscale:
+        icon: tailscale.png
+        href: https://login.tailscale.com/admin/machines
+        description: VPN
+
+    - Cloudflare:
+        icon: cloudflare.png
+        href: https://one.dash.cloudflare.com/af2d61a35bdc3d2adf9ce1eaa1441382/home/quick-start
+        description: Tunnel
+
+
+# ============================================================================
+# MONITORING
+# ============================================================================
+- Monitoring:
+
+    - Netdata:
+        icon: netdata.png
+        href: https://netdata.cloud.merox.dev
+        description: Real-time Metrics
+
+    - Grafana:
+        icon: grafana.png
+        href: https://grafana.k8s.merox.dev
+        description: Dashboards
+
+    - Prometheus:
+        icon: prometheus.png
+        href: https://prometheus.k8s.merox.dev
+        description: Metrics Store
+
+    - Alertmanager:
+        icon: mdi-bell-alert
+        href: https://alertmanager.k8s.merox.dev
+        description: Alerts
+
+    - Glances:
+        icon: mdi-monitor-dashboard
+        href: http://172.25.10.20:61208
+        description: System Overview
+
+
+# ============================================================================
+# NETWORK
+# ============================================================================
+- Network:
+
+    - pfSense:
+        icon: pfsense.png
+        href: https://pfsense.merox.dev
+        description: Firewall
+        ping: 10.57.57.1
+
+    - PiHole:
+        icon: sh-pi-hole
+        href: http://pihole.cloud.merox.dev/admin/login
+        description: DNS
+
+    - TP-Link:
+        icon: mdi-wifi
+        href: http://tplink.merox.dev
+        description: WiFi
+
+    - Speed Test:
+        icon: mdi-speedometer
+        href: https://speed.merox.dev
+        description: Bandwidth (px-0)
+
+    - Proxmox:
+        icon: proxmox.png
+        href: https://dc.merox.dev
+        description: Datacenter Manager - both hosts, one pane
+        ping: 10.57.57.254
+
+    - Synology:
+        icon: synology.png
+        href: https://nas.merox.dev
+        description: l2 backup
+
+
+# ============================================================================
+# KUBERNETES
+# ============================================================================
+- Kubernetes:
+
+    - Longhorn:
+        icon: longhorn.png
+        href: http://longhorn.k8s.merox.dev
+        description: Storage
+
+    - Headlamp:
+        icon: kubernetes.png
+        href: https://headlamp.k8s.merox.dev
+        description: K8s UI
+
+    - Authentik (K8s):
+        icon: authentik.png
+        href: https://sso.k8s.merox.dev
+        description: SSO
+
+    - Filebrowser:
+        icon: mdi-folder-multiple
+        href: https://files.k8s.merox.dev
+        description: R730xd SAS pool browser, WebDAV
+
+    - Immich:
+        icon: mdi-image-multiple
+        href: https://photos.k8s.merox.dev
+        description: Photo & Video Library
+
+
+# ============================================================================
+# MEDIA
+# ============================================================================
+- Media:
+
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://media.merox.dev
+        description: Media Server
+
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: https://jellyseerr.k8s.merox.dev/login
+        description: Requests
+
+    - qBittorrent:
+        icon: qbittorrent.png
+        href: https://qbittorrent.k8s.merox.dev
+        description: Downloads
+
+    - Radarr:
+        icon: radarr.png
+        href: https://radarr.k8s.merox.dev
+        description: Movies
+
+    - Sonarr:
+        icon: sonarr.png
+        href: https://sonarr.k8s.merox.dev
+        description: TV Series
+
+    - Prowlarr:
+        icon: prowlarr.png
+        href: https://prowlarr.k8s.merox.dev
+        description: Indexers

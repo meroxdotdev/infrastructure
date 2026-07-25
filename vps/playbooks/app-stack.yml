@@ -1,5 +1,5 @@
 ---
-- name: Deploy app stack (cloudlab-merox)
+- name: Deploy app stack (root compose + Homepage config)
   hosts: vps_servers
   become: yes
   gather_facts: yes

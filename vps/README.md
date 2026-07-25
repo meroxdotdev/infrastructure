@@ -16,10 +16,14 @@ Two deployment modes:
 ## Stack
 
 Traefik (reverse proxy + ACME), Pi-hole + Unbound, Authentik SSO, Portainer EE,
-Homepage, Joplin Server + Postgres, Guacamole, Garage S3, Netdata,
-Beszel, Dozzle, Glances — one role per service under `roles/`, full URL table in
-the [main README](../README.md#everything-at-a-glance). All web traffic goes
+Homepage, Joplin Server + Postgres, Guacamole, Garage S3, Beszel, Code Server —
+one role per service under `roles/`, full URL table in the
+[main README](../README.md#everything-at-a-glance). All web traffic goes
 through Cloudflare Tunnel — no open inbound ports.
+
+The root `docker-compose.yml` + Homepage config (`config/`) used to live in a
+separate repo (`meroxdotdev/cloudlab-merox`, retired 2026-07-25) — now under
+`roles/app_stack_setup/files/app-stack/`, deployed like every other service.
 
 ## Setup on a fresh machine
 

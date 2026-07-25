@@ -9,53 +9,27 @@
   set_fact:
     tailscale_ip: "{{ tailscale_ip_result.stdout }}"
 
-# The git module can only clone into a missing or empty directory. On a
-# fresh server (or after a DR restore) other roles create subdirectories
-# under app_stack_dir (e.g. authentik/, guacamole/, garage/) before this
-# role runs, so a plain `git: clone` here fails with "destination path
-# already exists and is not an empty directory". Work around it by cloning
-# to a temp dir and merging it in when app_stack_dir isn't a git repo yet.
-- name: Check if app stack directory is already a git repository
-  ansible.builtin.stat:
-    path: "{{ app_stack_dir }}/.git"
-  register: app_stack_git_check
-
-- name: Clone cloudlab-merox repository into a temporary directory (first-time setup)
-  ansible.builtin.git:
-    repo: "{{ app_stack_repo_url }}"
-    dest: "{{ app_stack_tmp_clone_dir }}"
-    version: "{{ app_stack_repo_branch }}"
-  become: yes
-  when: not app_stack_git_check.stat.exists
-
 - name: Ensure app stack directory exists
   ansible.builtin.file:
     path: "{{ app_stack_dir }}"
     state: directory
     mode: '0755'
   become: yes
-  when: not app_stack_git_check.stat.exists
 
-- name: Merge cloned repository into app stack directory
-  ansible.builtin.command: cp -a {{ app_stack_tmp_clone_dir }}/. {{ app_stack_dir }}/
+# Static app-stack files (root compose, Homepage config, Pi-hole static
+# lists) live in this repo now - formerly a separate git clone of
+# meroxdotdev/cloudlab-merox, retired 2026-07-25. garage/, guacamole/,
+# traefik/, netdata/ are deliberately NOT part of this copy - those already
+# have their own dedicated role + template (garage_setup, guacamole_setup,
+# traefik_setup, netdata_setup) deploying into the same subdirectories, and
+# the old git-clone merge was silently overwriting them on every run.
+- name: Deploy static app-stack files (root compose, Homepage config, Pi-hole lists)
+  ansible.builtin.copy:
+    src: app-stack/
+    dest: "{{ app_stack_dir }}/"
+    mode: preserve
   become: yes
-  changed_when: true
-  when: not app_stack_git_check.stat.exists
-
-- name: Clean up temporary clone directory
-  ansible.builtin.file:
-    path: "{{ app_stack_tmp_clone_dir }}"
-    state: absent
-  become: yes
-  when: not app_stack_git_check.stat.exists
-
-- name: Update cloudlab-merox app stack repository
-  ansible.builtin.git:
-    repo: "{{ app_stack_repo_url }}"
-    dest: "{{ app_stack_dir }}"
-    version: "{{ app_stack_repo_branch }}"
-    update: yes
-  become: yes
+  notify: Restart app stack
 
 - name: Deploy app stack .env file
   template:
@@ -80,8 +54,8 @@
 # - network-cloud-merox is created by traefik_setup outside of Compose, so
 #   the root compose's own (non-external) network definition would otherwise
 #   fail with a com.docker.compose.network label mismatch.
-# - portainer's ports/dns are hardcoded in the cloudlab-merox repo to the
-#   previous server's Tailscale IP, which changes on every DR rebuild.
+# - portainer's ports/dns are hardcoded in the compose file to the previous
+#   server's Tailscale IP, which changes on every DR rebuild.
 - name: Deploy docker-compose.override.yml (external network + Tailscale IP)
   ansible.builtin.template:
     src: docker-compose.override.yml.j2

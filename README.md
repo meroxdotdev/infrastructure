@@ -65,9 +65,14 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | What                                       | GitHub repo                                                                 | Branch | Local path                              |
 | ------------------------------------------ | --------------------------------------------------------------------------- | ------ | --------------------------------------- |
 | K8s cluster (Flux manifests, Talos config) | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/`       |
-| Ansible + Terraform VPS DR                 | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/vps/`   |
-| Docker Compose VPS (raw files)             | [meroxdotdev/cloudlab-merox](https://github.com/meroxdotdev/cloudlab-merox) | `main` | `/srv/docker/oracle-cloud/`             |
+| Ansible + Terraform VPS DR, incl. app-stack compose/Homepage config | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/vps/`   |
 | Blog (Astro)                               | [meroxdotdev/merox](https://github.com/meroxdotdev/merox) _(private)_       | `main` | `/srv/merox/`                           |
+
+> `meroxdotdev/cloudlab-merox` (the old separate repo for the VPS's raw
+> docker-compose files) was retired 2026-07-25 — its content now lives under
+> `vps/roles/app_stack_setup/files/app-stack/`, deployed the same way as
+> every other service instead of via a separate git clone that silently
+> overwrote other roles' templates.
 
 ---
 

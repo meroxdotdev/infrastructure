@@ -1,0 +1,185 @@
+services:
+  # Secrets are loaded from .env (gitignored) — copy from .env.example to get started
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+      - 100.72.22.38
+    extra_hosts:
+      - "traefik.cloud.merox.dev:100.72.22.38"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/kubeconfig.yaml:/app/config/kubeconfig.yaml:ro
+    env_file:
+      - homepage.env
+    environment:
+      PUID: 1000
+      PGID: 1000
+      HOMEPAGE_ALLOWED_HOSTS: "inside.merox.dev,homepage.cloud.merox.dev"
+      KUBECONFIG: /app/config/kubeconfig.yaml
+    restart: unless-stopped
+    networks:
+      network-cloud-merox:
+        ipv4_address: 172.25.10.10
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage.rule=Host(`homepage.cloud.merox.dev`)"
+      - "traefik.http.routers.homepage.entrypoints=https"
+      - "traefik.http.routers.homepage.tls.certresolver=cloudflare"
+      - "traefik.http.routers.homepage.middlewares=default-headers@file"
+      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+
+  portainer:
+    image: portainer/portainer-ee:latest
+    container_name: portainer
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+      - 100.72.22.38
+    ports:
+      - "100.72.22.38:9000:9000"
+      - "100.72.22.38:9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      network-cloud-merox:
+        ipv4_address: 172.25.10.30
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.cloud.merox.dev`)"
+      - "traefik.http.routers.portainer.entrypoints=https"
+      - "traefik.http.routers.portainer.tls.certresolver=cloudflare"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.services.portainer.loadbalancer.server.scheme=http"
+
+  code-server:
+    image: linuxserver/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    ports:
+      - "8443:8443"
+    environment:
+      PUID: 1001
+      PGID: 1001
+      TZ: Europe/Bucharest
+      PASSWORD: ${CODE_SERVER_PASSWORD}
+    volumes:
+      - code_server_config:/config
+      - /srv:/srv 
+    networks:
+      network-cloud-merox:
+        ipv4_address: 172.25.10.40
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.code.rule=Host(`code.cloud.merox.dev`)"
+      - "traefik.http.routers.code.entrypoints=https"
+      - "traefik.http.routers.code.tls.certresolver=cloudflare"
+      - "traefik.http.services.code.loadbalancer.server.port=8443"
+      - "traefik.http.services.code.loadbalancer.server.scheme=http"
+
+  unbound:
+    container_name: unbound
+    image: klutchell/unbound:latest
+    restart: unless-stopped
+    networks:
+      network-cloud-merox:
+        ipv4_address: 172.25.10.52
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    depends_on:
+      - unbound
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "127.0.0.1:8078:80"
+    environment:
+      TZ: 'Europe/Bucharest'
+      FTLCONF_webserver_api_password: '${PIHOLE_WEBPASSWORD}'
+      FTLCONF_dns_upstreams: '172.25.10.52'
+      FTLCONF_dns_listeningMode: 'all'
+      ServerIP: '100.72.22.38'
+      IPv6: 'false'
+    volumes:
+      - './etc-pihole:/etc/pihole'
+      - './etc-dnsmasq.d:/etc/dnsmasq.d'
+    dns:
+      - 172.25.10.52
+      - 1.1.1.1
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    networks:
+      network-cloud-merox:
+        ipv4_address: 172.25.10.53
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pihole.rule=Host(`pihole.cloud.merox.dev`)"
+      - "traefik.http.routers.pihole.entrypoints=https"
+      - "traefik.http.routers.pihole.tls.certresolver=cloudflare"
+      - "traefik.http.services.pihole.loadbalancer.server.port=80"
+
+  joplin-db:
+    image: postgres:15
+    container_name: joplin-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${JOPLIN_DB_PASSWORD}
+      POSTGRES_USER: joplin
+      POSTGRES_DB: joplin
+    volumes:
+      - joplin_db_data:/var/lib/postgresql/data
+    networks:
+      network-cloud-merox:
+        ipv4_address: 172.25.10.60
+
+  joplin-server:
+    image: joplin/server:latest
+    container_name: joplin-server
+    restart: unless-stopped
+    depends_on:
+      - joplin-db
+    environment:
+      APP_PORT: 22300
+      APP_BASE_URL: "https://joplin.cloud.merox.dev"
+      DB_CLIENT: pg
+      POSTGRES_PASSWORD: ${JOPLIN_DB_PASSWORD}
+      POSTGRES_DATABASE: joplin
+      POSTGRES_USER: joplin
+      POSTGRES_PORT: 5432
+      POSTGRES_HOST: joplin-db
+    networks:
+      network-cloud-merox:
+        ipv4_address: 172.25.10.61
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.joplin.rule=Host(`joplin.cloud.merox.dev`)"
+      - "traefik.http.routers.joplin.entrypoints=https"
+      - "traefik.http.routers.joplin.tls.certresolver=cloudflare"
+      - "traefik.http.services.joplin.loadbalancer.server.port=22300"
+      - "traefik.docker.network=network-cloud-merox"
+
+volumes:
+  portainer_data:
+  code_server_config:
+  joplin_db_data:
+
+networks:
+  network-cloud-merox:
+    name: network-cloud-merox
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+          gateway: 172.25.0.1

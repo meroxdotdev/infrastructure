@@ -1,0 +1,212 @@
+/*
+ * inside.merox.dev — mirrors merox.dev design system
+ * Column-first layout, editorial feel, IBM Plex family
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
+
+/* ── Design tokens — merox.dev color.css (dark) ── */
+:root {
+  --bg:       #111111;
+  --surface:  #191919;
+  --surface2: #222222;
+  --surface3: #2a2a2a;
+  --border:   #3a3a3a;
+  --border-h: #484848;
+  --muted:    #6e6e6e;
+  --sub:      #b4b4b4;
+  --fg:       #eeeeee;
+  --font:     'IBM Plex Sans', system-ui, sans-serif;
+  --mono:     'IBM Plex Mono', ui-monospace, monospace;
+  --r:        0.25rem;
+  --track:    -0.015em;
+  --ease:     cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Global typography — matches merox.dev tracking ── */
+#page-wrapper,
+#page-wrapper * {
+  font-family:             var(--font) !important;
+  letter-spacing:          var(--track) !important;
+  -webkit-font-smoothing:  antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* ── Background ── */
+#page-wrapper {
+  background: var(--bg) !important;
+}
+
+/* ── Page width — match site's --grid-max-width ── */
+#page-wrapper > * {
+  max-width: 72rem !important;
+}
+
+/* ── Service cards — list-item feel, not boxy ── */
+.service-card {
+  background:    transparent !important;
+  border:        none !important;
+  border-top:    1px solid var(--border) !important;
+  border-radius: 0 !important;
+  box-shadow:    none !important;
+  transition:    background 0.1s var(--ease) !important;
+}
+
+.service-card:hover {
+  background:   var(--surface) !important;
+  border-color: var(--border) !important;
+  box-shadow:   none !important;
+  transform:    none !important;
+}
+
+/* ── Service name — like a list entry title ── */
+.service-name {
+  color:       var(--fg) !important;
+  font-size:   0.9375rem !important;
+  font-weight: 500 !important;
+}
+
+/* ── Description — like entry-meta on the site ── */
+.service-description {
+  color:       var(--sub) !important;
+  font-size:   0.8125rem !important;
+  font-weight: 400 !important;
+  opacity:     1 !important;
+}
+
+/* ── Group / section headers — like h2 in prose-content ── */
+.service-group-name {
+  font-family:    var(--font) !important;
+  font-size:      0.8125rem !important;
+  font-weight:    500 !important;
+  letter-spacing: var(--track) !important;
+  text-transform: none !important;
+  color:          var(--sub) !important;
+}
+
+/* ── Group header icons — strip zinc-blue tint, force neutral gray ── */
+.service-group-icon img {
+  filter: grayscale(1) brightness(0.75) !important;
+}
+
+/* ── Spacing — breathe between Cloud (row) and column groups below ── */
+.services-group:first-child {
+  margin-bottom: 2rem !important;
+}
+
+/* ── Widget data area ── */
+.widget-container {
+  background:    transparent !important;
+  border-top:    1px solid var(--border) !important;
+  border-radius: 0 !important;
+}
+
+.primary-text {
+  color:          var(--fg) !important;
+  font-family:    var(--mono) !important;
+  font-size:      0.8125rem !important;
+  font-weight:    500 !important;
+  letter-spacing: 0.02em !important;
+}
+
+.secondary-text {
+  color:          var(--muted) !important;
+  font-family:    var(--mono) !important;
+  font-size:      0.625rem !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+}
+
+/* ── Header info widgets ── */
+#information-widgets {
+  border-bottom: 1px solid var(--border) !important;
+  padding-bottom: 0.75rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* ── Status dot — muted green ── */
+.bg-emerald-500 {
+  background-color: #3d6b4f !important;
+}
+
+/* ── Selection ── */
+::selection {
+  background: var(--surface3) !important;
+  color:      var(--fg) !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background:    var(--border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--border-h); }
+
+/* ── Page footer ── */
+#merox-footer {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  gap:             0.75rem;
+  padding:         1.25rem 1rem 2rem;
+  margin-top:      1.5rem;
+  border-top:      1px solid var(--border);
+  font-family:     var(--mono) !important;
+  font-size:       0.625rem !important;
+  letter-spacing:  0.08em !important;
+  text-transform:  uppercase !important;
+  color:           var(--muted) !important;
+}
+
+#merox-footer a {
+  color:           var(--muted) !important;
+  text-decoration: none !important;
+  transition:      color 0.1s var(--ease) !important;
+}
+
+#merox-footer a:hover {
+  color: var(--sub) !important;
+}
+
+#merox-footer .footer-sep {
+  color: var(--border-h) !important;
+}
+
+/* ── Mobile bottom button ── */
+#merox-home-button { display: none; }
+
+@media (max-width: 768px) {
+  #merox-home-button {
+    display:         flex;
+    position:        fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index:         9999;
+    background:      var(--fg);
+    color:           var(--bg);
+    border-top:      1px solid var(--border);
+    padding:         14px 20px;
+    font-family:     var(--mono);
+    font-size:       0.625rem;
+    font-weight:     500;
+    letter-spacing:  0.08em;
+    text-transform:  uppercase;
+    text-decoration: none;
+    align-items:     center;
+    justify-content: center;
+    gap:             8px;
+    min-height:      50px;
+  }
+
+  #merox-home-button svg {
+    width: 14px; height: 14px;
+    fill: none; stroke: currentColor; stroke-width: 2;
+  }
+
+  body { padding-bottom: 50px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-card { transition: none !important; }
+}

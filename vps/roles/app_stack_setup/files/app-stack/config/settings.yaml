@@ -1,0 +1,90 @@
+---
+title: merox.dev
+description: Infrastructure Dashboard
+startUrl: https://inside.merox.dev
+
+theme: dark
+color: zinc
+iconStyle: flat
+
+favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
+
+# ============================================================================
+# LAYOUT — single page, items vertical (column-first, not row-first)
+# ============================================================================
+layout:
+
+  Cloud:
+    style: row
+    columns: 5
+    icon: mdi-cloud-outline
+    useEqualHeights: false
+
+  Monitoring:
+    style: column
+    columns: 3
+    icon: mdi-monitor-dashboard
+    useEqualHeights: false
+
+  Network:
+    style: column
+    columns: 3
+    icon: mdi-server-network
+    useEqualHeights: false
+
+  Kubernetes:
+    style: column
+    columns: 3
+    icon: kubernetes.png
+    useEqualHeights: false
+
+  Media:
+    style: column
+    columns: 3
+    icon: mdi-filmstrip
+    useEqualHeights: false
+
+# ============================================================================
+# DISPLAY
+# ============================================================================
+fullWidth: false
+maxGroupColumns: 4
+disableCollapse: true
+groupsInitiallyCollapsed: false
+useEqualHeights: false
+
+headerStyle: underlined
+
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: true
+  showSearchSuggestions: false
+  hideVisitURL: false
+  provider: duckduckgo
+  mobileButtonPosition: bottom-right
+
+showStats: false
+statusStyle: dot
+
+hideVersion: true
+language: en
+target: _blank
+hideErrors: true
+
+instanceName: merox-main
+
+# ============================================================================
+# API PROVIDERS
+# ============================================================================
+providers:
+  portainer:
+    url: https://172.25.10.30:9443
+    key: "{{HOMEPAGE_VAR_PORTAINER_KEY}}"
+
+  proxmox:
+    url: https://10.57.57.254:8006
+    username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
+    password: "{{HOMEPAGE_VAR_PROXMOX_PASS}}"
+
+  longhorn:
+    url: http://10.57.57.80:30887/

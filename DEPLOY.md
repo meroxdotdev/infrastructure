@@ -230,8 +230,8 @@ make install
 # 3. Full deploy
 make setup
 
-# 4. Deploy the app stack (Homepage, Pi-hole, Portainer, Joplin, Glances —
-#    cloudlab-merox repo, not part of `make setup`)
+# 4. Deploy the app stack (Homepage, Pi-hole, Portainer, Joplin, Code Server —
+#    not part of `make setup`, see vps/roles/app_stack_setup/)
 make app-stack-setup
 ```
 

@@ -1,0 +1,4 @@
+mode: default
+
+ingress: true
+gateway: true

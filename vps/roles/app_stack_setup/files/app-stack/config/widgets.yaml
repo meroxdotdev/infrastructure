@@ -1,0 +1,18 @@
+---
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: long
+      timeStyle: short
+      hour12: false
+      locale: ro-RO
+
+- kubernetes:
+    cluster:
+      show: true
+      cpu: true
+      memory: true
+      showLabel: true
+      label: "k8s"
+    nodes:
+      show: false

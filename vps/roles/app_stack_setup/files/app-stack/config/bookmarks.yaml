@@ -1,0 +1,82 @@
+---
+# Merox Infrastructure - Quick Access Bookmarks
+
+# ============================================================================
+# MAIN SITES
+# ============================================================================
+
+- Main Sites:
+    - Merox Portfolio:
+        - abbr: MX
+          href: https://merox.dev
+          icon: mdi-web
+          description: Main website & portfolio
+
+    - GitHub Profile:
+        - abbr: GH
+          href: https://github.com/meroxdotdev
+          icon: mdi-github
+          description: Source code & projects
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+
+- Documentation:
+    - Homepage Docs:
+        - abbr: HD
+          href: https://gethomepage.dev
+          icon: mdi-book-open-variant
+          description: Homepage documentation
+
+    - Kubernetes Docs:
+        - abbr: K8
+          href: https://kubernetes.io/docs
+          icon: kubernetes.png
+          description: Kubernetes documentation
+
+    - Proxmox Wiki:
+        - abbr: PX
+          href: https://pve.proxmox.com/wiki
+          icon: proxmox.png
+          description: Proxmox VE documentation
+
+# ============================================================================
+# INFRASTRUCTURE TOOLS
+# ============================================================================
+
+- Tools:
+    - Cloudflare:
+        - abbr: CF
+          href: https://dash.cloudflare.com
+          icon: mdi-cloud-outline
+          description: DNS & CDN management
+
+    - Code Smarter:
+        - abbr: DH
+          href: https://tools.merox.dev
+          icon: mdi-tools
+          description: Ultimate dev toolkit
+
+    - Tailscale:
+        - abbr: TS
+          href: https://login.tailscale.com/admin
+          icon: mdi-vpn
+          description: VPN management
+
+# ============================================================================
+# MONITORING & STATUS
+# ============================================================================
+
+- Monitoring:
+    - UptimeRobot:
+        - abbr: UR
+          href: https://uptimerobot.com
+          icon: mdi-heart-pulse
+          description: Uptime monitoring
+
+    - Grafana Cloud:
+        - abbr: GC
+          href: https://grafana.com
+          icon: grafana.png
+          description: Cloud monitoring
