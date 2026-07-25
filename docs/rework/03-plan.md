@@ -9,8 +9,8 @@ Nimic din pașii de mai jos e executat — planul așteaptă aprobare.
 
 | # | Pas | Simplifică | Risc | Durată | Cine |
 |---|---|---|---|---|---|
-| 1 | Alertare reală (Pushover/ntfy pe Alertmanager) | Elimină cel mai mare gol găsit — niciun incident nu ajunge azi la un om, doar heartbeat | Minim — se adaugă un receiver, nu se schimbă nimic existent | 30-60 min | Ales mai jos |
-| 2 | Pi-hole în DHCP (pfSense) | Elimină comportamentul DNS neclar, activează ad-blocking real pe LAN | Dacă Pi-hole pică, LAN pierde DNS — se ține un fallback | 10 min | Recomandat direct pe UI pfSense |
+| 1 | ✅ Alertare reală — Discord (Alertmanager + Flux notification-controller nativ) | Elimină cel mai mare gol găsit — niciun incident nu ajungea la un om, doar heartbeat | Minim — verificat cu alertă de test, livrat | Făcut | Mecanic |
+| 2 | ⛔ Sărit — Pi-hole/DNS local (pfSense) | N/A | N/A | N/A | Nu era o problemă reală — `media.merox.dev` acoperă deja nevoia practică pentru LAN fără Tailscale; inconsecvența DNS găsită în audit (Unbound activ dar nefolosit de DHCP) rămâne, dar userul confirmă că nimeni n-o simte în practică |
 | 3 | Scoate Glances de pe VPS | O unealtă mai puțin de verificat, Beszel acoperă deja rolul | Minim | 15 min | Curățenie mecanică |
 | 4 | Fix namespace collision la `portainer-agent` | Elimină alt risc latent de drift PodSecurity, exact pattern-ul de la Longhorn | Minim — fix deja verificat azi, doar repetat | 15-20 min | Mecanic, pattern cunoscut |
 | 5 | Audit sistematic pt alte coliziuni namespace în tot repo-ul | Elimină clasa de bug, nu doar instanțele găsite din întâmplare | Zero — doar citire | 30 min | Curățenie/verificare |
@@ -19,11 +19,22 @@ Nimic din pașii de mai jos e executat — planul așteaptă aprobare.
 
 ## Note per pas
 
-**Pas 1 — Alertare**: implică editarea `alertmanagerconfig.yaml` (activarea
-receiver-ului `pushover`, comentat momentan) + un secret nou în
-`alertmanager-secret.sops.yaml` pentru token-uri. E un candidat bun de
-învățat routing Alertmanager (concept transferabil), dacă e de interes —
-altfel, e la fel de simplu de făcut mecanic.
+**Pas 1 — Alertare (făcut)**: nu Pushover (cost) — Discord, refolosind
+webhook-ul deja existent pentru alertele Netdata. Două piese: Alertmanager→
+Discord (`discordConfigs` nativ, pt alerte Prometheus severity:critical) +
+Flux notification-controller→Discord direct (Provider/Alert CRD-uri, deja
+rulând, nefolosite până acum) pentru eșecuri Kustomization/HelmRelease —
+`gotk_reconcile_condition` (metrica din rețetele clasice de PrometheusRule)
+nu există în această versiune de Flux, deci calea Prometheus nu era
+viabilă pentru asta oricum. Găsit și curățat incidental: 3 PDB-uri orfane
+Longhorn care ar fi spamat noua alertare.
+
+**Pas 2 — sărit**: Unbound rulează pe pfSense (pfBlockerNG activ), dar DHCP
+tot dă LAN-ului `1.1.1.1`/`8.8.8.8` direct, nu IP-ul pfSense — deci
+ad-blocking-ul local stă nefolosit și `k8s.merox.dev` nu rezolvă din LAN
+simplu. Rămâne o inconsecvență reală, dar userul confirmă că nu-l afectează
+în practică (`media.merox.dev` funcționează deja pentru LAN fără Tailscale).
+Nu s-a atins nimic pe pfSense.
 
 **Pas 4-5**: fix-ul de la Longhorn (namespace declarat de un singur
 Kustomization, prin patch peste placeholder-ul `components/common`, nu
