@@ -1,0 +1,78 @@
+#!/bin/bash
+# Monthly restore drill: proves the latest Authentik/Joplin dumps are actually
+# restorable, not just that pg_dump/gzip exited 0. Spins up a throwaway
+# postgres container per service (no host port, --rm cleans it and its
+# anonymous data volume), imports the newest dump, checks the restored schema
+# has tables, tears down. Never touches the live DBs or containers.
+# Deployed by ansible (vps_backup role).
+set -uo pipefail
+
+HC_URL="{{ vps_backup_hc_restore_drill_url | default('') }}"
+FAIL=0
+
+ping_hc() {
+  [ -n "$HC_URL" ] || return 0
+  curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL$1" || true
+}
+
+drill_one() {
+  local svc="$1" image="$2" user="$3" db="$4"
+  local dump
+  dump=$(ls -1t "/srv/backups/$svc/${svc}_"*.sql.gz 2>/dev/null | head -1)
+  if [ -z "${dump:-}" ]; then
+    echo "✗ $svc: no dump found in /srv/backups/$svc/, skipping"
+    FAIL=1
+    return
+  fi
+
+  local ctr="restore-drill-$svc"
+  docker rm -f "$ctr" >/dev/null 2>&1 || true
+  docker run -d --rm --name "$ctr" \
+    -e POSTGRES_USER="$user" -e POSTGRES_PASSWORD=drill -e POSTGRES_DB="$db" \
+    "$image" >/dev/null
+
+  local ready=0
+  for _ in $(seq 1 30); do
+    if docker exec "$ctr" pg_isready -U "$user" >/dev/null 2>&1; then ready=1; break; fi
+    sleep 1
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "✗ $svc: throwaway postgres never became ready"
+    docker stop "$ctr" >/dev/null 2>&1
+    FAIL=1
+    return
+  fi
+
+  if ! zcat "$dump" | docker exec -i -e PGPASSWORD=drill "$ctr" psql -q -U "$user" -d "$db" \
+      >"/tmp/restore-drill-$svc.log" 2>&1; then
+    echo "✗ $svc: restore FAILED (see /tmp/restore-drill-$svc.log) — dump: $dump"
+    docker stop "$ctr" >/dev/null 2>&1
+    FAIL=1
+    return
+  fi
+
+  local tables
+  tables=$(docker exec -e PGPASSWORD=drill "$ctr" psql -qtA -U "$user" -d "$db" -c \
+    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null)
+  docker stop "$ctr" >/dev/null 2>&1
+
+  if [ "${tables:-0}" -gt 0 ] 2>/dev/null; then
+    echo "✓ $svc: restore drill OK ($dump, $tables tables)"
+  else
+    echo "✗ $svc: restored but found 0 tables — dump: $dump"
+    FAIL=1
+  fi
+}
+
+drill_one authentik postgres:16-alpine authentik authentik
+drill_one joplin postgres:15 joplin joplin
+
+if [ "$FAIL" -eq 0 ]; then
+  ping_hc ""
+  echo "$(date -Is) restore drill: all OK"
+  exit 0
+else
+  ping_hc "/fail"
+  echo "$(date -Is) restore drill: FAILURES detected"
+  exit 1
+fi

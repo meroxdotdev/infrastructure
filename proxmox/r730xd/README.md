@@ -232,6 +232,137 @@ R730xd's own local disk failure mode being covered by RAIDZ2 rather than a
 second independent site — accepted risk, matches the original design intent
 (R730xd is the hub, not disposable, but not a single disk either).
 
+### R730xd → Oracle Cloud, direct via restic (DONE, 2026-07-24)
+
+The Synology → Oracle leg above is DSM Hyper Backup's own proprietary
+chunked/versioned vault format — restoring it needs a **working DSM
+instance** (real or Virtual DSM) to run Hyper Backup's restore wizard, not a
+plain file copy. That's fine for the full cold-storage copy, but means the
+Oracle leg is only as restorable as DSM is available. This is a second,
+independent, DSM-free path for the data that actually matters to rebuild
+quickly: restic pushes straight from R730xd to the Oracle VPS over SFTP —
+open repository format, restorable with just the `restic` binary and the
+repo password, no vendor tool needed.
+
+**Scope** (deliberately not the whole `/media/backups` tree — this leg is
+for "what do I need to rebuild the critical stuff fast", not a second copy
+of everything): `oracle-vps/` (the VPS's own service backups),
+`immich-postgres/` (DB dumps), `dump/` (VM backups), `pfsense/` (router
+config). NOT `longhorn-garage/`, `synology-home/`, or `/media/photos` —
+those stay on the Synology/HyperBackup leg only; add them here later if the
+DSM dependency for K8s restore specifically becomes a problem worth solving.
+
+**Destination**: a dedicated, shell-less, chrooted SFTP-only user
+(`restic-backup`) on the Oracle VPS, provisioned by the `vps_backup`
+Ansible role (see [vps/roles/vps_backup/README.md](../../vps/roles/vps_backup/README.md)).
+The private half of the SSH keypair lives on R730xd only — not in this repo,
+since pve isn't Ansible-managed.
+
+**One-time setup on pve** (run once, by hand):
+
+```bash
+# 1. Install restic
+apt update && apt install -y restic
+
+# 2. SSH keypair already generated on the VPS side and its public half
+#    deployed to restic-backup's authorized_keys. Get the private key from
+#    whoever ran the Ansible role (or regenerate the pair — see "Recreating
+#    this key" below) and place it:
+install -m 600 /path/to/restic-r730xd-to-oracle /root/.ssh/restic-r730xd-to-oracle
+
+# 3. SSH config alias (avoids fiddly -o sftp.command quoting)
+cat >> /root/.ssh/config <<'EOF'
+
+Host oracle-vps-restic
+    HostName 100.72.22.38
+    User restic-backup
+    IdentityFile /root/.ssh/restic-r730xd-to-oracle
+    StrictHostKeyChecking accept-new
+    BatchMode yes
+EOF
+chmod 600 /root/.ssh/config
+
+# 4. Repo password - generate your own, store it in your password manager
+#    (Joplin, wherever age.key/.vault_pass live). Without this password the
+#    repo is unrecoverable - treat it with the same care as age.key.
+openssl rand -base64 32 > /root/.restic-oracle-password
+chmod 600 /root/.restic-oracle-password
+
+# 5. Init the repo (one-time)
+export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
+export RESTIC_PASSWORD_FILE="/root/.restic-oracle-password"
+restic init
+```
+
+**Nightly push script** (`/root/scripts/restic-push-oracle.sh` on pve, cron
+`15 4 * * *` — after the ZFS snapshot below and clear of the 03:00-04:30
+backup/relay window):
+
+```bash
+#!/bin/bash
+set -euo pipefail
+export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
+export RESTIC_PASSWORD_FILE="/root/.restic-oracle-password"
+
+restic backup /media/backups/oracle-vps /media/backups/immich-postgres \
+  /media/backups/dump /media/backups/pfsense --tag nightly
+
+restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+restic check
+```
+
+**Restoring** (from any machine with `restic`, the repo password, and
+network access to the VPS — no DSM, no Synology, nothing else needed):
+
+```bash
+export RESTIC_REPOSITORY="sftp:restic-backup@<vps-tailscale-ip>:/data"
+export RESTIC_PASSWORD_FILE=/path/to/saved/password
+restic snapshots
+restic restore latest --target /tmp/restored
+```
+
+**Recreating this key** (new R730xd, or key rotation): generate a new pair
+on pve (`ssh-keygen -t ed25519 -f /root/.ssh/restic-r730xd-to-oracle -N ""`),
+then update `vps_backup_restic_public_key` in
+`vps/roles/vps_backup/defaults/main.yml` on the VPS side and re-run the
+`vps_backup` role (`--tags backup`) to redeploy `authorized_keys`.
+
+### ZFS snapshots on `media/backups` (DONE, 2026-07-24)
+
+Both downstream legs above only protect against R730xd being *lost*, not
+against something (a compromised VPS, a bad script, a fat-fingered `rm`)
+*silently deleting or corrupting* what's already landed here — the VPS's
+own nightly push uses `rsync --delete`, so a bad actor upstream mirrors
+straight through unless caught before the next weekly Synology relay.
+R730xd already has ZFS underneath (`media` pool, RAIDZ2), so a same-host,
+zero-extra-tooling point-in-time undo window is effectively free.
+
+**One-time cron on pve** (`/root/scripts/zfs-snapshot-backups.sh`, daily
+`0 4 * * *` — before the restic push above, after the VPS's 03:30 push and
+the 03:xx local jobs land):
+
+```bash
+#!/bin/bash
+set -euo pipefail
+DATASET="media/backups"
+
+zfs snapshot -r "${DATASET}@daily-$(date +%F)"
+
+# prune snapshots older than 14 days (dated-name based, not mtime - mtime on
+# a ZFS snapshot reflects dataset state, not snapshot creation time)
+CUTOFF=$(date -d "-14 days" +%s)
+zfs list -H -o name -t snapshot -r "$DATASET" | grep "@daily-" | while read -r snap; do
+  snap_date="${snap##*@daily-}"
+  snap_epoch=$(date -d "$snap_date" +%s 2>/dev/null) || continue
+  [ "$snap_epoch" -lt "$CUTOFF" ] && zfs destroy "$snap"
+done
+```
+
+Recovering from a snapshot: `zfs list -t snapshot -r media/backups` to find
+the date, then either `zfs rollback` (destructive, whole dataset) or mount
+the snapshot's hidden `.zfs/snapshot/<name>/` directory under the affected
+path and copy out just what's needed (non-destructive, preferred).
+
 ## Total-loss recovery
 
 See ["R730xd / Garage total loss fallback"](../../DR.md#r730xd--garage-total-loss-fallback)

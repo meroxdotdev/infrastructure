@@ -13,3 +13,30 @@ vps_backup_r730xd_user: root
 vps_backup_r730xd_host: 10.57.57.250
 vps_backup_r730xd_ssh_key: /root/.ssh/oracle-vps-to-r730xd
 vps_backup_r730xd_base: /media/backups/oracle-vps
+
+# Restic landing spot for R730xd -> Oracle VPS, DSM/Synology-independent restore
+# path. R730xd pushes here directly over SFTP (restic's sftp backend) - not
+# ansible-managed on the R730xd side (pve isn't in this inventory), only the
+# receiving side (this dedicated, chrooted, SFTP-only system user) is.
+# The private half of this keypair lives on R730xd only, not in this repo -
+# see proxmox/r730xd/README.md for the one-time provisioning steps.
+vps_backup_restic_user: restic-backup
+vps_backup_restic_chroot: /srv/restic-repo
+vps_backup_restic_data_dir: /srv/restic-repo/data
+vps_backup_restic_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfpCdCt+R3x/LTKky0SXsXxaFcDJnzRHdexHf4aEvmN restic-backup@r730xd"
+
+# Optional healthchecks.io ping URLs (dead-man's-switch, one per job). Empty
+# string = pinging silently skipped, so this is safe to deploy before the
+# checks exist. Create the checks in the same healthchecks.io account already
+# used for the K8s Watchdog heartbeat, then set the matching vault_hc_* var.
+vps_backup_hc_extras_url: "{{ vault_hc_backup_extras_url | default('') }}"
+vps_backup_hc_joplin_url: "{{ vault_hc_backup_joplin_url | default('') }}"
+vps_backup_hc_push_url: "{{ vault_hc_backup_push_url | default('') }}"
+vps_backup_hc_restore_drill_url: "{{ vault_hc_restore_drill_url | default('') }}"
+
+# Monthly restore drill - proves the DB dumps are actually restorable, not
+# just that pg_dump/gzip exited 0. Runs well clear of the nightly 01:xx-03:xx
+# backup window.
+vps_backup_restore_drill_day: "1"
+vps_backup_restore_drill_hour: "4"
+vps_backup_restore_drill_minute: "0"

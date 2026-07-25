@@ -173,6 +173,16 @@ onward to the Oracle VPS via Hyper Backup — the full mesh is documented in
 Observability history and caches are deliberately not backed up (accepted as
 lost in DR).
 
+**Alerting**: the VPS-side backup scripts and the Immich pg_dump CronJob all
+ping healthchecks.io on success/failure (same account as the cluster's
+Watchdog heartbeat) — see
+[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md#alerting-healthchecksio).
+
+**Restore drill**: a monthly cron actually restores the latest Authentik/
+Joplin dumps into throwaway containers to prove they're valid, not just
+present — see
+[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md#restore-drill-monthly).
+
 ```bash
 # Check last backup time for each volume
 kubectl get backupvolumes.longhorn.io -n longhorn-system | awk '{print $1, $6}'
@@ -210,10 +220,15 @@ a full restore end-to-end (see "R730xd / Garage total loss fallback" below).
 ## R730xd / Garage total loss fallback
 
 Longhorn's primary backup target lives on the same physical host as
-`kubernetes-controlplane-1` (the R730xd, Garage LXC 103). If R730xd is lost
-entirely, `task longhorn:restore` has nothing to read from until a Garage
-instance is rebuilt from one of the downstream copies. In order of
-preference:
+`kubernetes-controlplane-1` (the R730xd, Garage LXC 103) — R730xd being both
+a live cluster node and the backup hub is a real, accepted blast-radius
+tradeoff (see [proxmox/r730xd/README.md](proxmox/r730xd/README.md), end of
+"Synology → Oracle Cloud"). Two independent mitigations exist: daily ZFS
+snapshots on `media/backups` (protects against corruption/deletion
+*propagating outward*, not R730xd loss itself) and the downstream copies
+below (protect against R730xd loss). If R730xd is lost entirely,
+`task longhorn:restore` has nothing to read from until a Garage instance is
+rebuilt from one of the downstream copies. In order of preference:
 
 **1. Synology's copy** (fastest, most complete, no decryption needed):
 

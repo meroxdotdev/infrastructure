@@ -37,16 +37,26 @@ spec:
                     secretKeyRef:
                       name: immich-postgres-secret
                       key: password
+                # healthchecks.io ping URL (dead-man's-switch) - empty until
+                # the check is created and this is filled in via sops.
+                - name: HC_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: immich-postgres-secret
+                      key: hc_ping_url
               command:
                 - /bin/sh
                 - -c
                 - |
                   set -e
+                  trap '[ -n "$HC_URL" ] && wget -q -T 10 -O /dev/null "$HC_URL/fail"' ERR
                   DEST=/backups/immich-postgres
                   mkdir -p "$DEST"
                   FILE="$DEST/immich-$(date +%Y-%m-%d).sql.gz"
                   pg_dump | gzip > "$FILE"
                   find "$DEST" -name '*.sql.gz' -mtime +30 -delete
+                  [ -n "$HC_URL" ] && wget -q -T 10 -O /dev/null "$HC_URL"
+                  exit 0
               volumeMounts:
                 - name: backups
                   mountPath: /backups

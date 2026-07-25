@@ -9,6 +9,7 @@ Backup plumbing for the Oracle VPS. Two pieces, both cron-driven:
 |---|---|---|
 | `backup-vps-extras.sh` | 01:30 | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), Homepage config (`kubeconfig.yaml`/`kube.config` excluded), Portainer state. 7-day retention. |
 | `backup-push-r730xd.sh` | 03:30 | Off-site sync to R730xd (`pve`, `10.57.57.250`): **pushes** `/srv/backups/` straight to `/media/backups/oracle-vps/srv-backups/` on pve over plain SSH rsync. Deliberately excludes this VPS's own local Garage instance — see below. |
+| `restore-drill.sh` | monthly, 1st @ 04:00 | Proves the latest Authentik/Joplin dumps actually restore — imports each into a throwaway `--rm` postgres container, checks the schema has tables, tears down. Never touches live DBs. See "Restore drill" below. |
 
 Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via the
 `authentik_setup` role and this role's own Joplin backup cron (01:15 / 01:20)
@@ -79,6 +80,62 @@ Deliberately NOT backed up: `jellyseerr`/`qbittorrent` (dropped 2026-07-21 —
 session state and easily-reconfigured settings, not worth restoring),
 Prometheus/Loki/Grafana/Netdata history, alertmanager, all `*-cache` volumes —
 regenerable, were ~35GB of noise.
+
+## Restore drill (monthly)
+
+A backup that's never restored is unverified — `restore-drill.sh` closes
+that gap for the two DB dumps that matter most. Monthly (1st @ 04:00, clear
+of the nightly 01:xx-03:xx window), it finds the newest Authentik and
+Joplin dumps, imports each into a throwaway `postgres:16-alpine` /
+`postgres:15` container (`docker run --rm`, no host port, anonymous volume
+cleaned up automatically), checks `information_schema.tables` has rows,
+then stops the container. A bad dump (corrupt gzip, broken SQL, empty
+export) surfaces here within a month instead of silently during a real DR.
+Pings healthchecks.io on success/`/fail` if `vault_hc_restore_drill_url` is
+set. Logs: `/var/log/restore-drill.log`.
+
+## Alerting (healthchecks.io)
+
+`backup-vps-extras.sh`, `backup-joplin.sh`, `backup-push-r730xd.sh` and
+`restore-drill.sh` all ping a healthchecks.io URL on success, and on
+failure via an `ERR` trap hitting `<url>/fail` — same account already used
+for the K8s cluster's Watchdog heartbeat (see `alertmanagerconfig.yaml`),
+just one more check per job instead of a second monitoring stack. Wiring is
+in place but **inert until configured**: each script reads its URL from
+`vault_hc_backup_extras_url` / `vault_hc_backup_joplin_url` /
+`vault_hc_backup_push_url` / `vault_hc_restore_drill_url` (empty = no-op,
+safe to deploy before the checks exist). Create the 4 checks in the
+healthchecks.io account, set their expected period to match the cron
+schedule (daily for the first 3, monthly for the drill) with a few hours of
+grace, then:
+
+```bash
+cd vps
+ansible-vault edit inventories/production/group_vars/all/vault.yml --vault-password-file .vault_pass
+# add: vault_hc_backup_extras_url, vault_hc_backup_joplin_url,
+#      vault_hc_backup_push_url, vault_hc_restore_drill_url
+ansible-playbook -i inventories/production/hosts playbooks/site.yml --tags backup --vault-password-file .vault_pass
+```
+
+The Immich Postgres CronJob (K8s side) has the same pattern — see
+`kubernetes/apps/default/immich/app/cronjob-postgres-backup.yaml`, URL in
+`immich-postgres-secret`'s `hc_ping_url` key (sops).
+
+## restic-backup user (SFTP landing for R730xd → Oracle, DSM-independent)
+
+A dedicated, shell-less, chrooted SFTP-only system user
+(`restic-backup`, home `/srv/restic-repo`, writable subdir
+`/srv/restic-repo/data`) — the destination for R730xd's own restic push,
+which exists so the Oracle offsite copy of the *critical* backup data
+(VPS service backups, Immich Postgres dumps, R730xd's own VM/pfSense
+backups) doesn't require a working Synology DSM instance to restore. sshd
+is configured via `/etc/ssh/sshd_config.d/restic-backup.conf` (`Match User
+restic-backup` → `ChrootDirectory` + `ForceCommand internal-sftp`, no
+forwarding, no PTY, no password auth). The public key is a plain var
+(`vps_backup_restic_public_key`, not secret); the matching private key
+lives on R730xd only — see
+[proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#r730xd--oracle-cloud-direct-via-restic-done-2026-07-24)
+for the R730xd-side setup and restore instructions.
 
 ## Still manual (keep copies off this VPS)
 
