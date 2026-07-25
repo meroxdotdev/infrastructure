@@ -11,9 +11,10 @@ Nimic din pașii de mai jos e executat — planul așteaptă aprobare.
 |---|---|---|---|---|---|
 | 1 | ✅ Alertare reală — Discord (Alertmanager + Flux notification-controller nativ) | Elimină cel mai mare gol găsit — niciun incident nu ajungea la un om, doar heartbeat | Minim — verificat cu alertă de test, livrat | Făcut | Mecanic |
 | 2 | ⛔ Sărit — Pi-hole/DNS local (pfSense) | N/A | N/A | N/A | Nu era o problemă reală — `media.merox.dev` acoperă deja nevoia practică pentru LAN fără Tailscale; inconsecvența DNS găsită în audit (Unbound activ dar nefolosit de DHCP) rămâne, dar userul confirmă că nimeni n-o simte în practică |
-| 3 | Scoate Glances de pe VPS | O unealtă mai puțin de verificat, Beszel acoperă deja rolul | Minim | 15 min | Curățenie mecanică |
-| 4 | Fix namespace collision la `portainer-agent` | Elimină alt risc latent de drift PodSecurity, exact pattern-ul de la Longhorn | Minim — fix deja verificat azi, doar repetat | 15-20 min | Mecanic, pattern cunoscut |
-| 5 | Audit sistematic pt alte coliziuni namespace în tot repo-ul | Elimină clasa de bug, nu doar instanțele găsite din întâmplare | Zero — doar citire | 30 min | Curățenie/verificare |
+| 3 | ✅ Scoate Glances de pe VPS | Făcut — o unealtă mai puțin, Beszel acoperă deja rolul | Container orfan curățat, `remove_orphans` adăugat pt viitor | Făcut | Mecanic |
+| — | ✅ (nepланificat) Elimină `cloudlab-merox` ca repo separat | Bug real găsit: Ansible-ul din `infrastructure` era suprascris silențios de clona `cloudlab-merox` pentru garage/guacamole/traefik/netdata la fiecare `make setup` | Servicii live externe atinse — testat cu `--check --diff` întâi, apoi rulare reală, verificat container cu container | Făcut | Repo migrat, vechi arhivat pe GitHub |
+| 4 | ✅ Fix namespace collision la `portainer-agent` | **Fals-pozitiv** — verificat live, nu are de fapt problema de la Longhorn (Kustomization-ul propriu trăiește în `default`, nu în `portainer`, deci fără cursă de field-ownership) | N/A | Verificat, nimic de reparat | — |
+| 5 | ✅ Audit sistematic pt alte coliziuni namespace în tot repo-ul | Rezultat curat: `portainer-agent` e singura aplicație cu `namespace.yaml` propriu rămasă în tot repo-ul, și e deja confirmată sigură. Longhorn a fost singurul caz real | Zero — doar citire | Făcut | Verificare |
 | 6 | Extinde `restic-push-oracle.sh` peste golurile găsite (`longhorn-garage/`, `synology-home/`, `/media/photos`) | Acoperă exact datele critice care azi au o singură cale offsite, săptămânală | Mediu — script de producție pe date reale; testare manuală + `restic check` înainte de cron | 1-2h | Hibrid — decizie de scop/retenție + implementare |
 | 7 | Evaluează reducerea leg-ului săptămânal Synology pentru categoriile acum dublu-acoperite | Elimină redundanța reală (`oracle-vps/`, `immich-postgres/`, `dump/`, `pfsense/` ajung de 2 ori la Oracle) | **Nu înainte de pasul 6 verificat funcțional măcar o lună** — altfel dispare fallback-ul fără unul nou dovedit | Mică, o linie de config, după decizie | Decizie + implementare mică |
 
@@ -36,10 +37,22 @@ simplu. Rămâne o inconsecvență reală, dar userul confirmă că nu-l afectea
 în practică (`media.merox.dev` funcționează deja pentru LAN fără Tailscale).
 Nu s-a atins nimic pe pfSense.
 
-**Pas 4-5**: fix-ul de la Longhorn (namespace declarat de un singur
-Kustomization, prin patch peste placeholder-ul `components/common`, nu
-resursă concurentă) se aplică identic. Pasul 5 verifică dacă mai există alte
-aplicații cu același risc dincolo de `portainer-agent` (deja semnalat).
+**Pas 3 (nepланificat)**: în timp ce scoteam Glances, a ieșit la iveală că
+fișierul lui trăiește în `cloudlab-merox`, un repo separat pe care Ansible-ul
+din `infrastructure` îl clona și suprascria peste propriile temple pentru
+garage/guacamole/traefik/netdata — un bug real de suprascriere silențioasă,
+nu doar "prea multe repo-uri". Migrat complet: fișierele statice acum în
+`vps/roles/app_stack_setup/files/`, rolul rescris să facă `copy` în loc de
+`git clone`, testat cu `--check --diff` + rulare reală, toate containerele
+verificate sănătoase. `cloudlab-merox` arhivat pe GitHub (nu șters).
+
+**Pas 4-5**: criteriul exact pentru risc real (nu doar aparență similară):
+Kustomization-ul Flux al aplicației trebuie să trăiască *în interiorul*
+namespace-ului pe care-l gestionează (ca Longhorn), nu într-un namespace
+neutru ca `default`. Verificat live: `portainer-agent` nu îndeplinește
+condiția asta, deci n-are cursa de field-ownership — fals-pozitiv. Auditul
+sistematic (grep pe toate `namespace.yaml` din `app/`) confirmă că nu mai
+există alte cazuri.
 
 **Pas 6-7**: schimbare pe mecanismul de backup activ — nu se grăbește. Pasul
 7 depinde explicit de pasul 6 fiind rulat și verificat o perioadă, nu doar
