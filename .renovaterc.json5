@@ -30,6 +30,13 @@
   },
   packageRules: [
     {
+      description: "Require explicit dashboard approval for major bumps on stateful DB images - a major version jump needs a real migration (dump/restore or pg_upgrade), not a routine image swap. Incident 2026-07-25: merged alongside routine bumps, Postgres 15->17 couldn't start on the old data dir, HelmRelease stuck retrying/rolling-back hourly until reverted.",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/tensorchord/cloudnative-vectorchord"],
+      matchUpdateTypes: ["major"],
+      dependencyDashboardApproval: true,
+    },
+    {
       description: "Override Helmfile Dependency Name",
       matchDatasources: ["docker"],
       matchManagers: ["helmfile"],
