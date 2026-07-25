@@ -70,5 +70,6 @@
   community.docker.docker_compose_v2:
     project_src: "{{ app_stack_dir }}"
     state: present
+    remove_orphans: true
   become: yes
   when: not ansible_check_mode
