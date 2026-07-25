@@ -5,6 +5,18 @@ kind: Kustomization
 namespace: longhorn-system
 components:
   - ../../components/common
+patches:
+  # The 'common' component provides a placeholder Namespace (named "not-used"
+  # pre-rename, renamed to this kustomization's target namespace) — this
+  # merges PodSecurity labels onto it rather than declaring a second,
+  # colliding Namespace/longhorn-system resource (which broke `cluster-apps`'s
+  # kustomize build, and raced the "longhorn" Kustomization for field
+  # ownership). Must target the pre-rename name "not-used": patches
+  # are matched before the namespace transform runs.
+  - path: ./namespace.yaml
+    target:
+      kind: Namespace
+      name: not-used
 resources:
   - ./longhorn/ks.yaml
   - ./restore-pvs
