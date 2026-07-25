@@ -1,0 +1,55 @@
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: discord
+spec:
+  providerRef:
+    name: discord
+  eventSeverity: error
+  # eventSources namespace is not wildcard-capable - list every namespace
+  # that actually has Kustomizations/HelmReleases (see `flux get all -A`).
+  # Add a line here when a new namespace gets its own Flux-managed apps.
+  eventSources:
+    - kind: Kustomization
+      name: "*"
+      namespace: cert-manager
+    - kind: Kustomization
+      name: "*"
+      namespace: default
+    - kind: Kustomization
+      name: "*"
+      namespace: flux-system
+    - kind: Kustomization
+      name: "*"
+      namespace: kube-system
+    - kind: Kustomization
+      name: "*"
+      namespace: longhorn-system
+    - kind: Kustomization
+      name: "*"
+      namespace: network
+    - kind: Kustomization
+      name: "*"
+      namespace: observability
+    - kind: HelmRelease
+      name: "*"
+      namespace: cert-manager
+    - kind: HelmRelease
+      name: "*"
+      namespace: default
+    - kind: HelmRelease
+      name: "*"
+      namespace: flux-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: kube-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: longhorn-system
+    - kind: HelmRelease
+      name: "*"
+      namespace: network
+    - kind: HelmRelease
+      name: "*"
+      namespace: observability

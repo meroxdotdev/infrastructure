@@ -23,11 +23,11 @@ spec:
           - name: alertname
             value: Watchdog
             matchType: "="
-      # - receiver: pushover  # Enable when Pushover tokens are added to secret
-      #   matchers:
-      #     - name: severity
-      #       value: critical
-      #       matchType: "="
+      - receiver: discord
+        matchers:
+          - name: severity
+            value: critical
+            matchType: "="
   inhibitRules:
     - equal: ["alertname", "namespace"]
       sourceMatch:
@@ -45,4 +45,10 @@ spec:
         - urlSecret:
             name: alertmanager-secret
             key: ALERTMANAGER_HEARTBEAT_URL
-    # pushover receiver - enable when tokens are added to alertmanager-secret
+    - name: discord
+      discordConfigs:
+        - apiURL:
+            name: alertmanager-secret
+            key: DISCORD_WEBHOOK_URL
+          title: '{{ .CommonLabels.alertname }}'
+          message: '{{ .CommonAnnotations.summary }}'

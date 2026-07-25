@@ -10,3 +10,5 @@ resources:
   - ./flux-operator/ks.yaml
   # Flux Instance (this cluster's Flux instance)
   - ./flux-instance/ks.yaml
+  # Discord notifications for Kustomization/HelmRelease failures
+  - ./notifications/ks.yaml
