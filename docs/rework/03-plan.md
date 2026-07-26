@@ -15,8 +15,8 @@ Nimic din pașii de mai jos e executat — planul așteaptă aprobare.
 | — | ✅ (nepланificat) Elimină `cloudlab-merox` ca repo separat | Bug real găsit: Ansible-ul din `infrastructure` era suprascris silențios de clona `cloudlab-merox` pentru garage/guacamole/traefik/netdata la fiecare `make setup` | Servicii live externe atinse — testat cu `--check --diff` întâi, apoi rulare reală, verificat container cu container | Făcut | Repo migrat, vechi arhivat pe GitHub |
 | 4 | ✅ Fix namespace collision la `portainer-agent` | **Fals-pozitiv** — verificat live, nu are de fapt problema de la Longhorn (Kustomization-ul propriu trăiește în `default`, nu în `portainer`, deci fără cursă de field-ownership) | N/A | Verificat, nimic de reparat | — |
 | 5 | ✅ Audit sistematic pt alte coliziuni namespace în tot repo-ul | Rezultat curat: `portainer-agent` e singura aplicație cu `namespace.yaml` propriu rămasă în tot repo-ul, și e deja confirmată sigură. Longhorn a fost singurul caz real | Zero — doar citire | Făcut | Verificare |
-| 6 | Extinde `restic-push-oracle.sh` peste golurile găsite (`longhorn-garage/`, `synology-home/`, `/media/photos`) | Acoperă exact datele critice care azi au o singură cale offsite, săptămânală | Mediu — script de producție pe date reale; testare manuală + `restic check` înainte de cron | 1-2h | Hibrid — decizie de scop/retenție + implementare |
-| 7 | Evaluează reducerea leg-ului săptămânal Synology pentru categoriile acum dublu-acoperite | Elimină redundanța reală (`oracle-vps/`, `immich-postgres/`, `dump/`, `pfsense/` ajung de 2 ori la Oracle) | **Nu înainte de pasul 6 verificat funcțional măcar o lună** — altfel dispare fallback-ul fără unul nou dovedit | Mică, o linie de config, după decizie | Decizie + implementare mică |
+| 6 | ✅ Extinde `restic-push-oracle.sh` peste golurile găsite (`longhorn-garage/`, `synology-home/`, `/media/photos`) | Acoperă exact datele critice care aveau o singură cale offsite, săptămânală. Exclus explicit `dump/` (Home Assistant, ~14GB/noapte — în afara scope-ului proiectului, cerut de user) | Testat cu 2 rulări reale + `restic check` curat de ambele ori + **test real de restaurare** (checksum verificat, nu presupus) înainte de tăiere | Făcut, azi | Hibrid — decizie de scop + implementare |
+| 7 | ✅ Elimină leg-ul HyperBackup Synology→Oracle | Din 4 mecanisme de backup, rămân 2 curate: Synology (copie locală rapidă săptămânală) + restic (offsite zilnic, fără dependență DSM, pt tot) | Redus prin verificare, nu presupunere — vezi Pas 6. `rsyncd` (daemon + config) eliminat de pe VPS, nemaifiind destinația niciunui task | Făcut, azi | Decizie + implementare |
 
 ## Note per pas
 
@@ -54,9 +54,18 @@ condiția asta, deci n-are cursa de field-ownership — fals-pozitiv. Auditul
 sistematic (grep pe toate `namespace.yaml` din `app/`) confirmă că nu mai
 există alte cazuri.
 
-**Pas 6-7**: schimbare pe mecanismul de backup activ — nu se grăbește. Pasul
-7 depinde explicit de pasul 6 fiind rulat și verificat o perioadă, nu doar
-scris.
+**Pas 6-7 (făcut, într-o singură sesiune, nu într-o lună cum era planul
+inițial)**: recalibrat pe parcurs cu principiul "nu supra-inginerim" —
+`/media/photos` și config-urile *arr aveau deja RAID/PVC replicat, deci
+`synology-home/` (documente) era singura categorie fără o a doua protecție
+reală. De-acolo a ieșit întrebarea mai mare: de ce să ținem HyperBackup
+(dependent de DSM) dacă restic (fără nicio dependență) poate acoperi totul?
+Răspuns: nu are sens, dar nu s-a tăiat orbește — s-a extins scope-ul
+restic-ului, verificat cu 2 rulări reale + `restic check` + **un test real
+de restaurare cu checksum** (nu doar "push-ul a mers"), abia apoi eliminat
+HyperBackup + `rsyncd`-ul care-i servea drept destinație pe VPS. Exclus
+explicit `dump/` (Home Assistant) din tot mesh-ul de offsite — în afara
+scope-ului, cerut de user în timp ce se lucra la asta.
 
 ## Ce rămâne în afara acestui plan
 
