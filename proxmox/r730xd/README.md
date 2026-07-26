@@ -141,7 +141,10 @@ window.
 
 - **DSM Power Schedule** (set directly in DSM, not scriptable — no root/API
   access to Synology was available): wake Sunday 02:50, shutdown Sunday
-  03:40. WoL confirmed enabled (Control Panel → Hardware & Power → General).
+  04:30 (extended from the original 03:40 to give the now-retired
+  HyperBackup relay room — safe to shrink back toward 03:40 since Synology
+  only needs to receive pve's push now, not also relay onward). WoL
+  confirmed enabled (Control Panel → Hardware & Power → General).
 - **Push script**: `/root/scripts/weekly-push-to-synology.sh` on `pve`,
   cron `0 3 * * 0` (03:00 Sunday — 10 min after wake for margin, comfortably
   inside the 50-min window before shutdown).
@@ -185,8 +188,8 @@ canonical reference, don't duplicate here.
 second, parallel backup path with its own logic, and one that never reached
 Oracle's own offsite copy (below) since it wrote to a folder outside
 `/media/backups`. Rerouting through R730xd means the VPS's own backups now
-ride the same weekly Synology relay and the same offsite HyperBackup leg as
-everything else — one mesh, not two.
+ride the same weekly Synology relay and the same nightly restic-to-Oracle
+leg as everything else — one mesh, not two.
 
 **How the VPS reaches pve**: plain SSH rsync push (no rsyncd daemon — that
 indirection was only ever needed for Synology's patched rsync refusing
@@ -209,48 +212,42 @@ recreating (new VPS, DR rebuild), regenerate on the VPS
 public half to pve's `authorized_keys` with the line above, and update
 `vault_oracle_vps_to_r730xd_ssh_key` in the vps Ansible vault to match.
 
-### Synology → Oracle Cloud (DONE, 2026-07-23)
+### Synology → Oracle Cloud via HyperBackup (RETIRED, 2026-07-26)
 
-DSM Hyper Backup, task type **Rsync** (not S3 — simpler, and a purpose-built
-rsyncd module for this already existed): source `/volume1/NetBackup`
-(everything above, now including `oracle-vps/`), destination the
-`synology_backup` module on the VPS's own rsyncd (`/etc/rsyncd.conf`,
-port 873, module maps to `/backup/synology`, credentials in
-`vault_rsyncd_password`). Client-side encryption enabled (password in
-Joplin). Rotation: "from the earliest versions", 3 kept versions (~3 weeks
-at weekly cadence). Schedule: Sunday 03:20 — 20 min after pve's own push
-(03:00) and the VPS's own extras push (03:10), giving both a head start.
-DSM shutdown extended from 03:40 → **04:30** to give HyperBackup real room;
-tighten later once steady-state run duration is known from DSM's task
-history (first run is a one-off multi-hour full copy, run manually with
-Synology kept awake — not on the weekly schedule).
+Ran as DSM Hyper Backup (task type Rsync) from 2026-07-23 to 2026-07-26,
+relaying `/volume1/NetBackup` onward to the VPS's `synology_backup` rsyncd
+module. Retired once the restic leg below was extended to cover everything
+this task relayed and proven with a real restore drill (not just a
+successful push) — restoring from Hyper Backup's proprietary
+chunked/versioned vault format needs a **working DSM instance** (real or
+Virtual DSM), which was the whole reason to build a DSM-free alternative in
+the first place. Keeping both once the DSM-free leg covered the same ground
+was redundant, not extra safety — same content, same destination, two
+tools. The `synology_backup` rsyncd module + `/etc/rsyncd.conf` on the VPS
+were removed with it (see [vps/roles/vps_backup/README.md](../../vps/roles/vps_backup/README.md)).
 
-This closes the loop: R730xd is now backed up to Synology *and* Oracle;
-Synology is backed up to Oracle; and the Oracle VPS's own state flows back
-through R730xd to reach both. The only remaining single point of failure is
-R730xd's own local disk failure mode being covered by RAIDZ2 rather than a
-second independent site — accepted risk, matches the original design intent
-(R730xd is the hub, not disposable, but not a single disk either).
+Synology still gets the weekly push from R730xd below — that leg didn't
+change, it just stopped also being asked to relay onward to Oracle.
 
-### R730xd → Oracle Cloud, direct via restic (DONE, 2026-07-24)
+### R730xd → Oracle Cloud, direct via restic (DONE, 2026-07-24; extended to full scope 2026-07-26)
 
-The Synology → Oracle leg above is DSM Hyper Backup's own proprietary
-chunked/versioned vault format — restoring it needs a **working DSM
-instance** (real or Virtual DSM) to run Hyper Backup's restore wizard, not a
-plain file copy. That's fine for the full cold-storage copy, but means the
-Oracle leg is only as restorable as DSM is available. This is a second,
-independent, DSM-free path for the data that actually matters to rebuild
-quickly: restic pushes straight from R730xd to the Oracle VPS over SFTP —
-open repository format, restorable with just the `restic` binary and the
-repo password, no vendor tool needed.
+DSM Hyper Backup's proprietary chunked/versioned vault format needs a
+**working DSM instance** (real or Virtual DSM) to restore — not a plain
+file copy. This leg exists so the offsite Oracle copy doesn't depend on
+that: restic pushes straight from R730xd to the Oracle VPS over SFTP — open
+repository format, restorable with just the `restic` binary and the repo
+password, no vendor tool needed.
 
-**Scope** (deliberately not the whole `/media/backups` tree — this leg is
-for "what do I need to rebuild the critical stuff fast", not a second copy
-of everything): `oracle-vps/` (the VPS's own service backups),
-`immich-postgres/` (DB dumps), `dump/` (VM backups), `pfsense/` (router
-config). NOT `longhorn-garage/`, `synology-home/`, or `/media/photos` —
-those stay on the Synology/HyperBackup leg only; add them here later if the
-DSM dependency for K8s restore specifically becomes a problem worth solving.
+**Scope**: everything under `/media/backups/` plus `/media/photos` —
+`oracle-vps/`, `immich-postgres/`, `pfsense/`, `longhorn-garage/`,
+`synology-home/`, `/media/photos`. Originally scoped to just the first 4
+("what do I need to rebuild fast") when Hyper Backup still covered the
+rest; extended to the full set 2026-07-26 when Hyper Backup was retired, so
+this became the sole offsite-to-Oracle leg for all of it. **Deliberately
+excludes** `/media/backups/dump` (the Home Assistant VM's vzdump backup,
+~14GB nightly) — Home Assistant is out of scope for this project entirely
+(a VM the owner tinkers with, not something needing offsite DR), and
+including it was pure wasted bandwidth/storage with no one asking for it.
 
 **Destination**: a dedicated, shell-less, chrooted SFTP-only user
 (`restic-backup`) on the Oracle VPS, provisioned by the `vps_backup`
@@ -295,8 +292,9 @@ restic init
 ```
 
 **Nightly push script** (`/root/scripts/restic-push-oracle.sh` on pve, cron
-`15 4 * * *` — after the ZFS snapshot below and clear of the 03:00-04:30
-backup/relay window):
+`15 4 * * *` — after the ZFS snapshot below and clear of the Sunday
+weekly-push window). Pings `restic-push-oracle` on healthchecks.io
+(same account as everything else's alerting) on success, `/fail` on error:
 
 ```bash
 #!/bin/bash
@@ -304,11 +302,16 @@ set -euo pipefail
 export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
 export RESTIC_PASSWORD_FILE="/root/.restic-oracle-password"
 
-restic backup /media/backups/oracle-vps /media/backups/immich-postgres \
-  /media/backups/dump /media/backups/pfsense --tag nightly
+HC_URL="https://hc-ping.com/..."  # healthchecks.io check "restic-push-oracle"
+trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" || true' ERR
 
+restic backup /media/backups/oracle-vps /media/backups/immich-postgres \
+  /media/backups/pfsense /media/backups/longhorn-garage \
+  /media/backups/synology-home /media/photos --tag nightly
 restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 restic check
+
+[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
 ```
 
 **Restoring** (from any machine with `restic`, the repo password, and
@@ -320,6 +323,16 @@ export RESTIC_PASSWORD_FILE=/path/to/saved/password
 restic snapshots
 restic restore latest --target /tmp/restored
 ```
+
+**Monthly restore drill** (`/root/scripts/restic-restore-drill.sh` on pve,
+cron `0 5 1 * *` — day 1, clear of the nightly push): restores
+`pfsense/` and `immich-postgres/` from the *live* repository to a throwaway
+dir, compares content hashes against the current source, exit non-zero on
+any mismatch. Proves the repo is actually restorable, not just that
+`restic check` says its internals are consistent — same philosophy as
+[vps-restore-drill](../../vps/roles/vps_backup/README.md#restore-drill-monthly),
+separate script because the restic password and repo access live here, not
+on the VPS. Pings `restic-restore-drill` on healthchecks.io.
 
 **Recreating this key** (new R730xd, or key rotation): generate a new pair
 on pve (`ssh-keygen -t ed25519 -f /root/.ssh/restic-r730xd-to-oracle -N ""`),

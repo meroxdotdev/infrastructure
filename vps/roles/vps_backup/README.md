@@ -23,9 +23,9 @@ One further script is DR-only (no cron) — see "Restore" below:
 R730xd (`pve`) is plain Debian — no restrictions on rsync server-mode over
 SSH, unlike Synology's DSM. So this leg is just a normal `rsync -e ssh` push,
 authenticated by a dedicated SSH key. No rsyncd daemon, no password file, no
-"SSH in and trigger a pull" indirection — that dance (still used for the
-*Synology* HyperBackup destination, see below) was only ever needed to work
-around DSM's patched rsync, and doesn't apply here.
+"SSH in and trigger a pull" indirection — that dance (formerly used for the
+now-retired *Synology* HyperBackup destination, see below) was only ever
+needed to work around DSM's patched rsync, and doesn't apply here.
 
 The key (`/root/.ssh/oracle-vps-to-r730xd`) is restricted on the pve side via
 `rrsync` (limits it to `/media/backups/oracle-vps` only) and `from=` (limits
@@ -37,25 +37,24 @@ provisioned by hand — see
 [proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#downstream-legs)
 for the exact line and how to recreate it.
 
-`/etc/rsyncd.conf` on this VPS still runs one module, `synology_backup` —
-that one's unrelated to the VPS's own backups. It's the destination Synology's
-own **HyperBackup** task pushes into (`/backup/synology`), completing the
-loop: R730xd → Synology (weekly cold copy, includes this VPS's backups once
-they land on pve — see below) → Oracle (HyperBackup, off-site). The
-`vps_backups`/`garage_backup`/`vps_restore`/`garage_restore` modules that used
-to exist alongside it are gone — they only existed for the old VPS↔Synology
-direct-pull mechanism this role no longer uses.
+`/etc/rsyncd.conf` on this VPS is gone entirely as of 2026-07-26 — it used
+to run one module, `synology_backup`, which was the destination Synology's
+own HyperBackup task pushed into. That leg is retired (see
+[proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#downstream-legs));
+the offsite-to-Oracle job it did is now covered by R730xd's own
+`restic-push-oracle.sh` instead. The `vps_backups`/`garage_backup`/
+`vps_restore`/`garage_restore` modules that used to exist alongside
+`synology_backup` were already gone before that — they only existed for an
+even older VPS↔Synology direct-pull mechanism this role stopped using
+2026-07-23.
 
 **Deliberately not backed up**: this VPS's own local Garage instance
 (`docker exec garage ...`, containers `garage`/`garage-webui`). It was
 Longhorn's backup target before the 2026-07-21 cutover to R730xd's own
-Garage LXC and is being kept only as a temporary rollback safety net for a
-couple of weeks past that date — not live, not growing, and about to be
-deleted outright. Backing it up here would mean relaying this VPS's own
-soon-to-be-decommissioned data through R730xd → Synology → back to Oracle via
-HyperBackup — pure waste. The *real*, current Garage backup target
+Garage LXC and was kept only as a temporary rollback safety net for a
+couple of weeks past that date. The *real*, current Garage backup target
 (R730xd's own LXC) is already covered by the `longhorn-garage` category in
-R730xd's own weekly push — see
+R730xd's own weekly Synology push and nightly Oracle restic push — see
 [proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#garage-longhorns-backup-target).
 
 ## Nightly backup traffic
@@ -66,9 +65,9 @@ R730xd's own weekly push — see
 - **03:30** — this role: push `/srv/backups` + Garage snapshot to R730xd (`/media/backups/oracle-vps/`).
 
 From there, R730xd's own weekly Sunday push relays a copy on to Synology
-(cold storage), and Synology's own HyperBackup task relays it further to this
-same VPS's `/backup/synology` module — completing the loop back to Oracle
-without this role needing to know or care about that hop. See
+(cold storage, fast local-ish recovery), and — independently, nightly —
+R730xd pushes the same data straight to Oracle via `restic`, without this
+role needing to know or care about either hop. See
 [proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#downstream-legs)
 for that side of the story.
 
@@ -152,10 +151,13 @@ kubeconfig` for the new cluster into both paths.
    vault (`vault_oracle_vps_to_r730xd_ssh_key`, deployed by this role);
    public key must be in `root@pve:~/.ssh/authorized_keys`, restricted via
    `rrsync` + `from=` (see proxmox/r730xd/README.md for the exact line).
-2. `/etc/rsyncd.secrets` (`synology-backup:<password>`, mode 600) is deployed
-   by this role from `vault_rsyncd_password` — only feeds the `synology_backup`
-   module now, which the Synology-side HyperBackup task authenticates against
-   (password set directly in the DSM task, matching this same vault value).
+
+> **Synology HyperBackup retired 2026-07-26.** The rsyncd daemon/module
+> (`synology_backup`) that existed solely as its destination is gone too —
+> see [proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#downstream-legs)
+> for what replaced it (R730xd's own `restic-push-oracle.sh`, extended to
+> cover everything HyperBackup used to relay, proven with a real restore
+> drill before the cutover, not just a successful push).
 
 ## Restore
 
@@ -166,11 +168,12 @@ have deployed all containers on the fresh DR VPS.
 - **Step 0**: `make restore-pull-r730xd` — pulls `srv-backups/` back into
   `/srv/backups/` from R730xd's copy at `/media/backups/oracle-vps/`. Run
   this first on a fresh DR VPS; everything below reads from
-  `/srv/backups/`. If R730xd itself is also gone, pull instead from
-  Synology's `/volume1/NetBackup/oracle-vps/<latest-date>/` (the weekly
-  relay copy) or, failing that, Oracle's own HyperBackup copy — restore that
-  first onto a reachable Synology (or any rsync-compatible target) and
-  proceed from there.
+  `/srv/backups/`. If R730xd itself is also gone, restore instead from the
+  `oracle-vps/` path inside R730xd's own restic repository (this same VPS,
+  `/srv/restic-repo` — see [DR.md](../../../DR.md#r730xd--garage-total-loss-fallback)),
+  or from Synology's `/volume1/NetBackup/oracle-vps/<latest-date>/` (the
+  weekly relay copy, still running for fast local-ish recovery even though
+  it no longer also relays onward to Oracle via HyperBackup).
 - Authentik/Joplin: `make restore-auto` — non-interactive (`restore-db.sh
   --yes all`), drops + re-imports each DB from its latest dump. `make restore`
   is the interactive equivalent (asks per service) for manual use outside DR.

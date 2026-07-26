@@ -167,9 +167,11 @@ Full nightly schedule, what's included/excluded: VPS-side —
 Short version: Longhorn backs up the media/ARR config volumes nightly to a
 self-hosted Garage instance on the R730xd (`10.57.57.61:3900`, bucket
 `longhorn`) — not the VPS anymore. From there, R730xd relays a curated copy
-weekly to Synology (cold storage), and Synology relays that same copy
-onward to the Oracle VPS via Hyper Backup — the full mesh is documented in
-[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs).
+weekly to Synology (cold storage) *and* nightly, directly, via restic to
+the Oracle VPS (open format, no DSM dependency — replaced a Synology→Oracle
+Hyper Backup relay retired 2026-07-26 once this leg covered the same
+ground and was proven with a real restore drill). The full mesh is
+documented in [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs).
 Observability history and caches are deliberately not backed up (accepted as
 lost in DR).
 
@@ -210,12 +212,12 @@ paths**, deliberately not just one:
 **What neither path covers**: the actual photo/video files, which live on
 `/media/photos` — not a Longhorn volume at all, just an NFS mount from the
 R730xd's SAS pool. Those are protected by RAIDZ2 (survives 1-2 disk
-failures), a weekly versioned copy pushed to Synology, and (as of
-2026-07-23) Synology's own Hyper Backup relay onward to the Oracle VPS — see
+failures), a weekly versioned copy pushed to Synology, and a nightly
+restic push direct to Oracle (see
 [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for the
-full chain. Both offsite legs (R730xd→Synology, Synology→Oracle) are built
-and running; the R730xd→Synology→Oracle chain still hasn't been drilled as
-a full restore end-to-end (see "R730xd / Garage total loss fallback" below).
+full chain) — the restic leg has been drilled end-to-end (monthly
+`restic-restore-drill.sh`, first run 2026-07-26: restored content verified
+byte-for-byte against the live source).
 
 ## R730xd / Garage total loss fallback
 
@@ -246,29 +248,22 @@ scp -r admin@10.57.57.201:/volume1/NetBackup/longhorn-garage/<latest-date>/ \
   /tmp/garage-recovered/
 ```
 
-**2. Oracle's copy, if Synology is ALSO gone** — this is NOT a plain file
-mirror. It went there via DSM Hyper Backup (see
-[proxmox/r730xd/README.md](proxmox/r730xd/README.md#synology--oracle-cloud-done-2026-07-23)),
-which stores backups in its own versioned/chunked vault format on the VPS's
-`/backup/synology` rsync destination — you cannot just `rsync` the files
-back out. **You need a working DSM instance** (a spare physical Synology, or
-a temporary [Virtual DSM](https://www.synology.com/en-global/dsm/virtual_dsm)
-VM) to run Hyper Backup's own restore wizard:
+**2. Oracle's restic copy, if Synology is ALSO gone** — as of 2026-07-26
+this no longer needs DSM at all. The old path (Synology → Oracle via Hyper
+Backup, proprietary chunked vault format, needed a working DSM/Virtual DSM
+instance just to restore) was retired once R730xd's own restic-push-oracle.sh
+leg was extended to cover `longhorn-garage/` directly:
 
-```
-1. On any DSM instance: Hyper Backup → "Restore" → data source type "Rsync"
-   → same connection details as the original task (see
-   proxmox/r730xd/README.md for server/port/module/credentials — the
-   password is vault_rsyncd_password, same VPS, same synology_backup module).
-2. Pick the longhorn-garage folder from within the restored NetBackup tree,
-   restore it to a local path.
-3. Proceed with step 3 below using that restored data.
+```bash
+export RESTIC_REPOSITORY="sftp:restic-backup@100.72.22.38:/data"
+export RESTIC_PASSWORD_FILE=/path/to/saved/password   # see proxmox/r730xd/README.md
+restic restore latest --include /media/backups/longhorn-garage --target /tmp/garage-recovered
+# data/ and meta/ land under /tmp/garage-recovered/media/backups/longhorn-garage/
 ```
 
-If this DSM-dependency turns out to be too fragile as a real fallback,
-revisit — a plain rsync/restic based offsite leg (no proprietary restore
-tool needed) may be worth adding specifically for Garage's data, even
-though the DSM-based leg is fine for everything else.
+Just the `restic` binary (any OS) and the repo password — no DSM, no
+Virtual DSM VM, no restore wizard. Proceed with step 3 below using that
+recovered data.
 
 **3. Stand up a fresh Garage instance** anywhere reachable from the cluster
 (a new LXC on `px-0`, or temporarily the VPS itself) with the recovered

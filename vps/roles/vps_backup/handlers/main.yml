@@ -1,9 +1,4 @@
 ---
-- name: Restart rsync daemon
-  service:
-    name: rsync
-    state: restarted
-
 - name: Reload sshd
   service:
     name: ssh

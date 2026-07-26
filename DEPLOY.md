@@ -86,7 +86,8 @@ Homepage / Portainer from their tarballs. See
 
 If R730xd itself is also gone, the same data is one hop further out on
 Synology (`/volume1/NetBackup/oracle-vps/<latest-date>/`) or, failing that,
-in Oracle's own Hyper Backup copy — see
+in R730xd's own restic repository on this same VPS (`oracle-vps/` path,
+`restic restore` — no DSM needed) — see
 [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for
 that chain.
 
@@ -476,8 +477,8 @@ kubectl -n flux-system get receiver github-webhook \
 | Ansible vault secrets                                                                                       | `vps/inventories/production/group_vars/all/vault.yml` (encrypted)                                                                        | ✅ in git                                   |
 | Longhorn volumes (media/ARR configs + Immich's Postgres, group `media`)                                     | Nightly to a self-hosted Garage instance on R730xd (`proxmox/r730xd/`) — moved off the VPS 2026-07-21                                    | ✅ relayed to Synology + Oracle, see below  |
 | VPS service state (Authentik + Joplin DB dumps, Guacamole, Traefik certs, Pi-hole config, Homepage, Portainer) | Nightly push to R730xd (`/media/backups/oracle-vps/`) — schedule & details: [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) | ✅ relayed to Synology + Oracle, see below  |
-| R730xd's own backup tree (the row above + photos, documents, VM backups, pfSense config, Garage data, Immich Postgres dumps) | Weekly to Synology (cold storage) — [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)                                | ✅ 3 versions kept                          |
-| Synology's copy of the above                                                                                | Weekly to Oracle Cloud via Hyper Backup (rsync, encrypted) — same README, "Synology → Oracle Cloud"                                      | ✅ 3 versions kept, off-site                |
+| R730xd's own backup tree (the row above + photos, documents, pfSense config, Garage data, Immich Postgres dumps — excludes the Home Assistant VM dump, out of scope) | Weekly to Synology (cold storage, fast local-ish recovery) **and** nightly to Oracle via `restic` (open format, no DSM) — [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) | ✅ both legs drilled monthly (real restore, not just push) |
+| Home Assistant VM (vzdump)                                                                                  | R730xd only, weekly Synology relay — deliberately excluded from the nightly Oracle leg                                                   | ✅ Synology only, not Oracle                |
 | Observability history (Prometheus/Loki/Grafana), `*-cache` volumes                                          | —                                                                                                                                        | ❌ deliberately not backed up (regenerable) |
 
 **The one thing to back up manually, off this VPS entirely:**

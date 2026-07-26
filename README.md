@@ -22,10 +22,7 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Joplin Server      | joplin.cloud.merox.dev          | Notes sync (PostgreSQL backend)                                     |
 | Guacamole          | rmt.merox.dev                   | Remote desktop gateway (Authentik SSO)                              |
 | Garage S3          | garage.cloud.merox.dev          | Rollback safety net only — Longhorn's real target is now on R730xd, see below |
-| Netdata            | netdata.cloud.merox.dev         | Real-time metrics (parent + 3 child nodes)                          |
 | Beszel             | beszel.cloud.merox.dev          | Host monitoring                                                     |
-| Dozzle             | dozzle.cloud.merox.dev          | Docker log aggregation                                              |
-| Glances            | glances.cloud.merox.dev         | System monitoring                                                   |
 | Code Server        | code.cloud.merox.dev            | Browser-based VS Code                                               |
 
 ### Kubernetes — on-premise (`kubernetes/` → Flux GitOps)
@@ -116,10 +113,14 @@ photos, documents, VM backups, pfSense config, and the Oracle VPS's own
 nightly service-state push (Authentik/Joplin/Guacamole/Traefik/Pi-hole/
 Homepage/Portainer — rerouted through R730xd 2026-07-23, no longer straight
 to Synology). From R730xd, one weekly push (Sunday) relays all of that to
-Synology (cold storage, asleep except during the push window), and Synology
-relays the same set onward to Oracle Cloud via Hyper Backup — closing the
-loop back to where the VPS backup originated. Observability history and
-caches are deliberately not backed up — regenerable.
+Synology (cold storage, asleep except during the push window) for fast
+local-ish recovery, and — independently, nightly — R730xd pushes the same
+set (minus the Home Assistant VM dump, out of scope) straight to Oracle
+Cloud via `restic`, open-format and DSM-free (replaced a Synology→Oracle
+Hyper Backup relay retired 2026-07-26; see
+[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)).
+Observability history and caches are deliberately not backed up —
+regenerable.
 
 > **Canonical references**: VPS-side schedule —
 > **[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**;
@@ -131,8 +132,8 @@ the K8s media/photos host, not just a hypervisor — see the "R730xd/Garage
 total loss" runbook in [DR.md](DR.md) before treating this as equivalent to
 the old VPS-hosted setup. The media library (`/media/library`) is treated as
 replaceable "cattle" (re-downloadable) and deliberately has no second copy.
-Immich's photo library (`/media/photos`) is covered by the same weekly
-R730xd→Synology→Oracle chain; see
+Immich's photo library (`/media/photos`) is covered by both the weekly
+R730xd→Synology relay and the nightly R730xd→Oracle restic push; see
 [docs/immich-post-restore.md](docs/immich-post-restore.md) for the restore
 procedure.
 **What a VPS failure loses:** at most one night of its own service backups —
@@ -199,13 +200,14 @@ Validation:
 │  ├── Traefik (reverse proxy + Cloudflare Tunnel)          │
 │  ├── Pi-hole (DNS), Portainer EE, Homepage                │
 │  ├── Joplin Server + Postgres (notes)                     │
-│  ├── Guacamole (remote desktop gateway), Glances          │
+│  ├── Guacamole (remote desktop gateway), Beszel           │
 │  └── nightly service-state push → R730xd                 │
 └────────────────────┬─────────────────────────────────────┘
-                     │ weekly relay
-┌────────────────────▼─────────────────────────────────────┐
-│  Synology (cold storage) → Oracle Hyper Backup (offsite)  │
-└────────────────────────────────────────────────────────────┘
+                     │ weekly relay          │ nightly restic
+┌────────────────────▼──────────┐  ┌─────────▼──────────────┐
+│  Synology (cold storage)      │  │  Oracle restic repo     │
+│  fast local-ish recovery      │  │  (open format, no DSM)  │
+└────────────────────────────────┘  └──────────────────────────┘
 ```
 
 ---

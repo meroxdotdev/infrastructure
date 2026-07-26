@@ -5,6 +5,31 @@
 # (/var/services/homes/admin/.vps-rsync.pass) is NOT managed here — it's
 # provisioned once, manually (see role README).
 
+# The Synology HyperBackup leg (Synology -> this VPS's rsync daemon,
+# module "synology_backup") was retired 2026-07-26 - the offsite-to-Oracle
+# job it did is now covered end-to-end by R730xd's own restic-push-oracle.sh
+# (proven via a real restore drill, not just a successful push). rsyncd had
+# no other purpose on this VPS, so it stops here rather than leaving a
+# server-mode rsync daemon running for nothing.
+- name: Stop and disable rsync daemon (no longer needed post-HyperBackup)
+  service:
+    name: rsync
+    state: stopped
+    enabled: false
+  become: yes
+  failed_when: false
+  tags: backup
+
+- name: Remove rsyncd config and secrets (HyperBackup retired)
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/rsyncd.conf
+    - /etc/rsyncd.secrets
+  become: yes
+  tags: backup
+
 - name: Detect Tailscale IP address
   shell: ip -4 addr show tailscale0 | grep inet | awk '{print $2}' | cut -d/ -f1
   register: tailscale_ip_result
@@ -43,27 +68,6 @@
     group: root
     mode: "0600"
   no_log: true
-  tags: backup
-
-- name: Deploy rsyncd config (HyperBackup target + read-only backup modules)
-  template:
-    src: rsyncd.conf.j2
-    dest: /etc/rsyncd.conf
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Restart rsync daemon
-  tags: backup
-
-- name: Deploy rsyncd secrets file (HyperBackup + NAS pull/push auth)
-  copy:
-    content: "synology-backup:{{ rsyncd_password }}\n"
-    dest: /etc/rsyncd.secrets
-    owner: root
-    group: root
-    mode: "0600"
-  no_log: true
-  notify: Restart rsync daemon
   tags: backup
 
 - name: Deploy VPS extras backup script (guacamole/traefik/pihole/openclaw)
