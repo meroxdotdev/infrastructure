@@ -7,11 +7,11 @@
 # ============================================================================
 - Compute & Hardware:
 
-    - Proxmox:
+    - Proxmox (px-0):
         id: proxmox
         icon: proxmox.png
         href: https://dc.merox.dev
-        description: Datacenter Manager - both hosts, one pane
+        description: px-0 only - widget talks to its own API, not PDM (see below)
         ping: 10.57.57.254
         widget:
           type: proxmox
