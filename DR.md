@@ -126,7 +126,7 @@ kubectl get helmreleases -A | grep -v "True\|READY"
 ```
 
 **Expected in DR — not failures:**
-- `jellyfin` → Pending: DR VMs have no Intel GPU (`gpu.intel.com/i915`). Jellyfin runs but hardware transcoding unavailable. Fix: patch Jellyfin HelmRelease to remove the GPU resource request.
+- `jellyfin` → Pending: DR VMs have no Nvidia GPU (`nvidia.com/gpu`). Jellyfin runs but hardware transcoding unavailable. Fix: patch Jellyfin HelmRelease to remove the GPU resource request and `runtimeClassName: nvidia`.
 - Prometheus/Loki/Grafana/Netdata start with empty volumes — metrics/logs history is deliberately not backed up. Grafana dashboards come from git (sidecar provisioning).
 
 ---
