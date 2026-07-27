@@ -14,17 +14,20 @@ favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
 # ============================================================================
 layout:
 
+  # Column counts match each group's actual item count exactly - no ragged
+  # wraps, no phantom empty grid slots. Update the count here if a group
+  # gains/loses an entry in services.yaml.
   Compute & Hardware:
     style: row
-    columns: 4
+    columns: 2
     icon: mdi-server
-    useEqualHeights: false
+    useEqualHeights: true
 
   Storage & Backup:
     style: row
-    columns: 4
+    columns: 5
     icon: mdi-database
-    useEqualHeights: false
+    useEqualHeights: true
 
   Kubernetes:
     style: column
@@ -40,21 +43,21 @@ layout:
 
   Monitoring & Alerts:
     style: column
-    columns: 3
+    columns: 4
     icon: mdi-monitor-dashboard
     useEqualHeights: false
 
   Network:
     style: column
-    columns: 3
+    columns: 4
     icon: mdi-server-network
     useEqualHeights: false
 
   Cloud / VPS:
     style: row
-    columns: 5
+    columns: 4
     icon: mdi-cloud-outline
-    useEqualHeights: false
+    useEqualHeights: true
 
 # ============================================================================
 # DISPLAY

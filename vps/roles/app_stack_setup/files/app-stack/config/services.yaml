@@ -8,6 +8,7 @@
 - Compute & Hardware:
 
     - Proxmox:
+        id: proxmox
         icon: proxmox.png
         href: https://dc.merox.dev
         description: Datacenter Manager - both hosts, one pane
@@ -18,9 +19,10 @@
           username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
           password: "{{HOMEPAGE_VAR_PROXMOX_PASS}}"
 
-    - R730xd Power:
-        icon: mdi-flash
-        description: Current draw (iDRAC)
+    - R730xd:
+        id: r730xd-hw
+        icon: mdi-server
+        description: Power draw & fan speed (iDRAC)
         widget:
           type: customapi
           url: http://homelab-stats-server/homelab-stats.json
@@ -31,20 +33,11 @@
               format: number
               suffix: " W"
             - field: power_avg_watts
-              label: Avg (1 min)
+              label: Avg (1m)
               format: number
               suffix: " W"
-
-    - R730xd Fans:
-        icon: mdi-fan
-        description: Avg fan speed, 6 fans (iDRAC)
-        widget:
-          type: customapi
-          url: http://homelab-stats-server/homelab-stats.json
-          refreshInterval: 60000
-          mappings:
             - field: fan_rpm_avg
-              label: Avg Speed
+              label: Fans
               format: number
               suffix: " RPM"
 
@@ -76,6 +69,7 @@
         icon: synology.png
         href: https://nas.merox.dev
         description: Cold backup only - asleep except Sunday mornings
+        ping: 10.57.57.201
         widget:
           type: diskstation
           url: https://10.57.57.201:5001

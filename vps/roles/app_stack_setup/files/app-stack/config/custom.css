@@ -21,6 +21,17 @@
   --r:        0.25rem;
   --track:    -0.015em;
   --ease:     cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Group accents — one hue per functional domain, so the eye learns
+     "this color = this kind of thing" instead of scanning gray-on-gray.
+     Order must match settings.yaml's layout: block exactly. ── */
+  --accent-1: #d97a3d; /* Compute & Hardware — echoes Proxmox orange */
+  --accent-2: #3d8ed9; /* Storage & Backup — data at rest */
+  --accent-3: #8b5cf6; /* Kubernetes — echoes Longhorn purple */
+  --accent-4: #d93d7a; /* Media */
+  --accent-5: #3dd97a; /* Monitoring & Alerts — health/status */
+  --accent-6: #3dd9c8; /* Network */
+  --accent-7: #6e6e6e; /* Cloud / VPS — least "operational", stays neutral */
 }
 
 /* ── Global typography — matches merox.dev tracking ── */
@@ -89,10 +100,38 @@
   filter: grayscale(1) brightness(0.75) !important;
 }
 
-/* ── Spacing — breathe between Cloud (row) and column groups below ── */
-.services-group:first-child {
-  margin-bottom: 2rem !important;
+/* ── Section separation — every group gets real breathing room and a
+   colored top rule, not just the first one. This is the fix for groups
+   reading as one continuous wall instead of distinct sections. ── */
+.services-group {
+  margin-top:    2.25rem !important;
+  padding-top:   1rem !important;
+  border-top:    2px solid var(--border) !important;
 }
+
+.services-group:first-child {
+  margin-top: 0 !important;
+}
+
+/* ── Group accent — colored top rule + matching header text, one per
+   domain (see --accent-N tokens above). Position-based (nth-of-type)
+   since Homepage doesn't expose a per-group class/id hook - if groups are
+   reordered in settings.yaml, renumber these to match. ── */
+.services-group:nth-of-type(1) { border-top-color: var(--accent-1) !important; }
+.services-group:nth-of-type(2) { border-top-color: var(--accent-2) !important; }
+.services-group:nth-of-type(3) { border-top-color: var(--accent-3) !important; }
+.services-group:nth-of-type(4) { border-top-color: var(--accent-4) !important; }
+.services-group:nth-of-type(5) { border-top-color: var(--accent-5) !important; }
+.services-group:nth-of-type(6) { border-top-color: var(--accent-6) !important; }
+.services-group:nth-of-type(7) { border-top-color: var(--accent-7) !important; }
+
+.services-group:nth-of-type(1) .service-group-name { color: var(--accent-1) !important; }
+.services-group:nth-of-type(2) .service-group-name { color: var(--accent-2) !important; }
+.services-group:nth-of-type(3) .service-group-name { color: var(--accent-3) !important; }
+.services-group:nth-of-type(4) .service-group-name { color: var(--accent-4) !important; }
+.services-group:nth-of-type(5) .service-group-name { color: var(--accent-5) !important; }
+.services-group:nth-of-type(6) .service-group-name { color: var(--accent-6) !important; }
+.services-group:nth-of-type(7) .service-group-name { color: var(--accent-7) !important; }
 
 /* ── Widget data area ── */
 .widget-container {

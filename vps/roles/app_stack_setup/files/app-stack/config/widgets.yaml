@@ -17,10 +17,12 @@
     nodes:
       show: false
 
-# Provider already configured in settings.yaml (providers.longhorn) but
-# unused until now - aggregate storage capacity across the K8s cluster.
-- longhorn:
-    expanded: true
-    total: true
-    labels: true
-    nodes: false
+# Disabled 2026-07-27 - provider URL (10.57.57.80:30887) refuses connections
+# from the VPS (confirmed: connection refused, not a DNS issue this time).
+# Was showing a permanent "API Error" card at the very top of the page.
+# Re-enable once the real Longhorn UI address/port is confirmed.
+# - longhorn:
+#     expanded: true
+#     total: true
+#     labels: true
+#     nodes: false
