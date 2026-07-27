@@ -20,7 +20,7 @@ services:
     environment:
       PUID: 1000
       PGID: 1000
-      HOMEPAGE_ALLOWED_HOSTS: "inside.merox.dev,homepage.cloud.merox.dev"
+      HOMEPAGE_ALLOWED_HOSTS: "homepage.cloud.merox.dev"
       KUBECONFIG: /app/config/kubeconfig.yaml
     restart: unless-stopped
     networks:
@@ -33,6 +33,30 @@ services:
       - "traefik.http.routers.homepage.tls.certresolver=cloudflare"
       - "traefik.http.routers.homepage.middlewares=default-headers@file"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+
+  # Public, curated overview for inside.merox.dev — deliberately credential-free:
+  # no docker.sock, no kubeconfig, no env_file. Full detail lives on the
+  # `homepage` service above, reachable only via homepage.cloud.merox.dev (tailnet).
+  homepage-public:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage-public
+    volumes:
+      - ./config-public:/app/config
+    environment:
+      PUID: 1000
+      PGID: 1000
+      HOMEPAGE_ALLOWED_HOSTS: "inside.merox.dev"
+    restart: unless-stopped
+    networks:
+      network-cloud-merox:
+        ipv4_address: 172.25.10.11
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage-public.rule=Host(`inside.merox.dev`)"
+      - "traefik.http.routers.homepage-public.entrypoints=https"
+      - "traefik.http.routers.homepage-public.tls.certresolver=cloudflare"
+      - "traefik.http.routers.homepage-public.middlewares=default-headers@file"
+      - "traefik.http.services.homepage-public.loadbalancer.server.port=3000"
 
   portainer:
     image: portainer/portainer-ee:latest

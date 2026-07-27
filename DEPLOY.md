@@ -170,15 +170,29 @@ kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.
 (`systemctl status cloudflared`), not a Docker container — confirmed 2026-07-23,
 contradicting older notes here that described it as `network_mode: host`
 container-based. Full host network access either way, so it reaches
-`localhost:3000` (Homepage), `localhost:443` (Traefik), and `172.25.10.72:9000`
-(Authentik) the same way, matching the tunnel's remotely-managed ingress rules
-(`config_src: cloudflare` — ingress is stored on Cloudflare's side, nothing to
-re-configure per-deploy in this repo). **Note**: some tunnel ingress rules
-(e.g. `inside.merox.dev`) route directly to a service port, bypassing Traefik
-entirely — no Traefik middleware (headers, IP allowlist, Authentik forward-auth)
-applies to those hostnames. Verify on Cloudflare's own dashboard (Zero Trust →
-Networks → Tunnels) which hostnames go direct vs through Traefik if that matters
-for a given service.
+`localhost:443` (Traefik) and `172.25.10.72:9000` (Authentik) the same way,
+matching the tunnel's remotely-managed ingress rules (`config_src: cloudflare`
+— ingress is stored on Cloudflare's side, nothing to re-configure per-deploy in
+this repo). **Note**: some tunnel ingress rules route directly to a service
+port, bypassing Traefik entirely — no Traefik middleware (headers, IP
+allowlist, Authentik forward-auth) applies to those hostnames (`sso.merox.dev`
+→ Authentik is one, intentionally, to avoid a circular dependency on Traefik's
+own forward-auth). Verify on Cloudflare's own dashboard (Zero Trust → Networks
+→ Tunnels) which hostnames go direct vs through Traefik if that matters for a
+given service.
+
+> **`inside.merox.dev` (Homepage) — retired the direct-to-port bypass
+> 2026-07-27.** It used to route straight to `localhost:3000`, the same
+> container that also held Proxmox/pfSense/Synology credentials, a mounted
+> `docker.sock`, and a full cluster `kubeconfig` — reachable with zero
+> middleware and zero login. Split into two containers instead: `homepage`
+> (full detail, all the credentials, `homepage.cloud.merox.dev` only —
+> Tailscale-gated the same way as Portainer/Pi-hole/Joplin, never touches the
+> public tunnel) and `homepage-public` (bookmarks + anonymized stats only, no
+> credentials, no docker.sock, no kubeconfig). The tunnel's `inside.merox.dev`
+> ingress now points at `https://localhost:443` with the Host header
+> preserved, same pattern as `rmt.merox.dev`, so it goes through Traefik's
+> `default-headers` middleware instead of hitting the container directly.
 
 > **Requires `cloudflare_tunnel_token` in vault** (the _connector_ token from
 > Cloudflare Zero Trust → Networks → Tunnels → "one" → Configure — looks like

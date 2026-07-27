@@ -1,0 +1,8 @@
+---
+- datetime:
+    text_size: xl
+    format:
+      dateStyle: long
+      timeStyle: short
+      hour12: false
+      locale: ro-RO

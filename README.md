@@ -18,7 +18,8 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Pi-hole + Unbound  | pihole.cloud.merox.dev/admin    | DNS ad-blocking + DoH resolver                                      |
 | Authentik          | sso.merox.dev                   | SSO / identity provider                                             |
 | Portainer EE       | 100.72.22.38:9000 _(Tailscale)_ | Container management UI                                             |
-| Homepage           | inside.merox.dev _(Tailscale)_  | Internal dashboard (K8s + Proxmox + router)                         |
+| Homepage (private) | homepage.cloud.merox.dev _(Tailscale only)_ | Full dashboard — K8s, Proxmox, pfSense, Synology, Portainer         |
+| Homepage (public)  | inside.merox.dev                | Curated overview, no credentials — bookmarks + anonymized stats     |
 | Joplin Server      | joplin.cloud.merox.dev          | Notes sync (PostgreSQL backend)                                     |
 | Guacamole          | rmt.merox.dev                   | Remote desktop gateway (Authentik SSO)                              |
 | Garage S3          | garage.cloud.merox.dev          | Rollback safety net only — Longhorn's real target is now on R730xd, see below |

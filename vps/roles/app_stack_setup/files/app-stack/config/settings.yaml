@@ -1,7 +1,7 @@
 ---
 title: merox.dev
-description: Infrastructure Dashboard
-startUrl: https://inside.merox.dev
+description: Infrastructure Dashboard (private)
+startUrl: https://homepage.cloud.merox.dev
 
 theme: dark
 color: zinc

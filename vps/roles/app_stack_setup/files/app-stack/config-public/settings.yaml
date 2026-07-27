@@ -1,0 +1,35 @@
+---
+title: merox.dev
+description: Homelab Overview
+
+theme: dark
+color: zinc
+iconStyle: flat
+
+favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
+
+fullWidth: false
+maxGroupColumns: 3
+disableCollapse: true
+groupsInitiallyCollapsed: false
+useEqualHeights: false
+
+headerStyle: underlined
+
+quicklaunch:
+  searchDescriptions: false
+  hideInternetSearch: true
+  showSearchSuggestions: false
+  hideVisitURL: false
+  provider: duckduckgo
+  mobileButtonPosition: bottom-right
+
+showStats: false
+statusStyle: dot
+
+hideVersion: true
+language: en
+target: _blank
+hideErrors: true
+
+instanceName: merox-public

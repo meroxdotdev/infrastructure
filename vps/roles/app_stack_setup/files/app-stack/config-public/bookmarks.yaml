@@ -1,0 +1,19 @@
+---
+- Merox:
+    - Portfolio:
+        - abbr: MX
+          href: https://merox.dev
+          icon: mdi-web
+          description: Main website & blog
+
+    - GitHub:
+        - abbr: GH
+          href: https://github.com/meroxdotdev
+          icon: mdi-github
+          description: Source code & projects
+
+    - Blog:
+        - abbr: BL
+          href: https://merox.dev/blog
+          icon: mdi-post-outline
+          description: Homelab write-ups
