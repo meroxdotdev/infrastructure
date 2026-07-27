@@ -4,9 +4,9 @@
 # Homepage over plain HTTP (internal docker network only). Two sources:
 #  - R730xd's iDRAC (Redfish) - power draw + fan RPM. Read-only iDRAC
 #    account (homepage-ro), no configure/power-control privilege.
-#  - Proxmox Datacenter Manager API (10.57.57.254:8006) - ZFS pool usage
-#    per node (rpool/media on pve, cluster-storage on px-0), reusing the
-#    same API token already deployed for Homepage's own Proxmox widget.
+#  - Proxmox VE API - ZFS pool usage per node. pve (R730xd) and px-0
+#    (Beelink) are standalone hosts, not a corosync cluster, so each has
+#    its own API endpoint and its own token - NOT one shared PDM endpoint.
 # Deployed by ansible (app_stack_setup role).
 set -euo pipefail
 
@@ -14,9 +14,17 @@ IDRAC_HOST="{{ vault_idrac_host }}"
 IDRAC_USER="{{ vault_idrac_username }}"
 IDRAC_PASS="{{ vault_idrac_password }}"
 
-PVE_HOST="10.57.57.254:8006"
-PVE_TOKEN="{{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
-PVE_NODES=(pve px-0)
+# node:host:token triples - one per standalone Proxmox host.
+{% if vault_pve_r730xd_username is defined %}
+PVE_TARGETS=(
+  "pve:10.57.57.250:8006:{{ vault_pve_r730xd_username }}={{ vault_pve_r730xd_password }}"
+  "px-0:10.57.57.254:8006:{{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
+)
+{% else %}
+PVE_TARGETS=(
+  "px-0:10.57.57.254:8006:{{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
+)
+{% endif %}
 
 OUT_DIR="{{ app_stack_dir }}/homelab-stats"
 OUT_FILE="$OUT_DIR/homelab-stats.json"
@@ -37,15 +45,18 @@ curl -sS -m 10 -K "$CURL_CONF" -o "$POWER_FILE" \
 curl -sS -m 10 -K "$CURL_CONF" -o "$THERMAL_FILE" \
   "https://$IDRAC_HOST/redfish/v1/Chassis/System.Embedded.1/Thermal"
 
-for node in "${PVE_NODES[@]}"; do
-  curl -sS -k -m 10 -H "Authorization: PVEAPIToken=$PVE_TOKEN" \
+NODE_NAMES=()
+for target in "${PVE_TARGETS[@]}"; do
+  IFS=':' read -r node host port token <<< "$target"
+  NODE_NAMES+=("$node")
+  curl -sS -k -m 10 -H "Authorization: PVEAPIToken=$token" \
     -o "$STORAGE_DIR/$node.json" \
-    "https://$PVE_HOST/api2/json/nodes/$node/storage" || echo '{"data":[]}' > "$STORAGE_DIR/$node.json"
+    "https://$host:$port/api2/json/nodes/$node/storage" || echo '{"data":[]}' > "$STORAGE_DIR/$node.json"
 done
 
 mkdir -p "$OUT_DIR"
 
-python3 - "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$OUT_FILE" "${PVE_NODES[@]}" <<'PYEOF'
+python3 - "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$OUT_FILE" "${NODE_NAMES[@]}" <<'PYEOF'
 import json
 import sys
 import datetime
