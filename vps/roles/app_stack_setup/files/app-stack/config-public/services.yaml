@@ -1,3 +1,136 @@
 ---
-# Empty for now — the "stats" group (uptime, services running, storage) lands
-# here in a later phase, once there's an anonymized data source to back it.
+# Showcase only — names/icons/descriptions, same info already public in the
+# homelab-tour blog post. No live pinging (this container can't reach the
+# internal network anyway), no admin links — every card points at the blog
+# post where the service is actually explained.
+- Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Media server, Nvidia transcoding
+
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Request management
+
+    - Radarr:
+        icon: radarr.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Movie automation
+
+    - Sonarr:
+        icon: sonarr.png
+        href: https://merox.dev/blog/homelab-tour
+        description: TV automation
+
+    - Prowlarr:
+        icon: prowlarr.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Indexer manager
+
+    - qBittorrent:
+        icon: qbittorrent.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Torrent client, VPN-routed
+
+    - Immich:
+        icon: mdi-image-multiple
+        href: https://merox.dev/blog/homelab-tour
+        description: Photo & video library
+
+# ============================================================================
+- Infrastructure:
+    - Proxmox VE:
+        icon: proxmox.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Hypervisor, 2 standalone hosts
+
+    - Talos Kubernetes:
+        icon: kubernetes.png
+        href: https://merox.dev/blog/homelab-tour
+        description: 3-node cluster, GitOps via Flux
+
+    - Longhorn:
+        icon: longhorn.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Distributed block storage
+
+    - pfSense:
+        icon: pfsense.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Firewall & router
+
+    - Traefik:
+        icon: traefik.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Reverse proxy, ACME certs
+
+    - Authentik:
+        icon: authentik.png
+        href: https://merox.dev/blog/homelab-tour
+        description: SSO / identity provider
+
+    - Cloudflare Tunnel:
+        icon: mdi-cloud-outline
+        href: https://merox.dev/blog/homelab-tour
+        description: Zero-trust ingress, no open ports
+
+# ============================================================================
+- Monitoring:
+    - Grafana:
+        icon: grafana.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Dashboards
+
+    - Prometheus:
+        icon: prometheus.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Metrics collection
+
+    - Alertmanager:
+        icon: mdi-bell-alert
+        href: https://merox.dev/blog/homelab-tour
+        description: Alert routing
+
+    - Netdata:
+        icon: netdata.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Real-time system metrics
+
+# ============================================================================
+- Tools:
+    - Portainer:
+        icon: portainer.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Container management
+
+    - Pi-hole:
+        icon: sh-pi-hole
+        href: https://merox.dev/blog/homelab-tour
+        description: DNS ad-blocking
+
+    - Authentik SSO:
+        icon: authentik.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Single sign-on for everything
+
+    - Guacamole:
+        icon: guacamole.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Remote desktop gateway
+
+    - Joplin Server:
+        icon: joplin.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Notes sync
+
+    - Code Server:
+        icon: vscode.png
+        href: https://merox.dev/blog/homelab-tour
+        description: Browser-based IDE
+
+    - Home Assistant:
+        icon: mdi-home-assistant
+        href: https://merox.dev/blog/homelab-tour
+        description: Smart home hub

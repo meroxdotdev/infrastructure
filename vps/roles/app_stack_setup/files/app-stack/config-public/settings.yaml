@@ -8,8 +8,29 @@ iconStyle: flat
 
 favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
 
+layout:
+  Media:
+    style: column
+    columns: 4
+    icon: mdi-filmstrip
+
+  Infrastructure:
+    style: column
+    columns: 4
+    icon: mdi-server
+
+  Monitoring:
+    style: column
+    columns: 4
+    icon: mdi-monitor-dashboard
+
+  Tools:
+    style: column
+    columns: 4
+    icon: mdi-tools
+
 fullWidth: false
-maxGroupColumns: 3
+maxGroupColumns: 4
 disableCollapse: true
 groupsInitiallyCollapsed: false
 useEqualHeights: false
