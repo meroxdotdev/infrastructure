@@ -66,6 +66,21 @@
   become: yes
   notify: Restart app stack
 
+- name: Remove superseded idrac-stats cron entry (renamed to homelab-stats)
+  ansible.builtin.cron:
+    name: "idrac-stats"
+    state: absent
+  become: yes
+
+- name: Remove superseded idrac-stats script and output dir
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/local/bin/idrac-stats.sh
+    - "{{ app_stack_dir }}/idrac-stats"
+  become: yes
+
 - name: Ensure homelab-stats output directory exists
   ansible.builtin.file:
     path: "{{ app_stack_dir }}/homelab-stats"
