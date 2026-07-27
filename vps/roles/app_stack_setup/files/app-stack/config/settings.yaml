@@ -31,7 +31,7 @@ layout:
 
   Kubernetes:
     style: column
-    columns: 3
+    columns: 2
     icon: kubernetes.png
     useEqualHeights: false
 

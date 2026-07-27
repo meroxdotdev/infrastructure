@@ -140,15 +140,15 @@
         href: https://sso.k8s.merox.dev
         description: SSO
 
-    - Immich:
-        icon: mdi-image-multiple
-        href: https://photos.k8s.merox.dev
-        description: Photo & Video Library
-
 # ============================================================================
 # MEDIA
 # ============================================================================
 - Media:
+
+    - Immich:
+        icon: mdi-image-multiple
+        href: https://photos.k8s.merox.dev
+        description: Photo & Video Library
 
     - Jellyfin:
         icon: jellyfin.png
