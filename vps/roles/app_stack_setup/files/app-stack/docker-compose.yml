@@ -58,15 +58,15 @@ services:
       - "traefik.http.routers.homepage-public.middlewares=default-headers@file"
       - "traefik.http.services.homepage-public.loadbalancer.server.port=3000"
 
-  # Serves idrac-stats.json (written by the idrac-stats.sh cron job) to the
-  # private `homepage` service over plain HTTP - internal network only, no
-  # Traefik labels, no published port. iDRAC credentials never touch this
-  # container; it only ever reads the already-derived JSON off disk.
-  idrac-stats-server:
+  # Serves homelab-stats.json (written by the homelab-stats.sh cron job) to
+  # the private `homepage` service over plain HTTP - internal network only,
+  # no Traefik labels, no published port. iDRAC/Proxmox credentials never
+  # touch this container; it only ever reads the already-derived JSON off disk.
+  homelab-stats-server:
     image: nginx:alpine
-    container_name: idrac-stats-server
+    container_name: homelab-stats-server
     volumes:
-      - ./idrac-stats:/usr/share/nginx/html:ro
+      - ./homelab-stats:/usr/share/nginx/html:ro
     restart: unless-stopped
     networks:
       network-cloud-merox:

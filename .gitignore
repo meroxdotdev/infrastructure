@@ -11,6 +11,7 @@ talos/terraform/.terraform.lock.hcl
 talos/talconfig.yaml.prod-backup
 *.decrypted~*.yaml
 /age.key
+/vps/.vault_pass
 /cloudflare-tunnel.json
 /github-deploy.key
 /github-deploy.key.pub

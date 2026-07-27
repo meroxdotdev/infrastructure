@@ -1,8 +1,208 @@
 ---
+# Reorganized 2026-07-27 — grouped by function (what it does), not by device
+# type. Previous layout mixed hypervisors/NAS into "Network" and left several
+# already-configured providers (Longhorn, Synology, Proxmox widgets) unused.
 # ============================================================================
-# CLOUD
+# COMPUTE & HARDWARE
 # ============================================================================
-- Cloud:
+- Compute & Hardware:
+
+    - Proxmox:
+        icon: proxmox.png
+        href: https://dc.merox.dev
+        description: Datacenter Manager - both hosts, one pane
+        ping: 10.57.57.254
+        widget:
+          type: proxmox
+          url: https://10.57.57.254:8006
+          username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
+          password: "{{HOMEPAGE_VAR_PROXMOX_PASS}}"
+
+    - R730xd Power:
+        icon: mdi-flash
+        description: Current draw (iDRAC)
+        widget:
+          type: customapi
+          url: http://homelab-stats-server/homelab-stats.json
+          refreshInterval: 60000
+          mappings:
+            - field: power_watts
+              label: Power
+              format: number
+              suffix: " W"
+            - field: power_avg_watts
+              label: Avg (1 min)
+              format: number
+              suffix: " W"
+
+    - R730xd Fans:
+        icon: mdi-fan
+        description: Fan RPM (iDRAC)
+        widget:
+          type: customapi
+          url: http://homelab-stats-server/homelab-stats.json
+          refreshInterval: 60000
+          display: dynamic-list
+          mappings:
+            items: fans
+            name: name
+            label: rpm_label
+            format: text
+
+# ============================================================================
+# STORAGE & BACKUP
+# ============================================================================
+- Storage & Backup:
+
+    - Longhorn:
+        icon: longhorn.png
+        href: http://longhorn.k8s.merox.dev
+        description: K8s distributed storage (see info widget above)
+
+    - R730xd Storage Pools:
+        icon: mdi-harddisk
+        description: ZFS pool usage, both hosts
+        widget:
+          type: customapi
+          url: http://homelab-stats-server/homelab-stats.json
+          refreshInterval: 60000
+          display: dynamic-list
+          mappings:
+            items: storage_pools
+            name: name
+            label: usage_label
+            format: text
+
+    - Synology:
+        icon: synology.png
+        href: https://nas.merox.dev
+        description: Cold backup only - asleep except Sunday mornings
+        widget:
+          type: diskstation
+          url: https://10.57.57.201:5001
+          username: "{{HOMEPAGE_VAR_SYNOLOGY_USER}}"
+          password: "{{HOMEPAGE_VAR_SYNOLOGY_PASS}}"
+
+    - Garage S3:
+        icon: mdi-package-variant-closed
+        href: https://garage.cloud.merox.dev
+        description: Rollback safety net - real target is R730xd's own Garage LXC
+
+    - Filebrowser:
+        icon: mdi-folder-multiple
+        href: https://files.k8s.merox.dev
+        description: R730xd SAS pool browser, WebDAV
+
+# ============================================================================
+# KUBERNETES
+# ============================================================================
+- Kubernetes:
+
+    - Headlamp:
+        icon: kubernetes.png
+        href: https://headlamp.k8s.merox.dev
+        description: K8s UI
+
+    - Authentik (K8s):
+        icon: authentik.png
+        href: https://sso.k8s.merox.dev
+        description: SSO
+
+    - Immich:
+        icon: mdi-image-multiple
+        href: https://photos.k8s.merox.dev
+        description: Photo & Video Library
+
+# ============================================================================
+# MEDIA
+# ============================================================================
+- Media:
+
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://media.merox.dev
+        description: Media Server
+
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: https://jellyseerr.k8s.merox.dev/login
+        description: Requests
+
+    - qBittorrent:
+        icon: qbittorrent.png
+        href: https://qbittorrent.k8s.merox.dev
+        description: Downloads
+
+    - Radarr:
+        icon: radarr.png
+        href: https://radarr.k8s.merox.dev
+        description: Movies
+
+    - Sonarr:
+        icon: sonarr.png
+        href: https://sonarr.k8s.merox.dev
+        description: TV Series
+
+    - Prowlarr:
+        icon: prowlarr.png
+        href: https://prowlarr.k8s.merox.dev
+        description: Indexers
+
+# ============================================================================
+# MONITORING & ALERTS
+# ============================================================================
+- Monitoring & Alerts:
+
+    - Netdata:
+        icon: netdata.png
+        href: https://netdata.cloud.merox.dev
+        description: Real-time Metrics
+
+    - Grafana:
+        icon: grafana.png
+        href: https://grafana.k8s.merox.dev
+        description: Dashboards
+
+    - Prometheus:
+        icon: prometheus.png
+        href: https://prometheus.k8s.merox.dev
+        description: Metrics Store
+
+    - Alertmanager:
+        icon: mdi-bell-alert
+        href: https://alertmanager.k8s.merox.dev
+        description: Alerts
+
+# ============================================================================
+# NETWORK
+# ============================================================================
+- Network:
+
+    - pfSense:
+        icon: pfsense.png
+        href: https://pfsense.merox.dev
+        description: Firewall
+        ping: 10.57.57.1
+
+    - PiHole:
+        icon: sh-pi-hole
+        href: http://pihole.cloud.merox.dev/admin/login
+        description: DNS
+
+    - TP-Link:
+        icon: mdi-wifi
+        href: http://tplink.merox.dev
+        description: WiFi
+
+    - Speed Test:
+        icon: mdi-speedometer
+        href: https://speed.merox.dev
+        description: Bandwidth (px-0)
+
+# ============================================================================
+# CLOUD / VPS
+# ============================================================================
+- Cloud / VPS:
 
     - Authentik:
         icon: authentik.png
@@ -43,170 +243,3 @@
         icon: cloudflare.png
         href: https://one.dash.cloudflare.com/af2d61a35bdc3d2adf9ce1eaa1441382/home/quick-start
         description: Tunnel
-
-
-# ============================================================================
-# MONITORING
-# ============================================================================
-- Monitoring:
-
-    - Netdata:
-        icon: netdata.png
-        href: https://netdata.cloud.merox.dev
-        description: Real-time Metrics
-
-    - Grafana:
-        icon: grafana.png
-        href: https://grafana.k8s.merox.dev
-        description: Dashboards
-
-    - Prometheus:
-        icon: prometheus.png
-        href: https://prometheus.k8s.merox.dev
-        description: Metrics Store
-
-    - Alertmanager:
-        icon: mdi-bell-alert
-        href: https://alertmanager.k8s.merox.dev
-        description: Alerts
-
-    - Glances:
-        icon: mdi-monitor-dashboard
-        href: http://172.25.10.20:61208
-        description: System Overview
-
-    - R730xd Power:
-        icon: mdi-flash
-        description: Current draw (iDRAC)
-        widget:
-          type: customapi
-          url: http://idrac-stats-server/idrac-stats.json
-          refreshInterval: 60000
-          mappings:
-            - field: power_watts
-              label: Power
-              format: number
-              suffix: " W"
-            - field: power_avg_watts
-              label: Avg (1 min)
-              format: number
-              suffix: " W"
-
-    - R730xd Fans:
-        icon: mdi-fan
-        description: Fan RPM (iDRAC)
-        widget:
-          type: customapi
-          url: http://idrac-stats-server/idrac-stats.json
-          refreshInterval: 60000
-          display: dynamic-list
-          mappings:
-            items: fans
-            name: name
-            label: rpm_label
-            format: text
-
-
-# ============================================================================
-# NETWORK
-# ============================================================================
-- Network:
-
-    - pfSense:
-        icon: pfsense.png
-        href: https://pfsense.merox.dev
-        description: Firewall
-        ping: 10.57.57.1
-
-    - PiHole:
-        icon: sh-pi-hole
-        href: http://pihole.cloud.merox.dev/admin/login
-        description: DNS
-
-    - TP-Link:
-        icon: mdi-wifi
-        href: http://tplink.merox.dev
-        description: WiFi
-
-    - Speed Test:
-        icon: mdi-speedometer
-        href: https://speed.merox.dev
-        description: Bandwidth (px-0)
-
-    - Proxmox:
-        icon: proxmox.png
-        href: https://dc.merox.dev
-        description: Datacenter Manager - both hosts, one pane
-        ping: 10.57.57.254
-
-    - Synology:
-        icon: synology.png
-        href: https://nas.merox.dev
-        description: l2 backup
-
-
-# ============================================================================
-# KUBERNETES
-# ============================================================================
-- Kubernetes:
-
-    - Longhorn:
-        icon: longhorn.png
-        href: http://longhorn.k8s.merox.dev
-        description: Storage
-
-    - Headlamp:
-        icon: kubernetes.png
-        href: https://headlamp.k8s.merox.dev
-        description: K8s UI
-
-    - Authentik (K8s):
-        icon: authentik.png
-        href: https://sso.k8s.merox.dev
-        description: SSO
-
-    - Filebrowser:
-        icon: mdi-folder-multiple
-        href: https://files.k8s.merox.dev
-        description: R730xd SAS pool browser, WebDAV
-
-    - Immich:
-        icon: mdi-image-multiple
-        href: https://photos.k8s.merox.dev
-        description: Photo & Video Library
-
-
-# ============================================================================
-# MEDIA
-# ============================================================================
-- Media:
-
-    - Jellyfin:
-        icon: jellyfin.png
-        href: https://media.merox.dev
-        description: Media Server
-
-    - Jellyseerr:
-        icon: jellyseerr.png
-        href: https://jellyseerr.k8s.merox.dev/login
-        description: Requests
-
-    - qBittorrent:
-        icon: qbittorrent.png
-        href: https://qbittorrent.k8s.merox.dev
-        description: Downloads
-
-    - Radarr:
-        icon: radarr.png
-        href: https://radarr.k8s.merox.dev
-        description: Movies
-
-    - Sonarr:
-        icon: sonarr.png
-        href: https://sonarr.k8s.merox.dev
-        description: TV Series
-
-    - Prowlarr:
-        icon: prowlarr.png
-        href: https://prowlarr.k8s.merox.dev
-        description: Indexers

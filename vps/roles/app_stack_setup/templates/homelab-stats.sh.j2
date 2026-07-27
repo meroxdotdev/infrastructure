@@ -1,0 +1,110 @@
+#!/bin/bash
+# Pulls telemetry Homepage has no native widget for, and writes one small
+# flat JSON that the homelab-stats-server sidecar serves to the private
+# Homepage over plain HTTP (internal docker network only). Two sources:
+#  - R730xd's iDRAC (Redfish) - power draw + fan RPM. Read-only iDRAC
+#    account (homepage-ro), no configure/power-control privilege.
+#  - Proxmox Datacenter Manager API (10.57.57.254:8006) - ZFS pool usage
+#    per node (rpool/media on pve, cluster-storage on px-0), reusing the
+#    same API token already deployed for Homepage's own Proxmox widget.
+# Deployed by ansible (app_stack_setup role).
+set -euo pipefail
+
+IDRAC_HOST="{{ vault_idrac_host }}"
+IDRAC_USER="{{ vault_idrac_username }}"
+IDRAC_PASS="{{ vault_idrac_password }}"
+
+PVE_HOST="10.57.57.254:8006"
+PVE_TOKEN="{{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
+PVE_NODES=(pve px-0)
+
+OUT_DIR="{{ app_stack_dir }}/homelab-stats"
+OUT_FILE="$OUT_DIR/homelab-stats.json"
+
+CURL_CONF="$(mktemp)"
+POWER_FILE="$(mktemp)"
+THERMAL_FILE="$(mktemp)"
+STORAGE_DIR="$(mktemp -d)"
+cleanup() { rm -rf "$CURL_CONF" "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR"; }
+trap cleanup EXIT
+
+chmod 600 "$CURL_CONF"
+# iDRAC credentials via curl config file, not argv - keeps them out of `ps aux`.
+printf 'user = "%s:%s"\ninsecure\n' "$IDRAC_USER" "$IDRAC_PASS" > "$CURL_CONF"
+
+curl -sS -m 10 -K "$CURL_CONF" -o "$POWER_FILE" \
+  "https://$IDRAC_HOST/redfish/v1/Chassis/System.Embedded.1/Power"
+curl -sS -m 10 -K "$CURL_CONF" -o "$THERMAL_FILE" \
+  "https://$IDRAC_HOST/redfish/v1/Chassis/System.Embedded.1/Thermal"
+
+for node in "${PVE_NODES[@]}"; do
+  curl -sS -k -m 10 -H "Authorization: PVEAPIToken=$PVE_TOKEN" \
+    -o "$STORAGE_DIR/$node.json" \
+    "https://$PVE_HOST/api2/json/nodes/$node/storage" || echo '{"data":[]}' > "$STORAGE_DIR/$node.json"
+done
+
+mkdir -p "$OUT_DIR"
+
+python3 - "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$OUT_FILE" "${PVE_NODES[@]}" <<'PYEOF'
+import json
+import sys
+import datetime
+import os
+
+power_file, thermal_file, storage_dir, out_file = sys.argv[1:5]
+nodes = sys.argv[5:]
+
+with open(power_file) as f:
+    power = json.load(f)
+with open(thermal_file) as f:
+    thermal = json.load(f)
+
+power_control = (power.get("PowerControl") or [{}])[0]
+metrics = power_control.get("PowerMetrics") or {}
+
+fans = []
+for fan in thermal.get("Fans", []):
+    name = fan.get("FanName") or fan.get("Name") or "Fan"
+    reading = fan.get("Reading")
+    unit = fan.get("ReadingUnits") or "RPM"
+    fans.append({"name": name, "rpm": reading, "rpm_label": f"{reading} {unit}"})
+
+storage_pools = []
+for node in nodes:
+    path = os.path.join(storage_dir, f"{node}.json")
+    try:
+        with open(path) as f:
+            data = json.load(f).get("data", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
+    for store in data:
+        if not store.get("active"):
+            continue
+        total = store.get("total") or 0
+        used = store.get("used") or 0
+        if not total:
+            continue
+        pct = round(used / total * 100)
+        total_gb = round(total / 1e9)
+        used_gb = round(used / 1e9)
+        storage_pools.append({
+            "name": f"{node}/{store.get('storage')}",
+            "used_pct": pct,
+            "used_pct_label": f"{pct}%",
+            "usage_label": f"{used_gb} / {total_gb} GB",
+        })
+
+out = {
+    "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    "power_watts": power_control.get("PowerConsumedWatts"),
+    "power_avg_watts": metrics.get("AverageConsumedWatts"),
+    "power_max_watts": metrics.get("MaxConsumedWatts"),
+    "fans": fans,
+    "storage_pools": storage_pools,
+}
+
+tmp_path = out_file + ".tmp"
+with open(tmp_path, "w") as f:
+    json.dump(out, f)
+os.replace(tmp_path, out_file)
+PYEOF

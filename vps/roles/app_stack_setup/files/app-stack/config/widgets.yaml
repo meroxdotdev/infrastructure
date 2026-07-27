@@ -16,3 +16,11 @@
       label: "k8s"
     nodes:
       show: false
+
+# Provider already configured in settings.yaml (providers.longhorn) but
+# unused until now - aggregate storage capacity across the K8s cluster.
+- longhorn:
+    expanded: true
+    total: true
+    labels: true
+    nodes: false

@@ -10,26 +10,20 @@ iconStyle: flat
 favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
 
 # ============================================================================
-# LAYOUT — single page, items vertical (column-first, not row-first)
+# LAYOUT — grouped by function, not by device type (reorganized 2026-07-27)
 # ============================================================================
 layout:
 
-  Cloud:
+  Compute & Hardware:
     style: row
-    columns: 5
-    icon: mdi-cloud-outline
+    columns: 4
+    icon: mdi-server
     useEqualHeights: false
 
-  Monitoring:
-    style: column
-    columns: 3
-    icon: mdi-monitor-dashboard
-    useEqualHeights: false
-
-  Network:
-    style: column
-    columns: 3
-    icon: mdi-server-network
+  Storage & Backup:
+    style: row
+    columns: 4
+    icon: mdi-database
     useEqualHeights: false
 
   Kubernetes:
@@ -42,6 +36,24 @@ layout:
     style: column
     columns: 3
     icon: mdi-filmstrip
+    useEqualHeights: false
+
+  Monitoring & Alerts:
+    style: column
+    columns: 3
+    icon: mdi-monitor-dashboard
+    useEqualHeights: false
+
+  Network:
+    style: column
+    columns: 3
+    icon: mdi-server-network
+    useEqualHeights: false
+
+  Cloud / VPS:
+    style: row
+    columns: 5
+    icon: mdi-cloud-outline
     useEqualHeights: false
 
 # ============================================================================

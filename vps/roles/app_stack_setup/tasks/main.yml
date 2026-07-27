@@ -66,28 +66,28 @@
   become: yes
   notify: Restart app stack
 
-- name: Ensure idrac-stats output directory exists
+- name: Ensure homelab-stats output directory exists
   ansible.builtin.file:
-    path: "{{ app_stack_dir }}/idrac-stats"
+    path: "{{ app_stack_dir }}/homelab-stats"
     state: directory
     mode: '0755'
   become: yes
 
-- name: Deploy R730xd iDRAC power/fan stats script
+- name: Deploy R730xd iDRAC + Proxmox storage stats script
   template:
-    src: idrac-stats.sh.j2
-    dest: /usr/local/bin/idrac-stats.sh
+    src: homelab-stats.sh.j2
+    dest: /usr/local/bin/homelab-stats.sh
     owner: root
     group: root
     mode: '0700'
   become: yes
   no_log: true
 
-- name: Schedule R730xd iDRAC stats refresh (every 5 min)
+- name: Schedule homelab stats refresh (every 5 min)
   ansible.builtin.cron:
-    name: "idrac-stats"
+    name: "homelab-stats"
     minute: "*/5"
-    job: "/usr/local/bin/idrac-stats.sh >> /var/log/idrac-stats.log 2>&1"
+    job: "/usr/local/bin/homelab-stats.sh >> /var/log/homelab-stats.log 2>&1"
     user: root
   become: yes
 
