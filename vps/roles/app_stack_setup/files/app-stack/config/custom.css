@@ -213,39 +213,6 @@
   color: var(--border-h) !important;
 }
 
-/* ── Mobile bottom button ── */
-#merox-home-button { display: none; }
-
-@media (max-width: 768px) {
-  #merox-home-button {
-    display:         flex;
-    position:        fixed;
-    bottom: 0; left: 0; right: 0;
-    z-index:         9999;
-    background:      var(--fg);
-    color:           var(--bg);
-    border-top:      1px solid var(--border);
-    padding:         14px 20px;
-    font-family:     var(--mono);
-    font-size:       0.625rem;
-    font-weight:     500;
-    letter-spacing:  0.08em;
-    text-transform:  uppercase;
-    text-decoration: none;
-    align-items:     center;
-    justify-content: center;
-    gap:             8px;
-    min-height:      50px;
-  }
-
-  #merox-home-button svg {
-    width: 14px; height: 14px;
-    fill: none; stroke: currentColor; stroke-width: 2;
-  }
-
-  body { padding-bottom: 50px; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .service-card { transition: none !important; }
 }
