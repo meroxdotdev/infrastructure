@@ -41,6 +41,27 @@
               format: number
               suffix: " RPM"
 
+    - UPS:
+        id: ups
+        icon: mdi-battery-charging-high
+        description: CyberPower, via px-0 (restricted SSH, read-only)
+        widget:
+          type: customapi
+          url: http://homelab-stats-server/homelab-stats.json
+          refreshInterval: 60000
+          mappings:
+            - field: ups.state
+              label: State
+              format: text
+            - field: ups.battery_pct
+              label: Battery
+              format: number
+              suffix: "%"
+            - field: ups.load_watts
+              label: Load
+              format: number
+              suffix: " W"
+
 # ============================================================================
 # STORAGE & BACKUP
 # ============================================================================

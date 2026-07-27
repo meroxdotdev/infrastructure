@@ -7,6 +7,9 @@
 #  - Proxmox VE API - ZFS pool usage per node. pve (R730xd) and px-0
 #    (Beelink) are standalone hosts, not a corosync cluster, so each has
 #    its own API endpoint and its own token - NOT one shared PDM endpoint.
+#  - pwrstat on px-0, over SSH with a key restricted (via authorized_keys
+#    command=) to always run "pwrstat -status" regardless of what's asked -
+#    same read-only discipline as the iDRAC account above.
 # Deployed by ansible (app_stack_setup role).
 set -euo pipefail
 
@@ -33,7 +36,8 @@ CURL_CONF="$(mktemp)"
 POWER_FILE="$(mktemp)"
 THERMAL_FILE="$(mktemp)"
 STORAGE_DIR="$(mktemp -d)"
-cleanup() { rm -rf "$CURL_CONF" "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR"; }
+PWRSTAT_FILE="$(mktemp)"
+cleanup() { rm -rf "$CURL_CONF" "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$PWRSTAT_FILE"; }
 trap cleanup EXIT
 
 chmod 600 "$CURL_CONF"
@@ -54,16 +58,23 @@ for target in "${PVE_TARGETS[@]}"; do
     "https://$host:$port/api2/json/nodes/$node/storage" || echo '{"data":[]}' > "$STORAGE_DIR/$node.json"
 done
 
+# Restricted key always runs "pwrstat -status" regardless of the command
+# requested here (enforced server-side via authorized_keys command=).
+ssh -i /root/.ssh/vps-to-px0-ups -o BatchMode=yes -o StrictHostKeyChecking=yes \
+  -o ConnectTimeout=8 root@10.57.57.254 "pwrstat -status" > "$PWRSTAT_FILE" 2>/dev/null || true
+
 mkdir -p "$OUT_DIR"
 
-python3 - "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$OUT_FILE" "${NODE_NAMES[@]}" <<'PYEOF'
+python3 - "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$PWRSTAT_FILE" "$OUT_FILE" "${NODE_NAMES[@]}" <<'PYEOF'
 import json
+import re
+import shutil
 import sys
 import datetime
 import os
 
-power_file, thermal_file, storage_dir, out_file = sys.argv[1:5]
-nodes = sys.argv[5:]
+power_file, thermal_file, storage_dir, pwrstat_file, out_file = sys.argv[1:6]
+nodes = sys.argv[6:]
 
 with open(power_file) as f:
     power = json.load(f)
@@ -111,6 +122,51 @@ for node in nodes:
             "usage_label": f"{used_gb} / {total_gb} GB",
         })
 
+# This script runs directly on the VPS - no remote call needed for its own
+# disk usage, unlike everything else above.
+vps_disk = shutil.disk_usage("/")
+vps_pct = round(vps_disk.used / vps_disk.total * 100)
+storage_pools.append({
+    "name": "oracle-vps/root",
+    "used_pct": vps_pct,
+    "used_pct_label": f"{vps_pct}%",
+    "usage_label": f"{round(vps_disk.used / 1e9)} / {round(vps_disk.total / 1e9)} GB",
+})
+
+# pwrstat output is fixed-width "Key.......... Value" lines. Splitting on
+# "." and taking the last piece survives the padding regardless of how many
+# dots there are, as long as the value itself has none (true for all of
+# these fields).
+ups = {}
+try:
+    with open(pwrstat_file) as f:
+        pwrstat_text = f.read()
+except FileNotFoundError:
+    pwrstat_text = ""
+
+for line in pwrstat_text.splitlines():
+    line = line.strip()
+    if line.startswith("State"):
+        ups["state"] = line.split(".")[-1].strip()
+    elif line.startswith("Power Supply by"):
+        ups["power_supply_by"] = line.split(".")[-1].strip()
+    elif line.startswith("Battery Capacity"):
+        val = line.split(".")[-1].strip().replace("%", "").strip()
+        ups["battery_pct"] = int(val) if val.isdigit() else None
+    elif line.startswith("Remaining Runtime"):
+        val = line.split(".")[-1].strip()
+        m = re.match(r"(\d+)", val)
+        ups["runtime_min"] = int(m.group(1)) if m else None
+    elif line.startswith("Load"):
+        val = line.split(".")[-1].strip()
+        m = re.match(r"(\d+)\s*Watt\((\d+)\s*%\)", val)
+        if m:
+            ups["load_watts"] = int(m.group(1))
+            ups["load_pct"] = int(m.group(2))
+
+ups["reachable"] = bool(ups.get("state"))
+ups["state"] = ups.get("state") or "Unreachable"
+
 out = {
     "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "power_watts": power_control.get("PowerConsumedWatts"),
@@ -119,6 +175,7 @@ out = {
     "fan_rpm_avg": fan_rpm_avg,
     "fans": fans,
     "storage_pools": storage_pools,
+    "ups": ups,
 }
 
 tmp_path = out_file + ".tmp"

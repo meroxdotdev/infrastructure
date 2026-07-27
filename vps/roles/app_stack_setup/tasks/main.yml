@@ -81,6 +81,16 @@
     - "{{ app_stack_dir }}/idrac-stats"
   become: yes
 
+- name: Deploy px-0 UPS status SSH private key
+  copy:
+    content: "{{ vault_px0_ups_ssh_key }}"
+    dest: /root/.ssh/vps-to-px0-ups
+    owner: root
+    group: root
+    mode: '0600'
+  become: yes
+  no_log: true
+
 - name: Ensure homelab-stats output directory exists
   ansible.builtin.file:
     path: "{{ app_stack_dir }}/homelab-stats"
