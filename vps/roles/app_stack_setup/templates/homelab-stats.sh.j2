@@ -80,6 +80,12 @@ for fan in thermal.get("Fans", []):
     unit = fan.get("ReadingUnits") or "RPM"
     fans.append({"name": name, "rpm": reading, "rpm_label": f"{reading} {unit}"})
 
+# iDRAC's Redfish Thermal doesn't expose a max/duty-cycle field
+# (MaxReadingRange is null) so there's no reliable basis for a true
+# percentage - average RPM across all fans instead, one compact number.
+readings = [f["rpm"] for f in fans if isinstance(f["rpm"], (int, float))]
+fan_rpm_avg = round(sum(readings) / len(readings)) if readings else None
+
 storage_pools = []
 for node in nodes:
     path = os.path.join(storage_dir, f"{node}.json")
@@ -110,6 +116,7 @@ out = {
     "power_watts": power_control.get("PowerConsumedWatts"),
     "power_avg_watts": metrics.get("AverageConsumedWatts"),
     "power_max_watts": metrics.get("MaxConsumedWatts"),
+    "fan_rpm_avg": fan_rpm_avg,
     "fans": fans,
     "storage_pools": storage_pools,
 }

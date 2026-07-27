@@ -37,17 +37,16 @@
 
     - R730xd Fans:
         icon: mdi-fan
-        description: Fan RPM (iDRAC)
+        description: Avg fan speed, 6 fans (iDRAC)
         widget:
           type: customapi
           url: http://homelab-stats-server/homelab-stats.json
           refreshInterval: 60000
-          display: dynamic-list
           mappings:
-            items: fans
-            name: name
-            label: rpm_label
-            format: text
+            - field: fan_rpm_avg
+              label: Avg Speed
+              format: number
+              suffix: " RPM"
 
 # ============================================================================
 # STORAGE & BACKUP
