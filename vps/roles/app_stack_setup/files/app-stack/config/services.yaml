@@ -62,6 +62,24 @@
               format: number
               suffix: " W"
 
+    - Oracle VPS:
+        id: oracle-vps
+        icon: mdi-cloud-outline
+        description: This host - CPU/RAM (read directly, not container stats)
+        widget:
+          type: customapi
+          url: http://homelab-stats-server/homelab-stats.json
+          refreshInterval: 60000
+          mappings:
+            - field: vps.cpu_pct
+              label: CPU
+              format: number
+              suffix: "%"
+            - field: vps.mem_pct
+              label: Memory
+              format: number
+              suffix: "%"
+
 # ============================================================================
 # STORAGE & BACKUP
 # ============================================================================

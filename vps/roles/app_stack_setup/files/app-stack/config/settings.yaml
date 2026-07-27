@@ -19,7 +19,7 @@ layout:
   # gains/loses an entry in services.yaml.
   Compute & Hardware:
     style: row
-    columns: 3
+    columns: 4
     icon: mdi-server
     useEqualHeights: true
 

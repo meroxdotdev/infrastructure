@@ -97,6 +97,32 @@ for fan in thermal.get("Fans", []):
 readings = [f["rpm"] for f in fans if isinstance(f["rpm"], (int, float))]
 fan_rpm_avg = round(sum(readings) / len(readings)) if readings else None
 
+# VPS's own CPU/RAM - read directly off /proc since this script runs on the
+# host itself, not in a container (Homepage's own "resources" widget can
+# only ever show the Homepage *container's* usage, not the host's - this
+# sidesteps that entirely).
+cpu_count = os.cpu_count() or 1
+load1, _, _ = os.getloadavg()
+vps_cpu_pct = min(round(load1 / cpu_count * 100), 100)
+
+meminfo = {}
+with open("/proc/meminfo") as f:
+    for line in f:
+        key, _, rest = line.partition(":")
+        meminfo[key] = int(rest.strip().split()[0])  # kB
+mem_total_kb = meminfo.get("MemTotal", 0)
+mem_avail_kb = meminfo.get("MemAvailable", 0)
+mem_used_kb = mem_total_kb - mem_avail_kb
+vps_mem_pct = round(mem_used_kb / mem_total_kb * 100) if mem_total_kb else None
+
+vps = {
+    "cpu_pct": vps_cpu_pct,
+    "cpu_cores": cpu_count,
+    "mem_pct": vps_mem_pct,
+    "mem_used_gb": round(mem_used_kb / 1e6, 1),
+    "mem_total_gb": round(mem_total_kb / 1e6, 1),
+}
+
 storage_pools = []
 for node in nodes:
     path = os.path.join(storage_dir, f"{node}.json")
@@ -176,6 +202,7 @@ out = {
     "fans": fans,
     "storage_pools": storage_pools,
     "ups": ups,
+    "vps": vps,
 }
 
 tmp_path = out_file + ".tmp"
