@@ -36,10 +36,10 @@ layout:
     useEqualHeights: false
 
   Media:
-    style: column
-    columns: 3
+    style: row
+    columns: 4
     icon: mdi-filmstrip
-    useEqualHeights: false
+    useEqualHeights: true
 
   Monitoring & Alerts:
     style: column
