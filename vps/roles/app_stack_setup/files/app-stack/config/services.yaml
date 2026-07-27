@@ -121,16 +121,31 @@
         icon: jellyfin.png
         href: https://media.merox.dev
         description: Media Server
+        widget:
+          type: jellyfin
+          url: https://media.merox.dev
+          key: "{{HOMEPAGE_VAR_JELLYFIN_KEY}}"
+          enableBlocks: true
+          enableNowPlaying: true
 
     - Jellyseerr:
         icon: jellyseerr.png
         href: https://jellyseerr.k8s.merox.dev/login
         description: Requests
+        widget:
+          type: seerr
+          url: https://jellyseerr.k8s.merox.dev
+          key: "{{HOMEPAGE_VAR_JELLYSEERR_KEY}}"
 
     - qBittorrent:
         icon: qbittorrent.png
         href: https://qbittorrent.k8s.merox.dev
         description: Downloads
+        widget:
+          type: qbittorrent
+          url: https://qbittorrent.k8s.merox.dev
+          username: "{{HOMEPAGE_VAR_QBIT_USER}}"
+          password: "{{HOMEPAGE_VAR_QBIT_PASS}}"
 
     - Radarr:
         icon: radarr.png
@@ -182,11 +197,25 @@
         href: https://pfsense.merox.dev
         description: Firewall
         ping: 10.57.57.1
+        widget:
+          type: pfsense
+          url: https://10.57.57.1:8443
+          version: 2
+          wan: igb0
+          fields: ["load", "memory", "temp", "wanStatus"]
+          headers:
+            X-API-Key: "{{HOMEPAGE_VAR_PFSENSE_APIKEY}}"
 
     - PiHole:
         icon: sh-pi-hole
         href: http://pihole.cloud.merox.dev/admin/login
         description: DNS
+        widget:
+          type: pihole
+          url: http://pihole
+          version: 6
+          key: "{{HOMEPAGE_VAR_PIHOLE_KEY}}"
+          fields: ["queries", "blocked", "blocked_percent"]
 
     - TP-Link:
         icon: mdi-wifi
@@ -242,3 +271,9 @@
         icon: cloudflare.png
         href: https://one.dash.cloudflare.com/af2d61a35bdc3d2adf9ce1eaa1441382/home/quick-start
         description: Tunnel
+        widget:
+          type: cloudflared
+          accountid: af2d61a35bdc3d2adf9ce1eaa1441382
+          tunnelid: 0fb9de70-9c20-44d6-bfc9-bd03751273fa
+          key: "{{HOMEPAGE_VAR_CLOUDFLARE_KEY}}"
+          fields: ["status", "origin_ip"]

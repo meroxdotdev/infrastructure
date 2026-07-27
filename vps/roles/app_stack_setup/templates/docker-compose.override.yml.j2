@@ -21,3 +21,16 @@ services:
       - 1.1.1.1
       - 8.8.8.8
       - "{{ tailscale_ip }}"
+
+  # Same staleness bug as portainer above - homepage's dns/extra_hosts were
+  # hardcoded to the original server's Tailscale IP too, silently breaking
+  # resolution of every *.cloud.merox.dev/*.k8s.merox.dev hostname a widget
+  # might use (discovered 2026-07-27 while wiring up Jellyfin/qBittorrent/
+  # Jellyseerr widgets - "bad address" from inside the container).
+  homepage:
+    dns: !override
+      - 1.1.1.1
+      - 8.8.8.8
+      - "{{ tailscale_ip }}"
+    extra_hosts: !override
+      - "traefik.cloud.merox.dev:{{ tailscale_ip }}"
