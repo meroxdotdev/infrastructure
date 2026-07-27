@@ -22,15 +22,19 @@ services:
       - 8.8.8.8
       - "{{ tailscale_ip }}"
 
-  # Same staleness bug as portainer above - homepage's dns/extra_hosts were
-  # hardcoded to the original server's Tailscale IP too, silently breaking
-  # resolution of every *.cloud.merox.dev/*.k8s.merox.dev hostname a widget
-  # might use (discovered 2026-07-27 while wiring up Jellyfin/qBittorrent/
-  # Jellyseerr widgets - "bad address" from inside the container).
+  # homepage's dns/extra_hosts were hardcoded to the original server's
+  # Tailscale IP (same staleness risk as portainer above), but that wasn't
+  # even the real bug: *.k8s.merox.dev and media.merox.dev aren't public DNS
+  # records at all (confirmed via `dig` - NOERROR/ANSWER:0, real SOA, no
+  # record) - they only resolve through pfSense's own Unbound, which has the
+  # domain override to K8s-Gateway (see README's pfSense section). 1.1.1.1/
+  # 8.8.8.8 were never going to resolve these, no matter which Tailscale IP
+  # sat in third place. pfSense (10.57.57.1) goes first so it's asked before
+  # falling back to public DNS for anything that IS public.
   homepage:
     dns: !override
+      - 10.57.57.1
       - 1.1.1.1
       - 8.8.8.8
-      - "{{ tailscale_ip }}"
     extra_hosts: !override
       - "traefik.cloud.merox.dev:{{ tailscale_ip }}"
