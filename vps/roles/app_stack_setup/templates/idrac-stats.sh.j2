@@ -53,7 +53,7 @@ for fan in thermal.get("Fans", []):
     fans.append({"name": name, "rpm": reading, "rpm_label": f"{reading} {unit}"})
 
 out = {
-    "updated_at": datetime.datetime.utcnow().isoformat() + "Z",
+    "updated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "power_watts": power_control.get("PowerConsumedWatts"),
     "power_avg_watts": metrics.get("AverageConsumedWatts"),
     "power_max_watts": metrics.get("MaxConsumedWatts"),
