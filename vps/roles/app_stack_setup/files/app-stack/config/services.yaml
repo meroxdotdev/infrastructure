@@ -180,6 +180,19 @@
         icon: mdi-bell-alert
         href: https://alertmanager.k8s.merox.dev
         description: Alerts
+        widget:
+          type: prometheusmetric
+          url: https://prometheus.k8s.merox.dev
+          refreshInterval: 30000
+          metrics:
+            - label: Active
+              query: 'alertmanager_alerts{state="active"}'
+              format:
+                type: number
+            - label: Suppressed
+              query: 'alertmanager_alerts{state="suppressed"}'
+              format:
+                type: number
 
 # ============================================================================
 # NETWORK

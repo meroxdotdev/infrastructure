@@ -15,7 +15,10 @@
       showLabel: true
       label: "k8s"
     nodes:
-      show: false
+      show: true
+      cpu: false
+      memory: false
+      showLabel: true
 
 # Disabled 2026-07-27 - provider URL (10.57.57.80:30887) refuses connections
 # from the VPS (confirmed: connection refused, not a DNS issue this time).
