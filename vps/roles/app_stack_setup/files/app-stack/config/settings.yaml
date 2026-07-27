@@ -78,7 +78,7 @@ quicklaunch:
   provider: duckduckgo
   mobileButtonPosition: bottom-right
 
-showStats: false
+showStats: true
 statusStyle: dot
 
 hideVersion: true

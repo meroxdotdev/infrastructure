@@ -243,31 +243,43 @@
         icon: authentik.png
         href: https://sso.merox.dev
         description: SSO
+        server: my-docker
+        container: authentik-server
 
     - Portainer:
         icon: portainer.png
         href: https://one.merox.dev
         description: Containers
+        server: my-docker
+        container: portainer
 
     - Traefik:
         icon: traefik.png
         href: http://traefik.cloud.merox.dev
         description: Reverse Proxy
+        server: my-docker
+        container: traefik
 
     - Guacamole:
         icon: guacamole.png
         href: https://rmt.merox.dev
         description: Remote Desktop
+        server: my-docker
+        container: guacamole
 
     - Joplin:
         icon: joplin.png
         href: http://joplin.cloud.merox.dev
         description: Notes
+        server: my-docker
+        container: joplin-server
 
     - VS Code:
         icon: vscode.png
         href: http://code.cloud.merox.dev
         description: Cloud IDE
+        server: my-docker
+        container: code-server
 
     - Tailscale:
         icon: tailscale.png
