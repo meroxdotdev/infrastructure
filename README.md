@@ -256,7 +256,7 @@ infrastructure/
 | **R730xd lost** (hardware failure)       | [DR.md "R730xd/Garage total loss fallback"](DR.md#r730xd--garage-total-loss-fallback) — rebuild Garage from Synology/Oracle copy, repoint Longhorn, `task longhorn:restore` |
 | Full rebuild from scratch                | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s)                                                  |
 | New hardware (different IPs / disks)     | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml`                  |
-| Intel iGPU absent on new hardware        | Remove `gpu.intel.com/i915` from Jellyfin HelmRelease, disable intel-device-plugin        |
+| Nvidia GPU absent on new hardware        | Remove `runtimeClassName: nvidia` + `nvidia.com/gpu` limit from Jellyfin HelmRelease, disable nvidia-device-plugin |
 | Jellyfin streaming slow after restore    | [docs/jellyfin-post-restore.md](docs/jellyfin-post-restore.md) — manual UI steps required |
 | Immich photos/albums missing after restore | [docs/immich-post-restore.md](docs/immich-post-restore.md) — VectorChord extension + External Library re-scan |
 
