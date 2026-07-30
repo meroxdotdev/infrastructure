@@ -376,6 +376,28 @@ the date, then either `zfs rollback` (destructive, whole dataset) or mount
 the snapshot's hidden `.zfs/snapshot/<name>/` directory under the affected
 path and copy out just what's needed (non-destructive, preferred).
 
+## Site-alive heartbeat (healthchecks.io, DONE 2026-07-30)
+
+Every mechanism above only speaks up when *it* fails — none of them can
+report a total home-site outage (power, WAN, or pve itself down), because
+they'd be down right along with it. A dead-man's-switch pinged from pve
+itself covers exactly that gap: healthchecks.io emails `hello@merox.dev` if
+the ping goes missing for longer than the grace window, which by definition
+only happens when pve can no longer reach the internet at all.
+
+**Script** (`/root/scripts/heartbeat-ping.sh` on pve, cron `*/5 * * * *`):
+
+```bash
+#!/bin/bash
+set -euo pipefail
+curl -fsS -m 10 --retry 3 -o /dev/null "https://hc-ping.com/..."  # healthchecks.io check "homelab-heartbeat"
+```
+
+Check config: Period 5 minutes, Grace 10 minutes — tolerates one missed/slow
+ping before alerting. Notification channel is plain Email (not Discord):
+same independence from the primary Telegram alert channel, zero extra setup
+since Email was already configured account-wide.
+
 ## Total-loss recovery
 
 See ["R730xd / Garage total loss fallback"](../../DR.md#r730xd--garage-total-loss-fallback)
