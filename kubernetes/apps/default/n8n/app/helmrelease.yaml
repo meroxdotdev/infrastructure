@@ -53,6 +53,21 @@ spec:
                   secretKeyRef:
                     name: n8n-secret
                     key: TELEGRAM_CHAT_ID
+              ANTHROPIC_API_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: n8n-secret
+                    key: ANTHROPIC_API_KEY
+              ICLOUD_USERNAME:
+                valueFrom:
+                  secretKeyRef:
+                    name: n8n-secret
+                    key: ICLOUD_USERNAME
+              ICLOUD_APP_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: n8n-secret
+                    key: ICLOUD_APP_PASSWORD
             probes:
               liveness:
                 enabled: true
