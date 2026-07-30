@@ -43,6 +43,16 @@ spec:
                   secretKeyRef:
                     name: n8n-secret
                     key: N8N_ENCRYPTION_KEY
+              TELEGRAM_BOT_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: n8n-secret
+                    key: TELEGRAM_BOT_TOKEN
+              TELEGRAM_CHAT_ID:
+                valueFrom:
+                  secretKeyRef:
+                    name: n8n-secret
+                    key: TELEGRAM_CHAT_ID
             probes:
               liveness:
                 enabled: true
