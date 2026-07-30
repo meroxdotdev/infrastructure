@@ -40,6 +40,15 @@ PVE_TARGETS=(
 TELEGRAM_BOT_TOKEN="{{ vault_telegram_bot_token | default('') }}"
 TELEGRAM_CHAT_ID="{{ vault_telegram_chat_id | default('') }}"
 
+# Storage/fan alerts route through n8n for AI triage - UPS stays direct to
+# Telegram above/below (must survive n8n itself being down during an
+# outage). n8n.k8s.merox.dev has no public DNS record (by design, LAN/
+# Tailscale-only) so it's resolved explicitly to the internal Gateway's
+# fixed IP rather than relying on this VPS's public resolver to find it.
+N8N_WEBHOOK_URL="https://n8n.k8s.merox.dev/webhook/hardware"
+N8N_WEBHOOK_RESOLVE="n8n.k8s.merox.dev:443:10.57.57.101"
+N8N_WEBHOOK_TOKEN="{{ vault_n8n_webhook_token | default('') }}"
+
 OUT_DIR="{{ app_stack_dir }}/homelab-stats"
 OUT_FILE="$OUT_DIR/homelab-stats.json"
 STATE_FILE="$OUT_DIR/.alert-state.json"
@@ -79,6 +88,7 @@ mkdir -p "$OUT_DIR"
 
 python3 - "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$PWRSTAT_FILE" \
   "$OUT_FILE" "$STATE_FILE" "$TELEGRAM_BOT_TOKEN" "$TELEGRAM_CHAT_ID" \
+  "$N8N_WEBHOOK_URL" "$N8N_WEBHOOK_RESOLVE" "$N8N_WEBHOOK_TOKEN" \
   "${NODE_NAMES[@]}" <<'PYEOF'
 import json
 import re
@@ -86,12 +96,14 @@ import shutil
 import sys
 import datetime
 import os
+import subprocess
 import urllib.request
 import urllib.error
 
 (power_file, thermal_file, storage_dir, pwrstat_file,
- out_file, state_file, telegram_token, telegram_chat_id) = sys.argv[1:9]
-nodes = sys.argv[9:]
+ out_file, state_file, telegram_token, telegram_chat_id,
+ n8n_webhook_url, n8n_webhook_resolve, n8n_webhook_token) = sys.argv[1:12]
+nodes = sys.argv[12:]
 
 with open(power_file) as f:
     power = json.load(f)
@@ -249,6 +261,32 @@ def send_telegram(text):
         pass  # best-effort - a failed notification must not break the dashboard write above
 
 
+def send_n8n_webhook(source, severity, summary):
+    # n8n.k8s.merox.dev has no public DNS record by design - curl --resolve
+    # points it at the internal Gateway's fixed IP without needing this
+    # VPS's public resolver to know about it. Falls back to direct Telegram
+    # (skipping AI triage) if n8n/the tunnel/cluster is unreachable, so a
+    # storage or fan alert is never silently lost.
+    if n8n_webhook_url and n8n_webhook_token:
+        payload = json.dumps({"source": source, "severity": severity, "summary": summary})
+        try:
+            subprocess.run(
+                [
+                    "curl", "-sS", "-m", "10", "--retry", "2",
+                    "--resolve", n8n_webhook_resolve,
+                    "-H", f"Authorization: Bearer {n8n_webhook_token}",
+                    "-H", "Content-Type: application/json",
+                    "-d", payload,
+                    n8n_webhook_url,
+                ],
+                check=True, capture_output=True, timeout=15,
+            )
+            return
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            pass  # fall through to direct Telegram below
+    send_telegram(f"{ALERT_PREFIX} [{source}/{severity}] {summary}")
+
+
 try:
     with open(state_file) as f:
         prev = json.load(f)
@@ -285,9 +323,9 @@ for pool in storage_pools:
     is_high = pool["used_pct"] >= STORAGE_WARN_PCT
     storage_high[key] = is_high
     if is_high and not prev_storage_high.get(key, False):
-        send_telegram(f"{ALERT_PREFIX} {key} is {pool['used_pct_label']} full (threshold {STORAGE_WARN_PCT}%).")
+        send_n8n_webhook("storage", "warning", f"{key} is {pool['used_pct_label']} full (threshold {STORAGE_WARN_PCT}%).")
     elif not is_high and prev_storage_high.get(key, False):
-        send_telegram(f"✅ {key} back under {STORAGE_WARN_PCT}% ({pool['used_pct_label']}).")
+        send_n8n_webhook("storage", "info", f"{key} back under {STORAGE_WARN_PCT}% ({pool['used_pct_label']}).")
 new_state["storage_high"] = storage_high
 
 # iDRAC fans: alert on a dead fan (reads 0 while others don't) or on the
@@ -298,9 +336,9 @@ fan_problem = bool(dead_fans) or (not fans and prev.get("fan_rpm_avg_was_known")
 prev_fan_problem = prev.get("fan_problem", False)
 if fan_problem and not prev_fan_problem:
     detail = f"dead fan(s): {', '.join(dead_fans)}" if dead_fans else "thermal readings unavailable"
-    send_telegram(f"{ALERT_PREFIX} R730xd fan issue - {detail}.")
+    send_n8n_webhook("hardware", "warning", f"R730xd fan issue - {detail}.")
 elif not fan_problem and prev_fan_problem:
-    send_telegram("✅ R730xd fans back to normal.")
+    send_n8n_webhook("hardware", "info", "R730xd fans back to normal.")
 new_state["fan_problem"] = fan_problem
 new_state["fan_rpm_avg_was_known"] = bool(fans)
 
