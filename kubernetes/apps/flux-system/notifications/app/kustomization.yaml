@@ -4,4 +4,4 @@ namespace: flux-system
 resources:
   - ./provider.yaml
   - ./alert.yaml
-  - ./discord-secret.sops.yaml
+  - ./n8n-secret.sops.yaml
