@@ -23,11 +23,11 @@ spec:
           - name: alertname
             value: Watchdog
             matchType: "="
-      - receiver: discord
+      - receiver: n8n
         matchers:
           - name: severity
-            value: critical
-            matchType: "="
+            value: "critical|warning"
+            matchType: "=~"
   inhibitRules:
     - equal: ["alertname", "namespace"]
       sourceMatch:
@@ -45,10 +45,12 @@ spec:
         - urlSecret:
             name: alertmanager-secret
             key: ALERTMANAGER_HEARTBEAT_URL
-    - name: discord
-      discordConfigs:
-        - apiURL:
-            name: alertmanager-secret
-            key: DISCORD_WEBHOOK_URL
-          title: '{{ .CommonLabels.alertname }}'
-          message: '{{ .CommonAnnotations.summary }}'
+    - name: n8n
+      webhookConfigs:
+        - url: http://n8n.default.svc.cluster.local:8080/webhook/alertmanager
+          httpConfig:
+            authorization:
+              type: Bearer
+              credentials:
+                name: alertmanager-secret
+                key: N8N_WEBHOOK_SECRET
