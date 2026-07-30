@@ -1,7 +1,11 @@
 #!/bin/bash
 # Pulls telemetry Homepage has no native widget for, and writes one small
 # flat JSON that the homelab-stats-server sidecar serves to the private
-# Homepage over plain HTTP (internal docker network only). Two sources:
+# Homepage over plain HTTP (internal docker network only). Also evaluates
+# the same readings against thresholds and fires alerts on state changes -
+# this is the one place hardware/power/storage health is watched from
+# OUTSIDE the homelab, so it keeps working during a home-side outage that
+# would take Alertmanager/n8n/Ollama down with it. Sources:
 #  - R730xd's iDRAC (Redfish) - power draw + fan RPM. Read-only iDRAC
 #    account (homepage-ro), no configure/power-control privilege.
 #  - Proxmox VE API - ZFS pool usage per node. pve (R730xd) and px-0
@@ -29,8 +33,16 @@ PVE_TARGETS=(
 )
 {% endif %}
 
+# Alert delivery - optional/empty-safe so this deploys fine before Phase 0
+# secrets exist; sending is skipped silently until they're filled in (see
+# vps_backup_hc_* in roles/vps_backup/defaults/main.yml for the same
+# empty-default convention used for backup healthchecks).
+TELEGRAM_BOT_TOKEN="{{ vault_telegram_bot_token | default('') }}"
+TELEGRAM_CHAT_ID="{{ vault_telegram_chat_id | default('') }}"
+
 OUT_DIR="{{ app_stack_dir }}/homelab-stats"
 OUT_FILE="$OUT_DIR/homelab-stats.json"
+STATE_FILE="$OUT_DIR/.alert-state.json"
 
 CURL_CONF="$(mktemp)"
 POWER_FILE="$(mktemp)"
@@ -65,16 +77,21 @@ ssh -i /root/.ssh/vps-to-px0-ups -o BatchMode=yes -o StrictHostKeyChecking=yes \
 
 mkdir -p "$OUT_DIR"
 
-python3 - "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$PWRSTAT_FILE" "$OUT_FILE" "${NODE_NAMES[@]}" <<'PYEOF'
+python3 - "$POWER_FILE" "$THERMAL_FILE" "$STORAGE_DIR" "$PWRSTAT_FILE" \
+  "$OUT_FILE" "$STATE_FILE" "$TELEGRAM_BOT_TOKEN" "$TELEGRAM_CHAT_ID" \
+  "${NODE_NAMES[@]}" <<'PYEOF'
 import json
 import re
 import shutil
 import sys
 import datetime
 import os
+import urllib.request
+import urllib.error
 
-power_file, thermal_file, storage_dir, pwrstat_file, out_file = sys.argv[1:6]
-nodes = sys.argv[6:]
+(power_file, thermal_file, storage_dir, pwrstat_file,
+ out_file, state_file, telegram_token, telegram_chat_id) = sys.argv[1:9]
+nodes = sys.argv[9:]
 
 with open(power_file) as f:
     power = json.load(f)
@@ -209,4 +226,86 @@ tmp_path = out_file + ".tmp"
 with open(tmp_path, "w") as f:
     json.dump(out, f)
 os.replace(tmp_path, out_file)
+
+# --- Alerting: edge-triggered on state change, not on every 5-min poll. ---
+# Straight to Telegram for now - no n8n/Ollama pipeline exists yet to route
+# through, and building that branch before it exists is complexity with no
+# payoff today. Revisit once n8n is live (later phase) if it's worth moving
+# the non-critical ones (storage/fans) through AI triage instead.
+STORAGE_WARN_PCT = 85
+UPS_BATTERY_WARN_PCT = 30
+ALERT_PREFIX = "\U0001F6A8"  # rotating light
+
+
+def send_telegram(text):
+    if not (telegram_token and telegram_chat_id):
+        return
+    url = f"https://api.telegram.org/bot{telegram_token}/sendMessage"
+    payload = json.dumps({"chat_id": telegram_chat_id, "text": text}).encode()
+    req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+    try:
+        urllib.request.urlopen(req, timeout=10)
+    except (urllib.error.URLError, urllib.error.HTTPError):
+        pass  # best-effort - a failed notification must not break the dashboard write above
+
+
+try:
+    with open(state_file) as f:
+        prev = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    prev = {}
+
+new_state = {}
+
+# UPS: any state change is worth knowing about, both onset and recovery.
+prev_ups_state = prev.get("ups_state")
+if ups["reachable"] and ups["state"] != prev_ups_state:
+    if ups["state"] == "Normal" and prev_ups_state not in (None, "Normal"):
+        send_telegram(f"✅ UPS power restored (was: {prev_ups_state}).")
+    elif ups["state"] != "Normal":
+        send_telegram(
+            f"{ALERT_PREFIX} UPS state changed to '{ups['state']}' "
+            f"(battery {ups.get('battery_pct')}%, runtime ~{ups.get('runtime_min')} min)."
+        )
+new_state["ups_state"] = ups["state"] if ups["reachable"] else prev_ups_state
+
+battery_pct = ups.get("battery_pct")
+prev_low_battery = prev.get("ups_low_battery", False)
+low_battery = ups["state"] != "Normal" and battery_pct is not None and battery_pct < UPS_BATTERY_WARN_PCT
+if low_battery and not prev_low_battery:
+    send_telegram(f"{ALERT_PREFIX} UPS battery below {UPS_BATTERY_WARN_PCT}% ({battery_pct}%) - runtime running out.")
+new_state["ups_low_battery"] = low_battery
+
+# ZFS/storage pools: edge-triggered per pool, keyed by name so one pool
+# crossing the threshold doesn't get lost among the others.
+prev_storage_high = prev.get("storage_high", {})
+storage_high = {}
+for pool in storage_pools:
+    key = pool["name"]
+    is_high = pool["used_pct"] >= STORAGE_WARN_PCT
+    storage_high[key] = is_high
+    if is_high and not prev_storage_high.get(key, False):
+        send_telegram(f"{ALERT_PREFIX} {key} is {pool['used_pct_label']} full (threshold {STORAGE_WARN_PCT}%).")
+    elif not is_high and prev_storage_high.get(key, False):
+        send_telegram(f"✅ {key} back under {STORAGE_WARN_PCT}% ({pool['used_pct_label']}).")
+new_state["storage_high"] = storage_high
+
+# iDRAC fans: alert on a dead fan (reads 0 while others don't) or on the
+# whole thermal reading going unreadable - not on an absolute RPM floor,
+# since normal RPM baseline for this chassis hasn't been profiled.
+dead_fans = [f["name"] for f in fans if f.get("rpm") == 0]
+fan_problem = bool(dead_fans) or (not fans and prev.get("fan_rpm_avg_was_known"))
+prev_fan_problem = prev.get("fan_problem", False)
+if fan_problem and not prev_fan_problem:
+    detail = f"dead fan(s): {', '.join(dead_fans)}" if dead_fans else "thermal readings unavailable"
+    send_telegram(f"{ALERT_PREFIX} R730xd fan issue - {detail}.")
+elif not fan_problem and prev_fan_problem:
+    send_telegram("✅ R730xd fans back to normal.")
+new_state["fan_problem"] = fan_problem
+new_state["fan_rpm_avg_was_known"] = bool(fans)
+
+state_tmp = state_file + ".tmp"
+with open(state_tmp, "w") as f:
+    json.dump(new_state, f)
+os.replace(state_tmp, state_file)
 PYEOF
