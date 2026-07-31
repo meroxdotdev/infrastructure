@@ -92,17 +92,19 @@
 
     - R730xd Storage Pools:
         icon: mdi-harddisk
-        description: ZFS pool usage, both hosts
+        description: Fullest ZFS/storage pool, both hosts (per-pool detail still alerts via n8n)
         widget:
           type: customapi
           url: http://homelab-stats-server/homelab-stats.json
           refreshInterval: 60000
-          display: dynamic-list
           mappings:
-            items: storage_pools
-            name: name
-            label: usage_label
-            format: text
+            - field: storage_summary.fullest_name
+              label: Fullest
+              format: text
+            - field: storage_summary.fullest_pct
+              label: Usage
+              format: number
+              suffix: "%"
 
     - Synology:
         icon: synology.png

@@ -188,6 +188,16 @@ storage_pools.append({
     "usage_label": f"{round(vps_disk.used / 1e9)} / {round(vps_disk.total / 1e9)} GB",
 })
 
+# Homepage shows one compact "worst case" figure instead of a stacked
+# per-pool list (that list still exists above, just for the alerting loop
+# below, keyed per pool so nothing is lost from monitoring).
+fullest_pool = max(storage_pools, key=lambda p: p["used_pct"], default=None)
+storage_summary = {
+    "fullest_name": fullest_pool["name"] if fullest_pool else None,
+    "fullest_pct": fullest_pool["used_pct"] if fullest_pool else None,
+    "fullest_pct_label": fullest_pool["used_pct_label"] if fullest_pool else None,
+}
+
 # pwrstat output is fixed-width "Key.......... Value" lines. Splitting on
 # "." and taking the last piece survives the padding regardless of how many
 # dots there are, as long as the value itself has none (true for all of
@@ -230,6 +240,7 @@ out = {
     "fan_rpm_avg": fan_rpm_avg,
     "fans": fans,
     "storage_pools": storage_pools,
+    "storage_summary": storage_summary,
     "ups": ups,
     "vps": vps,
 }
