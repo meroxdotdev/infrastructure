@@ -36,6 +36,13 @@ spec:
               N8N_PROTOCOL: "https"
               N8N_PORT: &port 8080
               N8N_HOST: &hostName "n8n.k8s.merox.dev"
+              # Without this, n8n derives its externally-advertised webhook
+              # base URL from N8N_HOST:N8N_PORT (n8n.k8s.merox.dev:8080) -
+              # Telegram's setWebhook rejects that port outright ("can be
+              # set up only on ports 80, 88, 443 or 8443"). Point it at the
+              # dedicated webhook hostname/route instead, which is served
+              # over 443 through the external Gateway.
+              WEBHOOK_URL: "https://n8n-webhook.k8s.merox.dev/"
               N8N_LOG_LEVEL: "info"
               N8N_LOG_OUTPUT: "console"
               # n8n blocks $env access from node expressions by default
