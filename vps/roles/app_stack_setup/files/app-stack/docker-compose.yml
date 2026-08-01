@@ -169,7 +169,7 @@ services:
       - "traefik.http.services.pihole.loadbalancer.server.port=80"
 
   joplin-db:
-    image: postgres:15
+    image: postgres:18
     container_name: joplin-db
     restart: unless-stopped
     environment:
