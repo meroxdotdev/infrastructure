@@ -139,9 +139,12 @@ task dr:destroy-vms
 
 # Restart prod nodes via Proxmox UI:
 # VM 800 → kubernetes-controlplane-1 (pve / R730xd)
-# VM 802 → kubernetes-controlplane-2 (px-0 / Beelink)
-# VM 804 → kubernetes-controlplane-3 (px-0 / Beelink)
-# (px-1/px-2 OptiPlexes are retired - controlplane-2/3 live on px-0 now, not there)
+# VM 802 → kubernetes-controlplane-2 (pve / R730xd)
+# VM 804 → kubernetes-controlplane-3 (pve / R730xd)
+# (verified live 2026-08-02: all 3 control-plane VMs run on R730xd, not
+# split across px-0/Beelink as previously documented here. px-0 now hosts
+# datacenter-manager (100), winserver (102, stopped), ollama (105) instead.
+# px-1/px-2 OptiPlexes remain retired.)
 ```
 
 ---
