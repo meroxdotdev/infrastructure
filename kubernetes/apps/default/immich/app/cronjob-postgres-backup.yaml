@@ -51,7 +51,12 @@ spec:
                   set -e
                   trap '[ -n "$HC_URL" ] && wget -q -T 10 -O /dev/null "$HC_URL/fail"' ERR
                   DEST=/backups/immich-postgres
-                  mkdir -p "$DEST"
+                  # `mkdir -p` on an already-existing dir can return EACCES
+                  # instead of a no-op on this NFS share (ACL denies creating
+                  # new subdirectories for this uid, even though writing files
+                  # into an existing one is fine) — only call mkdir when the
+                  # dir is actually missing.
+                  [ -d "$DEST" ] || mkdir -p "$DEST"
                   FILE="$DEST/immich-$(date +%Y-%m-%d).sql.gz"
                   pg_dump | gzip > "$FILE"
                   find "$DEST" -name '*.sql.gz' -mtime +30 -delete
