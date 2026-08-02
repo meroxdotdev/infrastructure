@@ -6,6 +6,7 @@ metadata:
   name: &app netdata
   namespace: &namespace default
 spec:
+  suspend: true # disabled: redundant with kube-prometheus-stack (metrics/alerting) + loki/promtail (logs)
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
