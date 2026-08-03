@@ -1,9 +1,26 @@
 # Disaster Recovery Runbook
 
 Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.  
-**Tested end-to-end: 2026-06-06. Total time: ~35 min.**
+**Tested end-to-end: 2026-06-06 (px-0) and 2026-08-03 (pve/R730xd, prod VMs
+stopped-not-deleted throughout, restarted clean afterward). Total time: ~45 min
+including troubleshooting; a clean run with today's fixes applied should be
+back to ~35 min.**
 
 **You need:** `age.key`, `talos/talsecret.sops.yaml` (or a full re-bootstrap), access to Proxmox.
+
+**In a hurry?** [`docs/dr-quickstart.md`](docs/dr-quickstart.md) is the same
+procedure with no explanations — commands only.
+
+## Which host to target
+
+| Target | Tests | Trade-off |
+|---|---|---|
+| **px-0** | Real host-failure DR (prod lives on R730xd) | Only ~50GB RAM free — 8GB/node (default) is NOT enough to schedule the full stack; use `vm_memory_mb = 16384` minimum, and even then it's below prod's 48GB/node |
+| **pve (R730xd)** | Restore procedure only, not host failure (same physical box) | 238GB+ RAM free once prod VMs are stopped — can match prod exactly (`vm_memory_mb = 49152`), so nothing gets stuck on scheduling |
+
+Both are valid DR drills for different purposes — px-0 for "the R730xd died,
+can we recover," pve for "did we break the restore procedure with recent
+changes" (faster, no resource-sizing surprises).
 
 ---
 
@@ -98,7 +115,8 @@ task longhorn:restore
 **What it does (automatically):**
 1. Patches BackupTarget → S3
 2. Waits for BackupVolumes + Backup CRs to sync from Garage S3 (~60-90s)
-3. Creates restore Volume CRDs for: `jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr`
+3. Creates restore Volume CRDs for: `jellyfin`, `prowlarr`, `radarr`, `sonarr`, `immich-postgres`, `n8n`
+   (`jellyseerr`/`qbittorrent` dropped from backup 2026-07-21 — start empty, dynamically provisioned)
 4. Waits for replica initialization
 5. Applies PV manifests with correct claimRefs
 6. Fixes PVC field ownership (Flux SSA compatibility)
@@ -159,6 +177,14 @@ task dr:destroy-vms
 | First volumes skip with "no backup URL" on fresh restore | `BackupVolume` objects sync fast but individual `Backup` CR objects take ~30s longer | Added wait step in `wait-for-backup-volumes` that confirms Backup CRs have URLs before proceeding |
 | Grafana/Loki PVCs stay Pending after rebind | After PVC delete, PV goes to `Released` but keeps old `claimRef` → Kubernetes refuses to rebind | `create-statefulset-pvcs` now clears the stale `claimRef` before recreating the PVC |
 | `task bootstrap:talos` fails if configs already applied | Task tries to apply configs with `--insecure` but nodes already have TLS | Run bootstrap steps manually (skip `gencommand apply --insecure`) |
+| `bootstrap:apps` fails: prometheus-operator CRD "cannot be imported into the current release" | `apply_crds()` raw-applies these CRDs (Cilium's ServiceMonitor needs them before its HelmRelease runs) with field-manager `kubectl`; the `prometheus-operator-crds` chart installs the *same* CRDs later in the same sync and refuses to adopt them | `apply_crds()` now pre-applies them with `--field-manager=helm --force-conflicts` and the chart's adoption labels already set, so the later `helm install` sees them as already its own |
+| `bootstrap:apps` fails: `no matches for kind "ServiceMonitor"` | Removing the raw prometheus CRD pre-apply entirely (the "obvious" fix for the row above) breaks Cilium, which needs the CRD to exist *before* its own HelmRelease | Don't remove the pre-apply — fix its field-manager/labels instead (see row above) |
+| `immich-postgres`/`n8n` restore silently aborts mid-script | Their Longhorn `BackupVolume` is named `pvc-<uuid>-<hash>` (dynamically-provisioned PVC), not `{app}-restored-<hash>` like the ARR apps — the prefix `grep` finds nothing, and under this script's `set -e` an unmatched `grep` (exit 1) kills the whole restore right there, silently, with no error message | `restore-volume` now falls back to matching by `KubernetesStatus.pvcName` in the BackupVolume's labels when the prefix match fails (pass `PVC_NAME` var) |
+| `immich-postgres`/`n8n` PVC binds to a fresh **empty** volume instead of the restored one | `bootstrap:apps` (Phase 3) already reconciled every Kustomization, including these two, before `longhorn:restore` (Phase 4) runs — their PVCs (plain, dynamically-provisioned, unlike the ARR apps' static claimRef'd PVs) get created and dynamic-provisioned immediately, "winning" the race against the restore | New `unbind-premature-dynamic-pvcs` task (runs before `apply-pvs`) deletes the pod+PVC if bound to a non-`*-restored-pv` volume, so `reconcile-apps` recreates it correctly bound afterward |
+| `jellyseerr`/`qbittorrent`/`prometheus` PVCs stuck `FailedAttachVolume: not found` | `pvs.yaml` still declared static PVs for these three pointing at Longhorn volumes that no longer exist (jellyseerr/qbittorrent dropped from backup 2026-07-21; prometheus was never backed up) — `apply-pvs` recreates the dead PV every run, and it wins the PVC bind race before the dynamic provisioner can | Removed all three dead PV blocks from `pvs.yaml` — those three now get fresh dynamic volumes like the rest of observability |
+| `terraform apply` fails: `storage 'local-data' does not support vm images` | px-0's `local-data` storage had its content-type changed (sometime after the 2026-06 tests) to `iso,import,vztmpl,snippets` — no longer `images` | Use `cluster-storage` for `disk_storage` on px-0 (still `local-data` for `iso_storage`) — already fixed in `terraform.tfvars.example` |
+| DR node never gets its static IP, `dr:apply-talos-configs` reports `UNKNOWN` MAC | `terraform.tfvars.example`'s `node_macs` had a stale MAC for controlplane-3 that no longer matches the real prod VM's NIC (`talconfig.yaml` is the source of truth, always re-verify against it) | Fixed in `terraform.tfvars.example`; if this happens again, `qm set <vmid> -net0 virtio=<correct-mac>,bridge=vmbr0` + reboot the VM |
+| `bootstrap:apps`/`longhorn:restore` fail with `task: Unsupported bash version` or `Missing required deps` | macOS ships bash 3.2 (Taskfile needs 4+); `helmfile`/`kustomize` aren't installed by default outside the `mise` toolchain | `brew install bash helmfile kustomize` once per machine, run with `/opt/homebrew/bin` ahead of `/usr/bin` on `PATH` |
 
 ---
 

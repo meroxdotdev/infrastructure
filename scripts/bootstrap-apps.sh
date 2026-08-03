@@ -93,8 +93,6 @@ function apply_crds() {
         https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/tags/v0.21.0/config/crd/standard/dnsendpoints.externaldns.k8s.io.yaml
         # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
         https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/experimental-install.yaml
-        # renovate: datasource=github-releases depName=prometheus-operator/prometheus-operator
-        https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.93.0/stripped-down-crds.yaml
     )
 
     for crd in "${crds[@]}"; do
@@ -108,6 +106,28 @@ function apply_crds() {
             log error "Failed to apply CRDs" "crd=${crd}"
         fi
     done
+
+    # prometheus-operator CRDs are a special case: Cilium's ServiceMonitor
+    # needs them to exist before its HelmRelease runs (below), but the
+    # prometheus-operator-crds chart (bootstrap/helmfile.yaml, installed
+    # later in this same sync) also owns these exact CRDs. Applying them
+    # raw with a plain field-manager causes a guaranteed ownership conflict
+    # when that chart runs ("cannot be imported into the current release").
+    # Fix: pre-apply with field-manager=helm + the chart's adoption labels
+    # already set, so the later `helm install` sees them as already its own.
+    # Discovered during the 2026-08-03 DR drill.
+    local -r prom_crds="https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.93.0/stripped-down-crds.yaml"
+    if kubectl diff --filename "${prom_crds}" &>/dev/null; then
+        log info "CRDs are up-to-date" "crd=${prom_crds}"
+    else
+        if curl -sL "${prom_crds}" | \
+            yq eval '.metadata.labels["app.kubernetes.io/managed-by"] = "Helm" | .metadata.annotations["meta.helm.sh/release-name"] = "prometheus-operator-crds" | .metadata.annotations["meta.helm.sh/release-namespace"] = "observability"' - | \
+            kubectl apply --server-side --field-manager=helm --force-conflicts --filename - &>/dev/null; then
+            log info "CRDs applied" "crd=${prom_crds}"
+        else
+            log error "Failed to apply CRDs" "crd=${prom_crds}"
+        fi
+    fi
 }
 
 # Sync Helm releases

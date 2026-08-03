@@ -44,6 +44,7 @@ tasks:
       - task: wait-for-backup-volumes
       - task: restore-all-volumes
       - task: wait-for-replicas
+      - task: unbind-premature-dynamic-pvcs
       - task: apply-pvs
       - task: fix-pvc-ownership
       - task: fix-duplicate-longhorn
@@ -116,30 +117,58 @@ tasks:
       - task: restore-volume
         vars: { NAME: sonarr-restored }
       - task: restore-volume
-        vars: { NAME: immich-postgres-restored }
+        vars: { NAME: immich-postgres-restored, PVC_NAME: immich-postgres }
+      - task: restore-volume
+        vars: { NAME: n8n-restored, PVC_NAME: n8n }
       # jellyseerr/qbittorrent dropped from backup 2026-07-21 — session
       # state/easily-reconfigured settings, not worth the restore weight.
       # Observability (loki/prometheus/grafana) is no longer backed up —
       # those PVCs are provisioned fresh (see create-statefulset-pvcs).
-      # n8n is disabled by default; uncomment if enabled in default/kustomization.yaml:
-      # - task: restore-volume
-      #   vars: { NAME: n8n-restored }
 
   restore-volume:
     internal: true
     desc: Create a single restore Volume CRD from latest S3 backup
+    summary: |
+      BackupVolume names normally match "{volume-name}-{hash}" for volumes
+      with a pinned Longhorn volume name (jellyfin/prowlarr/radarr/sonarr).
+      Dynamically-provisioned PVCs (StatefulSet/Deployment volumeClaimTemplate,
+      e.g. immich-postgres, n8n) get an auto-generated "pvc-<uuid>-{hash}"
+      BackupVolume name instead — pass PVC_NAME to look those up by the
+      KubernetesStatus.pvcName label instead of by name prefix.
+      Discovered 2026-08-03: without this fallback, a plain no-match grep
+      exits 1 and (under this script's implicit errexit) aborts the whole
+      restore silently after this volume's "Restoring..." line.
     vars:
       NAME: '{{.NAME}}'
+      PVC_NAME: '{{.PVC_NAME | default .NAME}}'
     cmds:
       - |
         echo "→ Restoring {{.NAME}}..."
 
         # Find BackupVolume for this volume (name format: {volume-name}-{hash})
         BV_NAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} \
-          --no-headers 2>/dev/null | awk '{print $1}' | grep "^{{.NAME}}-" | head -1)
+          --no-headers 2>/dev/null | awk '{print $1}' | grep "^{{.NAME}}-" | head -1 || true)
 
         if [ -z "$BV_NAME" ]; then
-          echo "  ✗ No BackupVolume found for {{.NAME}} — skipping"
+          # Fall back to matching by source PVC name (dynamically-provisioned volumes)
+          BV_NAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} -o json 2>/dev/null | \
+            python3 -c "
+        import json, sys
+        data = json.load(sys.stdin)
+        for item in data.get('items', []):
+            labels = item.get('status', {}).get('labels', {}) or {}
+            ks = labels.get('KubernetesStatus', '')
+            try:
+                if json.loads(ks).get('pvcName') == '{{.PVC_NAME}}':
+                    print(item['metadata']['name'])
+                    break
+            except Exception:
+                continue
+        " || true)
+        fi
+
+        if [ -z "$BV_NAME" ]; then
+          echo "  ✗ No BackupVolume found for {{.NAME}} (pvcName={{.PVC_NAME}}) — skipping"
           echo "    Check: kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
           exit 0
         fi
@@ -192,7 +221,7 @@ tasks:
     cmds:
       - |
         echo "→ Waiting for restore volume replicas to initialize..."
-        VOLUMES="jellyfin-restored prowlarr-restored radarr-restored sonarr-restored immich-postgres-restored"
+        VOLUMES="jellyfin-restored prowlarr-restored radarr-restored sonarr-restored immich-postgres-restored n8n-restored"
         for i in $(seq 1 12); do
           ALL_READY=true
           for VOL in $VOLUMES; do
@@ -209,6 +238,40 @@ tasks:
           fi
           echo "  ... replicas not all ready yet (attempt $i/12)"
           sleep 10
+        done
+    silent: true
+
+  unbind-premature-dynamic-pvcs:
+    desc: Delete immich-postgres/n8n PVCs if Flux already bound them to a fresh dynamic volume
+    summary: |
+      task bootstrap:apps (Phase 3) reconciles ALL Kustomizations, including
+      immich-postgres and n8n — both use a plain dynamically-provisioned PVC
+      (no pinned volumeName), unlike jellyfin/prowlarr/radarr/sonarr which
+      bind via a static PV+claimRef and are safe regardless of order. If
+      those two PVCs get created before this restore runs, Kubernetes
+      dynamic-provisions them a fresh empty volume immediately, "winning"
+      the race against the restored volume this task is about to create.
+      Deleting the PVC (and its pod) here lets apply-pvs's claimRef bind it
+      to the correct restored volume once reconcile-apps recreates it.
+      Discovered during the 2026-08-03 DR drill (had to fix by hand twice).
+    cmds:
+      - |
+        echo "→ Checking for immich-postgres/n8n PVCs bound ahead of restore..."
+        for item in "immich-postgres:immich-postgres" "n8n:n8n"; do
+          PVC=${item%%:*}
+          APP=${item##*:}
+          VOL=$(kubectl get pvc "$PVC" -n default -o jsonpath='{.spec.volumeName}' 2>/dev/null || true)
+          if [ -z "$VOL" ]; then
+            echo "  ✓ $PVC: no PVC yet, nothing to unbind"
+            continue
+          fi
+          case "$VOL" in
+            *-restored-pv) echo "  ✓ $PVC: already bound to restored volume ($VOL)"; continue ;;
+          esac
+          echo "  ! $PVC: bound to fresh volume $VOL — deleting pod+PVC so it can rebind"
+          kubectl delete pod -n default -l app.kubernetes.io/name="$APP" --ignore-not-found
+          kubectl delete pvc "$PVC" -n default --wait=true
+          echo "  ✓ $PVC: deleted, will rebind to restored volume via reconcile-apps"
         done
     silent: true
 
@@ -237,7 +300,7 @@ tasks:
     cmds:
       - |
         echo "→ Fixing PVC field ownership to prevent Flux SSA volumeName conflicts..."
-        for pvc_item in "default:jellyfin" "default:prowlarr" "default:radarr" "default:sonarr" "default:immich-postgres"; do
+        for pvc_item in "default:jellyfin" "default:prowlarr" "default:radarr" "default:sonarr" "default:immich-postgres" "default:n8n"; do
           NS=${pvc_item%%:*}
           PVC=${pvc_item##*:}
           VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null)
@@ -370,13 +433,13 @@ tasks:
         sleep 5
 
         echo "→ Reconciling app Kustomizations (creates cache PVCs + HelmReleases)..."
-        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich; do
+        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich n8n; do
           flux reconcile kustomization $app -n default 2>/dev/null &
         done
         wait
 
         echo "→ Reconciling media stack HelmReleases..."
-        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich-postgres immich; do
+        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich-postgres immich n8n; do
           flux reconcile helmrelease $app -n default 2>/dev/null &
         done
         wait

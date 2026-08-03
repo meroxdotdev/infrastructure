@@ -6,25 +6,41 @@ proxmox_token_id     = "root@pam!terraform"   # create at: Proxmox → Datacente
 proxmox_token_secret = "your-token-secret-here"
 
 # REQUIRED for DR on Proxmox homelab (fixed MACs = prod node MACs from talconfig.yaml):
+# Target px-0 (Beelink, small — 62GB RAM total) or pve/R730xd (huge headroom,
+# use if prod is already down there — see DR.md "Which host to target").
 proxmox_nodes = ["px-0", "px-0", "px-0"]
-disk_storage  = "local-data"
+disk_storage  = "cluster-storage"
 
 # Fixed MACs = prod node MACs (from talos/talconfig.yaml hardwareAddr).
+# ALWAYS verify these against talconfig.yaml before running — they drift
+# whenever a prod VM's NIC changes. Wrong MAC = DR node never gets its
+# static IP (task dr:apply-talos-configs can't match it to a config).
 # This ensures: (a) MAC→config matching in task dr:apply-talos-configs works,
 # and (b) no talconfig patching is needed — prod IPs/MACs are reused.
 # PREREQUISITE: prod cluster VMs must be stopped before DR.
-node_macs = ["bc:24:11:a7:ba:13", "bc:24:11:a5:4b:9e", "bc:24:11:0e:cd:ab"]
+node_macs = ["bc:24:11:a7:ba:13", "bc:24:11:a5:4b:9e", "bc:24:11:96:87:40"]
 node_ips  = ["10.57.57.80", "10.57.57.82", "10.57.57.84"]
 node_vip  = "10.57.57.88"
 
 # Optional overrides:
 # vmid_start     = 810
 # vm_cores       = 4
-# vm_memory_mb   = 8192
+# vm_memory_mb   = 8192   # px-0 has ~50GB free — 8-16GB/node is the practical
+#                         # ceiling there (the full stack needs >8GB/node to
+#                         # schedule everything). On pve/R730xd use 49152 to
+#                         # match prod exactly (238GB+ free when prod is down).
 # vm_disk_gb     = 50
-# iso_storage    = "local-data"
+# iso_storage    = "media-isos"  # on pve/R730xd; "local-data" on px-0
 
-# KNOWN WORKING (discovered during DR tests 2026-06-04/06):
-# - cluster-storage is enabled only on px-0; px-1/px-2 use 'storage' instead
-# - local-data supports iso+images on all nodes but is node-local (not shared)
-# - Run all VMs on px-0 with local-data to avoid ISO availability issues
+# KNOWN WORKING (re-verified during the 2026-08-03 DR drill):
+# - px-0: 'local-data' storage NO LONGER supports VM disk images (content
+#   changed to iso/import/vztmpl/snippets only, sometime after the 2026-06
+#   tests) — use 'cluster-storage' (ZFS, sparse) for disk_storage instead.
+#   local-data is still correct for iso_storage.
+# - px-0's cluster-storage is enabled only on px-0; px-1/px-2 use 'storage'.
+# - pve (R730xd): disk_storage 'local-zfs', iso_storage 'media-isos' (the
+#   'local' storage there only has content=snippets, no iso support).
+# - Proxmox API tokens for terraform don't survive between hosts — px-0 and
+#   R730xd (pve) are separate standalone Proxmox instances with separate
+#   user/token stores. Re-run `pveum user token add root@pam terraform
+#   --privsep 0` on whichever host you target.
