@@ -353,6 +353,72 @@ elif not fan_problem and prev_fan_problem:
 new_state["fan_problem"] = fan_problem
 new_state["fan_rpm_avg_was_known"] = bool(fans)
 
+# Docker containers on this VPS: anything not "Up" (exited/restarting/dead)
+# or marked unhealthy by its own healthcheck is worth flagging. No hardcoded
+# name list - whatever's actually running in the compose stack is what's
+# checked, so a new service is covered automatically.
+def docker_unhealthy():
+    try:
+        out = subprocess.run(
+            ["docker", "ps", "-a", "--format", "{{ '{{.Names}}' }}\t{{ '{{.Status}}' }}"],
+            capture_output=True, text=True, timeout=10, check=True,
+        ).stdout
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        return {}
+    bad = {}
+    for line in out.strip().splitlines():
+        name, _, status = line.partition("\t")
+        if not status.startswith("Up") or "(unhealthy)" in status:
+            bad[name] = status
+    return bad
+
+containers_bad = docker_unhealthy()
+prev_containers_bad = prev.get("containers_bad", {})
+for name, status in containers_bad.items():
+    if name not in prev_containers_bad:
+        send_n8n_webhook("docker", "critical", f"Container '{name}' is {status}.")
+for name in prev_containers_bad:
+    if name not in containers_bad:
+        send_n8n_webhook("docker", "info", f"Container '{name}' recovered.")
+new_state["containers_bad"] = containers_bad
+
+# WAN/Tailscale: proof this VPS can still reach home, independent of
+# anything hosted there. Straight to Telegram like UPS above - if home's
+# down, n8n/Prometheus/Ollama (all home-hosted) are down with it, so routing
+# this particular check through them would mean it never fires when it
+# matters most.
+HOME_TAILSCALE_IP = "100.99.34.94"  # merox-homelab (home firewall/router)
+
+
+def home_reachable():
+    try:
+        out = subprocess.run(
+            ["tailscale", "status", "--json"],
+            capture_output=True, text=True, timeout=10, check=True,
+        ).stdout
+        peers = json.loads(out).get("Peer", {})
+        for peer in peers.values():
+            if (peer.get("TailscaleIPs") or [None])[0] == HOME_TAILSCALE_IP:
+                return bool(peer.get("Online"))
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
+            FileNotFoundError, json.JSONDecodeError, KeyError):
+        pass
+    return None  # unknown (command/parse failure) - don't alert on ambiguous data
+
+
+home_up = home_reachable()
+prev_home_up = prev.get("home_up", True)
+if home_up is not None and home_up != prev_home_up:
+    if home_up:
+        send_telegram("✅ Home network/Tailscale back online.")
+    else:
+        send_telegram(
+            f"{ALERT_PREFIX} Home network unreachable via Tailscale (merox-homelab "
+            "offline) - n8n/Prometheus/Ollama are hosted there too, so alerting "
+            "through them may be down as well."
+        )
+new_state["home_up"] = home_up if home_up is not None else prev_home_up
+
 state_tmp = state_file + ".tmp"
 with open(state_tmp, "w") as f:
     json.dump(new_state, f)
