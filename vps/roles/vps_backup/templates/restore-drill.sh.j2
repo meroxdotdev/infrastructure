@@ -65,7 +65,7 @@ drill_one() {
 }
 
 drill_one authentik postgres:16-alpine authentik authentik
-drill_one joplin postgres:15 joplin joplin
+drill_one joplin postgres:18 joplin joplin
 
 if [ "$FAIL" -eq 0 ]; then
   ping_hc ""

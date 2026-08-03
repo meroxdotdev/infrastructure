@@ -169,13 +169,17 @@ services:
       - "traefik.http.services.pihole.loadbalancer.server.port=80"
 
   joplin-db:
-    image: postgres:15
+    image: postgres:18
     container_name: joplin-db
     restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: ${JOPLIN_DB_PASSWORD}
       POSTGRES_USER: joplin
       POSTGRES_DB: joplin
+      # postgres 18+ refuses to initialize directly at a mounted
+      # /var/lib/postgresql/data (pg_ctlcluster-style layout expected) -
+      # point PGDATA at a subdirectory instead, same fix as immich's postgres.
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - joplin_db_data:/var/lib/postgresql/data
     networks:
