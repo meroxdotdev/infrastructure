@@ -391,19 +391,19 @@ HOME_TAILSCALE_IP = "100.99.34.94"  # merox-homelab (home firewall/router)
 
 
 def home_reachable():
+    # `tailscale status`'s peer table is a passive/cached view - it can sit
+    # stuck on "offline" for 10+ minutes on a NAT keepalive hiccup even
+    # though the peer is actually reachable (confirmed by hand: `tailscale
+    # ping` succeeded instantly while `status` still showed it offline).
+    # An active ping forces a real handshake instead of trusting the cache.
     try:
         out = subprocess.run(
-            ["tailscale", "status", "--json"],
-            capture_output=True, text=True, timeout=10, check=True,
+            ["tailscale", "ping", "--c", "1", HOME_TAILSCALE_IP],
+            capture_output=True, text=True, timeout=15,
         ).stdout
-        peers = json.loads(out).get("Peer", {})
-        for peer in peers.values():
-            if (peer.get("TailscaleIPs") or [None])[0] == HOME_TAILSCALE_IP:
-                return bool(peer.get("Online"))
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired,
-            FileNotFoundError, json.JSONDecodeError, KeyError):
-        pass
-    return None  # unknown (command/parse failure) - don't alert on ambiguous data
+        return "pong from" in out
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None  # unknown (command/parse failure) - don't alert on ambiguous data
 
 
 home_up = home_reachable()
