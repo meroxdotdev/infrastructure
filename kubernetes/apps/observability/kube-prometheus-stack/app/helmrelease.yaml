@@ -160,30 +160,35 @@ spec:
               # answers "did a VM/LXC restart" - pve_up==0 alone would also
               # fire permanently for guests that are just deliberately kept
               # off (windows11, ubuntu-server on pve; winserver on px-0).
+              # `id` alone collides across hosts (pve and px-0 are independent
+              # PVE instances, both have a "qemu/100") - join on (id, instance)
+              # or a rule silently errors out on the shared ID instead of
+              # firing (found the hard way: a real reboot never reached
+              # Alertmanager because of this).
               - alert: PveGuestRestarted
                 annotations:
                   summary: "{{ $labels.name }} ({{ $labels.id }}) on {{ $labels.node }} restarted."
-                expr: (resets(pve_uptime_seconds{id=~"(qemu|lxc)/.*"}[10m]) > 0) * on(id) group_left(name, node) pve_guest_info
+                expr: (resets(pve_uptime_seconds{id=~"(qemu|lxc)/.*"}[10m]) > 0) * on(id, instance) group_left(name, node) pve_guest_info
                 labels:
                   severity: warning
               - alert: PveNodeDown
                 annotations:
                   summary: "Proxmox node {{ $labels.name }} is unreachable."
-                expr: (pve_up{id=~"node/.*"} == 0) * on(id) group_left(name) pve_node_info
+                expr: (pve_up{id=~"node/.*"} == 0) * on(id, instance) group_left(name) pve_node_info
                 for: 2m
                 labels:
                   severity: critical
               - alert: PveHostHighCpu
                 annotations:
                   summary: "Proxmox node {{ $labels.name }} CPU at {{ $value | humanizePercentage }} for 15m+."
-                expr: (pve_cpu_usage_ratio{id=~"node/.*"} > 0.9) * on(id) group_left(name) pve_node_info
+                expr: (pve_cpu_usage_ratio{id=~"node/.*"} > 0.9) * on(id, instance) group_left(name) pve_node_info
                 for: 15m
                 labels:
                   severity: warning
               - alert: PveHostHighMemory
                 annotations:
                   summary: "Proxmox node {{ $labels.name }} memory at {{ $value | humanizePercentage }} for 15m+."
-                expr: (pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"} > 0.9) * on(id) group_left(name) pve_node_info
+                expr: (pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"} > 0.9) * on(id, instance) group_left(name) pve_node_info
                 for: 15m
                 labels:
                   severity: warning
