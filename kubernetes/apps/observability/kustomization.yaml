@@ -9,6 +9,7 @@ resources:
   # Monitoring Stack
   - ./kube-prometheus-stack/ks.yaml
   - ./grafana/ks.yaml
+  - ./pve-exporter/ks.yaml
   # Logging Stack
   - ./loki/ks.yaml
   - ./promtail/ks.yaml

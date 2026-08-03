@@ -1,76 +1,130 @@
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# pve (R730xd), standalone host - queried through pve-exporter's blackbox-
+# style /pve endpoint. `module: default` picks the matching section in
+# pve-exporter-secret's pve.yml.
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: ScrapeConfig
 metadata:
-  name: &name node-exporter
+  name: &name pve
 spec:
   staticConfigs:
     - targets:
-        - expanse.internal:9100
-        - pikvm.internal:9100
-  metricsPath: /metrics
+        - 10.57.57.250
+  metricsPath: /pve
+  params:
+    module: ["default"]
   relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: pve-exporter.observability.svc.cluster.local:9221
     - action: replace
       targetLabel: job
       replacement: *name
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# px-0 (Beelink), standalone host - same pve-exporter, different module
+# (own token in pve.yml, since px-0 and pve aren't a corosync cluster).
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: ScrapeConfig
 metadata:
-  name: &name smartctl-exporter
+  name: px-0
 spec:
   staticConfigs:
     - targets:
-        - expanse.internal:9633
-  metricsPath: /metrics
+        - 10.57.57.254
+  metricsPath: /pve
+  params:
+    module: ["px0"]
   relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: pve-exporter.observability.svc.cluster.local:9221
     - action: replace
       targetLabel: job
-      replacement: *name
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
-apiVersion: monitoring.coreos.com/v1alpha1
-kind: ScrapeConfig
-metadata:
-  name: &name pikvm
-spec:
-  staticConfigs:
-    - targets:
-        - pikvm.internal
-  metricsPath: /api/export/prometheus/metrics
-  relabelings:
-    - action: replace
-      targetLabel: job
-      replacement: *name
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
-apiVersion: monitoring.coreos.com/v1alpha1
-kind: ScrapeConfig
-metadata:
-  name: &name zigbee-controller
-spec:
-  staticConfigs:
-    - targets:
-        - zigbee-controller.internal
-  metricsPath: /metrics
-  relabelings:
-    - action: replace
-      targetLabel: job
-      replacement: *name
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
-apiVersion: monitoring.coreos.com/v1alpha1
-kind: ScrapeConfig
-metadata:
-  name: &name onepassword-connect
-spec:
-  staticConfigs:
-    - targets:
-        - expanse.internal:7070
-  metricsPath: /metrics
-  relabelings:
-    - action: replace
-      targetLabel: job
-      replacement: *name
+      replacement: pve
+
+# Everything below was dead code: this file was never referenced from
+# kustomization.yaml (found + fixed 2026-08-03), so none of it was ever
+# actually applied. Confirmed with user on the same date that none of these
+# hosts/targets (expanse.internal, pikvm.internal, zigbee-controller.internal)
+# are still in use - left commented instead of deleted in case any of this
+# hardware comes back.
+#
+# - yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+#   apiVersion: monitoring.coreos.com/v1alpha1
+#   kind: ScrapeConfig
+#   metadata:
+#     name: &name node-exporter
+#   spec:
+#     staticConfigs:
+#       - targets:
+#           - expanse.internal:9100
+#           - pikvm.internal:9100
+#     metricsPath: /metrics
+#     relabelings:
+#       - action: replace
+#         targetLabel: job
+#         replacement: *name
+# - yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+#   apiVersion: monitoring.coreos.com/v1alpha1
+#   kind: ScrapeConfig
+#   metadata:
+#     name: &name smartctl-exporter
+#   spec:
+#     staticConfigs:
+#       - targets:
+#           - expanse.internal:9633
+#     metricsPath: /metrics
+#     relabelings:
+#       - action: replace
+#         targetLabel: job
+#         replacement: *name
+# - yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+#   apiVersion: monitoring.coreos.com/v1alpha1
+#   kind: ScrapeConfig
+#   metadata:
+#     name: &name pikvm
+#   spec:
+#     staticConfigs:
+#       - targets:
+#           - pikvm.internal
+#     metricsPath: /api/export/prometheus/metrics
+#     relabelings:
+#       - action: replace
+#         targetLabel: job
+#         replacement: *name
+# - yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+#   apiVersion: monitoring.coreos.com/v1alpha1
+#   kind: ScrapeConfig
+#   metadata:
+#     name: &name zigbee-controller
+#   spec:
+#     staticConfigs:
+#       - targets:
+#           - zigbee-controller.internal
+#     metricsPath: /metrics
+#     relabelings:
+#       - action: replace
+#         targetLabel: job
+#         replacement: *name
+# - yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+#   apiVersion: monitoring.coreos.com/v1alpha1
+#   kind: ScrapeConfig
+#   metadata:
+#     name: &name onepassword-connect
+#   spec:
+#     staticConfigs:
+#       - targets:
+#           - expanse.internal:7070
+#     metricsPath: /metrics
+#     relabelings:
+#       - action: replace
+#         targetLabel: job
+#         replacement: *name

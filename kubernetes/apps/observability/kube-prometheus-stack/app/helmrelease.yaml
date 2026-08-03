@@ -152,6 +152,48 @@ spec:
                 expr: (kube_pod_container_status_restarts_total - kube_pod_container_status_restarts_total offset 10m >= 1) and ignoring (reason) min_over_time(kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}[10m]) == 1
                 labels:
                   severity: critical
+      pve-rules:
+        groups:
+          - name: pve
+            rules:
+              # pve_uptime_seconds resetting (not pve_up==0) is what actually
+              # answers "did a VM/LXC restart" - pve_up==0 alone would also
+              # fire permanently for guests that are just deliberately kept
+              # off (windows11, ubuntu-server on pve; winserver on px-0).
+              - alert: PveGuestRestarted
+                annotations:
+                  summary: "{{ $labels.name }} ({{ $labels.id }}) on {{ $labels.node }} restarted."
+                expr: (resets(pve_uptime_seconds{id=~"(qemu|lxc)/.*"}[10m]) > 0) * on(id) group_left(name, node) pve_guest_info
+                labels:
+                  severity: warning
+              - alert: PveNodeDown
+                annotations:
+                  summary: "Proxmox node {{ $labels.name }} is unreachable."
+                expr: (pve_up{id=~"node/.*"} == 0) * on(id) group_left(name) pve_node_info
+                for: 2m
+                labels:
+                  severity: critical
+              - alert: PveHostHighCpu
+                annotations:
+                  summary: "Proxmox node {{ $labels.name }} CPU at {{ $value | humanizePercentage }} for 15m+."
+                expr: (pve_cpu_usage_ratio{id=~"node/.*"} > 0.9) * on(id) group_left(name) pve_node_info
+                for: 15m
+                labels:
+                  severity: warning
+              - alert: PveHostHighMemory
+                annotations:
+                  summary: "Proxmox node {{ $labels.name }} memory at {{ $value | humanizePercentage }} for 15m+."
+                expr: (pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"} > 0.9) * on(id) group_left(name) pve_node_info
+                for: 15m
+                labels:
+                  severity: warning
+              - alert: PveStorageUnavailable
+                annotations:
+                  summary: "Proxmox storage {{ $labels.id }} is unavailable."
+                expr: pve_up{id=~"storage/.*"} == 0
+                for: 15m
+                labels:
+                  severity: warning
       # Comentat ZFS rules - nu ai ZFS
       # zfs-rules:
       #   groups:

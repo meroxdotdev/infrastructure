@@ -5,3 +5,4 @@ resources:
 - ./alertmanager-secret.sops.yaml
 - ./alertmanagerconfig.yaml
 - ./helmrelease.yaml
+- ./scrapeconfig.yaml
