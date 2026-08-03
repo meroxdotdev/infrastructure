@@ -8,11 +8,11 @@ inventory, so these are provisioned/documented directly instead.
 
 Standalone VM (not a Talos node, not part of the K8s cluster) dedicated to
 running Ollama for the alert-triage AI stack (see n8n in
-`kubernetes/apps/default/n8n/`). Deliberately kept out of the K8s
-control-plane: px-0 hosts 2 of the cluster's 3 etcd members
-(`kubernetes-controlplane-2`/`-3`), and this gives Ollama its own
-hypervisor-enforced memory ceiling instead of sharing a kernel/cgroup
-tree with kubelet on either of those VMs.
+`kubernetes/apps/default/n8n/`). Not a Talos node — px-0 hosts no K8s
+control-plane VMs at all (all 3 run on the R730xd, see the root
+`README.md` hardware table) — kept fully outside the cluster so Ollama
+gets its own hypervisor-enforced memory ceiling instead of sharing a
+kernel/cgroup tree with any kubelet.
 
 - **VMID 105**, name `ollama`, IP `10.57.57.90` (static, cloud-init).
 - 4 vCPU, 8GB RAM hard-capped (`balloon: 0` — won't grow into host
