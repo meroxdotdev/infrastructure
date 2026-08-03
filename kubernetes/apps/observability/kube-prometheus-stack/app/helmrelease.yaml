@@ -199,6 +199,19 @@ spec:
                 for: 15m
                 labels:
                   severity: warning
+      vps-rules:
+        groups:
+          - name: vps
+            rules:
+              # 3m, not immediate - a single failed TCP probe can be a blip
+              # same as the WAN/Tailscale check learned today.
+              - alert: VpsUnreachable
+                annotations:
+                  summary: "VPS (Oracle) unreachable via inside.merox.dev - may be down/rebooting."
+                expr: probe_success{job="blackbox-vps"} == 0
+                for: 3m
+                labels:
+                  severity: critical
       # Comentat ZFS rules - nu ai ZFS
       # zfs-rules:
       #   groups:

@@ -1,0 +1,76 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+# Probes VPS reachability from inside the cluster - the mirror of the
+# VPS's own WAN/Tailscale check (homelab-stats.sh), which only catches
+# home going down, not the VPS itself going down/rebooting. Nothing else
+# watches the VPS from an independent vantage point.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: blackbox-exporter
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      blackbox-exporter:
+        containers:
+          app:
+            image:
+              repository: docker.io/prom/blackbox-exporter
+              tag: v0.28.0
+            args:
+              - "--config.file=/etc/blackbox_exporter/blackbox.yml"
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /-/healthy
+                    port: 9115
+                  initialDelaySeconds: 10
+                  periodSeconds: 15
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness: *probes
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: { drop: ["ALL"] }
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
+              limits:
+                memory: 64Mi
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+    service:
+      app:
+        controller: blackbox-exporter
+        ports:
+          http:
+            port: 9115
+    persistence:
+      config:
+        type: configMap
+        name: blackbox-exporter-config
+        globalMounts:
+          - path: /etc/blackbox_exporter/blackbox.yml
+            subPath: blackbox.yml
+            readOnly: true
+      tmp:
+        type: emptyDir

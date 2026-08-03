@@ -1,5 +1,33 @@
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# VPS (Oracle) reachability - TCP-connect through Cloudflare Tunnel to a
+# public hostname on it, from inside the cluster. Nothing else watches the
+# VPS itself; homelab-stats.sh's WAN check only catches home going down,
+# not the VPS. inside.merox.dev chosen because it's public DNS (not
+# Tailscale split-DNS, which k8s pods can't resolve) and always-on.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name blackbox-vps
+spec:
+  staticConfigs:
+    - targets:
+        - inside.merox.dev:443
+  metricsPath: /probe
+  params:
+    module: ["tcp_connect"]
+  relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: blackbox-exporter.observability.svc.cluster.local:9115
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
 # pve (R730xd), standalone host - queried through pve-exporter's blackbox-
 # style /pve endpoint. `module: default` picks the matching section in
 # pve-exporter-secret's pve.yml.
