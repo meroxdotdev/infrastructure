@@ -80,16 +80,6 @@ spec:
                   secretKeyRef:
                     name: n8n-secret
                     key: ICLOUD_APP_PASSWORD
-              TELEGRAM_FAMILY_BOT_TOKEN:
-                valueFrom:
-                  secretKeyRef:
-                    name: n8n-secret
-                    key: TELEGRAM_FAMILY_BOT_TOKEN
-              TELEGRAM_FAMILY_CHAT_ID:
-                valueFrom:
-                  secretKeyRef:
-                    name: n8n-secret
-                    key: TELEGRAM_FAMILY_CHAT_ID
             probes:
               liveness:
                 enabled: true
