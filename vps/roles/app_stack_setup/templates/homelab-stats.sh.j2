@@ -408,16 +408,30 @@ def home_reachable():
 
 home_up = home_reachable()
 prev_home_up = prev.get("home_up", True)
-if home_up is not None and home_up != prev_home_up:
-    if home_up:
+prev_down_streak = prev.get("home_down_streak", 0)
+# A single "offline" reading can just be a Tailscale handshake/DERP blip, not
+# a real outage - require 2 consecutive down checks (~5 min apart) before
+# alerting. Recovery still fires immediately, no need to debounce good news.
+if home_up is None:
+    down_streak = prev_down_streak
+elif home_up:
+    down_streak = 0
+else:
+    down_streak = prev_down_streak + 1
+
+confirmed_down = down_streak >= 2
+new_home_up_confirmed = not confirmed_down
+if new_home_up_confirmed != prev_home_up:
+    if new_home_up_confirmed:
         send_telegram("✅ Home network/Tailscale back online.")
     else:
         send_telegram(
             f"{ALERT_PREFIX} Home network unreachable via Tailscale (merox-homelab "
-            "offline) - n8n/Prometheus/Ollama are hosted there too, so alerting "
-            "through them may be down as well."
+            "offline, 2 consecutive checks) - n8n/Prometheus/Ollama are hosted "
+            "there too, so alerting through them may be down as well."
         )
-new_state["home_up"] = home_up if home_up is not None else prev_home_up
+new_state["home_up"] = new_home_up_confirmed
+new_state["home_down_streak"] = down_streak
 
 state_tmp = state_file + ".tmp"
 with open(state_tmp, "w") as f:
