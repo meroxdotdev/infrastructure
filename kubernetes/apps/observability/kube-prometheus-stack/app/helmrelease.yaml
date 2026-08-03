@@ -171,6 +171,12 @@ spec:
                 expr: (resets(pve_uptime_seconds{id=~"(qemu|lxc)/.*"}[10m]) > 0) * on(id, instance) group_left(name, node) pve_guest_info
                 labels:
                   severity: warning
+              - alert: PveNodeRestarted
+                annotations:
+                  summary: "Proxmox node {{ $labels.name }} restarted."
+                expr: (resets(pve_uptime_seconds{id=~"node/.*"}[10m]) > 0) * on(id, instance) group_left(name) pve_node_info
+                labels:
+                  severity: warning
               - alert: PveNodeDown
                 annotations:
                   summary: "Proxmox node {{ $labels.name }} is unreachable."
