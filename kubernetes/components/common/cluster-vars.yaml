@@ -29,9 +29,10 @@ data:
   # -- Cilium LoadBalancer IPs (must be within the pool in cilium/app/networks.yaml)
   # LB_IP_GATEWAY_INTERNAL = cluster.yaml: cluster_gateway_addr
   LB_IP_GATEWAY_INTERNAL: "10.57.57.101"
-  # LB_IP_QBITTORRENT / LB_IP_PORTAINER — app-specific, not in cluster.yaml
+  # LB_IP_QBITTORRENT / LB_IP_PORTAINER / LB_IP_NETBOOTXYZ — app-specific, not in cluster.yaml
   LB_IP_QBITTORRENT: "10.57.57.102"
   LB_IP_PORTAINER: "10.57.57.103"
+  LB_IP_NETBOOTXYZ: "10.57.57.104"
   # LB_IP_K8S_GATEWAY = cluster.yaml: cluster_dns_gateway_addr
   LB_IP_K8S_GATEWAY: "10.57.57.111"
   # LB_IP_GATEWAY_EXTERNAL = cluster.yaml: cloudflare_gateway_addr
