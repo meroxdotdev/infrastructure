@@ -6,7 +6,12 @@ metadata:
   namespace: observability
 spec:
   route:
-    groupBy: ["alertname", "job"]
+    # "id" splits each Proxmox VM/node into its own group - without it, one
+    # VM restarting re-flushes the whole alertname+job group, resending
+    # Telegram messages for other VMs that already got announced (still
+    # inside their own 10m firing window). Alerts without an "id" label
+    # (dockerhub/oom rules) just group as before, empty-id is uniform.
+    groupBy: ["alertname", "job", "id"]
     groupInterval: 10m
     groupWait: 1m
     receiver: "null"
