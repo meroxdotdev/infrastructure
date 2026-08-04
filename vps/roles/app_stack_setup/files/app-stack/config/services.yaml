@@ -315,13 +315,6 @@
         server: my-docker
         container: joplin-server
 
-    - VS Code:
-        icon: vscode.png
-        href: http://code.cloud.merox.dev
-        description: Cloud IDE
-        server: my-docker
-        container: code-server
-
     - Tailscale:
         icon: tailscale.png
         href: https://login.tailscale.com/admin/machines

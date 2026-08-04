@@ -48,7 +48,7 @@ make setup   # first run: applies changes; subsequent runs: verifies state
 | .20 | glances |
 | .30 | portainer |
 | .33 | guacamole |
-| .40 | code-server |
+| .40 | free (was code-server, decommissioned) |
 | .50 | free (was uptime-kuma, decommissioned) |
 | .51 | dozzle |
 | .53 | pihole |

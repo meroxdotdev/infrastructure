@@ -97,33 +97,6 @@ services:
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
       - "traefik.http.services.portainer.loadbalancer.server.scheme=http"
 
-  code-server:
-    image: linuxserver/code-server:latest
-    container_name: code-server
-    restart: unless-stopped
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
-    ports:
-      - "8443:8443"
-    environment:
-      PUID: 1001
-      PGID: 1001
-      TZ: Europe/Bucharest
-      PASSWORD: ${CODE_SERVER_PASSWORD}
-    volumes:
-      - code_server_config:/config
-      - /srv:/srv 
-    networks:
-      network-cloud-merox:
-        ipv4_address: 172.25.10.40
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.code.rule=Host(`code.cloud.merox.dev`)"
-      - "traefik.http.routers.code.entrypoints=https"
-      - "traefik.http.routers.code.tls.certresolver=cloudflare"
-      - "traefik.http.services.code.loadbalancer.server.port=8443"
-      - "traefik.http.services.code.loadbalancer.server.scheme=http"
 
   unbound:
     container_name: unbound
@@ -139,8 +112,12 @@ services:
     depends_on:
       - unbound
     ports:
-      - "53:53/tcp"
-      - "53:53/udp"
+      # Tailscale-only (ServerIP below is already the Tailscale IP — this
+      # was the intent, port binding just wasn't scoped to match. An open
+      # public :53 resolver is a DNS-amplification vector for zero benefit,
+      # since nothing outside the tailnet is meant to use this as a resolver).
+      - "100.72.22.38:53:53/tcp"
+      - "100.72.22.38:53:53/udp"
       - "127.0.0.1:8078:80"
     environment:
       TZ: 'Europe/Bucharest'
@@ -214,7 +191,6 @@ services:
 
 volumes:
   portainer_data:
-  code_server_config:
   joplin_db_data:
 
 networks:
