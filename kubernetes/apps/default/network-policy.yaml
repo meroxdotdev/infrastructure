@@ -25,5 +25,9 @@ spec:
   ingress:
     - fromEntities:
         - host
+    # `world` = genuinely external (e.g. qBittorrent's bittorrent LB);
+    # `ingress` = Cilium's own Gateway/Envoy — jellyfin got dropped on
+    # rollout without it, confirmed via `hubble observe --verdict DROPPED`.
     - fromEntities:
         - world
+        - ingress

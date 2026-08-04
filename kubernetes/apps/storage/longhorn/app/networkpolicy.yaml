@@ -18,6 +18,10 @@ spec:
     matchLabels:
       app: longhorn-ui
   ingress:
+    # `ingress` = Cilium's own Gateway/Envoy (how the internal Gateway HTTPRoute
+    # reaches this pod) — dropped on rollout without it, confirmed via
+    # `hubble observe --verdict DROPPED`.
     - fromEntities:
         - host
         - world
+        - ingress
