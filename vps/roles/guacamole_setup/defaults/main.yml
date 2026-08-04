@@ -1,6 +1,6 @@
 ---
 guacamole_docker_dir: /srv/docker/oracle-cloud/guacamole
-guacamole_image: "flcontainers/guacamole:latest"
+guacamole_image: "flcontainers/guacamole:1.6.0"
 guacamole_domain: "rmt.merox.dev"
 guacamole_port: 8080
 guacamole_ip: "172.25.10.33"
