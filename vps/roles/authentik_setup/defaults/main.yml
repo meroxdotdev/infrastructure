@@ -1,6 +1,6 @@
 ---
 authentik_docker_dir: /srv/docker/oracle-cloud/authentik
-authentik_version: "2026.2.3"
+authentik_version: "2026.5.6"
 authentik_domain: "sso.merox.dev"
 authentik_port: 9000
 authentik_db_user: "authentik"
