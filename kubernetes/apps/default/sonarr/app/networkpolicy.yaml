@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Exception to ../../network-policy.yaml's default-deny: Jellyseerr submits
+# requests to Sonarr's API. Inferred from the Jellyseerr <-> *arr request
+# pattern, not caught live — verify after rollout with
+# `hubble observe --namespace default --verdict DROPPED`.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: sonarr-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: sonarr
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: jellyseerr
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP

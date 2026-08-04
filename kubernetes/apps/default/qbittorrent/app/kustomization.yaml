@@ -16,3 +16,4 @@ resources:
 - ./helmrelease.yaml
 - ./pvc.yaml
 - ./gluetun-secret.sops.yaml
+- ./networkpolicy.yaml

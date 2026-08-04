@@ -1,0 +1,28 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Exception to ../../network-policy.yaml's default-deny: Sonarr/Radarr/
+# Prowlarr all talk to qBittorrent's WebUI API to add/manage downloads.
+# NOT caught in the Hubble capture window (inferred from the standard *arr +
+# qBittorrent download-client pattern) — verify after rollout with
+# `hubble observe --namespace default --verdict DROPPED` and widen/narrow
+# as needed.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: qbittorrent-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: qbittorrent
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: radarr
+        - matchLabels:
+            app.kubernetes.io/name: sonarr
+        - matchLabels:
+            app.kubernetes.io/name: prowlarr
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP

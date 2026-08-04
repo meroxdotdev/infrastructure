@@ -1,0 +1,76 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# flux-system is the GitOps control plane: source-controller pulls this repo
+# and any Helm charts, kustomize/helm-controller apply whatever it finds,
+# notification-controller relays alerts AND receives the GitHub webhook.
+# A compromise here is a supply-chain attack on the whole cluster — tighter
+# default than kubernetes/apps/default/network-policy.yaml: no blanket
+# `world` allow, only notification-controller gets it (needed for the
+# GitHub webhook via flux-webhook.${SECRET_DOMAIN}, see flux-instance/app/
+# httproute.yaml + receiver.yaml).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-lateral
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+---
+# GitHub webhook (path-restricted to /hook/ at the HTTPRoute level, this is
+# just the L3/L4 gate).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: notification-controller-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app: notification-controller
+  ingress:
+    - fromEntities:
+        - world
+---
+# kustomize-controller and helm-controller pull prepared Git/Helm artifacts
+# from source-controller on every reconciliation. Not caught live (the HTTP
+# connections get reused, no new SYN during the Hubble capture window) —
+# this is how Flux is documented to work, not a guess.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: source-controller-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app: source-controller
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: kustomize-controller
+        - matchLabels:
+            app: helm-controller
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+---
+# Prometheus (observability namespace) scrapes flux-operator via its own
+# ServiceMonitor — confirmed live via `hubble observe`. It's the only Flux
+# component with one; the other controllers aren't scraped.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: flux-operator-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: flux-operator
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP

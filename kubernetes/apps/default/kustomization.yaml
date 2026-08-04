@@ -17,6 +17,8 @@ patches:
       kind: Namespace
       name: not-used
 resources:
+  # Network policy (applies to every app below — see file for rationale)
+  - ./network-policy.yaml
   # Dashboard
   # Media Stack
   - ./jellyfin/ks.yaml

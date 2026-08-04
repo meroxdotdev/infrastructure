@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Deliberately scoped to just longhorn-ui, NOT a namespace-wide default-deny.
+# longhorn-system's other components (instance-manager, engine-image,
+# csi-attacher/provisioner/resizer/snapshotter) have dense, poorly-documented
+# inter-pod chatter for replica sync — getting a blanket policy wrong here
+# risks actual data loss, not just downtime, and it wasn't confirmed safe via
+# Hubble. The realistic threat (a compromised low-trust pod elsewhere in the
+# cluster reaching the Longhorn UI to delete volumes/snapshots) is fully
+# addressed by locking down just the UI; leave the storage data-plane alone
+# until it's been observed properly.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: longhorn-ui-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app: longhorn-ui
+  ingress:
+    - fromEntities:
+        - host
+        - world

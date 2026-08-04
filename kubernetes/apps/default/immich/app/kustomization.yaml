@@ -9,3 +9,4 @@ resources:
   - ./postgres-helmrelease.yaml
   - ./helmrelease.yaml
   - ./cronjob-postgres-backup.yaml
+  - ./networkpolicy.yaml

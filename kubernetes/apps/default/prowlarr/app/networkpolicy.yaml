@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Exception to ../../network-policy.yaml's default-deny: Sonarr/Radarr pull
+# their indexer list from Prowlarr's API. radarr -> prowlarr:80 confirmed
+# live via `hubble observe --namespace default`; sonarr -> prowlarr:80 is
+# the same *arr sync pattern, not independently caught in the capture window
+# — if Sonarr's indexer sync starts failing after rollout, that's the first
+# place to check (`hubble observe --namespace default --verdict DROPPED`).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: prowlarr-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: prowlarr
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: radarr
+        - matchLabels:
+            app.kubernetes.io/name: sonarr
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP

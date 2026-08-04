@@ -1,0 +1,29 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Baseline for every pod in this namespace: block pod-to-pod lateral movement,
+# keep everything that already works today working (kubelet probes, and
+# anything reached from outside the pod mesh via Cilium Gateway/NodePort/
+# LoadBalancer — those are already gated by the Services themselves, this
+# isn't re-implementing that gate).
+#
+# `default` mixes trust levels badly: low-trust apps that touch untrusted
+# external data (jellyfin, the *arr stack, qbittorrent, n8n) sit next to
+# high-value ones (authentik-outpost, headlamp, portainer-agent — the latter
+# has cluster-admin, see rbac.yaml). Without this, any one of the low-trust
+# apps getting popped means free reach to all the others on the pod network.
+#
+# App-specific intra-namespace exceptions (immich-server -> immich-postgres/
+# valkey, the *arr stack talking to each other) live next to those apps'
+# own manifests, not here — see immich/app/networkpolicy.yaml,
+# prowlarr|radarr|sonarr|qbittorrent/app/networkpolicy.yaml.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-lateral
+spec:
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - host
+    - fromEntities:
+        - world

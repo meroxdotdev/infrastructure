@@ -1,0 +1,45 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Exceptions to default/network-policy.yaml's default-deny: immich-server
+# needs its DB and cache, the nightly pg_dump job needs the DB too.
+# Confirmed live via `hubble observe --namespace default` (immich-server <->
+# immich-valkey on 6379); immich-postgres wasn't caught mid-capture since the
+# connection is long-lived, but it's a hard requirement either way.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: immich-postgres-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: immich-postgres
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: immich
+            app.kubernetes.io/name: server
+        - matchLabels:
+            app.kubernetes.io/name: immich-postgres-backup
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: immich-valkey-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/instance: immich
+      app.kubernetes.io/name: valkey
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/instance: immich
+            app.kubernetes.io/name: server
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP

@@ -5,3 +5,4 @@ resources:
 - ./helmrelease.yaml
 - ./httproute.yaml
 - ./minio-secret.sops.yaml
+- ./networkpolicy.yaml

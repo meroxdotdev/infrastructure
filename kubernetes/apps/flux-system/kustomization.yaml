@@ -6,6 +6,8 @@ namespace: flux-system
 components:
   - ../../components/common
 resources:
+  # Network policy (applies to every controller below — see file for rationale)
+  - ./network-policy.yaml
   # Flux Operator (manages Flux instances)
   - ./flux-operator/ks.yaml
   # Flux Instance (this cluster's Flux instance)
