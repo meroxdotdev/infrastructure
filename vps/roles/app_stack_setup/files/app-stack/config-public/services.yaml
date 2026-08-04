@@ -93,11 +93,6 @@
         href: https://merox.dev/blog/homelab-tour
         description: Alert routing
 
-    - Netdata:
-        icon: netdata.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Real-time system metrics
-
 # ============================================================================
 - Tools:
     - Portainer:

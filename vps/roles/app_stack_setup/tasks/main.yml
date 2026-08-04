@@ -19,9 +19,9 @@
 # Static app-stack files (root compose, Homepage config, Pi-hole static
 # lists) live in this repo now - formerly a separate git clone of
 # meroxdotdev/cloudlab-merox, retired 2026-07-25. garage/, guacamole/,
-# traefik/, netdata/ are deliberately NOT part of this copy - those already
+# traefik/ are deliberately NOT part of this copy - those already
 # have their own dedicated role + template (garage_setup, guacamole_setup,
-# traefik_setup, netdata_setup) deploying into the same subdirectories, and
+# traefik_setup) deploying into the same subdirectories, and
 # the old git-clone merge was silently overwriting them on every run.
 - name: Deploy static app-stack files (root compose, Homepage config, Pi-hole lists)
   ansible.builtin.copy:

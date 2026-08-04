@@ -202,11 +202,6 @@
 # ============================================================================
 - Monitoring & Alerts:
 
-    - Netdata:
-        icon: netdata.png
-        href: https://netdata.cloud.merox.dev
-        description: Real-time Metrics
-
     - Grafana:
         icon: grafana.png
         href: https://grafana.k8s.merox.dev

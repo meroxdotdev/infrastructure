@@ -2,7 +2,6 @@
         traefik-setup traefik-test \
         garage-setup garage-test \
         guacamole-setup guacamole-test \
-        netdata-setup netdata-test \
         cloudflared-setup cloudflared-test app-stack-setup app-stack-test \
         authentik-setup authentik-test authentik-backup \
         cleanup check-resources health-check \
@@ -35,8 +34,8 @@ help:
 	@echo ""
 	@echo "Individual services:"
 	@echo "  traefik-setup      garage-setup       guacamole-setup"
-	@echo "  netdata-setup      authentik-setup"
-	@echo "  cloudflared-setup  app-stack-setup    (cloudlab-merox app stack)"
+	@echo "  authentik-setup    cloudflared-setup"
+	@echo "  app-stack-setup    (cloudlab-merox app stack)"
 	@echo ""
 	@echo "Authentik SSO:"
 	@echo "  authentik-setup    Deploy Authentik (sso.merox.dev)"
@@ -109,12 +108,6 @@ guacamole-setup:
 
 guacamole-test:
 	ansible vps_servers -m shell -a "docker ps | grep guacamole"
-
-netdata-setup:
-	ansible-playbook playbooks/netdata-setup.yml
-
-netdata-test:
-	ansible vps_servers -m shell -a "docker ps | grep netdata && curl -I http://localhost:19999"
 
 cloudflared-setup:
 	ansible-playbook playbooks/site.yml --tags cloudflared
