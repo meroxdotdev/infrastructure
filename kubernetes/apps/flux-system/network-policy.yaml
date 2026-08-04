@@ -18,8 +18,8 @@ spec:
     - fromEntities:
         - host
 ---
-# notification-controller has two separate audiences, missed the second one
-# on the first pass and it stalled every Kustomization/HelmRelease reconcile
+# notification-controller has two separate audiences, missed both on the
+# first pass and it stalled every Kustomization/HelmRelease reconcile
 # cluster-wide (they all POST an event here after every run via
 # --events-addr, non-fatal but each failed POST is 5 retries with backoff —
 # caught via kustomize-controller logs full of "unable to record event"):
@@ -28,7 +28,11 @@ spec:
 #      `world` (also missed initially, caught via `hubble observe
 #      --verdict DROPPED`).
 #   2. every kustomize-controller/helm-controller in the cluster, posting
-#      reconciliation events — pod-to-pod, not world/ingress at all.
+#      reconciliation events — pod-to-pod, not world/ingress at all, and on
+#      the pod's real `http` container port (9090), not the Service's
+#      external port 80 — same class of mistake as source-controller below,
+#      caught the same way (a second `hubble observe --verdict DROPPED`
+#      sweep ~15 min after the first two fixes went live).
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -48,7 +52,7 @@ spec:
             app: helm-controller
       toPorts:
         - ports:
-            - port: "80"
+            - port: "9090"
               protocol: TCP
 ---
 # kustomize-controller and helm-controller pull prepared Git/Helm artifacts
