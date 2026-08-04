@@ -1,0 +1,30 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Exception to ../../network-policy.yaml's default-deny: n8n's webhooks are
+# called directly pod-to-pod, cross-namespace, not through the Cilium
+# Gateway (so `world`/`ingress` in the base policy don't cover them):
+#   - Alertmanager (observability) -> /webhook/alertmanager
+#     (kubernetes/apps/observability/kube-prometheus-stack/app/alertmanagerconfig.yaml)
+#   - Flux notification-controller (flux-system) -> /webhook/flux
+#     (kubernetes/apps/flux-system/notifications/app/provider.yaml)
+# Both silently broken by the base policy's rollout on 2026-08-04 — caught
+# via a direct `wget` from the Alertmanager pod timing out (not "connection
+# refused"), then confirmed against the actual caller list in this repo.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: n8n-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: n8n
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: flux-system
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
