@@ -6,3 +6,4 @@ resources:
 - ./pvc.yaml
 - ./nodeport.yaml
 - ./networkpolicy.yaml
+- ./loadbalancer.yaml

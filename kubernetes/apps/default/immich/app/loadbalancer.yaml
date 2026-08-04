@@ -1,0 +1,22 @@
+---
+# Dedicated LB IP, separate from the shared internal Cilium Gateway
+# (10.57.57.101, hostname-routed — Envoy can't be split per-hostname at the
+# Tailscale ACL layer, which only sees IP:port). This gives Immich its own
+# address so a Tailscale ACL grant can restrict a guest device to exactly
+# this service and nothing else reachable through the shared gateway.
+apiVersion: v1
+kind: Service
+metadata:
+  name: immich-server-external
+  namespace: default
+  annotations:
+    lbipam.cilium.io/ips: ${LB_IP_IMMICH}
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/instance: immich
+    app.kubernetes.io/name: server
+  ports:
+    - port: 2283
+      targetPort: 2283
+      protocol: TCP

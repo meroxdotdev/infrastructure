@@ -1,0 +1,21 @@
+---
+# Dedicated LB IP, separate from jellyfin-nodeport.yaml (that one's for the
+# existing public-via-VPS path) and from the shared internal Cilium Gateway.
+# Gives Jellyfin its own address so a Tailscale ACL grant can restrict a
+# guest device to exactly this service (+ Immich's, same pattern) and
+# nothing else.
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-external
+  namespace: default
+  annotations:
+    lbipam.cilium.io/ips: ${LB_IP_JELLYFIN}
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: jellyfin
+  ports:
+    - port: 8096
+      targetPort: 8096
+      protocol: TCP

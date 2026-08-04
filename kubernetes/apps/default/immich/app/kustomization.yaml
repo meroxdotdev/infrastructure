@@ -10,3 +10,4 @@ resources:
   - ./helmrelease.yaml
   - ./cronjob-postgres-backup.yaml
   - ./networkpolicy.yaml
+  - ./loadbalancer.yaml
