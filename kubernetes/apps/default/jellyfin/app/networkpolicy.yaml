@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Exception to ../../network-policy.yaml's default-deny: Jellyseerr talks to
+# Jellyfin directly (library sync, user auth passthrough), not just to
+# Sonarr/Radarr. Missed on the first two passes — caught via a third
+# `hubble observe --verdict DROPPED` sweep after "are you sure nothing else
+# broke", not by architecture guesswork this time (12 real drops in a 2min
+# window). Service port and container port match here (8096/8096, no
+# remap), unlike the source-controller/notification-controller cases.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: jellyfin-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: jellyfin
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: jellyseerr
+      toPorts:
+        - ports:
+            - port: "8096"
+              protocol: TCP
