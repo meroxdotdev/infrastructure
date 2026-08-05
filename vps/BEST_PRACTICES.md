@@ -1,5 +1,26 @@
 # Best Practices
 
+## Production checkout (on the VPS itself)
+
+`ansible_connection=local` means deploys run *from the VPS*, not from your
+laptop — there's a working clone at `/srv/kubernetes/infrastructure` on the
+server (name is historical, not a k8s thing). It doesn't auto-update:
+
+```bash
+cd /srv/kubernetes/infrastructure && git pull   # before any make setup
+```
+
+Never set `credential.helper=store` there (or anywhere on that checkout).
+The repo is public, so `git pull`/`fetch` need no credentials at all — the
+helper only exists to *persist* a token the moment one is ever typed for a
+push, in plaintext, granting standing write access to anyone with root on
+the VPS from then on. If a future re-clone re-enables it (some OS images
+set a global default), unset it:
+
+```bash
+git config --global --unset credential.helper
+```
+
 ## Maintenance
 
 **Weekly**
@@ -45,18 +66,19 @@ make setup   # first run: applies changes; subsequent runs: verifies state
 |----|-----------|
 | .2 | traefik |
 | .10 | homepage |
-| .20 | glances |
+| .11 | homepage-public |
+| .12 | homelab-stats-server |
+| .20 | free (was glances, not carried over in the 2026-07-26 app-stack migration) |
 | .30 | portainer |
 | .33 | guacamole |
 | .40 | free (was code-server, decommissioned) |
 | .50 | free (was uptime-kuma, decommissioned) |
-| .51 | dozzle |
+| .51 | free (was dozzle, not carried over in the 2026-07-26 app-stack migration) |
+| .52 | unbound |
 | .53 | pihole |
 | .60 | joplin-db |
 | .61 | joplin-server |
-| .62 | nextcloud-redis |
-| .63 | nextcloud |
-| .64 | nextcloud-db |
+| .62-64 | free (reserved for nextcloud, never deployed) |
 | .70 | authentik-postgresql |
 | .71 | authentik-redis |
 | .72 | authentik-server |

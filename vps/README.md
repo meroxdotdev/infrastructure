@@ -16,10 +16,14 @@ Two deployment modes:
 ## Stack
 
 Traefik (reverse proxy + ACME), Pi-hole + Unbound, Authentik SSO, Portainer EE,
-Homepage, Joplin Server + Postgres, Guacamole, Garage S3, Beszel, Code Server —
-one role per service under `roles/`, full URL table in the
-[main README](../README.md#everything-at-a-glance). All web traffic goes
-through Cloudflare Tunnel — no open inbound ports.
+Homepage, Joplin Server + Postgres, Guacamole — one role per service under
+`roles/`, full URL table in the [main README](../README.md#everything-at-a-glance).
+All web traffic goes through Cloudflare Tunnel — no open inbound ports.
+
+Garage S3 stays on-disk as on-demand DR tooling (see
+[DR.md](../DR.md#r730xd--garage-total-loss-fallback)) but isn't deployed by
+default — `site.yml` no longer includes it (see `make garage-setup` in
+[BEST_PRACTICES.md](BEST_PRACTICES.md)).
 
 The root `docker-compose.yml` + Homepage config (`config/`) used to live in a
 separate repo (`meroxdotdev/cloudlab-merox`, retired 2026-07-25) — now under

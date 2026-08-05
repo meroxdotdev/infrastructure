@@ -22,9 +22,7 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Homepage (public)  | inside.merox.dev                | Curated overview, no credentials — bookmarks + anonymized stats     |
 | Joplin Server      | joplin.cloud.merox.dev          | Notes sync (PostgreSQL backend)                                     |
 | Guacamole          | rmt.merox.dev                   | Remote desktop gateway (Authentik SSO)                              |
-| Garage S3          | garage.cloud.merox.dev          | Rollback safety net only — Longhorn's real target is now on R730xd, see below |
-| Beszel             | beszel.cloud.merox.dev          | Host monitoring                                                     |
-| Code Server        | code.cloud.merox.dev            | Browser-based VS Code                                               |
+| Garage S3          | _(not deployed by default)_     | On-demand DR tooling only, not routed by Traefik — see [DR.md](DR.md#r730xd--garage-total-loss-fallback) |
 
 ### Kubernetes — on-premise (`kubernetes/` → Flux GitOps)
 
@@ -201,7 +199,7 @@ Validation:
 │  ├── Traefik (reverse proxy + Cloudflare Tunnel)          │
 │  ├── Pi-hole (DNS), Portainer EE, Homepage                │
 │  ├── Joplin Server + Postgres (notes)                     │
-│  ├── Guacamole (remote desktop gateway), Beszel           │
+│  ├── Guacamole (remote desktop gateway)                   │
 │  └── nightly service-state push → R730xd                 │
 └────────────────────┬─────────────────────────────────────┘
                      │ weekly relay          │ nightly restic
