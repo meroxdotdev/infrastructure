@@ -26,6 +26,11 @@ spec:
     clusterRoleBinding:
       create: true
       clusterRoleName: cluster-admin
+    resources:
+      requests:
+        cpu: 25m
+      limits:
+        memory: 128Mi
     httpRoute:
       enabled: true
       hostnames: ["headlamp.k8s.merox.dev"]

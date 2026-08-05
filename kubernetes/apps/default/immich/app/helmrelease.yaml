@@ -35,6 +35,15 @@ spec:
     # Bundled Valkey (Redis fork) — job queue + cache, ephemeral is fine.
     valkey:
       enabled: true
+      controllers:
+        main:
+          containers:
+            main:
+              resources:
+                requests:
+                  cpu: 25m
+                limits:
+                  memory: 256Mi
 
     # ML (face/object detection, smart search) deliberately off to stay light —
     # see docs/immich-post-restore.md for how to re-enable later if wanted.
