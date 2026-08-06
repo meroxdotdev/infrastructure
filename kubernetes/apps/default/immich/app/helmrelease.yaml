@@ -53,7 +53,7 @@ spec:
     immich:
       persistence:
         library:
-          existingClaim: immich-library
+          existingClaim: immich-library-ssd
 
     server:
       enabled: true
@@ -76,10 +76,8 @@ spec:
               sectionName: https
       persistence:
         external-library:
-          type: nfs
-          # Hardcoded, see pvc.yaml for why.
-          server: "10.57.57.250"
-          path: /media/photos/external
+          type: persistentVolumeClaim
+          existingClaim: immich-external-library-ssd
           globalMounts:
             - path: /mnt/external-library
               readOnly: true
