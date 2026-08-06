@@ -15,47 +15,10 @@ spec:
     requests:
       storage: 10Gi
 ---
-# Static NFS PV/PVC for Immich's main library (writable — new uploads/thumbnails).
-# The immich-charts chart requires an existing PVC for immich.persistence.library
-# (it doesn't provision one itself), so this is created by hand rather than via
-# a StorageClass, same as every other NFS mount in this cluster is done inline
-# via app-template — just done as a static PV here since immich-charts expects
-# a claim reference instead of an inline nfs: block.
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: immich-library
-spec:
-  capacity:
-    storage: 1Ti
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: ""
-  nfs:
-    # Hardcoded, not ${NFS_SERVER}: /media/photos only exists on the R730xd,
-    # independent of wherever the arr-stack's shared NFS_SERVER var currently
-    # points during the Synology->SAS media migration.
-    server: "10.57.57.250"
-    path: /media/photos/upload
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: immich-library
-  namespace: default
-spec:
-  accessModes:
-    - ReadWriteMany
-  storageClassName: ""
-  volumeName: immich-library
-  resources:
-    requests:
-      storage: 1Ti
----
-# SSD migration target (rpool via Longhorn, not the SAS media pool) — replaces
-# the NFS-backed immich-library above once data is copied over and verified.
-# RWO is fine: immich-server runs a single replica.
+# SSD (rpool via Longhorn, not the SAS media pool). Replaced a static NFS
+# PV/PVC pointing at media/photos/upload — random photo access all day would
+# have defeated the SAS pool's spin-down. RWO is fine: immich-server runs a
+# single replica.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
