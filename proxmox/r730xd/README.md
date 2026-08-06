@@ -5,9 +5,38 @@ DR.md link here instead of repeating the schedule.
 
 R730xd (`pve`, `10.57.57.250`) is the hub of the homelab backup mesh: it's
 both the primary Longhorn (K8s) backup target and the landing spot for its
-own VM/pfSense backups, and (as of 2026-07-23) relays a curated, versioned
-copy weekly to the Synology (now cold-storage only). Off-site to Oracle
-Cloud is the one leg still not built — see "Downstream legs" below.
+own VM/pfSense backups, relays a curated, versioned copy weekly to the
+Synology (cold-storage only), and pushes nightly offsite to Oracle Cloud via
+restic — see "Downstream legs" below for each leg's detail.
+
+## Nightly schedule (spin-down aligned)
+
+The `media` pool (2× RAIDZ2-6 SAS, `hd-idle` spin-down) only spins up for two
+reasons: this nightly backup window, or someone watching Jellyfin. Every job
+that touches the pool is deliberately clustered into one ~25min window so the
+disks wake once a night, not 3-4 times. All times below are pve's local time
+(EEST, UTC+3) — the K8s cluster and the Oracle VPS both run UTC internally,
+so their cron times are offset by design (noted in parens).
+
+| Time (EEST) | What | Where |
+|---|---|---|
+| 23:40 UTC | Authentik DB dump | Oracle VPS |
+| 23:45 UTC | Joplin DB dump | Oracle VPS |
+| 23:50 UTC | VPS extras tar (Guacamole/Traefik/Pi-hole/Homepage/Portainer) | Oracle VPS |
+| 02:50 | Longhorn → Garage backup (jellyfin/prowlarr/radarr/sonarr configs) | K8s (23:50 UTC) |
+| 02:55 | vzdump home-assistant (VM 101) | pve |
+| 03:00 | pfSense config push (fixed, external) | pve receives |
+| 03:00 | Oracle VPS → pve backup push | pve receives (00:00 UTC) |
+| 03:02 | Immich Postgres pg_dump | K8s CronJob |
+| 03:05 | ZFS snapshot of `media/backups` | pve |
+| 03:10 | restic push to Oracle Cloud (offsite) | pve |
+| 03:15, **Sundays only** | Relay to Synology (`admin@10.57.57.201`) | pve → Synology |
+| 05:00, monthly (1st) | restic restore drill | pve |
+| 04:00 UTC, monthly (1st) | Authentik/Joplin restore drill | Oracle VPS |
+
+Synology itself only wakes Sunday 02:50–04:30 (DSM Power Schedule, not
+cron — set by hand in DSM UI) — the 03:15 relay fits comfortably inside
+that window.
 
 ## The backup-orchestration LXC
 
@@ -63,7 +92,7 @@ this instance is LAN-only, no public domain, no Traefik. Both toggles default
 │                         Synology Drive content), exposed via Filebrowser's
 │                         WebDAV (/dav/documents/). It's the source, not a
 │                         mirror, so it flows outward in the weekly push below.
-├── immich-postgres/      pg_dump of Immich's Postgres, nightly 03:30, 30-day retention (see DR.md)
+├── immich-postgres/      pg_dump of Immich's Postgres, nightly 03:02, 30-day retention (see DR.md)
 └── oracle-vps/           Nightly SSH-rsync push FROM the Oracle VPS (Authentik/
                           Joplin DB dumps, Guacamole/Traefik/Pi-hole/Homepage/
                           Portainer state) — see "Oracle VPS → R730xd" below.
@@ -75,13 +104,14 @@ this instance is LAN-only, no public domain, no Traefik. Both toggles default
 ## Media/photos/isos NFS exports (K8s storage, not backup)
 
 Separate purpose from the backup tree above, but same host/pool — the
-`media` ZFS pool (RAIDZ2, 6x600GB SAS) also serves the K8s cluster's live
+`media` ZFS pool (2× RAIDZ2-6, 12x600GB SAS, spin-down via hd-idle — see
+"Nightly schedule" below) also serves the K8s cluster's live
 media and photo storage, migrated off Synology 2026-07-22/23:
 
 | ZFS dataset      | NFS export         | Consumed by                                                  |
 | ----------------- | ------------------- | ------------------------------------------------------------- |
 | `media/library`   | `/media/library` (rw)  | Jellyfin (ro), Sonarr/Radarr/qBittorrent (rw) — `NFS_SERVER` var |
-| `media/photos`    | `/media/photos` (rw)   | Immich — `upload` subdir (its own writable library), `external` subdir (read-only import of the migrated Synology Photos content) |
+| `media/photos`    | not exported (2026-08-06) | Nothing — Immich moved to Longhorn/SSD (`immich-library-ssd`, `immich-external-library-ssd`). Files left in place as a safety net, not actively used; NFS export removed. |
 | `media/isos`      | `/media/isos` (ro)     | Filebrowser only (browsing) |
 | `media/backups`   | `/media/backups` (rw)  | Filebrowser (ro), Immich's pg_dump CronJob, the vzdump/rsync jobs above |
 
@@ -146,8 +176,9 @@ window.
   only needs to receive pve's push now, not also relay onward). WoL
   confirmed enabled (Control Panel → Hardware & Power → General).
 - **Push script**: `/root/scripts/weekly-push-to-synology.sh` on `pve`,
-  cron `0 3 * * 0` (03:00 Sunday — 10 min after wake for margin, comfortably
-  inside the 50-min window before shutdown).
+  cron `15 3 * * 0` (03:15 Sunday — after that night's compact backup window
+  finishes, see "Nightly schedule" below — comfortably inside the wake
+  window before shutdown).
 - **Destination**: `admin@10.57.57.201:/volume1/NetBackup/<category>/`,
   reusing an existing empty share rather than creating a new one.
 - **Versioned + deduplicated**: each category gets a dated snapshot dir
@@ -292,8 +323,8 @@ restic init
 ```
 
 **Nightly push script** (`/root/scripts/restic-push-oracle.sh` on pve, cron
-`15 4 * * *` — after the ZFS snapshot below and clear of the Sunday
-weekly-push window). Pings `restic-push-oracle` on healthchecks.io
+`10 3 * * *` — after the ZFS snapshot below, inside the compact nightly
+backup window, see "Nightly schedule" below). Pings `restic-push-oracle` on healthchecks.io
 (same account as everything else's alerting) on success, `/fail` on error:
 
 ```bash
@@ -347,12 +378,12 @@ against something (a compromised VPS, a bad script, a fat-fingered `rm`)
 *silently deleting or corrupting* what's already landed here — the VPS's
 own nightly push uses `rsync --delete`, so a bad actor upstream mirrors
 straight through unless caught before the next weekly Synology relay.
-R730xd already has ZFS underneath (`media` pool, RAIDZ2), so a same-host,
+R730xd already has ZFS underneath (`media` pool, 2× RAIDZ2), so a same-host,
 zero-extra-tooling point-in-time undo window is effectively free.
 
 **One-time cron on pve** (`/root/scripts/zfs-snapshot-backups.sh`, daily
-`0 4 * * *` — before the restic push above, after the VPS's 03:30 push and
-the 03:xx local jobs land):
+`5 3 * * *` — inside the compact nightly backup window, see "Nightly
+schedule" below):
 
 ```bash
 #!/bin/bash
