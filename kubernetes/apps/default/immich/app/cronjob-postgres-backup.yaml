@@ -3,15 +3,16 @@
 # holds real metadata (albums, face tags, favorites, sharing links) that
 # isn't just derived from the photo files — worth a real backup even though
 # a full HA operator (CNPG) wasn't justified for a single-instance DB.
-# Runs after the other 02:xx-03:xx backup jobs on pve to avoid I/O contention
-# on the same SAS spindles.
+# Timed at 03:02, right after pfSense's own fixed 03:00 push to pve — keeps
+# the whole nightly SAS backup window compact (~02:55-03:20) so hd-idle only
+# spins the media pool disks up once a night instead of cycling on gaps.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: immich-postgres-backup
   namespace: default
 spec:
-  schedule: "30 3 * * *"
+  schedule: "2 3 * * *"
   jobTemplate:
     spec:
       backoffLimit: 2
