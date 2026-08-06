@@ -5,7 +5,10 @@ metadata:
   name: backup-homelab-k8s
   namespace: longhorn-system
 spec:
-  cron: "00 02 * * *"
+  # 23:50 UTC = 02:50 EEST — cluster runs UTC, pve runs EEST. Timed just
+  # before vzdump HA (02:55) so this lands in the same compact nightly SAS
+  # backup window instead of firing at the naive-looking but wrong 05:00 EEST.
+  cron: "50 23 * * *"
   task: backup
   # Only volumes opted in via PVC labels are backed up (media/ARR configs).
   # Opt-in: label the PVC with recurring-job.longhorn.io/source: enabled

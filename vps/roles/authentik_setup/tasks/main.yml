@@ -38,8 +38,8 @@
 - name: Schedule daily Authentik DB backup
   cron:
     name: "authentik-db-backup"
-    minute: "15"
-    hour: "1"
+    minute: "40"
+    hour: "23"
     job: "/usr/local/bin/backup-authentik.sh >> /var/log/authentik-backup.log 2>&1"
     user: root
   tags: backup

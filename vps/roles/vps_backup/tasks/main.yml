@@ -127,8 +127,8 @@
 - name: Schedule daily Joplin DB backup
   cron:
     name: "joplin-db-backup"
-    minute: "20"
-    hour: "1"
+    minute: "45"
+    hour: "23"
     job: "/usr/local/bin/backup-joplin.sh >> /var/log/joplin-backup.log 2>&1"
     user: root
   tags: backup
@@ -136,19 +136,21 @@
 - name: Schedule daily VPS extras backup
   cron:
     name: "vps-extras-backup"
-    minute: "30"
-    hour: "1"
+    minute: "50"
+    hour: "23"
     job: "/usr/local/bin/backup-vps-extras.sh >> /var/log/vps-extras-backup.log 2>&1"
     user: root
   tags: backup
 
 - name: Schedule nightly backup push to R730xd (always-on hub, no wake
     window to work around - unlike the old Synology-direct path this
-    replaces)
+    replaces). Timed 10min after the last local dump (vps-extras, 23:50 UTC)
+    so it lands on pve right alongside pfSense's own fixed 03:00 EEST push -
+    keeps the whole nightly SAS backup window compact for spin-down.
   cron:
     name: "backup-push-r730xd"
-    minute: "30"
-    hour: "3"
+    minute: "0"
+    hour: "0"
     job: "/usr/local/bin/backup-push-r730xd.sh >> /var/log/backup-r730xd.log 2>&1"
     user: root
   tags: backup
