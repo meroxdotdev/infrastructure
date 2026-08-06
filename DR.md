@@ -230,8 +230,8 @@ paths**, deliberately not just one:
    Prowlarr — `immich-postgres`'s PVC carries the `media` recurring-job-group
    label, so it's included automatically in `task longhorn:restore` on a
    full cluster rebuild (see `.taskfiles/longhorn/Taskfile.yaml`).
-2. **Nightly `pg_dump`** via a k8s CronJob (`immich-postgres-backup`, 03:30,
-   after the other 02:xx-03:xx jobs), landing gzipped on
+2. **Nightly `pg_dump`** via a k8s CronJob (`immich-postgres-backup`, 03:02,
+   inside pve's compact nightly SAS backup window), landing gzipped on
    `/media/backups/immich-postgres/` on the R730xd, 30-day retention — an
    independent, storage-format-agnostic path that survives even if Longhorn/
    Garage itself has a bad day. See
@@ -239,15 +239,17 @@ paths**, deliberately not just one:
    restore procedure and the one-time VectorChord extension setup a fresh
    Postgres needs.
 
-**What neither path covers**: the actual photo/video files, which live on
-`/media/photos` — not a Longhorn volume at all, just an NFS mount from the
-R730xd's SAS pool. Those are protected by RAIDZ2 (survives 1-2 disk
-failures), a weekly versioned copy pushed to Synology, and a nightly
-restic push direct to Oracle (see
-[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for the
-full chain) — the restic leg has been drilled end-to-end (monthly
-`restic-restore-drill.sh`, first run 2026-07-26: restored content verified
-byte-for-byte against the live source).
+**The actual photo/video files** moved off the SAS pool 2026-08-06: they're
+now `immich-library-ssd`/`immich-external-library-ssd`, Longhorn PVCs on
+rpool (SSD), not an NFS mount. Same `Longhorn → Garage S3` recurring backup
+as the Postgres PVC above (both carry the `media` recurring-job-group label)
+is the primary protection now. The old `/media/photos` NFS export on the SAS
+pool is gone — the files are still sitting there unexported as a safety net
+post-migration, but are no longer the live source, so the weekly Synology
+push and nightly restic-to-Oracle legs that still read `/media/photos` (see
+[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)) are
+now backing up that stale leftover copy, not live data — fine as a second
+safety net for now, but don't treat it as current.
 
 ## R730xd / Garage total loss fallback
 
@@ -265,7 +267,7 @@ rebuilt from one of the downstream copies. In order of preference:
 **1. Synology's copy** (fastest, most complete, no decryption needed):
 
 ```bash
-# Wake Synology if asleep (it's only awake Sun 02:50-03:40 otherwise):
+# Wake Synology if asleep (it's only awake Sun 02:50-04:30 otherwise):
 wakeonlan 90:09:d0:50:08:4b
 # wait ~1-2 min, then confirm it's up:
 ping 10.57.57.201

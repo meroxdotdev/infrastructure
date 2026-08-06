@@ -37,16 +37,25 @@ kubectl exec -n default "$POD" -- psql -U immich -d immich -c \
 If this cluster is ever rebuilt from scratch (DR scenario), re-run this after
 `immich-postgres` comes back up and before immich-server's migrations run.
 
-## 3. Storage layout (on `pve`, NFS-exported)
+## 3. Storage layout (Longhorn/SSD, moved off the SAS pool 2026-08-06)
 
-| Path                    | Purpose                                              | Mount                       |
-| ------------------------ | ----------------------------------------------------- | ---------------------------- |
-| `/media/photos/upload`   | Immich's own library — new uploads, thumbnails, encodes | `immich.persistence.library` (static PV, read-write) |
-| `/media/photos/external` | Migrated Synology Photos library (read-only import)  | External Library, mounted at `/mnt/external-library` |
+| Claim                          | Purpose                                              | Backing                          |
+| ------------------------------- | ----------------------------------------------------- | ---------------------------------- |
+| `immich-library-ssd`            | Immich's own library — new uploads, thumbnails, encodes | Longhorn PVC (RWO, rpool/SSD)      |
+| `immich-external-library-ssd`   | Migrated Synology Photos library (read-only import)  | Longhorn PVC (RWO, rpool/SSD), mounted read-only at `/mnt/external-library` |
 
-The external library was migrated from Synology's
+Both used to be NFS mounts on the `media` (SAS) pool — moved to Longhorn
+because Immich's random access pattern (phone sync/browsing any time of day)
+defeats the SAS pool's `hd-idle` spin-down, unlike Jellyfin/backups which
+only touch it in scheduled bursts. See
+[proxmox/r730xd/README.md](../proxmox/r730xd/README.md#nightly-schedule-spin-down-aligned).
+Both PVCs are labeled for the nightly Longhorn→Garage recurring backup
+(`recurring-job-group.longhorn.io/media: enabled`), same mechanism as
+`immich-postgres`.
+
+The external library's content originally came from Synology's
 `/volume1/homes/merox/Photos/PhotoLibrary/` (excluding the `@eaDir` thumbnail
-cache) via the `media/backups/synology-home` nightly pull — see
+cache) via the `media/backups/synology-home` pull — see
 [[project_synology_decommission]]. It's intentionally **read-only** and
 separate from Immich's own upload location, so Immich never reorganizes or
 modifies the original files; it just re-derives albums/dates from EXIF and
@@ -59,11 +68,12 @@ Scan.
 
 ## 4. Backup
 
-Nightly `pg_dump` CronJob (`immich-postgres-backup`, 03:30, after the other
-02:xx-03:xx jobs) dumps to `/media/backups/immich-postgres/` on the SAS pool,
-gzipped, 30-day retention. This is the DB only (albums, face tags, favorites,
-sharing links) — the actual photo files are covered by the SAS pool's own
-redundancy (RAIDZ2), same as the rest of the media library.
+Nightly `pg_dump` CronJob (`immich-postgres-backup`, 03:02, inside pve's
+compact nightly SAS backup window) dumps to `/media/backups/immich-postgres/`
+on the SAS pool, gzipped, 30-day retention. This is the DB only (albums, face
+tags, favorites, sharing links) — the actual photo files are covered by
+Longhorn's own 3-way replication plus the nightly Longhorn→Garage recurring
+backup (see storage layout above), not SAS pool redundancy anymore.
 
 **Restore**: scale `immich-postgres` to 0, restore the dump into a fresh
 Postgres data dir (or `psql < dump.sql` into a freshly-initialized instance
