@@ -9,6 +9,10 @@ own VM/pfSense backups, relays a curated, versioned copy weekly to the
 Synology (cold-storage only), and pushes nightly offsite to Oracle Cloud via
 restic — see "Downstream legs" below for each leg's detail.
 
+**Reinstalling `pve` from scratch?** SAS spin-down setup (storcli, patrol
+read, `zfs_txg_timeout`, `hd-idle`) is a self-contained runbook, not
+repeated here — see [spindown-setup.md](spindown-setup.md).
+
 ## Nightly schedule (spin-down aligned)
 
 The `media` pool (2× RAIDZ2-6 SAS, `hd-idle` spin-down) only spins up for two
