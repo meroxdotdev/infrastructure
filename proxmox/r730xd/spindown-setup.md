@@ -86,7 +86,31 @@ systemctl restart hd-idle
 systemctl enable hd-idle
 ```
 
-## 5. Verify
+## 5. Fix smartd's own spin-down killer (easy to miss — found live 2026-08-07)
+
+Debian's default `/etc/smartd.conf` has `-n standby` with **no skip-count
+limit**. Undocumented default: after a handful of skipped checks on a
+standby disk, smartd forces one anyway — that forced check hits the disk
+mid-spin-up, the self-test-log read fails ("FailedReadSmartSelfTestLog"
+warning email/notification), and the forced check itself wakes the disk,
+resetting hd-idle's 30min timer. Net effect: disks cycle active/standby
+every ~30-60min all night instead of resting for hours, plus a flood of
+false-positive SMART error notifications. Confirmed via
+`overnight-watch.log` — pattern was invisible in short spot-checks, only
+showed up over a multi-hour log.
+
+```bash
+sed -i 's/-n standby /-n standby,999,q /' /etc/smartd.conf
+systemctl restart smartmontools
+```
+
+`,999` = skip up to 999 checks (~20 days at the 30min interval) before
+forcing one. `,q` = don't log/alert on a skip. Real disk problems (actual
+SMART failures, not power-mode-related) still get caught next time the
+disk is genuinely active — this only stops smartd from being the thing
+that keeps it awake.
+
+## 6. Verify
 
 ```bash
 # after ~30min real idle (no backup job, no Jellyfin), all 12 should show STANDBY:
