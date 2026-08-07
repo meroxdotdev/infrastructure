@@ -39,7 +39,8 @@ published — source of truth is `crontab -l` on pve and the DSM settings.
 
 ## Storage layout
 
-`media` pool: 2× RAIDZ2-6 (12× 600GB SAS), hd-idle spin-down.
+`media` pool: 2× RAIDZ2-6 (12× 600GB SAS), spin-down via the stateless
+enforcer script (see [spindown-setup.md](spindown-setup.md)).
 
 | Dataset | NFS export | Consumers |
 |---|---|---|
