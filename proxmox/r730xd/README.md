@@ -31,7 +31,7 @@ so their cron times are offset by design (noted in parens).
 | 02:55 | vzdump home-assistant (VM 101) | pve |
 | 03:00 | pfSense config push (fixed, external) | pve receives |
 | 03:00 | Oracle VPS → pve backup push | pve receives (00:00 UTC) |
-| 03:02 | Immich Postgres pg_dump | K8s CronJob |
+| 03:02 | Immich Postgres pg_dump | K8s CronJob (00:02 UTC) |
 | 03:05 | ZFS snapshot of `media/backups` | pve |
 | 03:10 | restic push to Oracle Cloud (offsite) | pve |
 | 03:15, **Sundays only** | Relay to Synology (`admin@10.57.57.201`) | pve → Synology |
