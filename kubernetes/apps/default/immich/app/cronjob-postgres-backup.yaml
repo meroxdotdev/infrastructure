@@ -3,16 +3,21 @@
 # holds real metadata (albums, face tags, favorites, sharing links) that
 # isn't just derived from the photo files — worth a real backup even though
 # a full HA operator (CNPG) wasn't justified for a single-instance DB.
-# Timed at 03:02, right after pfSense's own fixed 03:00 push to pve — keeps
-# the whole nightly SAS backup window compact (~02:55-03:20) so hd-idle only
+# Schedule is UTC (K8s cluster nodes run UTC, not pve's EEST) — 3:02 UTC =
+# 03:02 EEST, right after pfSense's own fixed 03:00 push to pve. Keeps the
+# whole nightly SAS backup window compact (~02:55-03:20) so hd-idle only
 # spins the media pool disks up once a night instead of cycling on gaps.
+# Got this wrong once already (set "2 3" thinking it was already EEST -
+# actually landed at 06:02 EEST, 3h late, so restic's 03:10 offsite push
+# was always grabbing yesterday's dump). Verify against real EEST wall
+# clock time after any change, not just the cron string.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: immich-postgres-backup
   namespace: default
 spec:
-  schedule: "2 3 * * *"
+  schedule: "2 0 * * *"
   jobTemplate:
     spec:
       backoffLimit: 2
