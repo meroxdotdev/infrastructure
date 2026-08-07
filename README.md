@@ -103,41 +103,38 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 
 ## Backup & off-site strategy
 
-Everything declarative (K8s manifests, Ansible, Terraform, SOPS/vault secrets)
-lives in this repo and is **not** backed up separately. Backups only cover
-state that can't be rebuilt from git. **R730xd is the hub**: Longhorn (K8s
-cluster data) backs up nightly to a self-hosted Garage instance on R730xd
-itself (`proxmox/r730xd/`, not the VPS — moved there 2026-07-21), alongside
-photos, documents, VM backups, pfSense config, and the Oracle VPS's own
-nightly service-state push (Authentik/Joplin/Guacamole/Traefik/Pi-hole/
-Homepage/Portainer — rerouted through R730xd 2026-07-23, no longer straight
-to Synology). From R730xd, one weekly push (Sunday) relays all of that to
-Synology (cold storage, asleep except during the push window) for fast
-local-ish recovery, and — independently, nightly — R730xd pushes the same
-set (minus the Home Assistant VM dump, out of scope) straight to Oracle
-Cloud via `restic`, open-format and DSM-free (replaced a Synology→Oracle
-Hyper Backup relay retired 2026-07-26; see
-[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)).
-Observability history and caches are deliberately not backed up —
-regenerable.
+Rules: everything declarative lives in this repo — never backed up
+separately. Backups cover only state that can't be rebuilt from git.
+Observability history and caches are regenerable — excluded.
 
-> **Canonical references**: VPS-side schedule —
-> **[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**;
-> R730xd-side schedule (incl. the Synology + Oracle legs) —
-> **[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)**.
+```
+Longhorn (K8s PVCs: ARR configs, Immich)  ──nightly──▶ ┐
+Oracle VPS (service state dumps)          ──nightly──▶ │ R730xd (hub)
+pfSense config, VM dumps, documents       ──nightly──▶ ┘   /media/backups
+                                                            │
+                              ┌─────────────────────────────┤
+                              │ weekly                      │ nightly
+                              ▼                             ▼
+                        Synology                       Oracle Cloud
+              (cold, offline outside its         (restic over SFTP —
+               wake window — see private          open format, monthly
+               notes on pve for schedule)         restore drill)
+```
 
-**What an R730xd failure loses:** the primary Longhorn backup target *and*
-the K8s media/photos host, not just a hypervisor — see the "R730xd/Garage
-total loss" runbook in [DR.md](DR.md) before treating this as equivalent to
-the old VPS-hosted setup. The media library (`/media/library`) is treated as
-replaceable "cattle" (re-downloadable) and deliberately has no second copy.
-Immich's photo library (`/media/photos`) is covered by both the weekly
-R730xd→Synology relay and the nightly R730xd→Oracle restic push; see
-[docs/immich-post-restore.md](docs/immich-post-restore.md) for the restore
-procedure.
-**What a VPS failure loses:** at most one night of its own service backups —
-pushed nightly to R730xd, from which it rides the same weekly relay above.
-Rebuild: `make dr-full` (~15 min), `make dr-restore`, `task longhorn:restore`.
+Canonical schedules: [proxmox/r730xd/README.md](proxmox/r730xd/README.md)
+(hub + both legs) · [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)
+(VPS side).
+
+| Failure | Loses | Recovery |
+|---|---|---|
+| R730xd | Primary Longhorn backup target + media host — not just a hypervisor | "R730xd/Garage total loss" runbook in [DR.md](DR.md) |
+| VPS | ≤1 night of its own service backups | `make dr-full` (~15 min) + `make dr-restore` |
+| K8s cluster | Nothing not already in Git/Garage | `task bootstrap:apps` + `task longhorn:restore` |
+
+Deliberate non-coverage: `/media/library` (movies/TV — re-downloadable,
+no second copy), Home Assistant VM dump (out of DR scope). Immich photos
+live on Longhorn/SSD PVCs → covered by the nightly Longhorn→Garage leg;
+restore procedure in [docs/immich-post-restore.md](docs/immich-post-restore.md).
 
 **Still manual (keep copies off this VPS):** `age.key`, `vps/.vault_pass`,
 `/srv/docker/oracle-cloud/.env`.

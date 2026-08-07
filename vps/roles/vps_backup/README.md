@@ -74,7 +74,7 @@ add 3h for pve-side local times.
 - **23:50** — Longhorn (K8s cluster) backs up media/ARR config volumes to Garage S3 on R730xd (retain 3).
 - **00:00** — this role: push `/srv/backups` + Garage snapshot to R730xd (`/media/backups/oracle-vps/`).
 
-From there, R730xd's own weekly Sunday push relays a copy on to Synology
+From there, R730xd's own weekly push relays a copy on to Synology
 (cold storage, fast local-ish recovery), and — independently, nightly —
 R730xd pushes the same data straight to Oracle via `restic`, without this
 role needing to know or care about either hop. See
