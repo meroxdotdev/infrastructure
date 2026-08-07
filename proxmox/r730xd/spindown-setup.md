@@ -29,25 +29,37 @@ storcli /c0 set patrolread=off
 storcli /c0 show patrolread | grep "PR Mode"   # expect: Disable
 ```
 
-## 3. Fix ZFS's own spin-down killer
+## 3. Eliminate every continuous writer on the pool (the actual root cause)
 
-**The actual root cause, easy to forget**: ZFS writes a metadata sync
-(uberblock) to every disk every `zfs_txg_timeout` seconds — default 5s —
-regardless of real activity. Nothing spins down until this is raised.
+ZFS commits a txg every `zfs_txg_timeout` seconds (default 5) — but **only
+if there is dirty data**. An idle pool with zero writers commits nothing
+and its disks can sleep indefinitely at the default setting. So the fix is
+NOT raising `zfs_txg_timeout` — that was tried first (3600s) and it
+backfired: the parameter is module-global, so rpool (where the etcd VMs
+live) started batching ~860MB write bursts every ~23min, spiking etcd 99p
+commit latency and firing Telegram alerts all night. Keep the default;
+hunt writers instead.
+
+**Known writer on this host (found 2026-08-07): Garage's metadata.** The
+Garage LXC (103) writes its LMDB lock + peer_list heartbeat a few MB/hour,
+which alone forced an hourly txg → hourly full-pool spin-up, perfectly
+30min-sleep/30min-awake cycling against hd-idle's 30min timer. Fix in
+place: meta lives on `rpool/garage-meta` (SSD, mp1 of LXC 103), and
+`/root/scripts/garage-meta-nightly-copy.sh` (cron 03:01, inside the backup
+window) mirrors it back to `media/backups/longhorn-garage/meta/` so all
+downstream backup legs (ZFS snapshots, restic→Oracle, weekly Synology)
+still cover it unchanged.
+
+To find any new writer later:
 
 ```bash
-echo 3600 > /sys/module/zfs/parameters/zfs_txg_timeout
-echo "options zfs zfs_txg_timeout=3600" > /etc/modprobe.d/zfs-txg-timeout.conf
-update-initramfs -u -k all
-```
-
-Verify it's actually holding (no writes over a real window, not just set):
-
-```bash
+# what changed recently on the pool:
+find /media -newermt "2 hours ago" -type f
+# txg commit history — otime column shows real commit cadence:
+tail -15 /proc/spl/kstat/zfs/media/txgs
+# steady state check — write counters must be identical:
+grep -E " sd[a-z]+ " /proc/diskstats | awk '{print $3, $10}'; sleep 60; \
 grep -E " sd[a-z]+ " /proc/diskstats | awk '{print $3, $10}'
-sleep 60
-grep -E " sd[a-z]+ " /proc/diskstats | awk '{print $3, $10}'
-# write counters (last column) must be identical between the two snapshots
 ```
 
 ## 4. Install and configure hd-idle

@@ -31,6 +31,7 @@ so their cron times are offset by design (noted in parens).
 | 02:55 | vzdump home-assistant (VM 101) | pve |
 | 03:00 | pfSense config push (fixed, external) | pve receives |
 | 03:00 | Oracle VPS → pve backup push | pve receives (00:00 UTC) |
+| 03:01 | Garage meta copy (rpool/SSD → media, keeps backup legs covering it) | pve |
 | 03:02 | Immich Postgres pg_dump | K8s CronJob (00:02 UTC) |
 | 03:05 | ZFS snapshot of `media/backups` | pve |
 | 03:10 | restic push to Oracle Cloud (offsite) | pve |
@@ -67,11 +68,18 @@ this instance is LAN-only, no public domain, no Traefik. Both toggles default
   `.taskfiles/longhorn/Taskfile.yaml`'s hardcoded `s3://longhorn@us-east-1/`
   string didn't need to change.
 - Data lives on the `media` ZFS pool, **not** the LXC's own rootfs:
-  `media/backups/longhorn-garage/{data,meta}`, bind-mounted into the LXC
+  `media/backups/longhorn-garage/data`, bind-mounted into the LXC
   (owned by UID/GID 100000 on the host — the unprivileged container's root).
   This keeps the LXC itself stateless/reprovisionable and out of any vzdump
   job — only the ZFS-backed data matters, and that's exactly what the
   Synology/Oracle relays below need to touch anyway.
+- **Meta lives on `rpool/garage-meta` (SSD), not the media pool** — moved
+  2026-08-07 because Garage's constant LMDB/heartbeat writes (a few MB/hour)
+  were the one thing keeping the spun-down SAS pool waking hourly (txg
+  commits). A nightly 03:01 cron mirrors meta back into
+  `media/backups/longhorn-garage/meta/` so every downstream backup leg
+  still covers it — see [spindown-setup.md](spindown-setup.md) for the
+  full story.
 - Credentials: `docker exec garage /garage key info longhorn-key --show-secret`
   on the LXC. Consumed by Longhorn via
   `kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml`
