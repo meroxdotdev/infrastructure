@@ -141,9 +141,9 @@ cat > /root/scripts/sas-health-check.sh <<'SH'
 set -uo pipefail
 ALERT=""
 for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
-  out=$(smartctl -H -l error /dev/$d 2>&1)
+  out=$(smartctl -n standby -H -l error /dev/$d 2>&1)
   health=$(echo "$out" | grep -i "SMART Health Status" | awk -F: '{print $2}' | xargs)
-  defects=$(smartctl -a /dev/$d 2>/dev/null | grep -i "grown defect" | grep -oE '[0-9]+$')
+  defects=$(smartctl -n standby -a /dev/$d 2>/dev/null | grep -i "grown defect" | grep -oE '[0-9]+$')
   uncorr=$(echo "$out" | awk '/^read:|^write:|^verify:/ {print $NF}' | awk '{s+=$1} END {print s}')
   [ "$health" != "OK" ] && ALERT="$ALERT\n$d: health=$health"
   [ "${defects:-0}" -gt 0 ] && ALERT="$ALERT\n$d: grown defects=$defects"
@@ -174,13 +174,56 @@ dd if=/dev/disk/by-id/wwn-0x5000cca07d178f88 of=/dev/null bs=1M count=4
 zpool status media
 ```
 
-## Troubleshooting
+## The SG_IO blind spot (root cause of "it randomly stops sleeping")
 
-- **Disks ACTIVE long past the 30min mark, hd-idle log silent**: hd-idle
-  tracks state via `/proc/diskstats`, but SG_IO wakes (smartd, manual
-  `sg_start`, `smartctl` without `-n`) are invisible there — hd-idle may
-  still believe the disk is down and never re-issue standby. Fix:
-  `systemctl restart hd-idle` (clean state, spins down 30min later).
+hd-idle decides idle purely from `/proc/diskstats` — real block-layer
+I/O. Any tool that queries a disk via SCSI Generic (SG_IO) — `smartctl`
+without `-n`, `sg_start`, Proxmox's own disk-health code — physically
+spins the disk up **without touching diskstats at all**. hd-idle never
+sees it happen, still believes the disk is asleep (it already issued
+STOP and saw no diskstats change since), and never issues a second STOP.
+The disk just stays spinning, invisibly, until something restarts
+hd-idle and forces a fresh read of reality.
+
+**All known SG_IO sources on this host, and their state:**
+
+| Source | Status |
+|---|---|
+| smartd periodic checks | Fixed — SAS excluded entirely (§4) |
+| Controller patrol read | Fixed — disabled (§1) |
+| `sas-health-check.sh` | Fixed — every `smartctl` call uses `-n standby`, skips sleeping disks instead of waking them |
+| Proxmox web UI → Datacenter → pve → **Disks** tab | **Not fixable** — `PVE::Diskmanage::get_smart_data` (Proxmox core, `API2/Disks.pm`) calls `smartctl -H` with no `-n` flag. Opening that page wakes every SAS disk. Known tradeoff, not a bug to chase. |
+| Manual `smartctl`/`sg_start` without `-n standby` | Always pass `-n standby` on SAS disks, or accept the wake |
+
+**Safety net** (`hd-idle-resync.timer`, twice daily 06:00/18:00):
+restarts hd-idle unconditionally, so even an SG_IO source not yet
+identified self-heals within 12h instead of staying silently broken.
+
+```bash
+cat > /etc/systemd/system/hd-idle-resync.service <<'UNIT'
+[Unit]
+Description=Resync hd-idle idle-tracking state (safety net against SG_IO desync)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart hd-idle
+UNIT
+cat > /etc/systemd/system/hd-idle-resync.timer <<'UNIT'
+[Unit]
+Description=Restart hd-idle twice daily to self-heal any SG_IO-caused desync
+
+[Timer]
+OnCalendar=*-*-* 06,18:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload && systemctl enable --now hd-idle-resync.timer
+```
+
+## Other troubleshooting
+
 - **`smartctl -n standby` prints nothing / exit 2**: disk is asleep —
   that's the skip working, not an error.
 - **A disk never comes back after standby**: some models (HGST) need an
