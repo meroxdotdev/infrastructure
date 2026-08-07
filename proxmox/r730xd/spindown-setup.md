@@ -235,10 +235,17 @@ cat > /root/scripts/sas-health-check.sh <<'SH'
 #!/bin/bash
 set -uo pipefail
 ALERT=""
+skipped=0
 for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
-  out=$(smartctl -n standby -H -l error /dev/$d 2>&1)
+  # generic device, never the block device (§3 warning)
+  sg=$(basename "$(readlink -f /sys/block/$d/device/generic 2>/dev/null)" 2>/dev/null)
+  [ -z "$sg" ] && continue
+  out=$(smartctl -n standby -H -l error "/dev/$sg" 2>&1)
+  # A sleeping disk returns no health data - that is not a fault. Skip it;
+  # it gets checked on a night the backup window has it awake.
+  echo "$out" | grep -qi "STANDBY" && { skipped=$((skipped+1)); continue; }
   health=$(echo "$out" | grep -i "SMART Health Status" | awk -F: '{print $2}' | xargs)
-  defects=$(smartctl -n standby -a /dev/$d 2>/dev/null | grep -i "grown defect" | grep -oE '[0-9]+$')
+  defects=$(smartctl -n standby -a "/dev/$sg" 2>/dev/null | grep -i "grown defect" | grep -oE '[0-9]+$')
   uncorr=$(echo "$out" | awk '/^read:|^write:|^verify:/ {print $NF}' | awk '{s+=$1} END {print s}')
   [ "$health" != "OK" ] && ALERT="$ALERT\n$d: health=$health"
   [ "${defects:-0}" -gt 0 ] && ALERT="$ALERT\n$d: grown defects=$defects"
@@ -249,7 +256,7 @@ zerr=$(zpool status media | awk '/ONLINE|DEGRADED|FAULTED/ && $3 ~ /[0-9]/ {if (
 if [ -n "$ALERT" ]; then
   echo -e "SAS health anomalies on pve:$ALERT" | mail -s "SAS health alert (pve)" root
 fi
-echo "$(date '+%F %T') checked 12 disks, alert='${ALERT:-none}'"
+echo "$(date '+%F %T') checked $((12-skipped))/12 disks (${skipped} asleep, skipped), alert='${ALERT:-none}'"
 SH
 chmod +x /root/scripts/sas-health-check.sh
 ( crontab -l; echo "20 3 * * * /root/scripts/sas-health-check.sh >> /var/log/sas-health.log 2>&1" ) | crontab -
