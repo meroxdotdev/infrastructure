@@ -1,11 +1,19 @@
 # R730xd — SAS pool spin-down setup
 
-Runbook to reapply after a full Proxmox reinstall on `pve`. Covers only the
-spin-down-specific pieces — ZFS pool import/rebuild is separate, standard
-`zpool import`. The 12 SAS disk WWNs below are hardware IDs, stable across
-reinstalls (same physical drives).
+Runbook for a fresh Proxmox reinstall on `pve`. Spin-down pieces only —
+pool import is standard `zpool import`. WWNs are hardware IDs, stable
+across reinstalls.
 
-## 1. Install storcli (patrol read control)
+Four things must all be true for the disks to sleep:
+1. Controller doesn't poll them (patrol read off)
+2. Nothing writes to the pool outside the backup window (no txg commits)
+3. hd-idle issues SCSI STANDBY after idle timeout
+4. smartd doesn't force checks on sleeping disks
+
+## 1. storcli + patrol read off
+
+Patrol read (weekly, controller-level) wakes every disk regardless of OS
+settings.
 
 ```bash
 apt-get install -y unzip
@@ -16,48 +24,31 @@ unzip -q storcli_rel/storcli_rel/Unified_storcli_all_os.zip -d storcli_rel/unifi
 dpkg -i storcli_rel/unified/Unified_storcli_all_os/Ubuntu/storcli_007.2705.0000.0000_all.deb
 ln -sf /opt/MegaRAID/storcli/storcli64 /usr/sbin/storcli
 rm -rf storcli_rel.zip storcli_rel
-storcli /c0 show all | head -5   # sanity check
-```
 
-## 2. Disable patrol read
-
-Controller (PERC H730P Mini) runs a weekly patrol read by default — wakes
-every disk regardless of spin-down.
-
-```bash
 storcli /c0 set patrolread=off
 storcli /c0 show patrolread | grep "PR Mode"   # expect: Disable
 ```
 
-## 3. Eliminate every continuous writer on the pool (the actual root cause)
+## 2. Zero writers on the pool
 
-ZFS commits a txg every `zfs_txg_timeout` seconds (default 5) — but **only
-if there is dirty data**. An idle pool with zero writers commits nothing
-and its disks can sleep indefinitely at the default setting. So the fix is
-NOT raising `zfs_txg_timeout` — that was tried first (3600s) and it
-backfired: the parameter is module-global, so rpool (where the etcd VMs
-live) started batching ~860MB write bursts every ~23min, spiking etcd 99p
-commit latency and firing Telegram alerts all night. Keep the default;
-hunt writers instead.
+ZFS commits a txg only when there's dirty data — an untouched pool writes
+nothing and sleeps indefinitely at default `zfs_txg_timeout=5`. **Do not
+raise `zfs_txg_timeout`** — it's module-global; at 3600s rpool batched
+~860MB bursts that spiked etcd commit latency. Hunt writers instead.
 
-**Known writer on this host (found 2026-08-07): Garage's metadata.** The
-Garage LXC (103) writes its LMDB lock + peer_list heartbeat a few MB/hour,
-which alone forced an hourly txg → hourly full-pool spin-up, perfectly
-30min-sleep/30min-awake cycling against hd-idle's 30min timer. Fix: meta
-on SSD, data stays on the media pool (only written during the nightly
-window anyway). To reapply on a rebuilt host:
+Known writer: **Garage meta** (LMDB lock + heartbeat, a few MB/hour →
+hourly txg → hourly full-pool wake). Fix: meta on SSD, nightly copy back
+into the covered backup path:
 
 ```bash
 pct stop 103
 zfs create -o mountpoint=/rpool/garage-meta rpool/garage-meta
-# on a fresh rebuild, restore meta content from the nightly copy kept at
-# media/backups/longhorn-garage/meta/ (all backup legs cover that path):
+# fresh rebuild: restore meta from the nightly copy (all backup legs cover it)
 rsync -a /media/backups/longhorn-garage/meta/ /rpool/garage-meta/
 sed -i 's#^mp1: .*#mp1: /rpool/garage-meta,mp=/srv/docker/garage/meta#' /etc/pve/lxc/103.conf
 pct start 103
 pct exec 103 -- docker exec garage /garage bucket list   # sanity: meta intact
 
-# nightly copy back into the covered path (03:01, inside the backup window):
 cat > /root/scripts/garage-meta-nightly-copy.sh <<'SH'
 #!/bin/bash
 set -euo pipefail
@@ -67,25 +58,24 @@ chmod +x /root/scripts/garage-meta-nightly-copy.sh
 ( crontab -l; echo "1 3 * * * /root/scripts/garage-meta-nightly-copy.sh >> /var/log/garage-meta-copy.log 2>&1" ) | crontab -
 ```
 
-To find any new writer later:
+Finding a new writer:
 
 ```bash
-# what changed recently on the pool:
-find /media -newermt "2 hours ago" -type f
-# txg commit history — otime column shows real commit cadence:
-tail -15 /proc/spl/kstat/zfs/media/txgs
-# steady state check — write counters must be identical:
+find /media -newermt "2 hours ago" -type f          # recently touched files
+tail -15 /proc/spl/kstat/zfs/media/txgs             # commit cadence (otime col)
 grep -E " sd[a-z]+ " /proc/diskstats | awk '{print $3, $10}'; sleep 60; \
-grep -E " sd[a-z]+ " /proc/diskstats | awk '{print $3, $10}'
+grep -E " sd[a-z]+ " /proc/diskstats | awk '{print $3, $10}'   # must be identical
 ```
 
-## 4. Install and configure hd-idle
+## 3. hd-idle
 
 ```bash
 apt-get install -y hd-idle
 ```
 
-`/etc/default/hd-idle`:
+`/etc/default/hd-idle` — `-i 0` default protects rpool SSDs; `-p 3` =
+SCSI STANDBY (mandatory for SAS: default `-p 0` doesn't auto-wake);
+1800s = 30min idle:
 
 ```bash
 START_HD_IDLE=true
@@ -105,53 +95,50 @@ HD_IDLE_OPTS="-i 0 -s 1 \
   -l /var/log/hd-idle.log"
 ```
 
-`-i 0` default = never touch anything not listed (protects `rpool` SSDs).
-`-p 3` = SCSI STANDBY (required for SAS — `-p 0`/default does not
-auto-wake SAS disks on access). 1800s = 30min idle before spin-down.
-
 ```bash
-systemctl daemon-reload
-systemctl restart hd-idle
-systemctl enable hd-idle
+systemctl daemon-reload && systemctl enable --now hd-idle
 ```
 
-## 5. Fix smartd's own spin-down killer (easy to miss — found live 2026-08-07)
+## 4. smartd
 
-Debian's default `/etc/smartd.conf` has `-n standby` with **no skip-count
-limit**. Undocumented default: after a handful of skipped checks on a
-standby disk, smartd forces one anyway — that forced check hits the disk
-mid-spin-up, the self-test-log read fails ("FailedReadSmartSelfTestLog"
-warning email/notification), and the forced check itself wakes the disk,
-resetting hd-idle's 30min timer. Net effect: disks cycle active/standby
-every ~30-60min all night instead of resting for hours, plus a flood of
-false-positive SMART error notifications. Confirmed via
-`overnight-watch.log` — pattern was invisible in short spot-checks, only
-showed up over a multi-hour log.
+Debian default `-n standby` still force-checks sleeping disks after a few
+skips → wakes them mid-transition, resets hd-idle's timer, and fires
+false "FailedReadSmartSelfTestLog" alerts. Only visible over multi-hour
+logs, never in spot checks.
 
 ```bash
 sed -i 's/-n standby /-n standby,999,q /' /etc/smartd.conf
 systemctl restart smartmontools
 ```
 
-`,999` = skip up to 999 checks (~20 days at the 30min interval) before
-forcing one. `,q` = don't log/alert on a skip. Real disk problems (actual
-SMART failures, not power-mode-related) still get caught next time the
-disk is genuinely active — this only stops smartd from being the thing
-that keeps it awake.
+`,999` = skip limit (~20 days), `,q` = no skip-spam. Real SMART failures
+still surface whenever the disk is genuinely active.
 
-## 6. Verify
+## 5. Verify
 
 ```bash
-# after ~30min real idle (no backup job, no Jellyfin), all 12 should show STANDBY:
+# after 30min real idle, all 12 = STANDBY:
 for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
   out=$(smartctl -i -n standby /dev/$d 2>&1)
-  echo "$d: $(echo "$out" | grep -qi STANDBY && echo STANDBY || echo "$out" | grep -i 'power mode')"
+  echo "$d: $(echo "$out" | grep -qi STANDBY && echo STANDBY || echo ACTIVE)"
 done
 
-# wake test — read one disk directly, confirm isolated wake + pool stays healthy:
+# wake test — one disk wakes, the rest stay asleep, pool stays ONLINE:
 dd if=/dev/disk/by-id/wwn-0x5000cca07d178f88 of=/dev/null bs=1M count=4
 zpool status media
 ```
 
-See [README.md](README.md#nightly-schedule-spin-down-aligned) for the
-nightly backup window this is aligned against.
+## Troubleshooting
+
+- **Disks ACTIVE long past the 30min mark, hd-idle log silent**: hd-idle
+  tracks state via `/proc/diskstats`, but SG_IO wakes (smartd, manual
+  `sg_start`, `smartctl` without `-n`) are invisible there — hd-idle may
+  still believe the disk is down and never re-issue standby. Fix:
+  `systemctl restart hd-idle` (clean state, spins down 30min later).
+- **`smartctl -n standby` prints nothing / exit 2**: disk is asleep —
+  that's the skip working, not an error.
+- **A disk never comes back after standby**: some models (HGST) need an
+  explicit start — `sg_start --start /dev/sdX`. Only `sdk` here is HGST.
+
+[README.md](README.md#nightly-schedule) has the backup window this
+aligns with.

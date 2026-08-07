@@ -267,8 +267,10 @@ rebuilt from one of the downstream copies. In order of preference:
 **1. Synology's copy** (fastest, most complete, no decryption needed):
 
 ```bash
-# Wake Synology if asleep (it's only awake Sun 02:50-04:30 otherwise):
-wakeonlan 90:09:d0:50:08:4b
+# Wake Synology if asleep (it sleeps outside a short weekly window - wake
+# schedule and WoL MAC are in /root/PRIVATE-NOTES.md on pve, deliberately
+# not in this public repo):
+wakeonlan <MAC-from-private-notes>
 # wait ~1-2 min, then confirm it's up:
 ping 10.57.57.201
 
