@@ -109,6 +109,18 @@ idle) → SCSI STANDBY. A disk woken by anything, visible or not, is
 re-slept within ~15 min by design — no state to desync, nothing to
 restart.
 
+> ⚠️ **The single most important detail on this page.** Every SCSI
+> command must target the **generic** device (`/dev/sgN`), never the
+> block device (`/dev/sdX`). Issuing `sg_start --pc=3 /dev/sdp` succeeds,
+> the drive genuinely stops — and the kernel spins it straight back up
+> when the block device is closed (revalidation). Nothing appears in
+> `/proc/diskstats` because the whole exchange happens below the block
+> layer, which makes it look like a phantom wake-up from nowhere.
+> Measured 2026-08-07, same command, all 12 disks:
+> `/dev/sdX` → 154-170W (awake within seconds, every time);
+> `/dev/sgN` → 131-136W, sustained. Map with
+> `basename $(readlink -f /sys/block/sdX/device/generic)`.
+
 ```bash
 apt-get install -y sg3-utils smartmontools
 
@@ -127,13 +139,16 @@ to_sleep=()
 for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
   io=$(awk -v d="$d" '$3==d {print $4"+"$8}' /proc/diskstats)
   [ -z "$io" ] && continue
-  if smartctl -i -n standby "/dev/$d" 2>&1 | grep -qi "STANDBY"; then
+  # generic device, NOT the block device - see the warning above
+  sg=$(basename "$(readlink -f /sys/block/$d/device/generic 2>/dev/null)" 2>/dev/null)
+  [ -z "$sg" ] || [ ! -e "/dev/$sg" ] && { echo "$d $io 0" >> "$STATE.new"; continue; }
+  if smartctl -i -n standby "/dev/$sg" 2>&1 | grep -qi "STANDBY"; then
     echo "$d $io 0" >> "$STATE.new"; continue
   fi
   n=0
   if [ "${prev[$d]:-}" = "$io" ]; then
     n=$(( ${idle[$d]:-0} + 1 ))
-    if [ "$n" -ge 2 ]; then to_sleep+=("$d"); n=0; fi
+    if [ "$n" -ge 2 ]; then to_sleep+=("/dev/$sg:$d"); n=0; fi
   fi
   echo "$d $io $n" >> "$STATE.new"
 done
@@ -141,8 +156,9 @@ mv "$STATE.new" "$STATE"
 # Parallel: each sg_start blocks ~9s while the platter stops. Serially that's
 # ~2min for 12 disks, long enough for the first ones to get re-woken before
 # the last is even asked.
-for d in "${to_sleep[@]}"; do
-  ( sg_start --pc=3 "/dev/$d" >/dev/null 2>&1 && logger -t sas-spindown "standby issued: $d" ) &
+for entry in "${to_sleep[@]}"; do
+  ( sg_start --pc=3 "${entry%%:*}" >/dev/null 2>&1 \
+    && logger -t sas-spindown "standby issued: ${entry##*:} via ${entry%%:*}" ) &
 done
 wait
 SH
@@ -285,7 +301,7 @@ problem self-healing — worst case a disk runs ~15 min longer.
 - **`smartctl -n standby` prints nothing / exit 2**: disk is asleep —
   that's the skip working, not an error.
 - **A disk never comes back after standby**: some models (HGST) need an
-  explicit start — `sg_start --start /dev/sdX`. Only `sdk` here is HGST.
+  explicit start — `sg_start --start /dev/sgN`. Only `sdk` here is HGST.
 
 [README.md](README.md#nightly-schedule) has the backup window this
 aligns with.
