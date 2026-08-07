@@ -43,12 +43,29 @@ hunt writers instead.
 **Known writer on this host (found 2026-08-07): Garage's metadata.** The
 Garage LXC (103) writes its LMDB lock + peer_list heartbeat a few MB/hour,
 which alone forced an hourly txg → hourly full-pool spin-up, perfectly
-30min-sleep/30min-awake cycling against hd-idle's 30min timer. Fix in
-place: meta lives on `rpool/garage-meta` (SSD, mp1 of LXC 103), and
-`/root/scripts/garage-meta-nightly-copy.sh` (cron 03:01, inside the backup
-window) mirrors it back to `media/backups/longhorn-garage/meta/` so all
-downstream backup legs (ZFS snapshots, restic→Oracle, weekly Synology)
-still cover it unchanged.
+30min-sleep/30min-awake cycling against hd-idle's 30min timer. Fix: meta
+on SSD, data stays on the media pool (only written during the nightly
+window anyway). To reapply on a rebuilt host:
+
+```bash
+pct stop 103
+zfs create -o mountpoint=/rpool/garage-meta rpool/garage-meta
+# on a fresh rebuild, restore meta content from the nightly copy kept at
+# media/backups/longhorn-garage/meta/ (all backup legs cover that path):
+rsync -a /media/backups/longhorn-garage/meta/ /rpool/garage-meta/
+sed -i 's#^mp1: .*#mp1: /rpool/garage-meta,mp=/srv/docker/garage/meta#' /etc/pve/lxc/103.conf
+pct start 103
+pct exec 103 -- docker exec garage /garage bucket list   # sanity: meta intact
+
+# nightly copy back into the covered path (03:01, inside the backup window):
+cat > /root/scripts/garage-meta-nightly-copy.sh <<'SH'
+#!/bin/bash
+set -euo pipefail
+rsync -a --delete /rpool/garage-meta/ /media/backups/longhorn-garage/meta/
+SH
+chmod +x /root/scripts/garage-meta-nightly-copy.sh
+( crontab -l; echo "1 3 * * * /root/scripts/garage-meta-nightly-copy.sh >> /var/log/garage-meta-copy.log 2>&1" ) | crontab -
+```
 
 To find any new writer later:
 
