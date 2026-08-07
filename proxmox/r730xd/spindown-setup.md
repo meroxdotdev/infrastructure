@@ -99,20 +99,36 @@ HD_IDLE_OPTS="-i 0 -s 1 \
 systemctl daemon-reload && systemctl enable --now hd-idle
 ```
 
-## 4. smartd
+## 4. smartd — exclude the SAS disks entirely
 
-Debian default `-n standby` still force-checks sleeping disks after a few
-skips → wakes them mid-transition, resets hd-idle's timer, and fires
-false "FailedReadSmartSelfTestLog" alerts. Only visible over multi-hour
-logs, never in spot checks.
+smartd's `-n standby` power-mode skip is **ATA-only** (same limitation
+that forced unRAID to ship a smartctl wrapper). On SCSI/SAS it checks
+anyway — `-n standby,999,q` was tried and did nothing. Each forced check
+wakes the disk via SG_IO (invisible to hd-idle, which then never re-issues
+standby → disk stays awake forever) and fires false
+"FailedReadSmartSelfTestLog" alerts.
 
-```bash
-sed -i 's/-n standby /-n standby,999,q /' /etc/smartd.conf
-systemctl restart smartmontools
+Fix: smartd monitors only the 4 rpool SSDs, by-id:
+
+```
+# /etc/smartd.conf — replace DEVICESCAN entirely with:
+DEFAULT -m root -M exec /usr/share/smartmontools/smartd-runner
+/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_BTYF91650CDW960CGN -d sat
+/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_BTYF91650F29960CGN -d sat
+/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_BTYF91650EVS960CGN -d sat
+/dev/disk/by-id/ata-INTEL_SSDSC2KB960G8_BTYF91650A5R960CGN -d sat
 ```
 
-`,999` = skip limit (~20 days), `,q` = no skip-spam. Real SMART failures
-still surface whenever the disk is genuinely active.
+```bash
+systemctl restart smartmontools
+journalctl -u smartmontools -n 5 | grep Monitoring   # expect: 4 ATA, 0 SCSI
+```
+
+SAS health is covered instead by `/root/scripts/sas-health-check.sh`
+(cron `20 3 * * *`, inside the backup window while disks are awake):
+SMART health + grown defects + uncorrected error counters + zpool
+READ/WRITE/CKSUM, mails root only on anomalies — same alert channel
+smartd used.
 
 ## 5. Verify
 
