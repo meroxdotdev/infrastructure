@@ -4,6 +4,12 @@ Runbook for a fresh Proxmox reinstall on `pve`. Spin-down pieces only —
 pool import is standard `zpool import`. WWNs are hardware IDs, stable
 across reinstalls.
 
+⚠️ **Not covered here, recreate separately**: `/root/PRIVATE-NOTES.md`
+(Synology wake schedule + WoL MAC — deliberately not in git, see
+[README.md](README.md#nightly-schedule)) is lost on reinstall. Get the
+current values from whoever has DSM access, or from the DSM Power
+Schedule UI directly.
+
 Four things must all be true for the disks to sleep:
 1. Controller doesn't poll them (patrol read off)
 2. Nothing writes to the pool outside the backup window (no txg commits)
@@ -124,11 +130,35 @@ systemctl restart smartmontools
 journalctl -u smartmontools -n 5 | grep Monitoring   # expect: 4 ATA, 0 SCSI
 ```
 
-SAS health is covered instead by `/root/scripts/sas-health-check.sh`
-(cron `20 3 * * *`, inside the backup window while disks are awake):
-SMART health + grown defects + uncorrected error counters + zpool
-READ/WRITE/CKSUM, mails root only on anomalies — same alert channel
+SAS health is covered instead by a nightly script (backup window, disks
+already awake): SMART health + grown defects + uncorrected error counters
++ zpool READ/WRITE/CKSUM, mails root only on anomalies — same channel
 smartd used.
+
+```bash
+cat > /root/scripts/sas-health-check.sh <<'SH'
+#!/bin/bash
+set -uo pipefail
+ALERT=""
+for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
+  out=$(smartctl -H -l error /dev/$d 2>&1)
+  health=$(echo "$out" | grep -i "SMART Health Status" | awk -F: '{print $2}' | xargs)
+  defects=$(smartctl -a /dev/$d 2>/dev/null | grep -i "grown defect" | grep -oE '[0-9]+$')
+  uncorr=$(echo "$out" | awk '/^read:|^write:|^verify:/ {print $NF}' | awk '{s+=$1} END {print s}')
+  [ "$health" != "OK" ] && ALERT="$ALERT\n$d: health=$health"
+  [ "${defects:-0}" -gt 0 ] && ALERT="$ALERT\n$d: grown defects=$defects"
+  [ "${uncorr:-0}" -gt 0 ] && ALERT="$ALERT\n$d: uncorrected errors=$uncorr"
+done
+zerr=$(zpool status media | awk '/ONLINE|DEGRADED|FAULTED/ && $3 ~ /[0-9]/ {if ($3+$4+$5 > 0) print $1": "$3"/"$4"/"$5}')
+[ -n "$zerr" ] && ALERT="$ALERT\nzpool error counters:\n$zerr"
+if [ -n "$ALERT" ]; then
+  echo -e "SAS health anomalies on pve:$ALERT" | mail -s "SAS health alert (pve)" root
+fi
+echo "$(date '+%F %T') checked 12 disks, alert='${ALERT:-none}'"
+SH
+chmod +x /root/scripts/sas-health-check.sh
+( crontab -l; echo "20 3 * * * /root/scripts/sas-health-check.sh >> /var/log/sas-health.log 2>&1" ) | crontab -
+```
 
 ## 5. Verify
 

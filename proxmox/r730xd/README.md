@@ -28,6 +28,7 @@ and the Oracle VPS run UTC internally (shown in parens).
 | 03:02 (00:02 UTC) | Immich Postgres pg_dump | K8s |
 | 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve |
 | 03:10 | restic push → Oracle | pve |
+| 03:20 | SAS health check (SMART/defects/zpool counters, mails on anomaly only) | pve |
 | weekly | Relay → Synology (cold storage) | pve |
 | 05:00 1st/mo | restic restore drill | pve |
 | 07:00 1st/mo (04:00 UTC) | Authentik/Joplin restore drill | VPS |
