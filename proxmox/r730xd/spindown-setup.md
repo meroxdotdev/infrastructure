@@ -102,6 +102,7 @@ if [ -f "$STATE" ]; then
   while read -r d io n; do prev[$d]=$io; idle[$d]=$n; done < "$STATE"
 fi
 : > "$STATE.new"
+to_sleep=()
 for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
   io=$(awk -v d="$d" '$3==d {print $4"+"$8}' /proc/diskstats)
   [ -z "$io" ] && continue
@@ -111,14 +112,18 @@ for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
   n=0
   if [ "${prev[$d]:-}" = "$io" ]; then
     n=$(( ${idle[$d]:-0} + 1 ))
-    if [ "$n" -ge 2 ]; then
-      sg_start --pc=3 "/dev/$d" && logger -t sas-spindown "standby issued: $d"
-      n=0
-    fi
+    if [ "$n" -ge 2 ]; then to_sleep+=("$d"); n=0; fi
   fi
   echo "$d $io $n" >> "$STATE.new"
 done
 mv "$STATE.new" "$STATE"
+# Parallel: each sg_start blocks ~9s while the platter stops. Serially that's
+# ~2min for 12 disks, long enough for the first ones to get re-woken before
+# the last is even asked.
+for d in "${to_sleep[@]}"; do
+  ( sg_start --pc=3 "/dev/$d" >/dev/null 2>&1 && logger -t sas-spindown "standby issued: $d" ) &
+done
+wait
 SH
 chmod +x /root/scripts/sas-spindown.sh
 
@@ -213,13 +218,24 @@ chmod +x /root/scripts/sas-health-check.sh
 
 ## 5. Verify
 
+⚠️ **Don't poll with `smartctl` while waiting.** Even with `-n standby`
+it's an SG_IO round-trip on any disk that is *currently awake*, which
+bumps its counters and resets the idle tally — repeated checks keep the
+disks awake forever and make it look broken. Watch these two instead,
+neither of which touches a disk:
+
 ```bash
-# after 10-15 min real idle (2-3 enforcer ticks), all 12 = STANDBY:
+journalctl -t sas-spindown -f                    # "standby issued: sdX"
+ipmitool sensor | grep -i "Pwr Consumption"      # ~126W all-asleep, ~168W all-awake
+```
+
+One `smartctl` sweep is fine to confirm the end state, just don't loop it:
+
+```bash
 for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
   out=$(smartctl -i -n standby /dev/$d 2>&1)
   echo "$d: $(echo "$out" | grep -qi STANDBY && echo STANDBY || echo ACTIVE)"
 done
-journalctl -t sas-spindown -n 20      # "standby issued" events
 
 # wake test — one disk wakes, the rest stay asleep, pool stays ONLINE,
 # and the enforcer re-sleeps it within ~15 min without intervention:
