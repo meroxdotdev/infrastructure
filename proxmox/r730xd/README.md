@@ -44,7 +44,7 @@ published — source of truth is `crontab -l` on pve and the DSM settings.
 | Dataset | NFS export | Consumers |
 |---|---|---|
 | `media/library` | rw | Jellyfin (ro), Sonarr/Radarr/qBittorrent (rw) via `NFS_SERVER` var |
-| `media/photos` | — (removed 2026-08-06) | None — Immich moved to Longhorn/SSD PVCs; files kept as stale safety net |
+| `media/photos` | rw | Filebrowser only (browsing the stale safety-net copy) — Immich itself moved to Longhorn/SSD PVCs 2026-08-06. Export was briefly removed then, which broke Filebrowser (found + fixed 2026-08-07); re-added, this time checked against all known consumers first |
 | `media/isos` | ro | Filebrowser |
 | `media/backups` | rw | Filebrowser (ro), Immich pg_dump CronJob, backup jobs |
 

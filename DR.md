@@ -243,12 +243,13 @@ paths**, deliberately not just one:
 now `immich-library-ssd`/`immich-external-library-ssd`, Longhorn PVCs on
 rpool (SSD), not an NFS mount. Same `Longhorn → Garage S3` recurring backup
 as the Postgres PVC above (both carry the `media` recurring-job-group label)
-is the primary protection now. The old `/media/photos` NFS export on the SAS
-pool is gone — the files are still sitting there unexported as a safety net
-post-migration, but are no longer the live source, so the weekly Synology
-push and nightly restic-to-Oracle legs that still read `/media/photos` (see
+is the primary protection now. The old `/media/photos` NFS export is still
+live (Filebrowser reads it for the stale safety-net copy — briefly removed
+2026-08-06 which broke Filebrowser, re-added 2026-08-07), but it's no
+longer the live Immich source, so the weekly Synology push and nightly
+restic-to-Oracle legs that still read `/media/photos` (see
 [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)) are
-now backing up that stale leftover copy, not live data — fine as a second
+backing up that stale leftover copy, not live data — fine as a second
 safety net for now, but don't treat it as current.
 
 ## R730xd / Garage total loss fallback
