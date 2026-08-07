@@ -142,7 +142,9 @@ for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
   # generic device, NOT the block device - see the warning above
   sg=$(basename "$(readlink -f /sys/block/$d/device/generic 2>/dev/null)" 2>/dev/null)
   [ -z "$sg" ] || [ ! -e "/dev/$sg" ] && { echo "$d $io 0" >> "$STATE.new"; continue; }
-  if smartctl -i -n standby "/dev/$sg" 2>&1 | grep -qi "STANDBY"; then
+  # Awake only when it explicitly says ACTIVE. Anything else (STANDBY, IDLE,
+  # a timeout, an error) means leave it alone - the conservative direction.
+  if ! smartctl -i -n standby "/dev/$sg" 2>&1 | grep -qi "Power mode is:.*ACTIVE"; then
     echo "$d $io 0" >> "$STATE.new"; continue
   fi
   n=0
