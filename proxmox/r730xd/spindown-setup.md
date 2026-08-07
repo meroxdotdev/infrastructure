@@ -64,6 +64,27 @@ chmod +x /root/scripts/garage-meta-nightly-copy.sh
 ( crontab -l; echo "1 3 * * * /root/scripts/garage-meta-nightly-copy.sh >> /var/log/garage-meta-copy.log 2>&1" ) | crontab -
 ```
 
+**Second known waker: Jellyfin's real-time library monitor.** Jellyfin
+watches library folders for changes continuously (`LibraryMonitor:
+Watching directory /media/Movies`). Over NFS this is a steady trickle of
+metadata reads — enough to keep every disk in the vdev awake permanently,
+even though `find -newermt` shows no file changes and txg commits carry
+zero bytes. Disable per library:
+
+```bash
+POD=$(kubectl get pods -n default -o name | grep jellyfin | head -1)
+kubectl exec -n default ${POD#pod/} -- sh -c '
+for f in /config/root/default/*/options.xml; do
+  sed -i "s#<EnableRealtimeMonitor>true<#<EnableRealtimeMonitor>false<#" "$f"
+done'
+kubectl rollout restart deployment -n default jellyfin
+# verify: no "Watching directory" lines in the new pod's log
+```
+
+Lives in Jellyfin's own config (PVC), not git — recheck after any
+library re-add. Trade-off: new downloads appear at the next scheduled
+scan instead of instantly.
+
 Finding a new writer:
 
 ```bash
