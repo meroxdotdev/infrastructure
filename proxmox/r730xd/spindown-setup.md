@@ -141,7 +141,8 @@ cat > /root/scripts/sas-disks.sh <<'SH'
 # can never appear here. (lsblk TRAN is empty for these: they sit behind the
 # MegaRAID controller, so a transport-type filter finds nothing.)
 set -uo pipefail
-zpool status media 2>/dev/null | grep -oE "wwn-0x[0-9a-f]+" | sort -u | while read -r wwn; do
+POOL="${SAS_POOL:-media}"   # override with SAS_POOL=... if the pool is renamed
+zpool status "$POOL" 2>/dev/null | grep -oE "wwn-0x[0-9a-f]+" | sort -u | while read -r wwn; do
   d=$(basename "$(readlink -f "/dev/disk/by-id/$wwn" 2>/dev/null)" 2>/dev/null)
   { [ -z "$d" ] || [ ! -e "/sys/block/$d" ]; } && continue
   [ "$(cat "/sys/block/$d/queue/rotational" 2>/dev/null)" = "1" ] || continue
@@ -440,6 +441,24 @@ SH
 chmod +x /root/scripts/spindown-drift-check.sh
 ( crontab -l; echo "25 3 * * * /root/scripts/spindown-drift-check.sh >> /var/log/spindown-drift.log 2>&1" ) | crontab -
 ```
+
+## Changing the disk set
+
+Nothing here needs editing when disks change — the enforcer, the health
+check and the verify sweep all read `sas-disks.sh`, which derives the
+list from the pool at every run.
+
+| What you do | What happens |
+|---|---|
+| Replace a failed disk | New wwn appears in `zpool status` → picked up on the next 5-min tick. No action. |
+| Add a vdev (e.g. +2 disks) | Same — new members are simply part of the list. No action. |
+| Pull a disk physically | Its `by-id` symlink stops resolving → skipped silently, the rest keep working. |
+| Slot move / HBA reshuffle | sdX names change, wwn IDs do not → list still correct. |
+| Rename the pool | The one thing to adjust: `SAS_POOL=` in `sas-disks.sh` (defaults to `media`). |
+| Add an SSD to the pool | Refused by the rotational check — spin-down only ever targets spinning disks. |
+
+Verified by test, not assumption: a bogus wwn is ignored without error,
+and an rpool SSD's wwn is rejected (`rotational=0`).
 
 ## Known wake sources (all handled or accepted)
 
