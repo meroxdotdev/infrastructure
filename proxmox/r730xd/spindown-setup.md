@@ -24,7 +24,9 @@ settings.
 ```bash
 apt-get install -y unzip
 cd /root
-# Mirrored locally at /media/backups/tools/ (covered by the backup legs) -
+# Mirrored at /media/backups/tools/ and explicitly added to the restic and
+# Synology legs (both enumerate subdirectories, so a new one is NOT picked up
+# automatically - that was checked, not assumed) -
 # Broadcom's download URLs do not stay valid for years, and a reinstall is
 # exactly when you need this. Use the mirror first, the URL as fallback:
 #   dpkg -i /media/backups/tools/storcli_007.2705.0000.0000_all.deb
