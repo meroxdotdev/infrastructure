@@ -289,6 +289,62 @@ dd if=/dev/disk/by-id/wwn-0x5000cca07d178f88 of=/dev/null bs=1M count=4
 zpool status media
 ```
 
+## 6. Status reporting (operator convenience)
+
+Two pieces, both **passive — they never touch a disk**, so they can be run
+or scheduled freely without disturbing what they measure (polling with
+`smartctl` was itself the reason several early measurements looked broken).
+
+`/root/scripts/spindown-report.sh` on a 10-min timer appends one line per
+sample to `/var/log/spindown-history.log`; `/root/spindown-summary.sh`
+turns that into a phone-readable verdict:
+
+```
+── SPINDOWN 09.08 22:55 ──
+acum:         ADORMITE (126 W)
+ultimele 2h:  11/12 (91%)
+ultimele 24h: 118/144 (81%)
+de la boot:   1/3 (33%)  [08-09 22:14]
+cmd standby (24h): 12
+pool: state: ONLINE (ok)
+```
+
+```bash
+cat > /root/spindown-summary.sh <<'SH'
+#!/bin/bash
+# Phone-friendly spin-down status. Touches NO disk (safe any time).
+# Time windows compare the "YYYY-MM-DD HH:MM" prefix as text - correct because
+# the format sorts chronologically, and avoids per-line date(1) calls.
+LOG=/var/log/spindown-history.log
+now_i=$(ipmitool sensor 2>/dev/null | grep -i "Pwr Consumption" | awk -F'|' '{print $2}' | xargs | cut -d. -f1)
+if [ "${now_i:-999}" -lt 140 ]; then state="ADORMITE"; else state="TREZE"; fi
+window() {  # $1 = cutoff timestamp "YYYY-MM-DD HH:MM"
+  awk -v cut="$1" '
+    { ts = substr($0,1,16)
+      if (ts >= cut) { n++
+        if (match($0,/idrac=[0-9]+/)) { w = substr($0,RSTART+6,RLENGTH-6)+0
+          if (w > 0 && w < 140) c++ } } }
+    END { if (n>0) printf "%d/%d (%d%%)", c+0, n, (c+0)*100/n; else printf "fara date inca" }' "$LOG" 2>/dev/null
+}
+echo "── SPINDOWN $(date '+%d.%m %H:%M') ──"
+echo "acum:         $state ($now_i W)"
+echo "ultimele 2h:  $(window "$(date -d '-2 hours' '+%F %H:%M')")"
+echo "ultimele 24h: $(window "$(date -d '-24 hours' '+%F %H:%M')")"
+echo "de la boot:   $(window "$(date -d "$(uptime -s)" '+%F %H:%M')")  [$(uptime -s | cut -c6-16)]"
+echo "cmd standby (24h): $(journalctl -t sas-spindown --since '24 hours ago' 2>/dev/null | grep -c 'standby issued')"
+zs=$(zpool status media 2>/dev/null | grep -E "^ state:" | xargs)
+ze=$(zpool status media 2>/dev/null | grep -cE "DEGRADED|FAULTED|OFFLINE")
+echo "pool: $zs $([ "$ze" -gt 0 ] && echo '<-- ATENTIE' || echo '(ok)')"
+echo "───────────────────────"
+echo "126W=dorm  150W+=treze"
+SH
+chmod +x /root/spindown-summary.sh
+```
+
+Read it as: `acum` is the live answer; the windows show what fraction of
+samples had the pool asleep. >80% during normal days is healthy. A `pool:`
+line other than ONLINE is a real disk problem, unrelated to spin-down.
+
 ## Known wake sources (all handled or accepted)
 
 Any SG_IO query (`smartctl` without `-n`, `sg_start`, Proxmox's own
