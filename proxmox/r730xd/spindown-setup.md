@@ -24,6 +24,10 @@ settings.
 ```bash
 apt-get install -y unzip
 cd /root
+# Mirrored locally at /media/backups/tools/ (covered by the backup legs) -
+# Broadcom's download URLs do not stay valid for years, and a reinstall is
+# exactly when you need this. Use the mirror first, the URL as fallback:
+#   dpkg -i /media/backups/tools/storcli_007.2705.0000.0000_all.deb
 curl -fsSL -o storcli_rel.zip "https://docs.broadcom.com/docs-and-downloads/007.2705.0000.0000_storcli_rel.zip"
 unzip -q storcli_rel.zip -d storcli_rel
 unzip -q storcli_rel/storcli_rel/Unified_storcli_all_os.zip -d storcli_rel/unified
@@ -126,6 +130,20 @@ apt-get install -y sg3-utils smartmontools
 
 cat > /root/scripts/sas-spindown.sh <<'SH'
 #!/bin/bash
+# Stateless SAS spin-down enforcer.
+#
+# CRITICAL: all SCSI commands go to the *generic* device (/dev/sgN), never the
+# block device (/dev/sdX). Issuing START STOP UNIT on /dev/sdX makes the kernel
+# revalidate the block device on close and immediately spin the disk back up -
+# the standby never sticks, and nothing shows in /proc/diskstats because the
+# whole exchange happens below the block layer.
+#
+# The disk list is DERIVED from the media pool's own vdev members, never
+# hardcoded: sdX names can reshuffle after a disk replacement, a moved slot or
+# an HBA firmware change, and a stale list could send STANDBY to an rpool SSD.
+# wwn IDs are hardware. Rotational check is a second safety net - an SSD can
+# never be selected. (Note: lsblk TRAN is empty for these disks because they
+# sit behind the MegaRAID controller, so a transport-type filter does not work.)
 set -uo pipefail
 exec 9>/run/sas-spindown.lock
 flock -n 9 || exit 0
@@ -134,13 +152,22 @@ declare -A prev idle
 if [ -f "$STATE" ]; then
   while read -r d io n; do prev[$d]=$io; idle[$d]=$n; done < "$STATE"
 fi
+
+mapfile -t WWNS < <(zpool status media 2>/dev/null | grep -oE "wwn-0x[0-9a-f]+" | sort -u)
+if [ "${#WWNS[@]}" -eq 0 ]; then
+  logger -t sas-spindown "ERROR: no vdev members found for pool 'media' - doing nothing"
+  exit 1
+fi
+
 : > "$STATE.new"
 to_sleep=()
-for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
+for wwn in "${WWNS[@]}"; do
+  d=$(basename "$(readlink -f "/dev/disk/by-id/$wwn" 2>/dev/null)" 2>/dev/null)
+  [ -z "$d" ] || [ ! -e "/sys/block/$d" ] && continue
+  [ "$(cat "/sys/block/$d/queue/rotational" 2>/dev/null)" = "1" ] || continue   # never an SSD
   io=$(awk -v d="$d" '$3==d {print $4"+"$8}' /proc/diskstats)
   [ -z "$io" ] && continue
-  # generic device, NOT the block device - see the warning above
-  sg=$(basename "$(readlink -f /sys/block/$d/device/generic 2>/dev/null)" 2>/dev/null)
+  sg=$(basename "$(readlink -f "/sys/block/$d/device/generic" 2>/dev/null)" 2>/dev/null)
   [ -z "$sg" ] || [ ! -e "/dev/$sg" ] && { echo "$d $io 0" >> "$STATE.new"; continue; }
   # Awake only when it explicitly says ACTIVE. Anything else (STANDBY, IDLE,
   # a timeout, an error) means leave it alone - the conservative direction.
@@ -155,9 +182,7 @@ for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
   echo "$d $io $n" >> "$STATE.new"
 done
 mv "$STATE.new" "$STATE"
-# Parallel: each sg_start blocks ~9s while the platter stops. Serially that's
-# ~2min for 12 disks, long enough for the first ones to get re-woken before
-# the last is even asked.
+# Parallel: each sg_start blocks ~9s while the platter stops.
 for entry in "${to_sleep[@]}"; do
   ( sg_start --pc=3 "${entry%%:*}" >/dev/null 2>&1 \
     && logger -t sas-spindown "standby issued: ${entry##*:} via ${entry%%:*}" ) &
@@ -344,6 +369,61 @@ chmod +x /root/spindown-summary.sh
 Read it as: `acum` is the live answer; the windows show what fraction of
 samples had the pool asleep. >80% during normal days is healthy. A `pool:`
 line other than ONLINE is a real disk problem, unrelated to spin-down.
+
+## 7. Drift detection (nightly)
+
+Several pieces of this setup live outside git by nature - Jellyfin's
+realtime-monitor toggle is in its PVC, Garage's mount is in the LXC
+config, patrol read is in controller NVRAM. Rather than trusting anyone
+to remember to re-check them, the nightly job checks the **outcome**:
+did the pool actually sleep? That catches wakers nobody has thought of
+yet, and cannot rot the way a list of config checks does. A few cheap
+local invariants are verified alongside it.
+
+```bash
+cat > /root/scripts/spindown-drift-check.sh <<'SH'
+#!/bin/bash
+# Nightly drift detection for the spin-down setup.
+#
+# Deliberately OUTCOME-based, not config-based: rather than enumerating every
+# known waker (Jellyfin realtime monitor, Garage meta location, ...) and
+# checking each is still set correctly, it asks the only question that matters
+# - did the pool actually sleep? That also catches wakers nobody has thought
+# of yet, and it cannot rot the way a list of config checks does.
+# Cheap local invariants that need no cluster access are checked too.
+set -uo pipefail
+LOG=/var/log/spindown-history.log
+ALERT=""
+
+cut=$(date -d '-24 hours' '+%F %H:%M')
+read -r slept total < <(awk -v cut="$cut" '
+  { ts=substr($0,1,16); if (ts>=cut) { n++; if (match($0,/idrac=[0-9]+/)) {
+      w=substr($0,RSTART+6,RLENGTH-6)+0; if (w>0 && w<140) c++ } } }
+  END { print c+0, n+0 }' "$LOG" 2>/dev/null)
+if [ "${total:-0}" -ge 60 ]; then          # need a meaningful sample (~10h)
+  pct=$(( slept * 100 / total ))
+  [ "$pct" -lt 30 ] && ALERT="$ALERT\nPool asleep only ${pct}% of the last 24h (${slept}/${total} samples).\nSomething is keeping the SAS disks awake - see proxmox/r730xd/spindown-setup.md,\nsection 'Zero writers on the pool'."
+fi
+
+pr=$(storcli /c0 show patrolread 2>/dev/null | grep -c "PR Mode.*Disable")
+[ "$pr" -eq 0 ] && ALERT="$ALERT\nController patrol read is no longer disabled."
+grep -q "^mp1: /rpool/garage-meta" /etc/pve/lxc/103.conf 2>/dev/null \
+  || ALERT="$ALERT\nGarage meta is no longer bind-mounted from rpool (LXC 103 mp1)."
+journalctl -u smartmontools -b --no-pager 2>/dev/null | grep -q "0 SCSI/SAS" \
+  || ALERT="$ALERT\nsmartd is monitoring SAS disks again (should be SSD-only)."
+systemctl is-active --quiet sas-spindown.timer \
+  || ALERT="$ALERT\nsas-spindown.timer is not active."
+
+if [ -n "$ALERT" ]; then
+  echo -e "Spin-down drift detected on pve:$ALERT" | mail -s "Spin-down drift (pve)" root
+  echo "$(date '+%F %T') DRIFT:$ALERT"
+else
+  echo "$(date '+%F %T') ok (24h asleep: ${slept:-?}/${total:-?})"
+fi
+SH
+chmod +x /root/scripts/spindown-drift-check.sh
+( crontab -l; echo "25 3 * * * /root/scripts/spindown-drift-check.sh >> /var/log/spindown-drift.log 2>&1" ) | crontab -
+```
 
 ## Known wake sources (all handled or accepted)
 
