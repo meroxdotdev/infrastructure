@@ -127,7 +127,7 @@ host). Key rotation: regenerate on VPS, update
 NAS wake window (exact schedule: `crontab -l` on pve), dest
 `admin@10.57.57.201:/volume1/NetBackup/<category>/`. Pushes: photos
 (stale copy), synology-home, dump, pfsense, longhorn-garage,
-immich-postgres, oracle-vps.
+immich-postgres, oracle-vps, tools.
 
 ⚠️ Retention prunes by **date parsed from folder name**, never `find
 -mtime` — `rsync -a` copies source mtimes, which once made the script
