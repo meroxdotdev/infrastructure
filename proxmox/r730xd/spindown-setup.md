@@ -130,6 +130,27 @@ restart.
 ```bash
 apt-get install -y sg3-utils smartmontools
 
+# Single source of truth for the disk list - used by the enforcer, the
+# health check and the manual verify sweep. Never hardcode sdX names.
+cat > /root/scripts/sas-disks.sh <<'SH'
+#!/bin/bash
+# Single source of truth: which disks are the media pool's SAS members.
+# Prints one "sdX sgN" pair per line, derived from the pool itself - so a disk
+# replacement, a moved slot or an HBA reshuffle updates every consumer at once
+# instead of leaving one of them quietly lying. Rotational check means an SSD
+# can never appear here. (lsblk TRAN is empty for these: they sit behind the
+# MegaRAID controller, so a transport-type filter finds nothing.)
+set -uo pipefail
+zpool status media 2>/dev/null | grep -oE "wwn-0x[0-9a-f]+" | sort -u | while read -r wwn; do
+  d=$(basename "$(readlink -f "/dev/disk/by-id/$wwn" 2>/dev/null)" 2>/dev/null)
+  { [ -z "$d" ] || [ ! -e "/sys/block/$d" ]; } && continue
+  [ "$(cat "/sys/block/$d/queue/rotational" 2>/dev/null)" = "1" ] || continue
+  sg=$(basename "$(readlink -f "/sys/block/$d/device/generic" 2>/dev/null)" 2>/dev/null)
+  { [ -n "$sg" ] && [ -e "/dev/$sg" ]; } && echo "$d $sg"
+done
+SH
+chmod +x /root/scripts/sas-disks.sh
+
 cat > /root/scripts/sas-spindown.sh <<'SH'
 #!/bin/bash
 # Stateless SAS spin-down enforcer.
@@ -140,12 +161,8 @@ cat > /root/scripts/sas-spindown.sh <<'SH'
 # the standby never sticks, and nothing shows in /proc/diskstats because the
 # whole exchange happens below the block layer.
 #
-# The disk list is DERIVED from the media pool's own vdev members, never
-# hardcoded: sdX names can reshuffle after a disk replacement, a moved slot or
-# an HBA firmware change, and a stale list could send STANDBY to an rpool SSD.
-# wwn IDs are hardware. Rotational check is a second safety net - an SSD can
-# never be selected. (Note: lsblk TRAN is empty for these disks because they
-# sit behind the MegaRAID controller, so a transport-type filter does not work.)
+# The disk list comes from /root/scripts/sas-disks.sh - the one place that
+# derives it from the pool itself. Never hardcode names here or anywhere else.
 set -uo pipefail
 exec 9>/run/sas-spindown.lock
 flock -n 9 || exit 0
@@ -155,22 +172,17 @@ if [ -f "$STATE" ]; then
   while read -r d io n; do prev[$d]=$io; idle[$d]=$n; done < "$STATE"
 fi
 
-mapfile -t WWNS < <(zpool status media 2>/dev/null | grep -oE "wwn-0x[0-9a-f]+" | sort -u)
-if [ "${#WWNS[@]}" -eq 0 ]; then
-  logger -t sas-spindown "ERROR: no vdev members found for pool 'media' - doing nothing"
+if ! mapfile -t DISKS < <(/root/scripts/sas-disks.sh) || [ "${#DISKS[@]}" -eq 0 ]; then
+  logger -t sas-spindown "ERROR: sas-disks.sh returned no disks - doing nothing"
   exit 1
 fi
 
 : > "$STATE.new"
 to_sleep=()
-for wwn in "${WWNS[@]}"; do
-  d=$(basename "$(readlink -f "/dev/disk/by-id/$wwn" 2>/dev/null)" 2>/dev/null)
-  [ -z "$d" ] || [ ! -e "/sys/block/$d" ] && continue
-  [ "$(cat "/sys/block/$d/queue/rotational" 2>/dev/null)" = "1" ] || continue   # never an SSD
+for entry in "${DISKS[@]}"; do
+  d=${entry%% *}; sg=${entry##* }
   io=$(awk -v d="$d" '$3==d {print $4"+"$8}' /proc/diskstats)
   [ -z "$io" ] && continue
-  sg=$(basename "$(readlink -f "/sys/block/$d/device/generic" 2>/dev/null)" 2>/dev/null)
-  [ -z "$sg" ] || [ ! -e "/dev/$sg" ] && { echo "$d $io 0" >> "$STATE.new"; continue; }
   # Awake only when it explicitly says ACTIVE. Anything else (STANDBY, IDLE,
   # a timeout, an error) means leave it alone - the conservative direction.
   if ! smartctl -i -n standby "/dev/$sg" 2>&1 | grep -qi "Power mode is:.*ACTIVE"; then
@@ -260,16 +272,17 @@ smartd used.
 ```bash
 cat > /root/scripts/sas-health-check.sh <<'SH'
 #!/bin/bash
+# Nightly SAS health check - replaces smartd for the 12 media-pool disks
+# (smartd's -n standby is ATA-only; on SAS it force-wakes sleeping disks).
+# Runs inside the backup window while disks are awake anyway. Alerts root
+# (same channel smartd used) only on real anomalies.
 set -uo pipefail
 ALERT=""
 skipped=0
-for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
-  # generic device, never the block device (§3 warning)
-  sg=$(basename "$(readlink -f /sys/block/$d/device/generic 2>/dev/null)" 2>/dev/null)
-  [ -z "$sg" ] && continue
+while read -r d sg; do
   out=$(smartctl -n standby -H -l error "/dev/$sg" 2>&1)
   # A sleeping disk returns no health data - that is not a fault. Skip it;
-  # it gets checked on a night the backup window has it awake.
+  # it gets checked on a night when the backup window has it awake.
   echo "$out" | grep -qi "STANDBY" && { skipped=$((skipped+1)); continue; }
   health=$(echo "$out" | grep -i "SMART Health Status" | awk -F: '{print $2}' | xargs)
   defects=$(smartctl -n standby -a "/dev/$sg" 2>/dev/null | grep -i "grown defect" | grep -oE '[0-9]+$')
@@ -277,13 +290,14 @@ for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
   [ "$health" != "OK" ] && ALERT="$ALERT\n$d: health=$health"
   [ "${defects:-0}" -gt 0 ] && ALERT="$ALERT\n$d: grown defects=$defects"
   [ "${uncorr:-0}" -gt 0 ] && ALERT="$ALERT\n$d: uncorrected errors=$uncorr"
-done
+done < <(/root/scripts/sas-disks.sh)
 zerr=$(zpool status media | awk '/ONLINE|DEGRADED|FAULTED/ && $3 ~ /[0-9]/ {if ($3+$4+$5 > 0) print $1": "$3"/"$4"/"$5}')
 [ -n "$zerr" ] && ALERT="$ALERT\nzpool error counters:\n$zerr"
 if [ -n "$ALERT" ]; then
   echo -e "SAS health anomalies on pve:$ALERT" | mail -s "SAS health alert (pve)" root
 fi
-echo "$(date '+%F %T') checked $((12-skipped))/12 disks (${skipped} asleep, skipped), alert='${ALERT:-none}'"
+total=$(/root/scripts/sas-disks.sh | wc -l)
+echo "$(date '+%F %T') checked $((total-skipped))/$total disks (${skipped} asleep, skipped), alert='${ALERT:-none}'"
 SH
 chmod +x /root/scripts/sas-health-check.sh
 ( crontab -l; echo "20 3 * * * /root/scripts/sas-health-check.sh >> /var/log/sas-health.log 2>&1" ) | crontab -
@@ -305,10 +319,10 @@ ipmitool sensor | grep -i "Pwr Consumption"      # ~126W all-asleep, ~168W all-a
 One `smartctl` sweep is fine to confirm the end state, just don't loop it:
 
 ```bash
-for d in sde sdf sdg sdh sdi sdj sdk sdl sdm sdn sdo sdp; do
-  out=$(smartctl -i -n standby /dev/$d 2>&1)
+while read -r d sg; do
+  out=$(smartctl -i -n standby "/dev/$sg" 2>&1)
   echo "$d: $(echo "$out" | grep -qi STANDBY && echo STANDBY || echo ACTIVE)"
-done
+done < <(/root/scripts/sas-disks.sh)
 
 # wake test — one disk wakes, the rest stay asleep, pool stays ONLINE,
 # and the enforcer re-sleeps it within ~15 min without intervention:
