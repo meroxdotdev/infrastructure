@@ -10,6 +10,27 @@ across reinstalls.
 current values from whoever has DSM access, or from the DSM Power
 Schedule UI directly.
 
+## Fastest path: run the installer
+
+[`install-spindown.sh`](install-spindown.sh) does everything in sections
+1-7 below. It is idempotent, host-agnostic (detects the pool, derives the
+disk list and the SSD list for smartd), and safe to re-run.
+
+```bash
+./install-spindown.sh --check    # what is missing, changes nothing
+./install-spindown.sh            # install / repair
+SAS_POOL=tank ./install-spindown.sh   # if auto-detection picks wrong
+```
+
+What it deliberately does **not** do: silence applications that keep
+writing to the pool. That part is site-specific — §2 covers how to find
+them, and the two found here.
+
+The sections below explain what the installer sets up and why each piece
+exists. Read them when something misbehaves; skip them on a rebuild.
+
+---
+
 Four things must all be true for the disks to sleep:
 1. Controller doesn't poll them (patrol read off)
 2. Nothing writes to the pool outside the backup window (no txg commits)
