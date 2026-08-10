@@ -13,14 +13,26 @@ Schedule UI directly.
 ## Fastest path: run the installer
 
 [`install-spindown.sh`](install-spindown.sh) does everything in sections
-1-7 below. It is idempotent, host-agnostic (detects the pool, derives the
-disk list and the SSD list for smartd), and safe to re-run.
+1-7 below. Idempotent, host-agnostic and safe to re-run — it finds the
+disks itself, derives smartd's SSD list rather than hardcoding one, and
+degrades gracefully when `storcli` or a BMC are absent.
 
 ```bash
-./install-spindown.sh --check    # what is missing, changes nothing
-./install-spindown.sh            # install / repair
-SAS_POOL=tank ./install-spindown.sh   # if auto-detection picks wrong
+./install-spindown.sh --check         # what is missing, changes nothing
+./install-spindown.sh                 # install / repair
+SAS_DISKS="sdb sdc sdd" ./install-spindown.sh
+SAS_POOL=tank ./install-spindown.sh
 ```
+
+Disks are found in this order: `$SAS_DISKS`, then a ZFS pool's members,
+then every rotational disk not backing `/`. Only rotational devices are
+ever touched, so an SSD cannot be parked by accident — verified by
+running all three modes against this host.
+
+Sleep tracking comes from the enforcer's own observations
+(`asleep=12/12` per run), not from a power sensor, so drift alerting
+works on hardware with no BMC. Watts are appended when `ipmitool` exists,
+as a bonus rather than a dependency.
 
 What it deliberately does **not** do: silence applications that keep
 writing to the pool. That part is site-specific — §2 covers how to find
