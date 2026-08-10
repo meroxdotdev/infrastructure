@@ -13,9 +13,14 @@ Schedule UI directly.
 ## Fastest path: run the installer
 
 [`install-spindown.sh`](install-spindown.sh) does everything in sections
-1-7 below. Idempotent, host-agnostic and safe to re-run — it finds the
-disks itself, derives smartd's SSD list rather than hardcoding one, and
-degrades gracefully when `storcli` or a BMC are absent.
+1-7 below. Idempotent and safe to re-run — it finds the disks itself,
+derives smartd's SSD list rather than hardcoding one, and degrades
+gracefully when `storcli` or a BMC are absent.
+
+⚠️ **Tested on this host only**: R730xd, PERC H730P (`megaraid_sas`),
+Proxmox 9, ZFS, iDRAC. The fallback paths for non-ZFS layouts, other
+controllers and BMC-less hosts are written but unverified — the code
+handles them, nobody has proven it. Run `--check` first anywhere else.
 
 ```bash
 ./install-spindown.sh --check         # what is missing, changes nothing

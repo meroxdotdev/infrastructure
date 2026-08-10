@@ -10,12 +10,21 @@
 #   SAS_DISKS="sdb sdc sdd" ./install-spindown.sh
 #   SAS_POOL=tank ./install-spindown.sh
 #
+# TESTED ON: Dell R730xd, PERC H730P in HBA mode (megaraid_sas), Debian 13 /
+# Proxmox 9, ZFS pool of 12 SAS drives, iDRAC present. That is the only
+# configuration this has actually run on.
+#
+# Everything else is written to degrade gracefully but is UNVERIFIED: other
+# controllers (LSI IT-mode/mpt3sas), non-ZFS layouts, hosts without a BMC,
+# other distributions. The mechanism is standard SCSI and should carry over -
+# but run --check first, and confirm with the two-minute test in the README
+# before trusting it with anything.
+#
 # Disks are found in this order: $SAS_DISKS, then a ZFS pool's members, then
 # every rotational disk not backing /. Only rotational devices are ever
 # touched, so an SSD cannot be parked by accident.
 #
 # Requires sg3-utils and smartmontools. Uses storcli and ipmitool when present.
-# Works without a BMC - sleep tracking comes from the enforcer itself.
 #
 # NOT handled: applications that keep writing to your disks. No installer can
 # guess those. It sets up detection and alerting; see FINDING WRITERS at the end.
