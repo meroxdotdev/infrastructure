@@ -134,6 +134,10 @@ apt-get install -y sg3-utils smartmontools
 # health check and the manual verify sweep. Never hardcode sdX names.
 cat > /root/scripts/sas-disks.sh <<'SH'
 #!/bin/bash
+# Explicit PATH: user crontabs get only /usr/bin:/bin, and smartctl/storcli/
+# zpool live in /usr/sbin - without this they are silently not found and every
+# check reports a false failure.
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Single source of truth: which disks are the media pool's SAS members.
 # Prints one "sdX sgN" pair per line, derived from the pool itself - so a disk
 # replacement, a moved slot or an HBA reshuffle updates every consumer at once
@@ -154,6 +158,10 @@ chmod +x /root/scripts/sas-disks.sh
 
 cat > /root/scripts/sas-spindown.sh <<'SH'
 #!/bin/bash
+# Explicit PATH: user crontabs get only /usr/bin:/bin, and smartctl/storcli/
+# zpool live in /usr/sbin - without this they are silently not found and every
+# check reports a false failure.
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Stateless SAS spin-down enforcer.
 #
 # CRITICAL: all SCSI commands go to the *generic* device (/dev/sgN), never the
@@ -184,11 +192,15 @@ for entry in "${DISKS[@]}"; do
   d=${entry%% *}; sg=${entry##* }
   io=$(awk -v d="$d" '$3==d {print $4"+"$8}' /proc/diskstats)
   [ -z "$io" ] && continue
-  # Awake only when it explicitly says ACTIVE. Anything else (STANDBY, IDLE,
-  # a timeout, an error) means leave it alone - the conservative direction.
-  if ! smartctl -i -n standby "/dev/$sg" 2>&1 | grep -qi "Power mode is:.*ACTIVE"; then
-    echo "$d $io 0" >> "$STATE.new"; continue
-  fi
+  # Capture first, then match - never `cmd | grep -q` under `set -o pipefail`:
+  # grep exits on the first match, the producer gets SIGPIPE, and the pipeline
+  # reports failure even though the match succeeded.
+  # Awake only on an explicit ACTIVE; standby, timeout or error = leave alone.
+  pm=$(smartctl -i -n standby "/dev/$sg" 2>&1 || true)
+  case "$pm" in
+    *"Power mode is:"*ACTIVE*) ;;
+    *) echo "$d $io 0" >> "$STATE.new"; continue ;;
+  esac
   n=0
   if [ "${prev[$d]:-}" = "$io" ]; then
     n=$(( ${idle[$d]:-0} + 1 ))
@@ -273,6 +285,10 @@ smartd used.
 ```bash
 cat > /root/scripts/sas-health-check.sh <<'SH'
 #!/bin/bash
+# Explicit PATH: user crontabs get only /usr/bin:/bin, and smartctl/storcli/
+# zpool live in /usr/sbin - without this they are silently not found and every
+# check reports a false failure.
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Nightly SAS health check - replaces smartd for the 12 media-pool disks
 # (smartd's -n standby is ATA-only; on SAS it force-wakes sleeping disks).
 # Runs inside the backup window while disks are awake anyway. Alerts root
@@ -284,7 +300,7 @@ while read -r d sg; do
   out=$(smartctl -n standby -H -l error "/dev/$sg" 2>&1)
   # A sleeping disk returns no health data - that is not a fault. Skip it;
   # it gets checked on a night when the backup window has it awake.
-  echo "$out" | grep -qi "STANDBY" && { skipped=$((skipped+1)); continue; }
+  case "$out" in *STANDBY*) skipped=$((skipped+1)); continue ;; esac
   health=$(echo "$out" | grep -i "SMART Health Status" | awk -F: '{print $2}' | xargs)
   defects=$(smartctl -n standby -a "/dev/$sg" 2>/dev/null | grep -i "grown defect" | grep -oE '[0-9]+$')
   uncorr=$(echo "$out" | awk '/^read:|^write:|^verify:/ {print $NF}' | awk '{s+=$1} END {print s}')
@@ -400,6 +416,10 @@ local invariants are verified alongside it.
 ```bash
 cat > /root/scripts/spindown-drift-check.sh <<'SH'
 #!/bin/bash
+# Explicit PATH: user crontabs get only /usr/bin:/bin, and smartctl/storcli/
+# zpool live in /usr/sbin - without this they are silently not found and every
+# check reports a false failure.
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # Nightly drift detection for the spin-down setup.
 #
 # Deliberately OUTCOME-based, not config-based: rather than enumerating every
@@ -426,8 +446,12 @@ pr=$(storcli /c0 show patrolread 2>/dev/null | grep -c "PR Mode.*Disable")
 [ "$pr" -eq 0 ] && ALERT="$ALERT\nController patrol read is no longer disabled."
 grep -q "^mp1: /rpool/garage-meta" /etc/pve/lxc/103.conf 2>/dev/null \
   || ALERT="$ALERT\nGarage meta is no longer bind-mounted from rpool (LXC 103 mp1)."
-journalctl -u smartmontools -b --no-pager 2>/dev/null | grep -q "0 SCSI/SAS" \
-  || ALERT="$ALERT\nsmartd is monitoring SAS disks again (should be SSD-only)."
+# grep -c, not grep -q: -q exits on first match, journalctl gets SIGPIPE and
+# returns 141, and under `set -o pipefail` that reads as a failed check - a
+# false alert even though the match was found.
+smartd_sas=$(journalctl -u smartmontools -b --no-pager 2>/dev/null | grep -c "0 SCSI/SAS" || true)
+[ "${smartd_sas:-0}" -eq 0 ] \
+  && ALERT="$ALERT\nsmartd is monitoring SAS disks again (should be SSD-only)."
 systemctl is-active --quiet sas-spindown.timer \
   || ALERT="$ALERT\nsas-spindown.timer is not active."
 
@@ -459,6 +483,23 @@ list from the pool at every run.
 
 Verified by test, not assumption: a bogus wwn is ignored without error,
 and an rpool SSD's wwn is rejected (`rotational=0`).
+
+## Two traps these scripts are written around
+
+Both bit on the first night in production — everything worked by hand and
+failed from cron.
+
+**User crontabs get `PATH=/usr/bin:/bin`.** `/etc/crontab` has a fuller
+PATH, but `crontab -e` entries do not inherit it. `smartctl`, `storcli` and
+`zpool` all live in `/usr/sbin`, so every check silently found nothing and
+reported a failure. Each script now sets PATH explicitly rather than
+trusting its caller.
+
+**Never `cmd | grep -q` under `set -o pipefail`.** `grep -q` exits at the
+first match, the producer gets SIGPIPE and returns 141, and the pipeline
+reports failure *even though the match succeeded*. This produced a nightly
+"smartd is monitoring SAS disks again" alert while smartd was correctly
+configured. Capture the output first, then match it with `case`.
 
 ## Known wake sources (all handled or accepted)
 
