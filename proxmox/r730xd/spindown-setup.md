@@ -405,6 +405,19 @@ line other than ONLINE is a real disk problem, unrelated to spin-down.
 
 ## 7. Drift detection (nightly)
 
+Two thresholds, because one isn't enough. An **absolute floor** (<30%
+asleep in 24h) catches the setup plainly breaking. A **relative drop**
+(24h below 60% of the previous 7-day baseline) catches the case a fixed
+threshold never would: a new waker that halves sleep time still sits at
+45% and would otherwise never alert. Both need ~6 samples to fire, so a
+reboot or a fresh log stays quiet instead of crying wolf.
+
+Alerts go to `mail root`, which on Proxmox is delivered to
+`proxmox-mail-forward` — the same path as SMART warnings, so it lands in
+email and the mobile app rather than a local mailbox nobody opens. Worth
+verifying on any new host: `echo test | mail -s test root` and check the
+postfix log says `status=sent`.
+
 Several pieces of this setup live outside git by nature - Jellyfin's
 realtime-monitor toggle is in its PVC, Garage's mount is in the LXC
 config, patrol read is in controller NVRAM. Rather than trusting anyone
@@ -432,14 +445,27 @@ set -uo pipefail
 LOG=/var/log/spindown-history.log
 ALERT=""
 
-cut=$(date -d '-24 hours' '+%F %H:%M')
-read -r slept total < <(awk -v cut="$cut" '
-  { ts=substr($0,1,16); if (ts>=cut) { n++; if (match($0,/idrac=[0-9]+/)) {
-      w=substr($0,RSTART+6,RLENGTH-6)+0; if (w>0 && w<140) c++ } } }
-  END { print c+0, n+0 }' "$LOG" 2>/dev/null)
-if [ "${total:-0}" -ge 60 ]; then          # need a meaningful sample (~10h)
-  pct=$(( slept * 100 / total ))
-  [ "$pct" -lt 30 ] && ALERT="$ALERT\nPool asleep only ${pct}% of the last 24h (${slept}/${total} samples).\nSomething is keeping the SAS disks awake - see proxmox/r730xd/spindown-setup.md,\nsection 'Zero writers on the pool'."
+# Sleep ratio over a window, as a percentage. $1 = cutoff "YYYY-MM-DD HH:MM"
+ratio() {
+  awk -v cut="$1" -v until="${2:-9999}" '
+    { ts=substr($0,1,16)
+      if (ts>=cut && ts<until) { n++
+        if (match($0,/idrac=[0-9]+/)) { w=substr($0,RSTART+6,RLENGTH-6)+0
+          if (w>0 && w<140) c++ } } }
+    END { if (n>=6) printf "%d %d", (c+0)*100/n, n; else printf "-1 %d", n+0 }' "$LOG" 2>/dev/null
+}
+read -r pct n <<< "$(ratio "$(date -d '-24 hours' '+%F %H:%M')")"
+read -r base bn <<< "$(ratio "$(date -d '-8 days' '+%F %H:%M')" "$(date -d '-24 hours' '+%F %H:%M')")"
+
+# Absolute floor: something is plainly keeping the disks awake.
+if [ "$pct" -ge 0 ] && [ "$pct" -lt 30 ]; then
+  ALERT="$ALERT\nPool asleep only ${pct}% of the last 24h (${n} samples).\nSee proxmox/r730xd/spindown-setup.md, 'Zero writers on the pool'."
+# Relative drop: still above the floor, but well below this host's own norm.
+# Catches gradual degradation - a new waker that halves sleep time would
+# otherwise sit at 45% forever and never trip a fixed threshold.
+elif [ "$pct" -ge 0 ] && [ "$base" -ge 0 ] && [ "$base" -ge 50 ] \
+     && [ "$pct" -lt $(( base * 6 / 10 )) ]; then
+  ALERT="$ALERT\nPool asleep ${pct}% of the last 24h, against a ${base}% baseline\nover the previous 7 days. Something new is waking the disks."
 fi
 
 pr=$(storcli /c0 show patrolread 2>/dev/null | grep -c "PR Mode.*Disable")
@@ -459,7 +485,7 @@ if [ -n "$ALERT" ]; then
   echo -e "Spin-down drift detected on pve:$ALERT" | mail -s "Spin-down drift (pve)" root
   echo "$(date '+%F %T') DRIFT:$ALERT"
 else
-  echo "$(date '+%F %T') ok (24h asleep: ${slept:-?}/${total:-?})"
+  echo "$(date '+%F %T') ok (24h asleep: ${pct}% of ${n} samples, baseline ${base}%)"
 fi
 SH
 chmod +x /root/scripts/spindown-drift-check.sh
