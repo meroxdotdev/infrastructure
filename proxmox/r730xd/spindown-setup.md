@@ -368,6 +368,48 @@ pool: state: ONLINE (ok)
 ```
 
 ```bash
+cat > /root/scripts/spindown-report.sh <<'SH'
+#!/bin/bash
+# Explicit PATH: user crontabs get only /usr/bin:/bin, and smartctl/storcli/
+# zpool live in /usr/sbin - without this they are silently not found and every
+# check reports a false failure.
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Passive spin-down observability. Touches NO disk.
+# idrac= the "Pwr Consumption" sensor, i.e. exactly what iDRAC shows. Averaged,
+#        so it lags a few minutes behind reality. ~126W = all 12 asleep.
+# inst=  DCMI instantaneous. Responds immediately but reads ~9W higher on its
+#        own scale. ~135W = all 12 asleep.
+# Both are logged so a reading in the iDRAC UI can always be matched here.
+LOG=/var/log/spindown-history.log
+IDRAC=$(ipmitool sensor 2>/dev/null | grep -i "Pwr Consumption" | awk -F'|' '{print $2}' | xargs | cut -d. -f1)
+INST=$(ipmitool dcmi power reading 2>/dev/null | awk '/Instantaneous/ {print $4}')
+IO=$(awk '$3 ~ /^sd[e-p]$/ {s+=$4+$8} END {print s}' /proc/diskstats)
+SLEPT=$(journalctl -t sas-spindown --since "-10min" 2>/dev/null | grep -c "standby issued")
+echo "$(date '+%F %H:%M') idrac=${IDRAC:-?}W inst=${INST:-?}W io=$IO standby_cmds=$SLEPT" >> "$LOG"
+SH
+chmod +x /root/scripts/spindown-report.sh
+
+cat > /etc/systemd/system/spindown-report.service <<'UNIT'
+[Unit]
+Description=Passive spin-down observability sample
+
+[Service]
+Type=oneshot
+ExecStart=/root/scripts/spindown-report.sh
+UNIT
+cat > /etc/systemd/system/spindown-report.timer <<'UNIT'
+[Unit]
+Description=Sample spin-down state every 10 minutes
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=10min
+
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload && systemctl enable --now spindown-report.timer
+
 cat > /root/spindown-summary.sh <<'SH'
 #!/bin/bash
 # Phone-friendly spin-down status. Touches NO disk (safe any time).
