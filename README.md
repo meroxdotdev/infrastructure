@@ -81,8 +81,15 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | VPS secrets (Tailscale key, Cloudflare, Authentik, Garage) | Ansible Vault → `vps/.../vault.yml`            | `make setup` / `make dr-full` |
 | Pi-hole, Joplin DB, Code Server passwords                  | `/srv/docker/oracle-cloud/.env` _(gitignored)_ | Docker Compose                |
 | Talos bootstrap secrets                                    | `talos/talsecret.sops.yaml` _(SOPS encrypted)_ | `task bootstrap:talos`        |
+| **restic repo password** ← **unrecoverable**               | password manager, entry `restic bak password`  | offsite backup on Oracle      |
 
-> **If you lose `age.key`, you cannot decrypt any K8s secret. Back it up separately.**
+> **Two secrets cannot be recovered from any backup: `age.key` and the
+> restic password.** Everything else is either in the repo or restorable
+> with one of those two. The restic password protects the only repo that
+> would contain a copy of it, and the monthly restore drill cannot catch a
+> lost one — it runs on pve, where the password is present. Both live in
+> the password manager; keep a second copy somewhere that is not a
+> password manager.
 
 ---
 
@@ -249,11 +256,28 @@ infrastructure/
 | **K8s cluster lost** (nodes dead)        | [DR.md](DR.md) — provision DR VMs, bootstrap, restore from S3                             |
 | **VPS lost** (Oracle reclaims free tier) | `cd vps && make dr-full` → `make dr-restore` (~15 min)                                    |
 | **R730xd lost** (hardware failure)       | [DR.md "R730xd/Garage total loss fallback"](DR.md#r730xd--garage-total-loss-fallback) — rebuild Garage from Synology/Oracle copy, repoint Longhorn, `task longhorn:restore` |
+| **pve reinstalled** (host, not data)     | [proxmox/r730xd/REINSTALL.md](proxmox/r730xd/REINSTALL.md) — the `media` pool survives; import it, do not recreate |
+| **pfSense lost** (gateway down)          | [pfsense/REINSTALL.md](pfsense/REINSTALL.md) — console access, not SSH. A config restore does **not** bring back its own backup script |
+| **px-0 lost**                            | [proxmox/px-0/REINSTALL.md](proxmox/px-0/REINSTALL.md) — no backups exist; every VM is rebuild-only |
 | Full rebuild from scratch                | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s)                                                  |
 | New hardware (different IPs / disks)     | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml`                  |
 | Nvidia GPU absent on new hardware        | Remove `runtimeClassName: nvidia` + `nvidia.com/gpu` limit from Jellyfin HelmRelease, disable nvidia-device-plugin |
 | Jellyfin streaming slow after restore    | [docs/jellyfin-post-restore.md](docs/jellyfin-post-restore.md) — manual UI steps required |
 | Immich photos/albums missing after restore | [docs/immich-post-restore.md](docs/immich-post-restore.md) — VectorChord extension + External Library re-scan |
+
+**Total loss (fire, theft) — order matters.** Each layer needs the one
+above it:
+
+1. **pfSense** — no gateway means no internet, so no restic, so nothing
+   else can be restored. Console access, and you will not have SSH.
+2. **pve** — the `media` pool and everything downstream. Needs the restic
+   password to pull `/root` back from Oracle.
+3. **K8s** — [DR.md](DR.md), on top of a working pve.
+4. **px-0** — optional; nothing depends on it except the UPS shutdown
+   trigger and DR tests.
+
+The **VPS is independent** — it lives on Oracle, needs nothing from home,
+and can be rebuilt at any point with `cd vps && make dr-full`.
 
 ---
 
