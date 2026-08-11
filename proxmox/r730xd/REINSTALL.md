@@ -3,9 +3,14 @@
 Checklist, not a tutorial. Rebuilds the *host*; the K8s cluster on top is
 [`DR.md`](../../DR.md) / [`docs/dr-quickstart.md`](../../docs/dr-quickstart.md).
 
-**You need:** the Proxmox ISO, iDRAC or a crash cart, this repo, and the
-**restic password**. If you do not have the restic password from outside
-this host, stop — the Oracle backup cannot be decrypted without it.
+**You need:** the Proxmox ISO, iDRAC or a crash cart, this repo, and two
+secrets from the password manager — `restic bak password` (decrypts the
+Oracle backup) and `age.key` (decrypts everything SOPS in this repo).
+
+Neither is recoverable from a backup: the restic password protects the
+repo that would hold a copy of it. If the vault entry is gone, the Oracle
+leg is gone with it — the Synology relay and the ZFS snapshots are the
+remaining copies, and both live on hardware in the same building.
 
 **Survives a reinstall:** the `media` pool (12× SAS). Do not recreate it.
 **Does not survive:** `rpool` (boot mirror, 4× Intel SSD) — that takes
