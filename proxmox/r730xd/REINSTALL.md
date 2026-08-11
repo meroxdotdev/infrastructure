@@ -3,17 +3,18 @@
 Checklist, not a tutorial. Rebuilds the *host*; the K8s cluster on top is
 [`DR.md`](../../DR.md) / [`docs/dr-quickstart.md`](../../docs/dr-quickstart.md).
 
-**You need:** the Proxmox ISO, iDRAC or a crash cart, this repo, and two
-secrets from the password manager — `restic bak password` (decrypts the
-Oracle backup) and `age.key` (decrypts everything SOPS in this repo).
+**You need:**
 
-Neither is recoverable from a backup: the restic password protects the
-repo that would hold a copy of it. If the vault entry is gone, the Oracle
-leg is gone with it — the Synology relay and the ZFS snapshots are the
-remaining copies, and both live on hardware in the same building.
+- Proxmox ISO, iDRAC or a crash cart, this repo
+- `restic bak password` — decrypts the Oracle backup
+- `age.key` — decrypts everything SOPS in this repo
 
-**Survives a reinstall:** the `media` pool (12× SAS). Do not recreate it.
-**Does not survive:** `rpool` (boot mirror, 4× Intel SSD) — that takes
+⚠️ Neither secret is recoverable from a backup. Lose the restic password
+and the Oracle leg goes with it, leaving only the Synology relay and the
+ZFS snapshots — both on hardware in the same building.
+
+**Survives:** the `media` pool (12× SAS). Import it, do not recreate it.
+**Does not survive:** `rpool` (boot mirror, 4× Intel SSD) — takes
 `rpool/garage-meta` and the Garage LXC's `subvol-103-disk-0` with it.
 
 ## 1. Controller first

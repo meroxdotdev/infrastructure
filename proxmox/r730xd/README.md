@@ -10,16 +10,19 @@ Related: [REINSTALL.md](REINSTALL.md) (rebuild this host from bare metal) ·
 [DR.md](../../DR.md) (total-loss recovery) ·
 [vps_backup role](../../vps/roles/vps_backup/README.md) (VPS-side detail)
 
-Host state that is not a clean install now lives in git:
-[`scripts/`](scripts/) (the cron scripts), [`etc/crontab`](etc/crontab),
-[`etc/exports`](etc/exports), [`etc/storage.cfg`](etc/storage.cfg),
-[`etc/network-interfaces`](etc/network-interfaces),
-[`etc/authorized_keys`](etc/authorized_keys) (public keys redacted — the
-forced commands are the point). The host is the running copy; these are the
-reviewable ones and the source for a reinstall.
+Host state that is not a clean install now lives in git — the host is the
+running copy, these are the reviewable ones:
 
-Neighbours with their own runbooks: [pfSense](../../pfsense/REINSTALL.md),
-[px-0](../px-0/REINSTALL.md).
+| In git | What |
+|---|---|
+| [`scripts/`](scripts/) | cron + forced-command scripts |
+| [`etc/crontab`](etc/crontab) | the schedule |
+| [`etc/exports`](etc/exports) | NFS, per-host ACLs |
+| [`etc/storage.cfg`](etc/storage.cfg) | PVE storage |
+| [`etc/network-interfaces`](etc/network-interfaces) | bridges |
+| [`etc/authorized_keys`](etc/authorized_keys) | forced commands (pubkeys redacted) |
+
+Neighbours: [pfSense](../../pfsense/REINSTALL.md) · [px-0](../px-0/REINSTALL.md)
 
 ## Nightly schedule
 
@@ -136,29 +139,31 @@ proprietary vault needs a working DSM; the restic leg replaced it.
 
 ### pfSense → pve
 
-Push runs on the firewall
-([`pfsense/scripts/backup-to-r730xd.sh`](../../pfsense/scripts/backup-to-r730xd.sh)).
-The `authorized_keys` line on pve pins it to a receiver
-([`scripts/pfsense-backup-receive.sh`](scripts/pfsense-backup-receive.sh)),
-which does the `scp -t` **and** the 30-day prune.
+- Push runs on the firewall:
+  [`pfsense/scripts/backup-to-r730xd.sh`](../../pfsense/scripts/backup-to-r730xd.sh)
+- pve pins the key to a receiver:
+  [`scripts/pfsense-backup-receive.sh`](scripts/pfsense-backup-receive.sh)
+  — does the `scp -t` **and** the 30-day prune
+- Rebuild steps: [pfsense/REINSTALL.md](../../pfsense/REINSTALL.md)
 
-⚠️ One line per key. Until 2026-08-11 the same public key appeared on two
-lines with different forced commands — SSH uses the first match and
-silently ignores the rest, so the plain `scp -t` line won and the prune
-never ran despite being documented here.
+⚠️ **One `authorized_keys` line per key.** Until 2026-08-11 the same
+public key sat on two lines with different forced commands. SSH matches
+the first and ignores the rest, so a plain `scp -t` line won and the prune
+never ran — despite being documented here.
 
-The push script and its private key live in `/root` on pfSense and are
-**not** in `config.xml.gz`, so a config restore brings back the cron entry
-but not the thing it calls: [pfsense/REINSTALL.md](../../pfsense/REINSTALL.md).
+⚠️ The push script and its private key live in `/root` on pfSense, which
+is **not** in `config.xml.gz`. A config restore brings back the cron entry
+but not the script it calls.
 
 ### UPS-triggered shutdown
 
-px-0 runs `pwrstatd` against the UPS. On a confirmed utility power failure
-it SSHes to pve with a forced-command key that can only run
-[`scripts/ups-safe-shutdown.sh`](scripts/ups-safe-shutdown.sh) (real path
-`/usr/local/sbin/ups-safe-shutdown.sh`), so pve powers off gracefully
-instead of dropping when the battery dies. pve does not monitor the UPS
-itself — if px-0 is down, this does not fire.
+px-0 runs `pwrstatd` against the UPS. On confirmed power failure it SSHes
+to pve with a forced-command key limited to
+[`scripts/ups-safe-shutdown.sh`](scripts/ups-safe-shutdown.sh) (host path
+`/usr/local/sbin/`), so pve powers off gracefully instead of dropping when
+the battery dies.
+
+⚠️ pve does not monitor the UPS itself. If px-0 is down, this never fires.
 
 ### VPS → pve
 

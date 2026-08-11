@@ -1,10 +1,14 @@
 # merox.dev Infrastructure
 
-Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by an Oracle Cloud VPS for off-site services and S3 storage. Everything is declarative and GitOps-managed — a single `git push` is all it takes to deploy, update, or rebuild any part of the stack.
+3-node Talos Kubernetes cluster on Proxmox + an Oracle Cloud VPS for
+off-site services and S3. Declarative and GitOps-managed — `git push`
+deploys, updates or rebuilds any part.
 
-**What's here:** Flux manifests for the entire K8s cluster (media stack, observability, networking), Talos node configs, Ansible/Terraform for the VPS, and the tools to restore everything from scratch in about 35 minutes using only this repo and a backup of `age.key`.
-
-**Single reference document** — if you don't know where to look, start here.
+- **Contents** — Flux manifests (media stack, observability, networking),
+  Talos node configs, Ansible/Terraform for the VPS, host runbooks.
+- **Rebuild time** — ~35 min from scratch, needing only this repo,
+  `age.key` and the restic password.
+- **Start here** — this is the index. Everything else is linked from it.
 
 ---
 
@@ -64,11 +68,8 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Ansible + Terraform VPS DR, incl. app-stack compose/Homepage config | [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure) | `main` | `/srv/kubernetes/infrastructure/vps/`   |
 | Blog (Astro)                               | [meroxdotdev/merox](https://github.com/meroxdotdev/merox) _(private)_       | `main` | `/srv/merox/`                           |
 
-> `meroxdotdev/cloudlab-merox` (the old separate repo for the VPS's raw
-> docker-compose files) was retired 2026-07-25 — its content now lives under
-> `vps/roles/app_stack_setup/files/app-stack/`, deployed the same way as
-> every other service instead of via a separate git clone that silently
-> overwrote other roles' templates.
+> Retired 2026-07-25: `meroxdotdev/cloudlab-merox`. Its docker-compose
+> files now live in `vps/roles/app_stack_setup/files/app-stack/`.
 
 ---
 
@@ -83,13 +84,17 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 | Talos bootstrap secrets                                    | `talos/talsecret.sops.yaml` _(SOPS encrypted)_ | `task bootstrap:talos`        |
 | **restic repo password** ← **unrecoverable**               | password manager, entry `restic bak password`  | offsite backup on Oracle      |
 
-> **Two secrets cannot be recovered from any backup: `age.key` and the
-> restic password.** Everything else is either in the repo or restorable
-> with one of those two. The restic password protects the only repo that
-> would contain a copy of it, and the monthly restore drill cannot catch a
-> lost one — it runs on pve, where the password is present. Both live in
-> the password manager; keep a second copy somewhere that is not a
-> password manager.
+> **`age.key` and the restic password cannot be recovered from any
+> backup.** Everything else is in the repo or restorable with one of those
+> two.
+
+- Lose `age.key` → no K8s secret decrypts.
+- Lose the restic password → the Oracle backup is permanently unreadable.
+  It protects the only repo that would hold a copy of itself, and the
+  monthly drill can't catch a lost one — the drill runs on pve, where the
+  password is present.
+- Both are in the password manager. Keep a second copy somewhere that
+  isn't a password manager.
 
 ---
 
@@ -110,9 +115,11 @@ Personal homelab running a 3-node Talos Kubernetes cluster on Proxmox, backed by
 
 ## Backup & off-site strategy
 
-Rules: everything declarative lives in this repo — never backed up
-separately. Backups cover only state that can't be rebuilt from git.
-Observability history and caches are regenerable — excluded.
+Rules:
+
+- Anything declarative lives in this repo — never backed up separately.
+- Backups cover only state that can't be rebuilt from git.
+- Observability history and caches are regenerable — excluded.
 
 ```
 Longhorn (K8s PVCs: ARR configs, Immich)  ──nightly──▶ ┐
@@ -138,12 +145,15 @@ Canonical schedules: [proxmox/r730xd/README.md](proxmox/r730xd/README.md)
 | VPS | ≤1 night of its own service backups | `make dr-full` (~15 min) + `make dr-restore` |
 | K8s cluster | Nothing not already in Git/Garage | `task bootstrap:apps` + `task longhorn:restore` |
 
-Deliberate non-coverage: `/media/library` (movies/TV — re-downloadable,
-no second copy), Home Assistant VM dump (out of DR scope). Immich photos
-live on Longhorn/SSD PVCs → covered by the nightly Longhorn→Garage leg;
-restore procedure in [docs/immich-post-restore.md](docs/immich-post-restore.md).
+Deliberately **not** covered:
 
-**Still manual (keep copies off this VPS):** `age.key`, `vps/.vault_pass`,
+- `/media/library` — movies/TV, re-downloadable, no second copy anywhere.
+- Home Assistant VM dump — out of DR scope.
+
+Immich photos are on Longhorn/SSD PVCs, covered by the nightly
+Longhorn→Garage leg. Restore: [docs/immich-post-restore.md](docs/immich-post-restore.md).
+
+**Still manual** (keep copies off the VPS): `age.key`, `vps/.vault_pass`,
 `/srv/docker/oracle-cloud/.env`.
 
 ```bash
@@ -219,11 +229,11 @@ Validation:
 
 | Device                                     | Role                                                                                                                                                                                                | Specs                                       |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Dell PowerEdge R730xd (`pve`, `10.57.57.250`) | Proxmox host — **all 3 K8s control-plane VMs** (see note below) + Nvidia Quadro P2200 (Jellyfin transcoding, passthrough to controlplane-1). Also the K8s NFS server (`media` SAS ZFS pool, RAIDZ2): `/media/library` (Jellyfin/*arr), `/media/photos` (Immich), `/media/backups` (Longhorn/Garage/VM/Immich-DB backups), `/media/isos`, and the Garage LXC (Longhorn's S3 backup target) | 2x Xeon E5-2630 v3, 251GB RAM, Quadro P2200 |
-| Beelink GTi 13 Pro / px-0 (`10.57.57.254`) | Proxmox host — no K8s nodes. Runs Proxmox Datacenter Manager (links `pve`+`px-0` without a corosync cluster), `ollama` (AI alert-triage), `winserver` (stopped, AD lab). Also this repo's default DR-test target (see `DR.md`) | i9-13900H, 64GB, 2x1TB NVMe (Crucial P3)    |
+| Dell PowerEdge R730xd (`pve`, `10.57.57.250`) | Proxmox host + backup hub. All 3 K8s control-plane VMs · Quadro P2200 passthrough to controlplane-1 (Jellyfin) · NFS server for the `media` SAS pool · Garage LXC (Longhorn's S3 target). [REINSTALL](proxmox/r730xd/REINSTALL.md) | 2x Xeon E5-2630 v3, 251GB RAM, Quadro P2200 |
+| Beelink GTi 13 Pro (`px-0`, `10.57.57.254`) | Proxmox host, no K8s nodes. Datacenter Manager · `ollama` (alert triage) · `winserver` (stopped, AD lab) · UPS shutdown trigger for pve · default DR-test target. **No backups.** [REINSTALL](proxmox/px-0/REINSTALL.md) | i9-13900H, 64GB, 2x1TB NVMe (Crucial P3)    |
 | Dell OptiPlex 3050 #1/#2 (px-1 / px-2)     | Retired — powered off                                                                                                                                                                                | i5-6500T, 16GB, 128GB NVMe                  |
 | Synology DS223+                            | Cold storage only — see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for the weekly push mechanism and Power Schedule                                                     | 2x2TB HDD RAID1                             |
-| XCY X44                                    | pfSense Firewall                                                                                                                                                                                    | N100, 8GB                                   |
+| XCY X44 (`fw`, `10.57.57.1`)               | pfSense — gateway, DHCP, Tailscale subnet router. [REINSTALL](pfsense/REINSTALL.md)                                                                                                                 | N100, 8GB                                   |
 | Oracle Cloud ARM VPS                       | Off-site services (primary)                                                                                                                                                                         | 4 vCPU ARM, 24GB RAM, 200GB                 |
 
 ---
@@ -239,7 +249,11 @@ infrastructure/
 │   └── components/             # Shared Kustomize components (common, repos)
 ├── talos/                      # Talos node configs + patches
 ├── bootstrap/                  # Cluster bootstrap helmfile
-├── proxmox/r730xd/             # R730xd backup hub docs (Garage, NFS exports, downstream relays)
+├── proxmox/
+│   ├── r730xd/                 # Backup hub: runbooks, cron scripts, /etc snapshots
+│   └── px-0/                   # Second Proxmox host: runbook + /etc snapshots
+├── pfsense/                    # Firewall runbook + its config-push script
+├── docs/                       # Post-restore and single-topic guides
 ├── DEPLOY.md                   # Full rebuild + DR guide
 └── Taskfile.yaml               # Task runner (talosctl, flux, longhorn)
 ```
@@ -265,19 +279,19 @@ infrastructure/
 | Jellyfin streaming slow after restore    | [docs/jellyfin-post-restore.md](docs/jellyfin-post-restore.md) — manual UI steps required |
 | Immich photos/albums missing after restore | [docs/immich-post-restore.md](docs/immich-post-restore.md) — VectorChord extension + External Library re-scan |
 
-**Total loss (fire, theft) — order matters.** Each layer needs the one
-above it:
+**Total loss (fire, theft) — rebuild in this order.** Each layer needs the
+one before it:
 
-1. **pfSense** — no gateway means no internet, so no restic, so nothing
-   else can be restored. Console access, and you will not have SSH.
-2. **pve** — the `media` pool and everything downstream. Needs the restic
-   password to pull `/root` back from Oracle.
-3. **K8s** — [DR.md](DR.md), on top of a working pve.
-4. **px-0** — optional; nothing depends on it except the UPS shutdown
-   trigger and DR tests.
+1. **pfSense** — no gateway, no internet, no restic. Console access; SSH
+   won't be available. → [pfsense/REINSTALL.md](pfsense/REINSTALL.md)
+2. **pve** — needs the restic password to pull `/root` back from Oracle.
+   → [proxmox/r730xd/REINSTALL.md](proxmox/r730xd/REINSTALL.md)
+3. **K8s** — on top of a working pve. → [DR.md](DR.md)
+4. **px-0** — optional. Only the UPS shutdown trigger and DR tests depend
+   on it. → [proxmox/px-0/REINSTALL.md](proxmox/px-0/REINSTALL.md)
 
-The **VPS is independent** — it lives on Oracle, needs nothing from home,
-and can be rebuilt at any point with `cd vps && make dr-full`.
+**VPS is independent** — on Oracle, needs nothing from home, rebuild any
+time with `cd vps && make dr-full`.
 
 ---
 
@@ -301,18 +315,17 @@ task talos:upgrade-k8s                      # upgrade Kubernetes version
 
 ### Headlamp (K8s dashboard)
 
-UI at `https://headlamp.k8s.merox.dev` (internal gateway only). Login uses a bearer
-token for the `headlamp` ServiceAccount (bound to `cluster-admin` via the
-`headlamp-admin` ClusterRoleBinding). Generate a new one when the old token expires
-or gets invalidated:
+- URL: `https://headlamp.k8s.merox.dev` (internal gateway only)
+- Login: bearer token for the `headlamp` ServiceAccount (`cluster-admin`
+  via the `headlamp-admin` ClusterRoleBinding)
 
 ```bash
 kubectl create token headlamp -n default --duration=8760h
 ```
 
-Run this directly in your terminal (not copy-pasted through a chat/markdown UI —
-hidden characters in the clipboard can corrupt the cookie and cause
-"Error authenticating").
+⚠️ Run it directly in a terminal. Copy-pasting through a chat/markdown UI
+can carry hidden characters that corrupt the cookie → "Error
+authenticating".
 
 ### VPS
 

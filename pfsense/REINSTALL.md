@@ -2,20 +2,19 @@
 
 Checklist, not a tutorial.
 
-pfSense is the gateway, DHCP server and Tailscale subnet router. Losing it
-takes down the LAN **and** remote access at the same time — it is the one
-device whose failure removes the hands you would fix everything else with.
-Plan for console access, not SSH.
+Gateway, DHCP and Tailscale subnet router. Losing it takes down the LAN
+**and** remote access at once — plan for console access, not SSH.
 
-**You need:** the pfSense installer, a config from
-`/media/backups/pfsense/` on pve (nightly, 30-day retention), and physical
-or serial console access.
+**You need:**
 
-## The part a config restore does not cover
+- pfSense installer
+- a config from `/media/backups/pfsense/` on pve (nightly, 30-day retention)
+- physical or serial console access
 
-`config.xml.gz` restores the firewall completely — rules, interfaces,
-packages, and the **cron entry** that runs the nightly backup. It does not
-restore anything under `/root`:
+## What a config restore does not cover
+
+`config.xml.gz` restores rules, interfaces, packages, and the **cron
+entry** for the nightly backup. It restores nothing under `/root`:
 
 | Item | In `config.xml`? |
 |---|---|
@@ -23,9 +22,9 @@ restore anything under `/root`:
 | `/root/scripts/backup-to-r730xd.sh` | ❌ no |
 | `/root/.ssh/pfsense-backup` (private key) | ❌ no |
 
-So a restored pfSense firewalls perfectly while its own backup runs a
-missing script and fails silently. The next config you have is frozen at
-the day of the rebuild. Steps 3 and 4 exist for exactly this.
+Net effect: a restored pfSense firewalls perfectly while its own backup
+calls a missing script and fails silently — every later config frozen at
+rebuild day. Steps 3 and 4 exist for this.
 
 ## 1. Install and restore the config
 
@@ -82,6 +81,4 @@ receiver in
 ls -1t /media/backups/pfsense/ | head -2          # on pve — a fresh timestamp
 ```
 
-Not done until a file with today's timestamp appears on pve. A restored
-firewall that cannot back itself up is the failure this page exists to
-prevent.
+Not done until a file with today's timestamp appears on pve.

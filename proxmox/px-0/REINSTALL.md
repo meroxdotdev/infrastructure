@@ -2,15 +2,15 @@
 
 Checklist, not a tutorial.
 
-⚠️ **Nothing on px-0 is backed up.** No vzdump job, no `jobs.cfg`, both
-dump directories empty (verified 2026-08-11). All three VMs are rebuilt
-from scratch, not restored. That is a deliberate consequence of what runs
-here — none of it holds unique data — but it does mean a disk failure
-loses the VMs, not just the host.
+⚠️ **Nothing on px-0 is backed up** — no vzdump job, no `jobs.cfg`, both
+dump directories empty (verified 2026-08-11). All three VMs are rebuilt,
+not restored. Acceptable because none holds unique data, but a disk
+failure loses the VMs, not just the host.
 
 Hardware: i9-13900H, 64GB, 2× 931GB Crucial P3 NVMe.
-`nvme1n1` = boot (LVM/ext4, `pve-root` 96G + 8G swap), `nvme0n1` =
-`cluster-storage` (single-disk ZFS, **no redundancy**).
+
+- `nvme1n1` — boot (LVM/ext4, `pve-root` 96G + 8G swap)
+- `nvme0n1` — `cluster-storage`, single-disk ZFS, **no redundancy**
 
 ## 1. Install Proxmox
 
@@ -35,12 +35,14 @@ snippets) — not a pool.
 cp <repo>/proxmox/px-0/etc/storage.cfg /etc/pve/storage.cfg
 ```
 
-Defines `local` (disabled), `local-data`, `cluster-storage`, and two NFS
-mounts: `r730xd-backups` (`10.57.57.250:/media/backups`, the DR-test
-target) and `synology-nas` (`10.57.57.201:/volume1/Server`, inactive
-whenever the NAS is asleep — that is normal, not a fault).
+Defines:
 
-pve's export ACL is per host: `10.57.57.254` must be listed in
+- `local` (disabled), `local-data`, `cluster-storage`
+- `r730xd-backups` — NFS `10.57.57.250:/media/backups`, the DR-test target
+- `synology-nas` — NFS `10.57.57.201:/volume1/Server`. Shows inactive
+  whenever the NAS is asleep; normal, not a fault.
+
+⚠️ pve's export ACL is per host — `10.57.57.254` must be listed in
 [`../r730xd/etc/exports`](../r730xd/etc/exports) or the mount is refused.
 
 ## 4. VMs
