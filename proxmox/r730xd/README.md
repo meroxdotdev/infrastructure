@@ -13,8 +13,13 @@ Related: [REINSTALL.md](REINSTALL.md) (rebuild this host from bare metal) ·
 Host state that is not a clean install now lives in git:
 [`scripts/`](scripts/) (the cron scripts), [`etc/crontab`](etc/crontab),
 [`etc/exports`](etc/exports), [`etc/storage.cfg`](etc/storage.cfg),
-[`etc/network-interfaces`](etc/network-interfaces). The host is the running
-copy; these are the reviewable ones and the source for a reinstall.
+[`etc/network-interfaces`](etc/network-interfaces),
+[`etc/authorized_keys`](etc/authorized_keys) (public keys redacted — the
+forced commands are the point). The host is the running copy; these are the
+reviewable ones and the source for a reinstall.
+
+Neighbours with their own runbooks: [pfSense](../../pfsense/REINSTALL.md),
+[px-0](../px-0/REINSTALL.md).
 
 ## Nightly schedule
 
@@ -124,9 +129,36 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 | pve → Synology | weekly, in NAS wake window | rsync `--link-dest` versioned snapshots, 21-day retention |
 | pve → Oracle | nightly 03:10 | restic over SFTP, verified + monthly drill |
 | ZFS snapshots | nightly 03:05 | `media/backups@daily-*`, 14-day retention |
+| pfSense → pve | nightly 03:00 | pfSense-side cron pushes `config.xml.gz` over a forced-command key |
 
 Retired: Synology→Oracle HyperBackup (2026-07-26) — restoring its
 proprietary vault needs a working DSM; the restic leg replaced it.
+
+### pfSense → pve
+
+Push runs on the firewall
+([`pfsense/scripts/backup-to-r730xd.sh`](../../pfsense/scripts/backup-to-r730xd.sh)).
+The `authorized_keys` line on pve pins it to a receiver
+([`scripts/pfsense-backup-receive.sh`](scripts/pfsense-backup-receive.sh)),
+which does the `scp -t` **and** the 30-day prune.
+
+⚠️ One line per key. Until 2026-08-11 the same public key appeared on two
+lines with different forced commands — SSH uses the first match and
+silently ignores the rest, so the plain `scp -t` line won and the prune
+never ran despite being documented here.
+
+The push script and its private key live in `/root` on pfSense and are
+**not** in `config.xml.gz`, so a config restore brings back the cron entry
+but not the thing it calls: [pfsense/REINSTALL.md](../../pfsense/REINSTALL.md).
+
+### UPS-triggered shutdown
+
+px-0 runs `pwrstatd` against the UPS. On a confirmed utility power failure
+it SSHes to pve with a forced-command key that can only run
+[`scripts/ups-safe-shutdown.sh`](scripts/ups-safe-shutdown.sh) (real path
+`/usr/local/sbin/ups-safe-shutdown.sh`), so pve powers off gracefully
+instead of dropping when the battery dies. pve does not monitor the UPS
+itself — if px-0 is down, this does not fire.
 
 ### VPS → pve
 
@@ -197,7 +229,7 @@ HC_URL="https://hc-ping.com/..."
 trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" || true' ERR
 restic backup /media/backups/oracle-vps /media/backups/immich-postgres \
   /media/backups/pfsense /media/backups/longhorn-garage \
-  /media/backups/synology-home /media/backups/tools /media/photos --tag nightly
+  /media/backups/synology-home /media/backups/tools /media/photos /root --tag nightly
 restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 restic check
 [ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
