@@ -49,8 +49,22 @@ enforcer script (see [spindown-setup.md](spindown-setup.md)).
 | `media/isos` | ro | Filebrowser |
 | `media/backups` | rw | Filebrowser (ro), Immich pg_dump CronJob, backup jobs |
 
-- Exports ACL: `10.57.57.0/24`. Immich/Filebrowser hardcode `10.57.57.250`;
-  the ARR stack uses the `NFS_SERVER` cluster-var.
+- Exports ACL: **per host, not the subnet** (narrowed 2026-08-11 — it was
+  `10.57.57.0/24`, which with `no_root_squash` gave every device on the LAN
+  root on the backup tree). Allowed clients: `10.57.57.80/82/84` (Talos
+  nodes — all pod mounts originate there) and `10.57.57.254` (px-0, mounts
+  `/media/backups` as PVE storage `r730xd-backups`, the DR-test target).
+  Adding a client means adding its IP to `/etc/exports`, not widening back
+  to `/24`. Previous file kept as `/etc/exports.bak-2026-08-11`.
+- Immich/Filebrowser hardcode `10.57.57.250`; the ARR stack uses the
+  `NFS_SERVER` cluster-var.
+
+⚠️ `no_root_squash` is still set on every export — a permitted client can
+still act as root on the exported trees. Removing it is **not** a drop-in
+change: kubelet applies `fsGroup` to in-tree `nfs` volumes, and every ARR
+pod uses `fsGroupChangePolicy: OnRootMismatch`, so a squashed chown can
+stop pods from starting. Do it one export at a time with a rollback, not
+in bulk.
 - `media/library` is one dataset on purpose: ARR hardlink imports need
   same-filesystem `rename()`.
 - Movies/TV/Downloads = replaceable, no second copy anywhere. Photos =
