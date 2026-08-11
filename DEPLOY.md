@@ -78,19 +78,24 @@ from the VPS, see `vps/roles/vps_backup/README.md`):
 cd vps && make dr-restore     # non-interactive: pulls from R730xd, restores DBs + extras
 ```
 
-`make dr-restore` runs the full restore sequence: pulls `srv-backups/` from
-R730xd, drops + re-imports the Authentik + Joplin DBs from the latest dump
-(Authentik comes back with full state — providers, flows, apps, users; Joplin
-clients re-sync afterwards), and restores Guacamole / Traefik certs / Pi-hole /
-Homepage / Portainer from their tarballs. See
-`vps/roles/vps_backup/README.md` for the full breakdown of each step.
+`make dr-restore` does, in order:
 
-If R730xd itself is also gone, the same data is one hop further out on
-Synology (`/volume1/NetBackup/oracle-vps/<latest-date>/`) or, failing that,
-in R730xd's own restic repository on this same VPS (`oracle-vps/` path,
-`restic restore` — no DSM needed) — see
-[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for
-that chain.
+1. Pulls `srv-backups/` from R730xd.
+2. Drops + re-imports the Authentik and Joplin DBs from the latest dump.
+   Authentik returns with full state (providers, flows, apps, users);
+   Joplin clients re-sync afterwards.
+3. Restores Guacamole, Traefik certs, Pi-hole, Homepage and Portainer from
+   their tarballs.
+
+Per-step breakdown: `vps/roles/vps_backup/README.md`.
+
+**If R730xd is also gone**, the same data is one hop further out:
+
+- Synology — `/volume1/NetBackup/oracle-vps/<latest-date>/`
+- failing that, R730xd's restic repo on this same VPS (`oracle-vps/` path,
+  `restic restore`, no DSM needed)
+
+Chain: [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs).
 
 Verify Phase 1 is healthy:
 
@@ -98,12 +103,12 @@ Verify Phase 1 is healthy:
 make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 1)
 ```
 
-**Tailscale IP:** the new VPS will likely get a different `100.x.x.x` tailnet IP.
-`dr-verify-phase1` prints it and warns if it changed from `100.72.22.38`. The
-`make dr-restore` step above already auto-repoints Pi-hole's `*.cloud.merox.dev`
-local DNS records (joplin, agents, traefik, status, garage, etc.) to the new
-IP — see `vps/roles/vps_backup/README.md`. Two things still need a manual
-update if the IP changed:
+**Tailscale IP** — a new VPS will likely get a different `100.x.x.x`.
+`dr-verify-phase1` prints it and warns if it changed from `100.72.22.38`.
+
+`make dr-restore` already auto-repoints Pi-hole's `*.cloud.merox.dev`
+records (joplin, agents, traefik, status, garage, …). Two things still need
+a manual update:
 
 - the Storage Cloud link in
   `kubernetes/apps/default/homepage/app/resources/services.yaml`
@@ -168,19 +173,21 @@ kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.
 ```
 
 **Cloudflare Tunnel (cloudflared):** runs as a native systemd service on the VPS
-(`systemctl status cloudflared`), not a Docker container — confirmed 2026-07-23,
-contradicting older notes here that described it as `network_mode: host`
-container-based. Full host network access either way, so it reaches
-`localhost:443` (Traefik) and `172.25.10.72:9000` (Authentik) the same way,
-matching the tunnel's remotely-managed ingress rules (`config_src: cloudflare`
-— ingress is stored on Cloudflare's side, nothing to re-configure per-deploy in
-this repo). **Note**: some tunnel ingress rules route directly to a service
-port, bypassing Traefik entirely — no Traefik middleware (headers, IP
-allowlist, Authentik forward-auth) applies to those hostnames (`sso.merox.dev`
-→ Authentik is one, intentionally, to avoid a circular dependency on Traefik's
-own forward-auth). Verify on Cloudflare's own dashboard (Zero Trust → Networks
-→ Tunnels) which hostnames go direct vs through Traefik if that matters for a
-given service.
+(`systemctl status cloudflared`), not a Docker container — confirmed
+2026-07-23, contradicting older notes here that called it `network_mode:
+host` container-based.
+
+- Full host network access either way, so it reaches `localhost:443`
+  (Traefik) and `172.25.10.72:9000` (Authentik) identically.
+- `config_src: cloudflare` — ingress rules live on Cloudflare's side.
+  Nothing to re-configure per-deploy in this repo.
+
+⚠️ Some ingress rules route **straight to a service port, bypassing
+Traefik** — no Traefik middleware (headers, IP allowlist, Authentik
+forward-auth) applies to those hostnames. `sso.merox.dev` → Authentik is
+one, deliberately, to avoid a circular dependency on Traefik's own
+forward-auth. Check Zero Trust → Networks → Tunnels for which hostnames go
+direct.
 
 > **`inside.merox.dev` (Homepage) — retired the direct-to-port bypass
 > 2026-07-27.** It used to route straight to `localhost:3000`, the same

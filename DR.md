@@ -1,15 +1,18 @@
 # Disaster Recovery Runbook
 
-Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.  
-**Tested end-to-end: 2026-06-06 (px-0) and 2026-08-03 (pve/R730xd, prod VMs
-stopped-not-deleted throughout, restarted clean afterward). Total time: ~45 min
-including troubleshooting; a clean run with today's fixes applied should be
-back to ~35 min.**
+Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.
 
-**You need:** `age.key`, `talos/talsecret.sops.yaml` (or a full re-bootstrap), access to Proxmox.
+- **You need:** `age.key`, `talos/talsecret.sops.yaml` (or a full
+  re-bootstrap), access to Proxmox.
+- **In a hurry:** [`docs/dr-quickstart.md`](docs/dr-quickstart.md) — same
+  procedure, commands only.
+- **Rebuilding a host instead of the cluster:**
+  [pve](proxmox/r730xd/REINSTALL.md) · [px-0](proxmox/px-0/REINSTALL.md) ·
+  [pfSense](pfsense/REINSTALL.md)
 
-**In a hurry?** [`docs/dr-quickstart.md`](docs/dr-quickstart.md) is the same
-procedure with no explanations — commands only.
+**Tested end-to-end:** 2026-06-06 (px-0), 2026-08-03 (pve/R730xd — prod VMs
+stopped, not deleted, restarted clean afterward). ~45 min with
+troubleshooting; ~35 min clean.
 
 ## Which host to target
 
@@ -18,9 +21,11 @@ procedure with no explanations — commands only.
 | **px-0** | Real host-failure DR (prod lives on R730xd) | Only ~50GB RAM free — 8GB/node (default) is NOT enough to schedule the full stack; use `vm_memory_mb = 16384` minimum, and even then it's below prod's 48GB/node |
 | **pve (R730xd)** | Restore procedure only, not host failure (same physical box) | 238GB+ RAM free once prod VMs are stopped — can match prod exactly (`vm_memory_mb = 49152`), so nothing gets stuck on scheduling |
 
-Both are valid DR drills for different purposes — px-0 for "the R730xd died,
-can we recover," pve for "did we break the restore procedure with recent
-changes" (faster, no resource-sizing surprises).
+Both are valid drills, for different questions:
+
+- **px-0** — "the R730xd died, can we recover?"
+- **pve** — "did recent changes break the restore procedure?" Faster, no
+  resource-sizing surprises.
 
 ---
 
@@ -191,29 +196,26 @@ task dr:destroy-vms
 
 ## Backup schedule
 
-Full nightly schedule, what's included/excluded: VPS-side —
-**[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)**; R730xd-side —
-**[proxmox/r730xd/README.md](proxmox/r730xd/README.md)**.
-Short version: Longhorn backs up the media/ARR config volumes nightly to a
-self-hosted Garage instance on the R730xd (`10.57.57.61:3900`, bucket
-`longhorn`) — not the VPS anymore. From there, R730xd relays a curated copy
-weekly to Synology (cold storage) *and* nightly, directly, via restic to
-the Oracle VPS (open format, no DSM dependency — replaced a Synology→Oracle
-Hyper Backup relay retired 2026-07-26 once this leg covered the same
-ground and was proven with a real restore drill). The full mesh is
-documented in [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs).
-Observability history and caches are deliberately not backed up (accepted as
-lost in DR).
+Canonical schedules: [VPS side](vps/roles/vps_backup/README.md) ·
+[R730xd side](proxmox/r730xd/README.md#downstream-legs).
 
-**Alerting**: the VPS-side backup scripts and the Immich pg_dump CronJob all
-ping healthchecks.io on success/failure (same account as the cluster's
-Watchdog heartbeat) — see
-[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md#alerting-healthchecksio).
+Short version:
 
-**Restore drill**: a monthly cron actually restores the latest Authentik/
-Joplin dumps into throwaway containers to prove they're valid, not just
-present — see
-[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md#restore-drill-monthly).
+1. Longhorn → Garage on the R730xd (`10.57.57.61:3900`, bucket `longhorn`),
+   nightly. Media/ARR config volumes. Not the VPS anymore.
+2. R730xd → Synology, weekly, curated copy, cold storage.
+3. R730xd → Oracle, nightly, restic over SFTP. Open format, no DSM
+   dependency — replaced the Synology→Oracle Hyper Backup relay (retired
+   2026-07-26) once proven with a real restore drill.
+
+Not backed up, accepted as lost in DR: observability history and caches.
+
+- **Alerting** — VPS backup scripts and the Immich pg_dump CronJob ping
+  healthchecks.io on success/failure, same account as the cluster Watchdog.
+  [Detail](vps/roles/vps_backup/README.md#alerting-healthchecksio)
+- **Restore drill** — monthly cron restores the latest Authentik/Joplin
+  dumps into throwaway containers, proving they're valid and not merely
+  present. [Detail](vps/roles/vps_backup/README.md#restore-drill-monthly)
 
 ```bash
 # Check last backup time for each volume
@@ -222,48 +224,44 @@ kubectl get backupvolumes.longhorn.io -n longhorn-system | awk '{print $1, $6}'
 
 ### Immich Postgres backup
 
-Immich's Postgres (albums, face tags, favorites, sharing links — the
-metadata, not the photo files themselves) has **two independent backup
-paths**, deliberately not just one:
+Postgres holds albums, face tags, favorites and sharing links — the
+metadata, not the files. **Two independent paths, deliberately:**
 
-1. **Longhorn → Garage S3**, same mechanism as Jellyfin/Sonarr/Radarr/
-   Prowlarr — `immich-postgres`'s PVC carries the `media` recurring-job-group
-   label, so it's included automatically in `task longhorn:restore` on a
-   full cluster rebuild (see `.taskfiles/longhorn/Taskfile.yaml`).
-2. **Nightly `pg_dump`** via a k8s CronJob (`immich-postgres-backup`, 03:02,
-   inside pve's compact nightly SAS backup window), landing gzipped on
-   `/media/backups/immich-postgres/` on the R730xd, 30-day retention — an
-   independent, storage-format-agnostic path that survives even if Longhorn/
-   Garage itself has a bad day. See
-   [docs/immich-post-restore.md](docs/immich-post-restore.md) for the manual
-   restore procedure and the one-time VectorChord extension setup a fresh
-   Postgres needs.
+1. **Longhorn → Garage S3** — same mechanism as the ARR apps. The
+   `immich-postgres` PVC carries the `media` recurring-job-group label, so
+   `task longhorn:restore` picks it up automatically.
+2. **Nightly `pg_dump`** — CronJob `immich-postgres-backup`, 03:02, gzipped
+   to `/media/backups/immich-postgres/`, 30-day retention. Storage-format
+   agnostic, survives Longhorn/Garage having a bad day. Restore procedure +
+   the one-time VectorChord setup a fresh Postgres needs:
+   [docs/immich-post-restore.md](docs/immich-post-restore.md).
 
-**The actual photo/video files** moved off the SAS pool 2026-08-06: they're
-now `immich-library-ssd`/`immich-external-library-ssd`, Longhorn PVCs on
-rpool (SSD), not an NFS mount. Same `Longhorn → Garage S3` recurring backup
-as the Postgres PVC above (both carry the `media` recurring-job-group label)
-is the primary protection now. The old `/media/photos` NFS export is still
-live (Filebrowser reads it for the stale safety-net copy — briefly removed
-2026-08-06 which broke Filebrowser, re-added 2026-08-07), but it's no
-longer the live Immich source, so the weekly Synology push and nightly
-restic-to-Oracle legs that still read `/media/photos` (see
-[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs)) are
-backing up that stale leftover copy, not live data — fine as a second
-safety net for now, but don't treat it as current.
+**Photo/video files** moved off the SAS pool 2026-08-06 → now
+`immich-library-ssd` / `immich-external-library-ssd`, Longhorn PVCs on
+rpool (SSD). Same `media` label, so Longhorn → Garage is their primary
+protection too.
+
+⚠️ `/media/photos` is a **stale leftover**, not live Immich data. The
+export still exists (Filebrowser reads it; briefly removed 2026-08-06,
+which broke Filebrowser, re-added 2026-08-07), and the weekly Synology and
+nightly restic legs still copy it. Fine as a second safety net — do not
+treat it as current.
 
 ## R730xd / Garage total loss fallback
 
-Longhorn's primary backup target lives on the same physical host as
-`kubernetes-controlplane-1` (the R730xd, Garage LXC 103) — R730xd being both
-a live cluster node and the backup hub is a real, accepted blast-radius
-tradeoff (see [proxmox/r730xd/README.md](proxmox/r730xd/README.md), end of
-"Synology → Oracle Cloud"). Two independent mitigations exist: daily ZFS
-snapshots on `media/backups` (protects against corruption/deletion
-*propagating outward*, not R730xd loss itself) and the downstream copies
-below (protect against R730xd loss). If R730xd is lost entirely,
-`task longhorn:restore` has nothing to read from until a Garage instance is
-rebuilt from one of the downstream copies. In order of preference:
+Longhorn's backup target (Garage LXC 103) sits on the same physical host as
+`kubernetes-controlplane-1`. R730xd being both a live cluster node and the
+backup hub is an accepted blast-radius tradeoff.
+
+Mitigations:
+
+- **ZFS snapshots** on `media/backups`, daily — cover corruption and
+  deletion propagating outward, *not* R730xd loss.
+- **Downstream copies** below — cover R730xd loss.
+
+If R730xd is gone, `task longhorn:restore` has nothing to read until a
+Garage instance is rebuilt from one of those copies. In order of
+preference:
 
 **1. Synology's copy** (fastest, most complete, no decryption needed):
 
@@ -283,28 +281,25 @@ scp -r admin@10.57.57.201:/volume1/NetBackup/longhorn-garage/<latest-date>/ \
   /tmp/garage-recovered/
 ```
 
-**2. Oracle's restic copy, if Synology is ALSO gone** — as of 2026-07-26
-this no longer needs DSM at all. The old path (Synology → Oracle via Hyper
-Backup, proprietary chunked vault format, needed a working DSM/Virtual DSM
-instance just to restore) was retired once R730xd's own restic-push-oracle.sh
-leg was extended to cover `longhorn-garage/` directly:
+**2. Oracle's restic copy, if Synology is ALSO gone.** Needs only the
+`restic` binary (any OS) and the repo password — no DSM, no Virtual DSM, no
+restore wizard. The old Hyper Backup path (proprietary chunked vault,
+required a working DSM to read) was retired 2026-07-26.
 
 ```bash
-export RESTIC_REPOSITORY="sftp:restic-backup@100.72.22.38:/data"
-export RESTIC_PASSWORD_FILE=/path/to/saved/password   # see proxmox/r730xd/README.md
+# On pve, "oracle-vps-restic" is an ~/.ssh/config alias — off-host, use the
+# real target + key, both recoverable from /root once you can read the repo.
+export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
+export RESTIC_PASSWORD_FILE=/path/to/saved/password   # password manager, "restic bak password"
 restic restore latest --include /media/backups/longhorn-garage --target /tmp/garage-recovered
 # data/ and meta/ land under /tmp/garage-recovered/media/backups/longhorn-garage/
 ```
 
-Just the `restic` binary (any OS) and the repo password — no DSM, no
-Virtual DSM VM, no restore wizard. Proceed with step 3 below using that
-recovered data.
-
-**3. Stand up a fresh Garage instance** anywhere reachable from the cluster
-(a new LXC on `px-0`, or temporarily the VPS itself) with the recovered
-`data`/`meta` directories bind-mounted in — reusing `vps/roles/garage_setup`
-(`garage_require_tailscale`/`garage_webui_enabled` set per the new host,
-same as `vps/playbooks/garage-setup-r730xd.yml`).
+**3. Stand up a fresh Garage instance** anywhere the cluster can reach — a
+new LXC on `px-0`, or the VPS temporarily — with the recovered
+`data`/`meta` bind-mounted in. Reuse `vps/roles/garage_setup`, setting
+`garage_require_tailscale` / `garage_webui_enabled` per host, same as
+`vps/playbooks/garage-setup-r730xd.yml`.
 
 **4. Repoint Longhorn at it:**
 
@@ -320,7 +315,7 @@ kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.
 task longhorn:restore
 ```
 
-This procedure hasn't been drilled end-to-end yet — treat it as a documented
-starting point, not a tested runbook, until it's actually rehearsed once.
-Path 1 (Synology reachable) is the realistic common case; path 2 (both
-R730xd and Synology gone) is the untested, DSM-dependent edge case.
+⚠️ **Not drilled end-to-end.** Treat this section as a documented starting
+point, not a tested runbook, until it's rehearsed once. Path 1 (Synology
+reachable) is the realistic case; path 2 (R730xd *and* Synology gone) is
+the untested edge case.

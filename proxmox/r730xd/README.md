@@ -181,15 +181,22 @@ host). Key rotation: regenerate on VPS, update
 
 ### pve → Synology
 
-`/root/scripts/weekly-push-to-synology.sh`, weekly cron timed inside the
-NAS wake window (exact schedule: `crontab -l` on pve), dest
-`admin@10.57.57.201:/volume1/NetBackup/<category>/`. Pushes: photos
-(stale copy), synology-home, dump, pfsense, longhorn-garage,
-immich-postgres, oracle-vps, tools.
+[`scripts/weekly-push-to-synology.sh`](scripts/weekly-push-to-synology.sh),
+weekly, timed inside the NAS wake window. Schedule is redacted from
+[`etc/crontab`](etc/crontab) — it reveals the wake window; real line is in
+`/root/PRIVATE-NOTES.md`.
 
-⚠️ Retention prunes by **date parsed from folder name**, never `find
+- Dest: `admin@10.57.57.201:/volume1/NetBackup/<category>/`
+- Categories: photos (stale copy), synology-home, dump, pfsense,
+  longhorn-garage, immich-postgres, oracle-vps, tools
+- Versioned via `rsync --link-dest`, 21-day retention
+
+⚠️ Retention prunes by **date parsed from the folder name**, never `find
 -mtime` — `rsync -a` copies source mtimes, which once made the script
 delete a snapshot the moment it was created.
+
+⚠️ This is the only leg with **no healthcheck ping**. A silent failure is
+invisible; check the log date if in doubt.
 
 ### pve → Oracle (restic)
 
@@ -197,8 +204,13 @@ Open format — restorable anywhere with the `restic` binary + repo
 password. Dest: chrooted SFTP-only user `restic-backup` on the VPS
 (provisioned by the `vps_backup` role). Private key lives on pve only.
 
-Scope: everything under `/media/backups/` + `/media/photos`, **except**
-`dump/` (Home Assistant is out of DR scope, ~14GB/night of waste).
+Scope: everything under `/media/backups/`, plus `/media/photos` and
+`/root`. **Except** `dump/` — Home Assistant is out of DR scope,
+~14GB/night of waste.
+
+`/root` was added 2026-08-11. Without it the cron scripts, `/root/.ssh`,
+`PRIVATE-NOTES.md` and the restic password file existed on exactly one
+disk, the one being backed up.
 
 One-time setup on pve:
 
@@ -222,60 +234,47 @@ export RESTIC_PASSWORD_FILE="/root/.restic-oracle-password"
 restic init
 ```
 
-Nightly script `/root/scripts/restic-push-oracle.sh` (cron `10 3 * * *`,
-pings healthchecks.io `restic-push-oracle`):
-
-```bash
-#!/bin/bash
-set -euo pipefail
-export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
-export RESTIC_PASSWORD_FILE="/root/.restic-oracle-password"
-HC_URL="https://hc-ping.com/..."
-trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" || true' ERR
-restic backup /media/backups/oracle-vps /media/backups/immich-postgres \
-  /media/backups/pfsense /media/backups/longhorn-garage \
-  /media/backups/synology-home /media/backups/tools /media/photos /root --tag nightly
-restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
-restic check
-[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
-```
+Nightly: [`scripts/restic-push-oracle.sh`](scripts/restic-push-oracle.sh),
+cron `10 3 * * *`. Retention `--keep-daily 7 --keep-weekly 4
+--keep-monthly 3`, then `restic check`. Pings healthchecks.io.
 
 Restore from anywhere:
 
 ```bash
-export RESTIC_REPOSITORY="sftp:restic-backup@<vps-tailscale-ip>:/data"
-export RESTIC_PASSWORD_FILE=/path/to/password
+export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"   # ~/.ssh/config alias on pve
+export RESTIC_PASSWORD_FILE=/path/to/password             # password manager
 restic snapshots && restic restore latest --target /tmp/restored
 ```
 
-Monthly drill `/root/scripts/restic-restore-drill.sh` (cron `0 5 1 * *`):
-restores pfsense + immich-postgres to a throwaway dir, hash-compares
-against live source, pings `restic-restore-drill`.
+Off-host, the alias doesn't exist — use `sftp:restic-backup@<vps-ip>:/data`
+with the key from `/root/.ssh/`.
+
+Monthly drill: [`scripts/restic-restore-drill.sh`](scripts/restic-restore-drill.sh),
+cron `0 5 1 * *`. Restores pfsense + immich-postgres to a throwaway dir,
+hash-compares against live source, pings healthchecks.io.
+
+⚠️ The drill runs **on pve**, where the password file is present. It
+proves the data is good; it cannot prove you can still open the repo
+without pve.
 
 Key rotation: new pair on pve → update `vps_backup_restic_public_key` in
 `vps/roles/vps_backup/defaults/main.yml` → re-run role with `--tags backup`.
 
 ### ZFS snapshots
 
-Protects against silent corruption/deletion propagating (the VPS push uses
-`rsync --delete`). `/root/scripts/zfs-snapshot-backups.sh`, cron `5 3 * * *`:
+Protects against silent corruption/deletion propagating — the VPS push
+uses `rsync --delete`.
 
-```bash
-#!/bin/bash
-set -euo pipefail
-DATASET="media/backups"
-zfs snapshot -r "${DATASET}@daily-$(date +%F)"
-# prune >14 days by date-in-name (snapshot mtime is meaningless)
-CUTOFF=$(date -d "-14 days" +%s)
-zfs list -H -o name -t snapshot -r "$DATASET" | grep "@daily-" | while read -r snap; do
-  snap_date="${snap##*@daily-}"
-  snap_epoch=$(date -d "$snap_date" +%s 2>/dev/null) || continue
-  [ "$snap_epoch" -lt "$CUTOFF" ] && zfs destroy "$snap"
-done
-```
+[`scripts/zfs-snapshot-backups.sh`](scripts/zfs-snapshot-backups.sh), cron
+`5 3 * * *`, `media/backups@daily-*`, 14-day retention.
 
-Recover: mount `.zfs/snapshot/<name>/` and copy out (non-destructive,
-preferred) or `zfs rollback` (destructive, whole dataset).
+Recover:
+
+- **Non-destructive (preferred)** — mount `.zfs/snapshot/<name>/`, copy out.
+- **Destructive** — `zfs rollback`, rolls back the whole dataset.
+
+⚠️ Pruning parses the date **from the snapshot name**, never `find -mtime`.
+Snapshot mtime is meaningless here.
 
 ## Site-alive heartbeat
 
