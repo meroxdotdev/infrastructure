@@ -122,36 +122,28 @@ Rules:
 - Observability history and caches are regenerable — excluded.
 
 ```
-Longhorn (K8s PVCs: ARR configs, Immich)  ──nightly──▶ ┐
-Oracle VPS (service state dumps)          ──nightly──▶ │ R730xd (hub)
-pfSense config, VM dumps, documents       ──nightly──▶ ┘   /media/backups
-                                                            │
-                              ┌─────────────────────────────┤
-                              │ weekly                      │ nightly
-                              ▼                             ▼
-                        Synology                       Oracle Cloud
-              (cold, offline outside its         (restic over SFTP —
-               wake window — see private          open format, monthly
-               notes on pve for schedule)         restore drill)
+Longhorn (K8s PVCs)      ──nightly──▶ ┐
+Oracle VPS (state dumps) ──nightly──▶ │ R730xd  /media/backups
+pfSense, VM dumps, docs  ──nightly──▶ ┘      │
+                                    ┌────────┴────────┐
+                                 weekly            nightly
+                                    ▼                 ▼
+                                Synology         Oracle (restic)
+                             (cold, asleep)    (open format, drilled)
 ```
 
-Canonical schedules: [proxmox/r730xd/README.md](proxmox/r730xd/README.md)
-(hub + both legs) · [vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md)
-(VPS side).
+**Canonical detail — schedules, retention, every leg:**
+[proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) ·
+[vps/roles/vps_backup/README.md](vps/roles/vps_backup/README.md) (VPS side)
 
 | Failure | Loses | Recovery |
 |---|---|---|
-| R730xd | Primary Longhorn backup target + media host — not just a hypervisor | "R730xd/Garage total loss" runbook in [DR.md](DR.md) |
-| VPS | ≤1 night of its own service backups | `make dr-full` (~15 min) + `make dr-restore` |
-| K8s cluster | Nothing not already in Git/Garage | `task bootstrap:apps` + `task longhorn:restore` |
+| R730xd | Longhorn backup target + media host, not just a hypervisor | [DR.md](DR.md#r730xd--garage-total-loss-fallback) |
+| VPS | ≤1 night of its own service backups | `make dr-full` + `make dr-restore` (~15 min) |
+| K8s cluster | Nothing that isn't in Git/Garage | `task bootstrap:apps` + `task longhorn:restore` |
 
-Deliberately **not** covered:
-
-- `/media/library` — movies/TV, re-downloadable, no second copy anywhere.
-- Home Assistant VM dump — out of DR scope.
-
-Immich photos are on Longhorn/SSD PVCs, covered by the nightly
-Longhorn→Garage leg. Restore: [docs/immich-post-restore.md](docs/immich-post-restore.md).
+Deliberately **not** covered: `/media/library` (movies/TV, re-downloadable)
+and the Home Assistant VM dump (out of DR scope).
 
 **Still manual** (keep copies off the VPS): `age.key`, `vps/.vault_pass`,
 `/srv/docker/oracle-cloud/.env`.
@@ -165,32 +157,18 @@ make authentik-backup   # manual — run before any Authentik changes
 
 ## Full rebuild from scratch (~35 minutes)
 
-> Detailed step-by-step guide: **[DEPLOY.md](DEPLOY.md)**
+Procedure: **[DEPLOY.md](DEPLOY.md)**. Have ready: `age.key`, the Ansible
+Vault password, a Tailscale auth key (check it hasn't expired) and a
+Cloudflare API token.
 
-```
-Prerequisites — have these ready:
-  ✓ age.key (SOPS encryption key)
-  ✓ Ansible Vault password
-  ✓ Tailscale auth key (check it hasn't expired!)
-  ✓ Cloudflare API token
+| Step | Command | Time |
+|---|---|---|
+| 1. VPS | `cd vps && make dr-full` → `make dr-restore` | ~15 min |
+| 2. Kubernetes | `task bootstrap:talos` → `bootstrap:apps` → `longhorn:restore` | ~20 min |
 
-Step 1 — VPS (~15 min)
-  cd vps && make dr-full
-  make dr-restore   # restore all data from R730xd (DBs + extras, non-interactive)
-
-Step 2 — Kubernetes (~20 min)
-  cp /backup/age.key .
-  # Edit: talos/talconfig.yaml (node IPs, install disk)
-  # Edit: kubernetes/components/common/cluster-vars.yaml (LB IPs, R730xd IP)
-  task bootstrap:talos
-  task bootstrap:apps
-  task longhorn:restore
-
-Validation:
-  kubectl get nodes               # all Ready
-  docker ps | wc -l               # ~14 containers
-  kubectl get pods -A | grep -v Running   # should be empty (+ Completed jobs)
-```
+Step 2 first needs `age.key` in place and new-hardware values edited into
+`talos/talconfig.yaml` and `kubernetes/components/common/cluster-vars.yaml`
+— see DEPLOY.md, which is the only place those edits are spelled out.
 
 ---
 
@@ -253,7 +231,7 @@ infrastructure/
 │   ├── r730xd/                 # Backup hub: runbooks, cron scripts, /etc snapshots
 │   └── px-0/                   # Second Proxmox host: runbook + /etc snapshots
 ├── pfsense/                    # Firewall runbook + its config-push script
-├── docs/                       # Post-restore and single-topic guides
+├── docs/                       # operations, troubleshooting, post-restore guides
 ├── DEPLOY.md                   # Full rebuild + DR guide
 └── Taskfile.yaml               # Task runner (talosctl, flux, longhorn)
 ```
@@ -295,164 +273,11 @@ time with `cd vps && make dr-full`.
 
 ---
 
-## Day-to-day operations
+## Operations & troubleshooting
 
-### Cluster
+Moved out of this page to keep it an index:
 
-```bash
-kubectl get nodes
-kubectl get kustomizations -A
-kubectl get helmreleases -A
-cilium status
-
-task reconcile                              # force Flux sync
-
-task talos:generate-config                  # after editing talconfig.yaml
-task talos:apply-node IP=10.57.57.80        # apply config to a node
-task talos:upgrade-node IP=10.57.57.80      # upgrade Talos on a node
-task talos:upgrade-k8s                      # upgrade Kubernetes version
-```
-
-### Headlamp (K8s dashboard)
-
-- URL: `https://headlamp.k8s.merox.dev` (internal gateway only)
-- Login: bearer token for the `headlamp` ServiceAccount (`cluster-admin`
-  via the `headlamp-admin` ClusterRoleBinding)
-
-```bash
-kubectl create token headlamp -n default --duration=8760h
-```
-
-⚠️ Run it directly in a terminal. Copy-pasting through a chat/markdown UI
-can carry hidden characters that corrupt the cookie → "Error
-authenticating".
-
-### VPS
-
-```bash
-cd vps/
-
-make health-check       # verify all services are running
-make setup              # full redeploy (idempotent)
-make update             # OS package updates only
-make check              # dry-run (--check --diff)
-make restore            # interactive restore wizard (Joplin / Authentik / all)
-make cleanup            # remove unused Docker images/volumes
-make dr-full            # provision fallback VPS + cloud-init deploys everything (~15 min)
-```
-
----
-
-## Troubleshooting
-
-### Flux not reconciling
-
-```bash
-flux get sources git -A
-flux get kustomizations -A
-flux logs --level=error
-flux reconcile kustomization cluster-apps --with-source
-```
-
-### HelmRelease stuck / failed
-
-```bash
-kubectl get helmreleases -A | grep -v True
-flux logs --kind HelmRelease --name <name> -n <namespace>
-flux reconcile helmrelease <name> -n <namespace> --with-source
-# If Helm refuses changes — suspend + resume:
-flux suspend helmrelease <name> -n <namespace>
-flux resume helmrelease <name> -n <namespace>
-```
-
-### Pod issues
-
-```bash
-kubectl -n <namespace> get pods -o wide
-kubectl -n <namespace> describe pod <pod>
-kubectl -n <namespace> logs <pod> -f
-kubectl -n <namespace> logs <pod> --previous
-kubectl -n <namespace> get events --sort-by='.metadata.creationTimestamp'
-```
-
-### Longhorn storage
-
-```bash
-kubectl -n longhorn-system get volumes
-kubectl -n longhorn-system get nodes.longhorn.io
-
-# Remove orphaned replicas (safe)
-kubectl get orphan -n longhorn-system -o name | \
-  xargs kubectl delete -n longhorn-system
-```
-
-### Replacing a disk on a K8s node
-
-```bash
-kubectl drain <node> --ignore-daemonsets --delete-emptydir-data
-# Proxmox: shut down VM, swap physical disk, start VM
-task talos:generate-config
-talosctl apply-config --insecure --nodes <ip> \
-  --file talos/clusterconfig/<node>.yaml
-kubectl uncordon <node>
-# If Longhorn disk UUID changed → evict replicas via UI, re-add new disk
-```
-
-> Wait 1-2 hours between disk swaps to allow replica rebuild.
-
-### Node unreachable
-
-```bash
-talosctl -n <node-ip> health
-talosctl -n <node-ip> dmesg
-talosctl -n <node-ip> services
-kubectl describe node <node-name>
-```
-
-### Garage S3
-
-```bash
-docker exec garage /garage status
-docker exec garage /garage bucket list
-kubectl -n longhorn-system get secret minio-secret
-```
-
----
-
-## Maintenance
-
-### Adding a node
-
-```bash
-# Keep an odd number of control-plane nodes (1, 3, 5) for quorum
-talosctl get disks -n <new-node-ip> --insecure    # find the install disk
-talosctl get links -n <new-node-ip> --insecure    # find the MAC address
-# Add entry to talos/talconfig.yaml with disk + MAC
-task talos:generate-config
-task talos:apply-node IP=<new-node-ip>
-kubectl get nodes --watch
-```
-
-### Automatic updates (Renovate)
-
-Renovate runs every weekend and opens PRs automatically for:
-
-- Helm chart versions (all HelmReleases)
-- Container image tags (annotated with `# renovate:`)
-- Talos / Kubernetes versions (`.mise.toml`)
-
-Config: `.renovaterc.json5`
-
-### SOPS secret rotation
-
-```bash
-sops kubernetes/apps/<namespace>/<app>/app/secret.sops.yaml
-# After rotating the AGE key:
-find . -name "*.sops.*" -exec sops updatekeys {} \;
-```
-
-### Security
-
-- Kubernetes secrets: SOPS/AGE encrypted (back up `age.key` separately — it's critical)
-- Ansible secrets: encrypted Vault (`vps/`)
-- All traffic: Tailscale mesh or Cloudflare Tunnel (zero open ports)
+| Page | For |
+|---|---|
+| [docs/operations.md](docs/operations.md) | Day-to-day commands, Headlamp, VPS `make` targets, adding a node, Renovate, SOPS rotation |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Flux, HelmReleases, pods, Longhorn, disk swaps, unreachable nodes, Garage |
