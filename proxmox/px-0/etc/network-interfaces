@@ -1,0 +1,19 @@
+auto lo
+iface lo inet loopback
+
+iface enp89s0 inet manual
+
+auto vmbr0
+iface vmbr0 inet static
+	address 10.57.57.254/24
+	gateway 10.57.57.1
+	bridge-ports enp89s0
+	bridge-stp off
+	bridge-fd 0
+
+iface enp90s0 inet manual
+
+iface wlp88s0 inet manual
+
+
+source /etc/network/interfaces.d/*

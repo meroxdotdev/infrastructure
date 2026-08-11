@@ -5,9 +5,16 @@ Canonical reference for R730xd-side backup infrastructure. `pve`
 landing spot for VM/pfSense/VPS backups, weekly relay to Synology, nightly
 restic push to Oracle.
 
-Related: [spindown-setup.md](spindown-setup.md) (SAS spin-down rebuild
-runbook) · [DR.md](../../DR.md) (total-loss recovery) ·
+Related: [REINSTALL.md](REINSTALL.md) (rebuild this host from bare metal) ·
+[spindown-setup.md](spindown-setup.md) (SAS spin-down rebuild runbook) ·
+[DR.md](../../DR.md) (total-loss recovery) ·
 [vps_backup role](../../vps/roles/vps_backup/README.md) (VPS-side detail)
+
+Host state that is not a clean install now lives in git:
+[`scripts/`](scripts/) (the cron scripts), [`etc/crontab`](etc/crontab),
+[`etc/exports`](etc/exports), [`etc/storage.cfg`](etc/storage.cfg),
+[`etc/network-interfaces`](etc/network-interfaces). The host is the running
+copy; these are the reviewable ones and the source for a reinstall.
 
 ## Nightly schedule
 

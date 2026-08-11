@@ -4,6 +4,15 @@ Non-Ansible-managed VMs on px-0 (Beelink, `10.57.57.254`) — same convention
 as [`proxmox/r730xd`](../r730xd/README.md): px-0 isn't in the Ansible
 inventory, so these are provisioned/documented directly instead.
 
+Rebuilding the host itself: [REINSTALL.md](REINSTALL.md). Captured host
+config: [`etc/storage.cfg`](etc/storage.cfg),
+[`etc/network-interfaces`](etc/network-interfaces).
+
+⚠️ px-0 has **no backups at all** — no vzdump job, no `jobs.cfg`, both dump
+directories empty (verified 2026-08-11). Every VM here is rebuild-only.
+That is fine for what runs on it, but it is a choice, not an oversight:
+`cluster-storage` is also a single NVMe with no redundancy.
+
 ## Ollama VM (DONE, 2026-07-30)
 
 Standalone VM (not a Talos node, not part of the K8s cluster) dedicated to
