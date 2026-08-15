@@ -3,7 +3,7 @@
 *.key
 # Terraform state and secrets — never commit
 vps/terraform/terraform.tfvars
-talos/terraform/terraform.tfvars
+talos/terraform/terraform.tfvars*
 talos/terraform/.terraform/
 talos/terraform/terraform.tfstate*
 talos/terraform/.terraform.lock.hcl

@@ -23,3 +23,43 @@ Back to the runbook: [../DR.md](../DR.md).
 | `terraform apply` fails: `storage 'local-data' does not support vm images` | px-0's `local-data` storage had its content-type changed (sometime after the 2026-06 tests) to `iso,import,vztmpl,snippets` — no longer `images` | Use `cluster-storage` for `disk_storage` on px-0 (still `local-data` for `iso_storage`) — already fixed in `terraform.tfvars.example` |
 | DR node never gets its static IP, `dr:apply-talos-configs` reports `UNKNOWN` MAC | `terraform.tfvars.example`'s `node_macs` had a stale MAC for controlplane-3 that no longer matches the real prod VM's NIC (`talconfig.yaml` is the source of truth, always re-verify against it) | Fixed in `terraform.tfvars.example`; if this happens again, `qm set <vmid> -net0 virtio=<correct-mac>,bridge=vmbr0` + reboot the VM |
 | `bootstrap:apps`/`longhorn:restore` fail with `task: Unsupported bash version` or `Missing required deps` | macOS ships bash 3.2 (Taskfile needs 4+); `helmfile`/`kustomize` aren't installed by default outside the `mise` toolchain | `brew install bash helmfile kustomize` once per machine, run with `/opt/homebrew/bin` ahead of `/usr/bin` on `PATH` |
+
+---
+
+## Open — found 2026-08-15, **not** yet fixed
+
+Unlike the table above, nothing here is repaired in the repo. All five were
+hit during a full restore onto px-0 (a migration trial, later rolled back —
+see [Compute on px-0](#compute-on-px-0-evaluated-and-rejected) below). They
+will recur on the next real DR.
+
+| Symptom | Root cause | Workaround |
+|---|---|---|
+| `jellyseerr`/`qbittorrent` pods stuck `ContainerCreating`, `AttachVolume.Attach failed … volume jellyseerr-restored not found` | `apply-pvs` ships static PVs for both, but `restore-all-volumes` deliberately skips them ("dropped from backup 2026-07-21"). On a from-scratch cluster the PV points at a Longhorn volume nothing ever creates. The row above kept the PVs for prod's sake — correct there, broken here | Delete both PVCs and PVs, then reconcile the **Kustomization** (`flux reconcile kustomization jellyseerr -n default`), not the HelmRelease — the PVC comes from each app's `pvc.yaml`, the chart only references it via `existingClaim` |
+| ↳ and the premise is now stale | The nightly job **does** back both up — fresh `jellyseerr-restored` / `qbittorrent-restored` backups were confirmed in Garage on 2026-08-15. This answers the open question left on the row above: the data *is* protected, the restore simply ignores it | Either add both to `restore-all-volumes` (data survives DR) or drop them from the `media` recurring-job group (honest about discarding it). Today it is the worst of both: backed up nightly, thrown away on restore |
+| `immich-server` crash-loops: `Failed to read (/data/encoded-video/.immich)` | `immich-library-ssd` is not in the restore list, so `/data` comes up empty. Immich creates the directory tree but not every `.immich` marker, then fails its own folder check | Scale `immich-server` to 0, mount the PVC in a throwaway busybox pod, `touch /data/{thumbs,upload,backups,library,profile,encoded-video}/.immich`, scale back to 1 |
+| First **cold** boot of a Terraform-made DR node lands in maintenance mode instead of the installed system | `main.tf` sets `boot_order = ["ide2", "scsi0"]` and leaves the ISO attached. Masked in practice because Talos upgrades use `kexec`, so the VMs rarely cold-boot — but a power cut or `qm stop`/`qm start` exposes it | After Talos installs: `qm set <vmid> --boot order=scsi0` and `--ide2 none,media=cdrom`. The `lifecycle { ignore_changes = [cdrom] }` block means Terraform will not fight this |
+| `dr-verify.sh` reports `Only 6 restore volumes found (expected 9+)` on a healthy restore | The script still expects the pre-2026-07-21 set. `restore-all-volumes` restores exactly 6 by design | Ignore, or align the script with the task. Also note `--phase all` runs VPS checks with local `docker ps` — from a laptop every one of them fails meaninglessly; use `--phase 2` for the cluster |
+
+## Compute on px-0 — evaluated and rejected
+
+2026-08-15: the whole cluster was moved to px-0 (Beelink) to see whether
+leaving the R730xd as a storage-only host would save power. It does not.
+Measured with the SAS pool parked in both cases:
+
+| | Cluster on R730xd | Cluster on px-0 |
+|---|---|---|
+| pve | 136W | 118W |
+| px-0 | 31W | 102W |
+| **UPS total** | **167W** | **222W** |
+
+**+55W, roughly 40 kWh/month worse.** The R730xd's floor is set by 12 SAS
+disks, two PSUs and its fans, not by CPU load, so unloading its CPU recovers
+only ~18W — while the i9-13900H sits at ~3.8GHz hosting three always-on VMs
+even at a cluster-wide 1.0 core of real work, and never drops into deep idle.
+Moving compute off a machine that stays powered on for storage does not save
+power; it just adds a second machine's worth.
+
+Rolled back the same day by starting VMs 800/802/804 (kept stopped, never
+reset). Worth re-testing only if the R730xd ever stops being needed for
+storage — that, not the VM placement, is where the 136W lives.

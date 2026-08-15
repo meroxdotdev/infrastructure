@@ -97,19 +97,28 @@ transcode from an actual client and check Playback Info shows `nvenc`.
 
 ## 2. Rollback — Intel Quick Sync (iGPU, px-0 / Beelink)
 
-Nothing was deleted. The previous `controlplane-1` VM (with working Intel
-iGPU passthrough) is still on px-0 (`10.57.57.254`), **powered off, not
-deleted** — VMID 800 there was the old identity before the R730xd rebuild.
 The Intel GitOps manifests are still in git, just suspended.
+
+⚠️ **The old Intel `controlplane-1` VM no longer exists.** This section used
+to say it was still on px-0 as a powered-off VMID 800 — checked 2026-08-15,
+px-0 holds only `100` (datacenter-manager), `102` (winserver, stopped) and
+`105` (ollama). Reverting to Intel means *building* a node on px-0, not
+powering one back on.
 
 To revert:
 
-1. **Hardware**: power the old VM back on px-0 (`qm start 800` on
-   `10.57.57.254`) — it will conflict with the current `controlplane-1` on
-   R730xd (same MAC/IP), so the R730xd-based one must be removed from etcd
-   first (`talosctl etcd remove-member`, same procedure used for the
-   original migration, see git history around this doc's introduction).
-   This is a full hardware rollback, not a quick toggle.
+1. **Hardware**: stand up a `controlplane-1` on px-0 and pass the iGPU
+   through. The host-side vfio config is still in place from the first Intel
+   era (`intel_iommu=on iommu=pt`, `module_blacklist=i915,…`,
+   `options vfio-pci ids=8086:a7a0,8086:51ca`), so the VM side is just
+   `hostpci0 0000:00:02.0,pcie=1` — **and `--machine q35`**, since the
+   default i440fx never gives the guest a render node. Confirm with
+   `talosctl -n 10.57.57.80 ls /dev/dri` (`card0` + `renderD128`) and
+   `talosctl dmesg | grep i915` (*"GuC: submission enabled"*). Verified
+   working 2026-08-15.
+   It will conflict with the R730xd `controlplane-1` (same MAC/IP), so remove
+   that one from etcd first (`talosctl etcd remove-member`). This is a full
+   hardware move, not a quick toggle.
 2. **GitOps**:
     - Un-suspend: remove `spec.suspend: true` from
       `kubernetes/apps/kube-system/intel-device-plugin-operator/ks.yaml`
@@ -124,6 +133,16 @@ To revert:
       (`8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510`),
       revert `nodeLabels` to `intel.feature.node.kubernetes.io/gpu: "true"`,
       and drop the `patches: [nvidia-kernel-modules.yaml]` entry.
+
+      ⚠️ Use that schematic as-is. It already contains `i915` and
+      `intel-ucode` — the Nvidia one is literally it plus the two nvidia
+      extensions — and it also carries `iscsi-tools`, `mei` and
+      `util-linux-tools`. A hand-rolled "just i915 + intel-ucode" schematic
+      boots fine and looks correct, then `longhorn-manager` crash-loops on
+      that node with *"please make sure you have iscsiadm/open-iscsi
+      installed"*; its DaemonSet install times out and every PVC-backed app
+      fails behind it. Cost an hour on 2026-08-15. Check any schematic before
+      trusting it: `curl -s https://factory.talos.dev/schematics/<id>`.
 3. **Jellyfin `encoding.xml`**: see the "Re-applying the encoding.xml
    manually" section in
    [jellyfin-post-restore.md](./jellyfin-post-restore.md) — set
