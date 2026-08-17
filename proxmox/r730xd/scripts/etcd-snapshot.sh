@@ -11,6 +11,15 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 #
 # Restore:  talosctl bootstrap --recover-from=<snapshot>
 #
+# MUST run inside the nightly backup window (03:03), never at an arbitrary hour.
+# The snapshot is ~186 MB and lands on `media`, so writing it wakes all twelve
+# SAS disks - and a wake means a blocking AEN poll on the H730P that stalls
+# etcd's own fsyncs on the SSDs behind it. Scheduled at 23:45 on 2026-08-17 it
+# produced 53 slow fsyncs and an `etcdserver timeout` that failed a Flux
+# Kustomization, i.e. this job caused exactly the outage it exists to recover
+# from. Inside the window the disks are already spinning for the other jobs and
+# it costs nothing extra. See proxmox/r730xd/spindown-setup.md.
+#
 # The credential is deliberately NOT the admin talosconfig. It carries the
 # os:etcd:backup role only, so a compromise of this host cannot reboot or reset
 # the node - verified: `talosctl reboot` with it returns PermissionDenied.

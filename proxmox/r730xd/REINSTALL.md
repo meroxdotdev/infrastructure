@@ -59,6 +59,18 @@ exportfs -ra && exportfs -v
 Export ACLs are per host. Adding a client means adding its IP, not widening
 to `/24` — see [`README.md`](README.md).
 
+Dataset properties do **not** come back with an import — reapply them:
+
+```bash
+zfs set reservation=150G media/backups   # backups cannot be starved by media
+zfs set quota=3T media/library           # bulk media cannot eat the pool
+```
+
+Without the reservation, a large download fills the pool and the first thing
+to fail with ENOSPC is the backup — the irreplaceable data loses the race to
+the re-downloadable kind. Both were added 2026-08-17; `media/games` was
+destroyed at the same time and should not be recreated.
+
 ## 6. Secrets and keys (restore, do not recreate)
 
 From the restic repo — the only leg that has `/root`:

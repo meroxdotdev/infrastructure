@@ -203,6 +203,20 @@ fight over the same device.
 graceful shutdown of the machine holding all the data depend on a second host
 being awake.
 
+Snapshots of both config files are in [`etc/nut/`](etc/nut/). `upsd.users` is
+**not** here — it holds a generated password. Reissue it on a rebuild and put
+the same string in `upsmon.conf`'s `MONITOR` line, or `upsmon` logs
+`ERR ACCESS-DENIED` and silently never fires:
+
+```bash
+pw=$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)
+printf '[upsmon]\n    password = %s\n    upsmon master\n' "$pw" > /etc/nut/upsd.users
+sed -i "s/REDACTED-SEE-upsd.users/$pw/" /etc/nut/upsmon.conf
+chown root:nut /etc/nut/upsd.users /etc/nut/upsmon.conf
+chmod 640 /etc/nut/upsd.users /etc/nut/upsmon.conf
+systemctl restart nut-server nut-monitor    # restart, not reload - upsd caches the users file
+```
+
 ### VPS → pve
 
 `authorized_keys` line on pve (restricted):
