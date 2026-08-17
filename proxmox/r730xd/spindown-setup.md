@@ -40,6 +40,17 @@ one vdev can idle past any per-disk threshold while its sibling serves a read
 stream. Parking those six mid-playback is exactly the failure above. The pool
 is the unit of use; if it is quiet, every disk in it is quiet.
 
+⚠️ **The pool gate has one blind spot, and it is handled explicitly.** The idle
+counter reads `objset-*` kstats, which count I/O *per dataset*. A scrub or
+resilver traverses the pool below the DMU and moves no objset counter at all,
+so the gate reads a busy pool as idle. Measured 2026-08-17: `pool_idle` climbed
+14 → 15 → 16 straight through a running scrub with all 12 disks awake, and the
+enforcer parked every one of them mid-scan. The enforcer now checks
+`zpool status` for `scrub in progress` / `resilver in progress` and holds the
+counter at zero while either runs. Resilver is the more important half —
+parking disks during a rebuild extends the window with no redundancy to spare.
+`paused` deliberately does not match: a paused scrub reads nothing.
+
 `EtcdSlowFsyncBurst` in
 [kube-prometheus-stack](../../kubernetes/apps/observability/kube-prometheus-stack/app/helmrelease.yaml)
 alerts if this regresses. The bundled etcd rules do not — they need 10 minutes

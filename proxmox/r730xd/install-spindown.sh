@@ -185,6 +185,26 @@ fi
 # would wake the platters.
 io=$(awk '/^(nread|nwritten)/ {s+=$3} END {printf "%d", s}' \
      "/proc/spl/kstat/zfs/$POOL"/objset-* 2>/dev/null)
+
+# A scrub or resilver traverses the pool directly, below the DMU, so it moves no
+# objset counter at all - the gate above cannot see it and reads the pool as
+# idle. Measured 2026-08-17: pool_idle climbed 14 -> 15 -> 16 straight through a
+# running scrub while all 12 disks were awake, and the enforcer parked every one
+# of them mid-scan. That is the same park/wake loop the pool-level rule exists to
+# prevent, reached by a different route.
+#
+# Resilver is the more important half: parking disks during a rebuild extends the
+# window where the pool has no redundancy left to lose.
+#
+# "paused" deliberately does not match - a paused scrub reads nothing, so parking
+# is correct then. Capture then match, never `| grep -q` under pipefail.
+scan=$(zpool status "$POOL" 2>/dev/null)
+case "$scan" in
+  *"scrub in progress"*|*"resilver in progress"*)
+    echo "${io:-0} 0" > "$STATE"   # hold idle at 0 so the count restarts after
+    exit 0 ;;
+esac
+
 prev=""; idle=0
 [ -f "$STATE" ] && read -r prev idle < "$STATE"
 # Unreadable counters, first run, or any movement at all resets the counter.
