@@ -16,6 +16,15 @@ talos/talconfig.yaml.prod-backup
 /github-deploy.key
 /github-deploy.key.pub
 /github-push-token.txt
+# Security audit output — NEVER commit, this repo is public.
+# Contains the WAN IP, the full internal topology, open ports per segment and
+# findings that are not remediated yet (C1: iDRAC on the flat L2 with an
+# OpenSSH vulnerable to Terrapin; C2: OPT1 -> LAN segmentation that does not
+# actually block). In a public repo that is a map, not documentation. Keep it
+# local or in a private repo until the criticals are closed.
+/SECURITY-AUDIT.md
+/audit-log.md
+
 # Template config files
 /cluster.yaml
 /nodes.yaml
