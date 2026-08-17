@@ -89,7 +89,12 @@ spec:
         scrapeConfigSelectorNilUsesHelmValues: false
         serviceMonitorSelectorNilUsesHelmValues: false
         retention: 14d
-        retentionSize: 20GB
+        # Must stay comfortably BELOW the PVC below (15Gi = 16.1GB), or the
+        # size guard can never fire — the volume fills first and Prometheus
+        # crashes on a full disk, with only `retention` saving it. Was 20GB,
+        # i.e. larger than the disk it was meant to protect; actual usage had
+        # already reached 17G. Raise the PVC first if this ever needs to grow.
+        retentionSize: 12GB
         resources:
           requests:
             cpu: 100m
@@ -142,6 +147,46 @@ spec:
                 expr: count(time() - container_last_seen{image=~"(docker.io).*",container!=""} < 30) > 100
                 labels:
                   severity: critical
+      etcd-rules:
+        groups:
+          - name: etcd
+            rules:
+              # The bundled etcd rules exist and are loaded, and none of them
+              # caught the 2026-08-16 incident: etcdHighFsyncDurations needs
+              # p99 > 0.5s sustained `for: 10m`, etcdHighNumberOfLeaderChanges
+              # needs 4 elections inside 15m. The real failure was sharp spikes
+              # that recovered in 1-4 minutes and 6-11 elections spread across a
+              # whole day - structurally invisible to both. Six days of
+              # degradation went unnoticed until someone asked why alerts were
+              # firing elsewhere.
+              #
+              # Count the slow fsyncs instead of quantiling them. p99 over a
+              # 5-min window is a tail-of-a-tail and swings wildly on a low
+              # sample count; a raw count of "fsyncs that took over a second"
+              # is what actually tracked the damage, day by day.
+              #
+              # Threshold: healthy here is ~30/day, all inside the nightly
+              # backup hour when the spun-down SAS disks are legitimately woken
+              # (see proxmox/r730xd/spindown-setup.md). Pre-fix was 346/day and
+              # 203 in a single hour. 50/h clears the backup window and still
+              # catches a regression on the first bad hour.
+              - alert: EtcdSlowFsyncBurst
+                annotations:
+                  summary: "etcd: {{ $value | printf \"%.0f\" }} fsyncs over 1s in the last hour - check the H730P (SAS spin-down wakes stall the shared controller)."
+                expr: sum(increase(etcd_disk_wal_fsync_duration_seconds_count[1h])) - sum(increase(etcd_disk_wal_fsync_duration_seconds_bucket{le="1.024"}[1h])) > 50
+                for: 10m
+                labels:
+                  severity: warning
+              # Same blind spot, slower axis: elections trickling in over hours
+              # never reach the bundled rule's 4-per-15m. Zero is the healthy
+              # value for a 3-node cluster that is not being disturbed.
+              - alert: EtcdLeaderElectionsCreeping
+                annotations:
+                  summary: "etcd: {{ $value | printf \"%.0f\" }} raft leader elections in 6h - normally zero."
+                expr: sum(increase(etcd_server_leader_changes_seen_total[6h])) > 3
+                for: 10m
+                labels:
+                  severity: warning
       oom-rules:
         groups:
           - name: oom
@@ -205,6 +250,25 @@ spec:
                 for: 15m
                 labels:
                   severity: warning
+              # Capacity was the one thing nothing watched. "Unavailable"
+              # above catches a storage going away, not one filling up — and
+              # a full ZFS pool is worse than a full filesystem: at 100% you
+              # can struggle even to delete. 30m so a big restore or a vzdump
+              # spike doesn't page anyone.
+              - alert: PveStorageNearFull
+                annotations:
+                  summary: "Proxmox storage {{ $labels.id }} at {{ $value | humanizePercentage }} — plan space now."
+                expr: pve_disk_usage_bytes{id=~"storage/.*"} / pve_disk_size_bytes{id=~"storage/.*"} > 0.80
+                for: 30m
+                labels:
+                  severity: warning
+              - alert: PveStorageCritical
+                annotations:
+                  summary: "Proxmox storage {{ $labels.id }} at {{ $value | humanizePercentage }} — act today."
+                expr: pve_disk_usage_bytes{id=~"storage/.*"} / pve_disk_size_bytes{id=~"storage/.*"} > 0.90
+                for: 15m
+                labels:
+                  severity: critical
       vps-rules:
         groups:
           - name: vps
@@ -218,7 +282,14 @@ spec:
                 for: 3m
                 labels:
                   severity: critical
-      # Comentat ZFS rules - nu ai ZFS
+      # ZFS rules stay off, but NOT for the reason the old comment gave
+      # ("nu ai ZFS") — pve has two ZFS pools, rpool and media. The real
+      # reason is the metric: node_zfs_zpool_state comes from node_exporter,
+      # which runs on the Talos nodes (no ZFS there) and not on pve. Pool
+      # capacity is covered by PveStorageNearFull above instead; pool *health*
+      # is covered by sas-health-check.sh on pve, which mails on zpool
+      # READ/WRITE/CKSUM errors. To enable these rules, node_exporter would
+      # have to run on pve itself.
       # zfs-rules:
       #   groups:
       #     - name: zfs

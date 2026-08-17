@@ -26,9 +26,13 @@ Neighbours: [pfSense](../../pfsense/REINSTALL.md) · [px-0](../px-0/REINSTALL.md
 
 ## Nightly schedule
 
-All jobs touching the `media` pool run in one compact window so the
-spun-down SAS disks wake once per night. Times are EEST (pve local); K8s
-and the Oracle VPS run UTC internally (shown in parens).
+All jobs touching the `media` pool run in one compact window, so scheduled
+work wakes the spun-down SAS disks once per night. Playback wakes them too,
+whenever it happens — that is expected; what is not is the enforcer parking
+them mid-stream, fixed 2026-08-16 (see
+[spindown-setup.md](spindown-setup.md#3-spin-down-enforcer-stateless-replaces-hd-idle)).
+Times are EEST (pve local); K8s and the Oracle VPS run UTC internally
+(shown in parens).
 
 | Time (EEST) | Job | Runs on |
 |---|---|---|
