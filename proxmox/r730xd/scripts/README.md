@@ -7,7 +7,7 @@ this is the reviewable one and the source for a reinstall.
 |---|---|---|
 | most of them | `/root/scripts/` | cron — [`../etc/crontab`](../etc/crontab) |
 | `pfsense-backup-receive.sh` | `/root/` | forced command, pfSense's key |
-| `ups-safe-shutdown.sh` | `/usr/local/sbin/` | forced command, px-0's key |
+
 
 Forced commands are pinned in [`../etc/authorized_keys`](../etc/authorized_keys).
 

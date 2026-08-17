@@ -161,13 +161,47 @@ but not the script it calls.
 
 ### UPS-triggered shutdown
 
-px-0 runs `pwrstatd` against the UPS. On confirmed power failure it SSHes
-to pve with a forced-command key limited to
-[`scripts/ups-safe-shutdown.sh`](scripts/ups-safe-shutdown.sh) (host path
-`/usr/local/sbin/`), so pve powers off gracefully instead of dropping when
-the battery dies.
+The UPS (CyberPower VP700ELCD) is on **pve's own USB**, monitored by **NUT**.
+`upsmon` shuts this host down locally on low battery — no second machine, no
+SSH hop, no forced-command key.
 
-⚠️ pve does not monitor the UPS itself. If px-0 is down, this never fires.
+```bash
+upsc cyberpower                 # full status
+systemctl status nut-monitor    # the thing that actually pulls the trigger
+```
+
+Config: `/etc/nut/ups.conf` (driver), `/etc/nut/upsmon.conf` (MONITOR +
+`SHUTDOWNCMD`), `/etc/nut/upsd.users` (generated password). Shutdown fires on
+`LB`, which this UPS reports at `battery.runtime.low = 300` — five minutes of
+runtime left, against a measured total of ~12 minutes at 35% load.
+
+**Why NUT and not PowerPanel** — this is the load-bearing detail, do not
+"simplify" it back. The R730xd is **EHCI-only**: `lspci` shows two Enhanced
+Host Controllers and no xHCI at all, and every external port sits behind an
+internal hub. This UPS is a *low-speed* (1.5 Mbps) HID device, so it reaches
+the CPU through the hub's transaction translator, and there it re-enumerates
+on a metronomic 8-seconds-up / 3-seconds-down cycle. Verified 2026-08-17:
+
+- identical on both EHCI controllers (`00:1a.0` and `00:1d.0`)
+- identical with the monitoring daemon running *and* stopped — 17 events in
+  90 s with nothing at all holding `/dev/usb/hiddev0`
+- **zero USB errors** in `dmesg`; a bad cable or port throws `-71`/`-110`,
+  this throws nothing
+- the same UPS and cable were stable on px-0, which has xHCI
+
+`pwrstatd` talks to `/dev/usb/hiddev0` and cannot survive that churn: it
+reported only `State: Normal` and never once read battery charge, runtime or
+load — so `lowbatt-threshold` and `runtime-threshold` had nothing to fire on.
+NUT's `usbhid-ups` goes through **libusb**, reconnects across each re-enumeration
+and reads the full variable set. The device still flaps; it simply stopped
+mattering.
+
+`powerpanel` is installed but **masked/disabled**. Leave it that way — the two
+fight over the same device.
+
+⚠️ Do not move the UPS back to px-0. That was the old design and it made a
+graceful shutdown of the machine holding all the data depend on a second host
+being awake.
 
 ### VPS → pve
 
