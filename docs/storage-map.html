@@ -1,0 +1,732 @@
+<title>Homelab Storage Map</title>
+<style>
+  /* ---- light palette (complete) ---- */
+  :root{
+    --bg:#F4F6F9;
+    --surface:#FFFFFF;
+    --surface-2:#EDF1F6;
+    --ink:#141C27;
+    --ink-2:#48576B;
+    --ink-3:#7A8798;
+    --rule:#CBD5E1;
+    --rule-soft:#E2E8F0;
+    --ssd:#1D4ED8;
+    --ssd-bg:#E4EBFB;
+    --sas:#0F766E;
+    --sas-bg:#DCF0ED;
+    --ok:#15803D;
+    --ok-bg:#DEF2E4;
+    --skip:#8A6A2F;
+    --skip-bg:#F3EBD9;
+    --warn:#A63A1E;
+    --warn-bg:#FAE6E0;
+    --shadow:0 1px 2px rgba(20,28,39,.06), 0 4px 14px rgba(20,28,39,.05);
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0C121B;
+      --surface:#141C28;
+      --surface-2:#1B2534;
+      --ink:#E4EBF4;
+      --ink-2:#A3B1C4;
+      --ink-3:#71808F;
+      --rule:#2B3849;
+      --rule-soft:#212C3B;
+      --ssd:#7BA5FF;
+      --ssd-bg:#16233C;
+      --sas:#4FC7B8;
+      --sas-bg:#0F2A28;
+      --ok:#63C98A;
+      --ok-bg:#122A1C;
+      --skip:#D9B872;
+      --skip-bg:#2A2314;
+      --warn:#F08A6A;
+      --warn-bg:#2E1710;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0C121B;
+    --surface:#141C28;
+    --surface-2:#1B2534;
+    --ink:#E4EBF4;
+    --ink-2:#A3B1C4;
+    --ink-3:#71808F;
+    --rule:#2B3849;
+    --rule-soft:#212C3B;
+    --ssd:#7BA5FF;
+    --ssd-bg:#16233C;
+    --sas:#4FC7B8;
+    --sas-bg:#0F2A28;
+    --ok:#63C98A;
+    --ok-bg:#122A1C;
+    --skip:#D9B872;
+    --skip-bg:#2A2314;
+    --warn:#F08A6A;
+    --warn-bg:#2E1710;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.3);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.6;
+    margin:0;
+    padding:clamp(1.5rem,4vw,3.5rem) clamp(1rem,4vw,2rem) 5rem;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:3.5rem}
+  .prose{max-width:68ch}
+
+  h1{
+    font-size:clamp(1.9rem,4.5vw,2.7rem);
+    line-height:1.12;letter-spacing:-.022em;margin:0 0 .5rem;
+    text-wrap:balance;font-weight:680;
+  }
+  h2{
+    font-size:clamp(1.25rem,2.6vw,1.55rem);
+    line-height:1.2;letter-spacing:-.014em;margin:0 0 .35rem;
+    text-wrap:balance;font-weight:660;
+  }
+  h3{font-size:1rem;margin:0 0 .5rem;letter-spacing:-.005em;font-weight:640}
+  p{margin:0 0 .9rem}
+  .lede{color:var(--ink-2);font-size:1.05rem}
+  .eyebrow{
+    font-family:var(--mono);font-size:.7rem;text-transform:uppercase;
+    letter-spacing:.14em;color:var(--ink-3);margin:0 0 .55rem;font-weight:600;
+  }
+  section{display:flex;flex-direction:column;gap:1.1rem}
+  .sechead{display:flex;flex-direction:column}
+
+  code,.m{font-family:var(--mono);font-size:.87em}
+  code{background:var(--surface-2);padding:.1em .38em;border-radius:4px}
+
+  /* ---- cards ---- */
+  .grid{display:grid;gap:1rem}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(258px,1fr))}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+  .card{
+    background:var(--surface);border:1px solid var(--rule-soft);
+    border-radius:11px;padding:1.1rem 1.2rem;box-shadow:var(--shadow);
+    display:flex;flex-direction:column;gap:.65rem;
+  }
+  .card-hd{display:flex;flex-direction:column;gap:.15rem;
+    border-bottom:1px solid var(--rule-soft);padding-bottom:.6rem}
+  .card-hd .name{font-family:var(--mono);font-weight:700;font-size:.98rem;letter-spacing:-.01em}
+  .card-hd .sub{font-family:var(--mono);font-size:.74rem;color:var(--ink-3)}
+  ul.svc{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.28rem}
+  ul.svc li{
+    font-family:var(--mono);font-size:.79rem;color:var(--ink-2);
+    display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;
+  }
+  ul.svc li span:last-child{color:var(--ink-3);font-size:.73rem;white-space:nowrap}
+
+  /* ---- pills ---- */
+  .pill{
+    display:inline-flex;align-items:center;gap:.3rem;
+    font-family:var(--mono);font-size:.68rem;font-weight:650;
+    padding:.14rem .45rem;border-radius:999px;letter-spacing:.01em;white-space:nowrap;
+  }
+  .p-ssd{background:var(--ssd-bg);color:var(--ssd)}
+  .p-sas{background:var(--sas-bg);color:var(--sas)}
+  .p-ok{background:var(--ok-bg);color:var(--ok)}
+  .p-skip{background:var(--skip-bg);color:var(--skip)}
+  .p-warn{background:var(--warn-bg);color:var(--warn)}
+
+  /* ---- tables ---- */
+  .tw{overflow-x:auto;border:1px solid var(--rule-soft);border-radius:11px;background:var(--surface);box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;font-size:.83rem;min-width:640px}
+  th,td{text-align:left;padding:.55rem .8rem;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+  thead th{
+    font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;
+    color:var(--ink-3);font-weight:650;background:var(--surface-2);
+    position:sticky;top:0;border-bottom:1px solid var(--rule);
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.mono,th.mono{font-family:var(--mono);font-size:.79rem}
+  td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  tbody tr:hover{background:var(--surface-2)}
+  .grouprow td{
+    background:var(--surface-2);font-family:var(--mono);font-size:.7rem;
+    text-transform:uppercase;letter-spacing:.09em;color:var(--ink-3);font-weight:650;
+  }
+
+  /* ---- figures ---- */
+  figure{margin:0;display:flex;flex-direction:column;gap:.7rem}
+  .figbox{
+    background:var(--surface);border:1px solid var(--rule-soft);border-radius:11px;
+    padding:1.3rem 1rem;box-shadow:var(--shadow);overflow-x:auto;
+  }
+  svg{display:block;max-width:100%;height:auto;margin:0 auto;color:var(--ink)}
+  figcaption{color:var(--ink-2);font-size:.85rem;max-width:70ch}
+  .svg-mono{font-family:var(--mono)}
+
+  .note{
+    border-left:3px solid var(--rule);background:var(--surface-2);
+    padding:.85rem 1.05rem;border-radius:0 9px 9px 0;font-size:.9rem;color:var(--ink-2);
+  }
+  .note.warn{border-left-color:var(--warn);background:var(--warn-bg);color:var(--ink)}
+  .note strong{color:var(--ink)}
+  hr{border:none;border-top:1px solid var(--rule-soft);margin:0}
+  .legend{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+  a{color:var(--ssd)}
+  :focus-visible{outline:2px solid var(--ssd);outline-offset:2px;border-radius:4px}
+</style>
+
+<div class="wrap">
+
+<header class="prose">
+  <p class="eyebrow">merox.dev · 16 august 2026</p>
+  <h1>Unde stă fiecare lucru și cum se salvează</h1>
+  <p class="lede">Harta completă a storage-ului: fiecare serviciu din homelab și de pe VPS,
+  pe ce mașină rulează, unde îi stau datele, și pe ce drum ajung în backup.
+  Toate cifrele sunt citite de pe host, nu estimate.</p>
+  <div class="legend" style="margin-top:.4rem">
+    <span class="pill p-ssd">SSD · rpool</span>
+    <span class="pill p-sas">SAS · media</span>
+    <span class="pill p-ok">în backup</span>
+    <span class="pill p-skip">exclus deliberat</span>
+  </div>
+</header>
+
+<!-- ============ 1. THE RULE ============ -->
+<section>
+  <div class="sechead prose">
+    <p class="eyebrow">Regula</p>
+    <h2>Două pool-uri, o singură regulă</h2>
+    <p>Tot ce urmează decurge din propoziția asta. E și motivul pentru care discurile
+    SAS pot dormi 86–93% din zi.</p>
+  </div>
+
+  <figure>
+    <div class="figbox">
+      <svg viewBox="0 0 760 250" role="img" aria-label="Pool-ul SSD ține tot ce se atinge zilnic; pool-ul SAS ține doar media în vrac și backup-uri, scrise o dată pe noapte.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+          <pattern id="hatch" width="7" height="7" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="0" y2="7" stroke="currentColor" stroke-width="1.1" opacity=".22"/>
+          </pattern>
+        </defs>
+
+        <!-- SSD -->
+        <g>
+          <rect x="20" y="26" width="330" height="196" rx="10" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <text x="36" y="50" class="svg-mono" font-size="13" font-weight="700" fill="currentColor">rpool — 4 × SSD enterprise, mirror</text>
+          <text x="36" y="68" class="svg-mono" font-size="11" fill="currentColor" opacity=".62">1,73 T · 448 G folosiți · 1,24 T liberi</text>
+          <line x1="36" y1="80" x2="334" y2="80" stroke="currentColor" stroke-width="1" opacity=".2"/>
+          <text x="36" y="102" font-size="12.5" font-weight="650" fill="currentColor">Tot ce se atinge în timpul zilei</text>
+          <text x="36" y="126" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">VM-uri Talos → toate PVC-urile k8s</text>
+          <text x="36" y="146" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">Immich · Jellyfin config · ARR · n8n</text>
+          <text x="36" y="166" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">observability (Prometheus, Loki…)</text>
+          <text x="36" y="186" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">Home Assistant · Garage meta</text>
+          <text x="36" y="208" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".45">+ Nextcloud, când vine</text>
+        </g>
+
+        <!-- SAS -->
+        <g>
+          <rect x="410" y="26" width="330" height="196" rx="10" fill="url(#hatch)" stroke="currentColor" stroke-width="1.6" stroke-dasharray="6 4"/>
+          <text x="426" y="50" class="svg-mono" font-size="13" font-weight="700" fill="currentColor">media — 12 × SAS, 2 × RAIDZ2</text>
+          <text x="426" y="68" class="svg-mono" font-size="11" fill="currentColor" opacity=".62">4,2 T utilizabil · 1,09 T folosiți · adormit ~90%</text>
+          <line x1="426" y1="80" x2="724" y2="80" stroke="currentColor" stroke-width="1" opacity=".2"/>
+          <text x="426" y="102" font-size="12.5" font-weight="650" fill="currentColor">Doar două lucruri</text>
+          <text x="426" y="126" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">library — filme/seriale, 1021 G</text>
+          <text x="426" y="146" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">backups — zona de aterizare, 89 G</text>
+          <text x="426" y="172" font-size="11.5" fill="currentColor" opacity=".62">citit în rafale lungi ·</text>
+          <text x="426" y="190" font-size="11.5" fill="currentColor" opacity=".62">scris o dată pe noapte</text>
+          <text x="426" y="208" class="svg-mono" font-size="11" fill="currentColor" opacity=".45">(+ isos, 2,8 G — rece, tolerat)</text>
+        </g>
+
+        <line x1="352" y1="124" x2="406" y2="124" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="379" y="115" text-anchor="middle" font-size="10.5" class="svg-mono" fill="currentColor" opacity=".7">02:45</text>
+        <text x="379" y="142" text-anchor="middle" font-size="10" class="svg-mono" fill="currentColor" opacity=".5">backup</text>
+      </svg>
+    </div>
+    <figcaption>Singura legătură zilnică dintre cele două pool-uri e backup-ul de noapte.
+    Hașura marchează pool-ul care doarme. De asta un serviciu interactiv pus pe SAS ar
+    strica spin-down-ul — ar transforma săgeata aia dintr-una pe noapte în zeci pe zi.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 2. HOSTS ============ -->
+<section>
+  <div class="sechead prose">
+    <p class="eyebrow">Mașini</p>
+    <h2>Ce rulează pe fiecare</h2>
+  </div>
+
+  <div class="grid g3">
+    <div class="card">
+      <div class="card-hd">
+        <span class="name">pve — R730xd</span>
+        <span class="sub">10.57.57.250 · Xeon E5-2630 v3 · 251 GB</span>
+      </div>
+      <ul class="svc">
+        <li><span>VM 800/802/804 Talos</span><span>380 G</span></li>
+        <li><span>VM 101 home-assistant</span><span>3,6 G</span></li>
+        <li><span>LXC 103 garage-r730xd</span><span>1,0 G</span></li>
+        <li><span>server NFS</span><span>—</span></li>
+        <li><span>toate cron-urile de backup</span><span>—</span></li>
+      </ul>
+      <hr>
+      <ul class="svc">
+        <li style="color:var(--warn)"><span>VM 100 windows11 · oprit</span><span>57,4 G</span></li>
+        <li style="color:var(--warn)"><span>VM 104 pdm · duplicat</span><span>2,2 G</span></li>
+        <li style="color:var(--warn)"><span>VM 102 ubuntu · gol</span><span>~0</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <span class="name">px-0 — Beelink</span>
+        <span class="sub">10.57.57.254 · i9-13900H · 64 GB</span>
+      </div>
+      <ul class="svc">
+        <li><span>VM 100 pdm</span><span>—</span></li>
+        <li><span>VM 105 ollama</span><span>—</span></li>
+        <li><span>pwrstatd → oprire pve</span><span>—</span></li>
+        <li><span>țintă test DR</span><span>—</span></li>
+      </ul>
+      <div class="note warn" style="font-size:.8rem;padding:.6rem .8rem">
+        <strong>Zero backup-uri.</strong> Un singur NVMe, fără redundanță.
+        Tot ce e aici e „se reconstruiește", nu „se restaurează".
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <span class="name">VPS — Oracle Cloud</span>
+        <span class="sub">129.146.107.152 · 4 vCPU ARM · 24 GB</span>
+      </div>
+      <ul class="svc">
+        <li><span>Authentik (SSO)</span><span class="pill p-ok">dump</span></li>
+        <li><span>Joplin + Postgres</span><span class="pill p-ok">dump</span></li>
+        <li><span>Traefik · Pi-hole · Guacamole</span><span class="pill p-ok">tar</span></li>
+        <li><span>Homepage ×2 · Portainer EE</span><span class="pill p-ok">tar</span></li>
+        <li><span>cloudflared</span><span>—</span></li>
+        <li><span>repo restic (ținta offsite)</span><span>—</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <span class="name">fw — pfSense</span>
+        <span class="sub">10.57.57.1 · N100 · 8 GB</span>
+      </div>
+      <ul class="svc">
+        <li><span>gateway · DHCP · DNS</span><span>—</span></li>
+        <li><span>Tailscale subnet router</span><span>—</span></li>
+        <li><span>snort · pfBlockerNG</span><span>—</span></li>
+        <li><span>config.xml.gz → pve</span><span class="pill p-ok">03:00</span></li>
+      </ul>
+      <div class="note" style="font-size:.79rem;padding:.55rem .8rem">
+        Scriptul de push și cheia lui stau în <code>/root</code>, care
+        <strong>nu e</strong> în <code>config.xml.gz</code>.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <span class="name">Synology DS223+</span>
+        <span class="sub">10.57.57.201 · 2×2 TB RAID1 · adormit</span>
+      </div>
+      <ul class="svc">
+        <li><span>doar cold storage</span><span>—</span></li>
+        <li><span>primește săptămânal</span><span class="pill p-ok">rsync</span></li>
+        <li><span>retenție versionată</span><span>21 zile</span></li>
+      </ul>
+      <div class="note" style="font-size:.79rem;padding:.55rem .8rem">
+        Singurul leg <strong>fără healthcheck</strong>. Un eșec e invizibil —
+        verifică data din log.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <span class="name">Kubernetes</span>
+        <span class="sub">3 × Talos, toate VM-uri pe pve</span>
+      </div>
+      <ul class="svc">
+        <li><span>23 PVC-uri, 155 Gi alocați</span><span>36,7 G reali</span></li>
+        <li><span>Longhorn, 3 replici</span><span>110 G pe rpool</span></li>
+        <li><span>10 PVC-uri în backup</span><span class="pill p-ok">nightly</span></li>
+        <li><span>13 PVC-uri excluse</span><span class="pill p-skip">regenerabile</span></li>
+      </ul>
+      <div class="note" style="font-size:.79rem;padding:.55rem .8rem">
+        Cele 3 replici sunt toate pe <code>rpool</code>. Protejează dacă se
+        strică un VM Talos — nu dacă moare pool-ul.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. BACKUP FLOW ============ -->
+<section>
+  <div class="sechead prose">
+    <p class="eyebrow">Drumul datelor</p>
+    <h2>Totul converge într-un singur loc, apoi pleacă în două direcții</h2>
+    <p><code>/media/backups</code> de pe pve e zona de aterizare. Nimic nu pleacă
+    din casă fără să treacă pe acolo întâi.</p>
+  </div>
+
+  <figure>
+    <div class="figbox">
+      <svg viewBox="0 0 900 430" role="img" aria-label="Șase surse scriu în /media/backups pe pve; de acolo pleacă nightly cu restic spre Oracle și săptămânal cu rsync spre Synology.">
+        <defs>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+
+        <!-- sources -->
+        <text x="20" y="22" class="svg-mono" font-size="10.5" font-weight="650" fill="currentColor" opacity=".55">SURSE</text>
+        <g class="svg-mono" font-size="11" fill="currentColor">
+          <rect x="20" y="34" width="212" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".75"/>
+          <text x="32" y="49">Longhorn → Garage S3</text><text x="32" y="62" opacity=".55" font-size="10">02:50 · 10 PVC-uri optate</text>
+
+          <rect x="20" y="80" width="212" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".75"/>
+          <text x="32" y="95">vzdump home-assistant</text><text x="32" y="108" opacity=".55" font-size="10">02:55 · ~14 G/noapte</text>
+
+          <rect x="20" y="126" width="212" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".75"/>
+          <text x="32" y="141">pfSense config.xml.gz</text><text x="32" y="154" opacity=".55" font-size="10">03:00 · push de pe firewall</text>
+
+          <rect x="20" y="172" width="212" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".75"/>
+          <text x="32" y="187">VPS → pve (rsync)</text><text x="32" y="200" opacity=".55" font-size="10">03:00 · Authentik, Joplin, extras</text>
+
+          <rect x="20" y="218" width="212" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".75"/>
+          <text x="32" y="233">Garage meta (SSD → SAS)</text><text x="32" y="246" opacity=".55" font-size="10">03:01 · LMDB stă pe SSD</text>
+
+          <rect x="20" y="264" width="212" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".75"/>
+          <text x="32" y="279">Immich pg_dump</text><text x="32" y="292" opacity=".55" font-size="10">03:02 · retenție 30 zile</text>
+        </g>
+
+        <!-- arrows into hub -->
+        <g stroke="currentColor" stroke-width="1.3" opacity=".55" marker-end="url(#ar2)" fill="none">
+          <path d="M232,51 C280,51 290,140 336,155"/>
+          <path d="M232,97 C280,97 292,146 336,160"/>
+          <path d="M232,143 C280,143 300,155 336,165"/>
+          <path d="M232,189 C280,189 300,180 336,172"/>
+          <path d="M232,235 C280,235 296,196 336,178"/>
+          <path d="M232,281 C280,281 292,202 336,184"/>
+        </g>
+
+        <!-- hub -->
+        <rect x="340" y="120" width="196" height="98" rx="10" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="438" y="146" text-anchor="middle" class="svg-mono" font-size="12.5" font-weight="700" fill="currentColor">/media/backups</text>
+        <text x="438" y="163" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".6">pe pve · pool SAS · 89 G</text>
+        <line x1="356" y1="174" x2="520" y2="174" stroke="currentColor" stroke-width="1" opacity=".2"/>
+        <text x="438" y="192" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".75">snapshot ZFS 03:05</text>
+        <text x="438" y="208" text-anchor="middle" class="svg-mono" font-size="10" fill="currentColor" opacity=".55">retenție 14 zile</text>
+
+        <!-- out arrows -->
+        <path d="M536,150 C596,150 600,96 656,96" stroke="currentColor" stroke-width="1.8" fill="none" marker-end="url(#ar2)"/>
+        <text x="600" y="112" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".7">03:10 restic</text>
+
+        <path d="M536,190 C596,190 600,270 656,270" stroke="currentColor" stroke-width="1.8" fill="none" stroke-dasharray="5 4" marker-end="url(#ar2)"/>
+        <text x="600" y="252" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".7">săptămânal rsync</text>
+
+        <!-- destinations -->
+        <rect x="660" y="62" width="222" height="74" rx="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <text x="676" y="84" class="svg-mono" font-size="12" font-weight="700" fill="currentColor">Oracle · offsite</text>
+        <text x="676" y="101" class="svg-mono" font-size="10.3" fill="currentColor" opacity=".65">restic prin SFTP, format deschis</text>
+        <text x="676" y="117" class="svg-mono" font-size="10.3" fill="currentColor" opacity=".65">7 zilnice / 4 săpt. / 3 lunare</text>
+        <text x="676" y="131" class="svg-mono" font-size="10" fill="currentColor" opacity=".45">drill lunar · healthcheck la eșec</text>
+
+        <rect x="660" y="236" width="222" height="74" rx="9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5 4"/>
+        <text x="676" y="258" class="svg-mono" font-size="12" font-weight="700" fill="currentColor">Synology · cold</text>
+        <text x="676" y="275" class="svg-mono" font-size="10.3" fill="currentColor" opacity=".65">rsync --link-dest, versionat</text>
+        <text x="676" y="291" class="svg-mono" font-size="10.3" fill="currentColor" opacity=".65">retenție 21 zile · adormit</text>
+        <text x="676" y="305" class="svg-mono" font-size="10" fill="currentColor" opacity=".45">fără healthcheck</text>
+
+        <!-- exclusion note -->
+        <line x1="340" y1="352" x2="882" y2="352" stroke="currentColor" stroke-width="1" opacity=".18"/>
+        <text x="340" y="376" class="svg-mono" font-size="10.5" font-weight="650" fill="currentColor" opacity=".55">EXCLUS DIN RESTIC</text>
+        <text x="340" y="396" class="svg-mono" font-size="11" fill="currentColor" opacity=".75">dump/ — Home Assistant, ~14 G/noapte</text>
+        <text x="340" y="413" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".55">ajunge doar pe Synology. În afara scopului DR, deliberat.</text>
+      </svg>
+    </div>
+    <figcaption>Săgeata continuă pleacă în fiecare noapte, cea punctată o dată pe săptămână
+    în fereastra în care NAS-ul e trezit. Pentru orice fișier ies 4 copii în 2 locații
+    fizice, una offsite — 3-2-1 respectat.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 4. TIMELINE ============ -->
+<section>
+  <div class="sechead prose">
+    <p class="eyebrow">Fereastra de noapte</p>
+    <h2>De ce discurile SAS se trezesc o singură dată</h2>
+    <p>Toate joburile care ating pool-ul SAS sunt îngrămădite într-un interval de 50 de minute.
+    Un job scăpat în afara ferestrei înseamnă încă o trezire completă a celor 12 discuri.</p>
+  </div>
+
+  <figure>
+    <div class="figbox">
+      <svg viewBox="0 0 880 260" role="img" aria-label="Cronologie 02:40–03:30: toate joburile de backup grupate într-o singură fereastră, cu două excepții care cad în afara ei.">
+        <!-- axis -->
+        <line x1="60" y1="150" x2="840" y2="150" stroke="currentColor" stroke-width="1.5"/>
+        <g class="svg-mono" font-size="10.5" fill="currentColor" opacity=".6" text-anchor="middle">
+          <text x="60" y="172">02:40</text><text x="216" y="172">02:50</text>
+          <text x="372" y="172">03:00</text><text x="528" y="172">03:10</text>
+          <text x="684" y="172">03:20</text><text x="840" y="172">03:30</text>
+        </g>
+        <g stroke="currentColor" stroke-width="1" opacity=".18">
+          <line x1="216" y1="144" x2="216" y2="156"/><line x1="372" y1="144" x2="372" y2="156"/>
+          <line x1="528" y1="144" x2="528" y2="156"/><line x1="684" y1="144" x2="684" y2="156"/>
+        </g>
+
+        <!-- awake band -->
+        <rect x="60" y="128" width="780" height="12" rx="6" fill="currentColor" opacity=".1"/>
+        <text x="450" y="200" text-anchor="middle" font-size="11.5" fill="currentColor" opacity=".65">
+          discurile SAS treze ~50 min, apoi dorm până mâine
+        </text>
+
+        <!-- ticks above -->
+        <g class="svg-mono" font-size="10" fill="currentColor">
+          <line x1="60" y1="122" x2="60" y2="104" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="60" y="98" text-anchor="middle" opacity=".8">Authentik</text>
+          <line x1="138" y1="122" x2="138" y2="86" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="138" y="80" text-anchor="middle" opacity=".8">Joplin</text>
+          <line x1="216" y1="122" x2="216" y2="68" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="216" y="62" text-anchor="middle" opacity=".8">Longhorn→Garage</text>
+          <line x1="294" y1="122" x2="294" y2="104" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="294" y="98" text-anchor="middle" opacity=".8">vzdump HA</text>
+          <line x1="372" y1="122" x2="372" y2="86" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="372" y="80" text-anchor="middle" opacity=".8">pfSense · VPS</text>
+          <line x1="403" y1="122" x2="403" y2="68" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="418" y="62" text-anchor="middle" opacity=".8">Garage meta · Immich</text>
+          <line x1="450" y1="122" x2="450" y2="104" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="452" y="98" text-anchor="middle" opacity=".8">snapshot ZFS</text>
+          <line x1="528" y1="122" x2="528" y2="86" stroke="currentColor" stroke-width="1.6"/>
+          <text x="528" y="80" text-anchor="middle" font-weight="700">restic → Oracle</text>
+          <line x1="684" y1="122" x2="684" y2="104" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="684" y="98" text-anchor="middle" opacity=".8">SAS health</text>
+          <line x1="762" y1="122" x2="762" y2="86" stroke="currentColor" stroke-width="1.3" opacity=".5"/>
+          <text x="762" y="80" text-anchor="middle" opacity=".8">drift check</text>
+        </g>
+
+        <!-- outside window -->
+        <g class="svg-mono" font-size="10.5">
+          <text x="60" y="232" fill="currentColor" opacity=".55" font-weight="650">ÎN AFARA FERESTREI — fiecare = încă o trezire completă</text>
+          <text x="60" y="250" fill="currentColor" opacity=".8">02:00 Jellyfin „Extract Chapter Images"  ·  la fiecare 12 h Jellyfin „Scan Library"  ·  00:00 pe 1 ale lunii scrub ZFS</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Cele trei de jos sunt problemele deschise: două task-uri Jellyfin cu ora
+    implicită și scrub-ul lunar, care nici măcar nu apare în tabelul de programări din
+    documentație. Mutate în fereastră, dispar ca trezire separată.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 5. MASTER TABLE ============ -->
+<section>
+  <div class="sechead prose">
+    <p class="eyebrow">Inventar</p>
+    <h2>Fiecare serviciu, unde stă și cum se salvează</h2>
+    <p>Mărimile „reale" sunt ce ocupă efectiv, nu ce s-a alocat. Pentru PVC-uri,
+    înmulțește cu 3 ca să afli cât consumă pe <code>rpool</code>.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr>
+          <th>Serviciu</th><th>Unde rulează</th><th class="mono">Unde-i stau datele</th>
+          <th style="text-align:right">Real</th><th>Backup</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="grouprow"><td colspan="5">Kubernetes · default</td></tr>
+        <tr><td>Immich</td><td>k8s</td><td class="mono">PVC ×3 <span class="pill p-ssd">SSD</span></td><td class="num">4,49 G</td><td><span class="pill p-ok">Longhorn + pg_dump</span></td></tr>
+        <tr><td>Jellyfin — config</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,91 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
+        <tr><td>Jellyfin — bibliotecă</td><td>k8s</td><td class="mono">NFS <code>media/library</code> <span class="pill p-sas">SAS</span></td><td class="num">1021 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
+        <tr><td>Radarr · Sonarr · Prowlarr · qBittorrent</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span> + NFS <span class="pill p-sas">SAS</span></td><td class="num">2,23 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
+        <tr><td>Jellyseerr</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,14 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
+        <tr><td>n8n</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,16 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
+        <tr><td>Filebrowser</td><td>k8s</td><td class="mono">PVC + NFS spre 5 surse</td><td class="num">0,17 G</td><td><span class="pill p-skip">se retrage</span></td></tr>
+        <tr><td>Cache-uri (jellyfin, jellyseerr, radarr, sonarr)</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">1,26 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>Headlamp · Portainer agent · Authentik outpost</td><td>k8s</td><td class="mono">fără stare</td><td class="num">—</td><td><span class="pill p-skip">nimic de salvat</span></td></tr>
+
+        <tr class="grouprow"><td colspan="5">Kubernetes · observability</td></tr>
+        <tr><td>Prometheus</td><td>k8s</td><td class="mono">PVC 15 Gi <span class="pill p-ssd">SSD</span></td><td class="num">17,03 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>Loki + Promtail</td><td>k8s</td><td class="mono">PVC 20 Gi <span class="pill p-ssd">SSD</span></td><td class="num">3,42 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>Grafana</td><td>k8s</td><td class="mono">PVC 10 Gi <span class="pill p-ssd">SSD</span></td><td class="num">0,80 G</td><td><span class="pill p-skip">dashboard-uri în git</span></td></tr>
+        <tr><td>Alertmanager</td><td>k8s</td><td class="mono">PVC 1 Gi <span class="pill p-ssd">SSD</span></td><td class="num">0,09 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+
+        <tr class="grouprow"><td colspan="5">Kubernetes · network / storage / system</td></tr>
+        <tr><td>Cloudflare Tunnel · k8s-gateway · external-dns</td><td>k8s</td><td class="mono">fără stare</td><td class="num">—</td><td><span class="pill p-skip">declarativ, în git</span></td></tr>
+        <tr><td>netboot.xyz</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,12 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>Longhorn · Cilium · cert-manager · Flux</td><td>k8s</td><td class="mono">config în git</td><td class="num">—</td><td><span class="pill p-skip">declarativ</span></td></tr>
+
+        <tr class="grouprow"><td colspan="5">pve — direct pe host</td></tr>
+        <tr><td>Home Assistant (VM 101)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">3,56 G</td><td><span class="pill p-ok">vzdump → doar Synology</span></td></tr>
+        <tr><td>Garage S3 — date (LXC 103)</td><td>pve</td><td class="mono"><code>media/backups/…</code> <span class="pill p-sas">SAS</span></td><td class="num">5,43 G</td><td><span class="pill p-ok">e chiar ținta de backup</span></td></tr>
+        <tr><td>Garage S3 — meta</td><td>pve</td><td class="mono"><code>rpool/garage-meta</code> <span class="pill p-ssd">SSD</span></td><td class="num">9,9 M</td><td><span class="pill p-ok">copiat nightly 03:01</span></td></tr>
+        <tr><td>Documente live (Filebrowser WebDAV)</td><td>pve</td><td class="mono"><code>backups/synology-home</code> <span class="pill p-sas">SAS</span></td><td class="num">29,5 G</td><td><span class="pill p-ok">e sursă, nu copie</span></td></tr>
+        <tr><td>ISO-uri / template-uri</td><td>pve</td><td class="mono"><code>media/isos</code> <span class="pill p-sas">SAS</span></td><td class="num">2,82 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
+
+        <tr class="grouprow"><td colspan="5">VPS Oracle</td></tr>
+        <tr><td>Authentik (SSO)</td><td>VPS</td><td class="mono">volum Docker</td><td class="num">—</td><td><span class="pill p-ok">dump 02:40 → pve</span></td></tr>
+        <tr><td>Joplin + Postgres</td><td>VPS</td><td class="mono">volum Docker</td><td class="num">—</td><td><span class="pill p-ok">dump 02:45 → pve</span></td></tr>
+        <tr><td>Traefik · Pi-hole · Guacamole · Homepage · Portainer</td><td>VPS</td><td class="mono">volume Docker</td><td class="num">—</td><td><span class="pill p-ok">tar 02:50 → pve</span></td></tr>
+
+        <tr class="grouprow"><td colspan="5">Alte mașini</td></tr>
+        <tr><td>pfSense — configurație</td><td>fw</td><td class="mono">config.xml.gz</td><td class="num">—</td><td><span class="pill p-ok">push 03:00 → pve</span></td></tr>
+        <tr><td>PDM · ollama · winserver</td><td>px-0</td><td class="mono">NVMe unic, fără redundanță</td><td class="num">—</td><td><span class="pill p-warn">niciun backup</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>Cum se citește coloana Backup.</strong>
+    <span class="pill p-ok">verde</span> înseamnă că există o copie în afara mașinii-sursă.
+    <span class="pill p-skip">galben</span> înseamnă exclus <em>intenționat</em>, pentru că
+    se reconstruiește din git sau se re-descarcă — nu e o scăpare.
+    <span class="pill p-warn">roșu</span> e singurul loc unde nu există nicio plasă:
+    px-0, unde totul e rebuild-only prin proiectare.
+  </div>
+</section>
+
+<!-- ============ 6. OPEN ITEMS ============ -->
+<section>
+  <div class="sechead prose">
+    <p class="eyebrow">Rămase de curățat</p>
+    <h2>Ce nu se potrivește încă cu regula</h2>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Element</th><th>Problema</th><th style="text-align:right">Recuperează</th><th>Stare</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">netdata — manifeste</td><td>serviciu oprit, manifestele încă în git</td><td class="num">—</td><td><span class="pill p-ok">scos din git</span></td></tr>
+        <tr><td class="mono">netdata — PVC-uri</td><td>zero pod-uri, volumele au rămas</td><td class="num">17,8 G</td><td><span class="pill p-skip">de șters</span></td></tr>
+        <tr><td class="mono">Prometheus retentionSize</td><td>20 GB pe un volum de 16,1 GB — garda nu se putea declanșa</td><td class="num">—</td><td><span class="pill p-ok">reparat în git</span></td></tr>
+        <tr><td class="mono">discard=on pe discurile Talos</td><td>blocurile eliberate în guest nu se întorc la ZFS</td><td class="num">~90–145 G</td><td><span class="pill p-skip">cere repornire pe rând</span></td></tr>
+        <tr><td class="mono">VM windows11</td><td>oprit; auditul îi semnala RDP-ul deschis</td><td class="num">57,4 G</td><td><span class="pill p-warn">așteaptă decizia ta</span></td></tr>
+        <tr><td class="mono">VM datacenter-manager (pve)</td><td>duplicat — cel real rulează pe px-0</td><td class="num">2,2 G</td><td><span class="pill p-warn">așteaptă decizia ta</span></td></tr>
+        <tr><td class="mono">VM ubuntu-server</td><td>coajă goală, 64 G rezervați</td><td class="num">~0</td><td><span class="pill p-warn">așteaptă decizia ta</span></td></tr>
+        <tr><td class="mono">media/photos</td><td>copie stale de la migrarea Immich; doar Filebrowser o citește</td><td class="num">3,28 G</td><td><span class="pill p-skip">după Filebrowser</span></td></tr>
+        <tr><td class="mono">media/games</td><td>gol</td><td class="num">~0</td><td><span class="pill p-skip">de șters</span></td></tr>
+        <tr><td class="mono">backups/synology-home</td><td>documente live pe pool-ul de spin-down, în arborele de backup</td><td class="num">29,5 G</td><td><span class="pill p-skip">după Nextcloud</span></td></tr>
+        <tr><td class="mono">Leg Synology fără healthcheck</td><td>un eșec e invizibil</td><td class="num">—</td><td><span class="pill p-skip">mâine</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>Ordinea recomandată.</strong> Întâi <code>discard=on</code> — poate schimba
+    tot calculul de spațiu, deci merită știut înainte de a dimensiona orice altceva.
+    Apoi PVC-urile netdata și VM-urile moarte. <code>media/photos</code>,
+    <code>media/games</code> și <code>synology-home</code> sunt legate de retragerea
+    Filebrowser și de Nextcloud, deci vin la final.
+  </div>
+</section>
+
+<!-- ============ 7. GREENFIELD ============ -->
+<section>
+  <div class="sechead prose">
+    <p class="eyebrow">Dacă s-ar reface de la zero</p>
+    <h2>Cum ar arăta curat</h2>
+    <p><strong>Pool-urile în sine sunt deja corecte</strong> — mirror pe SSD pentru VM-uri,
+    RAIDZ2 pe SAS pentru vrac. Nu ele sunt problema. Problema e că dataset-urile sunt
+    plate și amestecate ca scop, iar din asta au ieșit greșeli reale.</p>
+    <p>Principiul care lipsește: <strong>organizare după ciclu de viață, nu după aplicație.</strong>
+    Patru categorii — <em>live</em>, <em>vrac</em>, <em>backup</em>, <em>regenerabil</em> —
+    și fiecare pool ține exact două dintre ele.</p>
+  </div>
+
+  <div class="grid g2">
+    <div class="card">
+      <div class="card-hd">
+        <span class="name">rpool <span class="pill p-ssd" style="margin-left:.4rem">SSD</span></span>
+        <span class="sub">live + regenerabil</span>
+      </div>
+      <pre style="font-family:var(--mono);font-size:.79rem;line-height:1.75;margin:0;color:var(--ink-2);white-space:pre;overflow-x:auto">rpool
+├── ROOT/pve-1          <span style="opacity:.6">Proxmox</span>
+├── data/               <span style="opacity:.6">discuri VM + CT (PVE)</span>
+│   ├── vm-talos-1..3
+│   ├── vm-home-assist.
+│   ├── subvol-garage
+│   └── subvol-nextcloud
+└── <b style="color:var(--ssd)">app/</b>                <span style="opacity:.6">date bind-montate</span>
+    ├── garage-meta
+    └── nextcloud/
+        ├── data        <span style="opacity:.6">quota 400G</span>
+        ├── db
+        └── html</pre>
+    </div>
+
+    <div class="card">
+      <div class="card-hd">
+        <span class="name">media <span class="pill p-sas" style="margin-left:.4rem">SAS</span></span>
+        <span class="sub">vrac + backup · adormit ~90%</span>
+      </div>
+      <pre style="font-family:var(--mono);font-size:.79rem;line-height:1.75;margin:0;color:var(--ink-2);white-space:pre;overflow-x:auto">media
+├── <b style="color:var(--sas)">bulk/</b>               <span style="opacity:.6">niciodată în backup</span>
+│   ├── library         <span style="opacity:.6">quota 3T</span>
+│   └── isos
+└── <b style="color:var(--ok)">backup/</b>             <span style="opacity:.6">reservation 500G</span>
+    ├── hosts/          <span style="opacity:.6">pfsense, /root</span>
+    ├── vm/             <span style="opacity:.6">vzdump</span>
+    ├── k8s/            <span style="opacity:.6">garage, immich</span>
+    ├── vps/            <span style="opacity:.6">oracle</span>
+    └── app/            <span style="opacity:.6">nextcloud</span></pre>
+    </div>
+  </div>
+
+  <div class="sechead prose" style="margin-top:.6rem">
+    <h3>De ce nu e cosmetic</h3>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Ce câștigi</th><th>Problema reală pe care o rezolvă</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>Datele live nu mai pot ajunge în arborele de backup</b></td>
+          <td>Exact greșeala <code>backups/synology-home</code>: documente vii, accesate zilnic, puse înăuntrul zonei de backup. Cu <code>bulk/</code> și <code>backup/</code> separate, nu mai există unde să greșești.</td>
+        </tr>
+        <tr>
+          <td><b>Scripturile de backup își descoperă singure conținutul</b></td>
+          <td>Acum enumeră directoarele de mână. Documentația ta avertizează explicit că un director nou <em>nu</em> e preluat automat — și s-a uitat deja o dată. Cu structura asta, <code>zfs list -r media/backup</code> le găsește pe toate.</td>
+        </tr>
+        <tr>
+          <td><b>Proprietățile se moștenesc dintr-un singur loc</b></td>
+          <td><code>reservation</code> pe <code>media/backup</code>, <code>quota</code> pe <code>media/bulk</code>. Un dataset nou moștenește automat regula, în loc să depinzi de memoria ta.</td>
+        </tr>
+        <tr>
+          <td><b>Se citește dintr-o privire ce e salvat</b></td>
+          <td>Tot ce e sub <code>backup/</code> e destinație. Tot ce e sub <code>bulk/</code> e exclus deliberat. Fără tabel de consultat.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>Și partea bună: se poate face fără să spargi nimic.</strong>
+    În ZFS, numele dataset-ului e independent de punctul de montare. Poți redenumi
+    <code>media/library</code> în <code>media/bulk/library</code> și apoi
+    <code>zfs set mountpoint=/media/library</code> — calea rămâne identică.
+    Export-urile NFS, scripturile, storage-urile PVE și Jellyfin nu observă nimic.
+    Reorganizarea e ieftină; doar trebuie făcută cu pool-ul liniștit.
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>Ce merită făcut</th><th>Efort</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">media → bulk/ + backup/</td><td>mediu</td><td><span class="pill p-ok">merită — repară o clasă de bug</span></td></tr>
+        <tr><td class="mono">rpool/app/ pentru date bind-montate</td><td>mic</td><td><span class="pill p-ok">de făcut odată cu Nextcloud</span></td></tr>
+        <tr><td class="mono">rpool/vm + rpool/ct separate</td><td>mediu</td><td><span class="pill p-skip">nu — se bate cu <code>rpool/data</code>, implicit în Proxmox</span></td></tr>
+        <tr><td class="mono">topologia pool-urilor</td><td>mare</td><td><span class="pill p-skip">nu — mirror + RAIDZ2 sunt deja alegerile corecte</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
