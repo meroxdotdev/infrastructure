@@ -114,9 +114,50 @@ activity — so that one needs the etcd alert above.
 | smartd periodic checks | Removed at source — SAS excluded |
 | Controller patrol read | Removed at source — `storcli /c0 set patrolread=off` |
 | `sas-health-check.sh` | Safe — every `smartctl` uses `-n standby` |
+| **Monthly ZFS scrub** | Moved into the window — see below. Default was 00:00 on the 1st, hours of full-pool read entirely outside it. |
 | Proxmox web UI → Datacenter → pve → **Disks** tab | Wakes every SAS disk (`PVE::Diskmanage::get_smart_data`, no `-n`, not fixable). Re-slept within ~15 min. |
 | Manual `smartctl`/`sg_start` without `-n standby` | Same |
+| **`zfs get -r <prop> media`** | Walks every dataset *and snapshot*; woke the pool from 12/12 asleep while measuring on 2026-08-16. Use `-s local` or name datasets explicitly. |
 | The enforcer itself, parking mid-stream | Fixed 2026-08-16 — pool-level rule. Was the top waker: 24 parks in one hour of playback. |
+
+### The monthly scrub
+
+Not written by the installer — it is a Debian/Proxmox unit, so it lives here.
+`zfs-scrub-monthly@media.timer` defaults to `OnCalendar=monthly` with
+`AccuracySec=1d`, i.e. 00:00 on the 1st at an unpinned time: a multi-hour
+full-pool read that is a second complete wake of all 12 disks, on top of the
+nightly window. Confirmed in `zpool history media` —
+`2026-08-01.00:00:45 zpool scrub media`.
+
+```bash
+mkdir -p /etc/systemd/system/zfs-scrub-monthly@media.timer.d
+cat > /etc/systemd/system/zfs-scrub-monthly@media.timer.d/override.conf <<'EOF'
+[Timer]
+OnCalendar=
+OnCalendar=*-*-01 03:40:00
+AccuracySec=1h
+Persistent=false
+EOF
+systemctl daemon-reload
+```
+
+03:40 starts the scrub as the backup window closes, so it extends one awake
+block instead of creating another.
+
+⚠️ **`Persistent=false` is load-bearing.** With the default `true`, editing this
+file makes systemd treat the new calendar point as a missed run and start a
+scrub *immediately* — which is exactly what happened on 2026-08-17 at 13:23,
+mid-afternoon. Recover with `zpool scrub -p media`; the paused state persists,
+and the next scheduled run resumes from where it stopped rather than restarting.
+
+There is also a **second, latent trigger**: `/etc/cron.d/zfsutils-linux` runs
+`/usr/lib/zfs-linux/scrub` on the second Sunday of the month unless the pool
+says otherwise. It was never observed firing, but nothing was stopping it:
+
+```bash
+zfs set org.debian:periodic-scrub=disable media
+zfs set org.debian:periodic-scrub=disable rpool
+```
 
 ## Troubleshooting
 
