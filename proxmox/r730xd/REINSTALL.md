@@ -112,8 +112,31 @@ nightly. Then re-point Longhorn at the new key
 
 ## 10. VMs
 
-- Talos control planes 800/802/804 → [`docs/dr-quickstart.md`](../../docs/dr-quickstart.md)
+- Talos control plane 800 → [`docs/dr-quickstart.md`](../../docs/dr-quickstart.md).
+  One node since 2026-08-17, not three — see [`talos/SINGLE-NODE.md`](../../talos/SINGLE-NODE.md).
 - home-assistant (101) → `qmrestore /media/backups/dump/<latest>.vma.zst 101`
+- ollama (105) → `qmrestore /media/backups/dump/<latest>.vma.zst 105`.
+  Keep IP `10.57.57.90`; the n8n alert-triage workflows point at it by address.
+
+## 10b. etcd snapshot credential
+
+`scripts/etcd-snapshot.sh` needs `/root/.talos-etcd-backup`, which is a Talos
+config carrying **only** the `os:etcd:backup` role. It is not in this repo and
+not in any backup — it is a credential, and it is cheap to reissue:
+
+```bash
+talosctl -n 10.57.57.80 config new --roles os:etcd:backup \
+  --crt-ttl 8760h /root/.talos-etcd-backup
+chmod 600 /root/.talos-etcd-backup
+```
+
+Also needs `talosctl` on the host itself (`/usr/local/bin`, matching the
+cluster's Talos version). Confirm the scope took: `talosctl reboot` with this
+config must return `PermissionDenied`. If it reboots the node instead, you
+generated an admin config and put it on the backup host.
+
+⚠️ The cert expires one year out (issued 2026-08-17). Nothing warns you — the
+snapshot job just starts failing, and it only writes to the log.
 
 ## 11. Verify
 

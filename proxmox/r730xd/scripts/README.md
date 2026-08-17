@@ -7,6 +7,7 @@ this is the reviewable one and the source for a reinstall.
 |---|---|---|
 | most of them | `/root/scripts/` | cron — [`../etc/crontab`](../etc/crontab) |
 | `pfsense-backup-receive.sh` | `/root/` | forced command, pfSense's key |
+| `etcd-snapshot.sh` | `/root/scripts/` | cron 23:45 — needs `/root/.talos-etcd-backup` |
 
 
 Forced commands are pinned in [`../etc/authorized_keys`](../etc/authorized_keys).
