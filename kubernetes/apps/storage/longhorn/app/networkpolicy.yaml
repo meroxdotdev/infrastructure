@@ -25,3 +25,36 @@ spec:
         - host
         - world
         - ingress
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kubernetes-networkpolicy.json
+# Longhorn 1.12 started shipping its own NetworkPolicies (they appeared with the
+# 1.11.2 -> 1.12.0 bump). The generated `longhorn-manager` policy allows ingress
+# only from other Longhorn components — longhorn-manager, -ui, -csi-plugin,
+# -driver-deployer and the recurring-job/job-task pods. Prometheus is not on
+# that list, so every scrape of longhorn-manager:9500 times out with
+# `context deadline exceeded` and TargetDown fires for all three managers
+# forever. The endpoint itself is healthy: measured 6-7 ms from inside the pod.
+#
+# This adds back the one flow the upstream policy forgot. Native NetworkPolicy
+# on purpose, matching the type Longhorn generates — k8s policies are additive,
+# so this grants the scrape without touching or fighting the Helm-managed
+# object. Disabling Longhorn's policies wholesale would work too and was
+# rejected: it would throw away real protection to fix one missing port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: longhorn-manager-metrics
+spec:
+  podSelector:
+    matchLabels:
+      app: longhorn-manager
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              # Set automatically by Kubernetes on every namespace.
+              kubernetes.io/metadata.name: observability
+      ports:
+        - port: 9500
+          protocol: TCP
