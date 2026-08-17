@@ -218,9 +218,20 @@ watch -n10 'kubectl -n longhorn-system get replicas.longhorn.io \
 kubectl -n longhorn-system get volumes.longhorn.io -o json | jq -r \
   '.items[] | "\(.metadata.name) \(.status.robustness) r=\(.spec.numberOfReplicas) \(.status.state)"'
 
-# zero replicas left on nodes 2 or 3
+# zero RUNNING replicas left on nodes 2 or 3.
+#
+# Filter on currentState=="running", not on nodeID alone. Reducing the replica
+# count leaves stopped replica objects behind, some with an empty nodeID, and a
+# naive "nodeID != node-1" check counts those as stragglers — it reports a stall
+# that is not happening. Observed 2026-08-17: 6 "stuck", of which 5 were empty-
+# node debris and the 6th was a stopped object on node 3. All 20 running
+# replicas were already home.
 kubectl -n longhorn-system get replicas.longhorn.io -o json | jq -r \
-  '[.items[] | select(.spec.nodeID != "kubernetes-controlplane-1")] | length'   # must print 0
+  '[.items[] | select(.status.currentState=="running" and .spec.nodeID != "kubernetes-controlplane-1")] | length'   # must print 0
+
+# and all 20 running replicas accounted for on node 1
+kubectl -n longhorn-system get replicas.longhorn.io -o json | jq -r \
+  '.items[] | select(.status.currentState=="running") | .spec.nodeID' | sort | uniq -c
 
 # nothing degraded
 kubectl -n longhorn-system get volumes.longhorn.io -o json | jq -r \
@@ -344,9 +355,40 @@ watch -n30 'kubectl -n longhorn-system get volumes.longhorn.io \
 Takes ~30 min, most of it Longhorn copying. Nothing is restored from backup and
 nothing is lost, because node 1 held the live data the whole time.
 
-**Keep VMs 802/804 defined and their disks in place until you have decided.**
-They cost 3.5 G of stopped zvol between them; deleting them is what turns a
-20-minute rollback into a DR restore.
+### VM recreation spec — needed because the VMs were deleted
+
+VMs 804 and 802 were removed during the 2026-08-17 migration, so Tier 2 must
+recreate them rather than just start them. Captured from the live host before
+deletion:
+
+```bash
+# Node 2 — the exact config that was running
+qm create 802 --name kubernetes-controlplane-2 --tags k8s \
+  --cores 4 --sockets 1 --cpu host --memory 49152 --numa 0 \
+  --ostype l26 --scsihw virtio-scsi-single --boot 'order=scsi0;net0' --onboot 1 \
+  --net0 'virtio=BC:24:11:43:4E:63,bridge=vmbr0,firewall=1' \
+  --scsi0 'local-zfs:400,format=raw,iothread=1,ssd=1'
+
+# Node 3 — same shape; only name, vmid and MAC differ
+qm create 804 --name kubernetes-controlplane-3 --tags k8s \
+  --cores 4 --sockets 1 --cpu host --memory 49152 --numa 0 \
+  --ostype l26 --scsihw virtio-scsi-single --boot 'order=scsi0;net0' --onboot 1 \
+  --net0 'virtio=BC:24:11:96:87:40,bridge=vmbr0,firewall=1' \
+  --scsi0 'local-zfs:400,format=raw,iothread=1,ssd=1'
+```
+
+⚠️ **`talconfig.yaml` and the live MAC of node 2 disagree.** The file declares
+`bc:24:11:a5:4b:9e` for `kubernetes-controlplane-2`; the VM that was actually
+running used `BC:24:11:43:4E:63`. Node 1 matches its file correctly, so this is
+node-2-only drift — most likely left over from the 2026-08-15 px-0 DR test,
+where VMs 810/811/812 were built with "MAC/IP identice".
+
+It matters because `networkInterfaces[].deviceSelector.hardwareAddr` picks the
+NIC by MAC: recreate the VM with the file's MAC and nothing matches, so the node
+boots with no address. On rollback, either create the VM with
+`bc:24:11:a5:4b:9e` to match the file, or fix the file — but do not assume they
+agree. Node 3's MAC was never verified against a live VM and is taken from the
+file alone.
 
 ---
 
