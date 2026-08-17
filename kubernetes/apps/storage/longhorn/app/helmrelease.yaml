@@ -34,15 +34,25 @@ spec:
   values:
     defaultSettings:
       createDefaultDiskLabeledNodes: false
-      defaultDataLocality: best-effort
+      # Single-node cluster (2026-08-17, talos/SINGLE-NODE.md). Data locality
+      # and auto-balance both describe where replicas sit relative to their
+      # workload across nodes — meaningless with one node, and they cost
+      # reconcile work for a placement decision that has one answer.
+      defaultDataLocality: disabled
       defaultLonghornStaticStorageClass: longhorn
-      defaultReplicaCount: "3"
+      # 3 -> 1. Three Longhorn replicas sat on top of a ZFS mirror, i.e. six
+      # physical copies of every byte. One replica still leaves two, because
+      # the mirror underneath is what actually provides disk redundancy.
+      defaultReplicaCount: "1"
       guaranteedEngineManagerCPU: "20"
       guaranteedReplicaManagerCPU: "20"
       nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
       orphanAutoDeletion: "true"
-      replicaAutoBalance: "true"
-      storageMinimalAvailablePercentage: "1"
+      replicaAutoBalance: "false"
+      # 1 -> 25 (the upstream default). At 1% Longhorn kept scheduling until a
+      # node disk was 99% full, and that disk lives inside the Talos VM's zvol
+      # on rpool — the same pool as etcd. Found in the 2026-08-17 audit.
+      storageMinimalAvailablePercentage: "25"
       storageReservedPercentageForDefaultDisk: "10"
       backupTarget: "s3://longhorn@us-east-1/"
       backupTargetCredentialSecret: "minio-secret"
@@ -50,15 +60,24 @@ spec:
 
     persistence:
       defaultClass: true
-      defaultClassReplicaCount: 3
+      defaultClassReplicaCount: 1
       reclaimPolicy: Delete
       migratable: false
 
     ingress:
       enabled: false
 
+    # These default to 3 replicas *with pod anti-affinity*, so on a single node
+    # two of every one of them sit Pending forever. Not cosmetic: a Pending
+    # csi-attacher means volumes stop attaching.
+    csi:
+      attacherReplicaCount: 1
+      provisionerReplicaCount: 1
+      resizerReplicaCount: 1
+      snapshotterReplicaCount: 1
+
     longhornUI:
-      replicas: 3
+      replicas: 1
 
     metrics:
       serviceMonitor:
