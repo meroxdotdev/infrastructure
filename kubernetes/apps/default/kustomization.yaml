@@ -33,8 +33,6 @@ resources:
   - ./filebrowser/ks.yaml
   # Automation
   - ./n8n/ks.yaml
-  # Monitoring
-  - ./netdata/ks.yaml
   # Management
   - ./headlamp/ks.yaml
   - ./portainer-agent/ks.yaml
