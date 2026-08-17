@@ -243,10 +243,17 @@ spec:
                 for: 15m
                 labels:
                   severity: warning
+              # synology-nas is excluded on purpose: the NAS is powered off
+              # except for a short weekly wake window (DSM Power Schedule + WoL,
+              # see proxmox/r730xd/README.md), so px-0's NFS mount to it is
+              # down almost all the time by design. Left in, this alert fires
+              # permanently — and the cost is not the noise, it is that it
+              # trains you to ignore storage alerts, which is exactly the habit
+              # that hurts when a real one arrives.
               - alert: PveStorageUnavailable
                 annotations:
                   summary: "Proxmox storage {{ $labels.id }} is unavailable."
-                expr: pve_up{id=~"storage/.*"} == 0
+                expr: pve_up{id=~"storage/.*", id!="storage/px-0/synology-nas"} == 0
                 for: 15m
                 labels:
                   severity: warning
