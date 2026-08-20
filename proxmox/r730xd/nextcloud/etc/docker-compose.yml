@@ -1,0 +1,39 @@
+name: nextcloud-aio
+
+services:
+  nextcloud-aio-mastercontainer:
+    image: ghcr.io/nextcloud-releases/all-in-one:latest
+    container_name: nextcloud-aio-mastercontainer
+    restart: always
+    init: true
+    volumes:
+      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    network_mode: bridge
+    ports:
+      # Admin interface, loopback only. The tunnel is the sole public route in;
+      # this port is reached over an SSH tunnel:
+      #   ssh -L 8080:127.0.0.1:8080 <host>
+      # ufw does not protect published Docker ports - Docker DNATs ahead of the
+      # ufw chains - so binding to loopback is the control that actually holds.
+      - "127.0.0.1:8080:8080"
+    environment:
+      # AIO runs in reverse-proxy mode: apache listens in the clear on 11000,
+      # cloudflared terminates nothing and Cloudflare handles TLS at the edge.
+      APACHE_PORT: "11000"
+      APACHE_IP_BINDING: "127.0.0.1"
+      # User files live on the dedicated 200G disk, not the system disk.
+      NEXTCLOUD_DATADIR: "/mnt/nextcloud-data"
+      # AIO's domain check compares the resolved IP against the server's own.
+      # Behind a Cloudflare tunnel that is always a Cloudflare address, so the
+      # check can never pass. The equivalent check was done by hand instead:
+      # the token served on 11000 was fetched over the public hostname and
+      # compared byte for byte.
+      SKIP_DOMAIN_VALIDATION: "true"
+      # External storage, deliberately outside the datadir and on its own disk.
+      # AIO does not back up what is mounted this way - that is the point.
+      NEXTCLOUD_MOUNT: "/mnt/nobackup"
+
+volumes:
+  nextcloud_aio_mastercontainer:
+    name: nextcloud_aio_mastercontainer

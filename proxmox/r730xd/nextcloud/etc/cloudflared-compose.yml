@@ -1,0 +1,22 @@
+name: cloudflared
+
+# Dedicated tunnel for Nextcloud AIO, separate from the cluster and VPS tunnels.
+# Kept out of the AIO stack on purpose: AIO stops and recreates its own
+# containers on every update, and the only route into the service must not
+# depend on that.
+#
+# network_mode: host is required. AIO publishes apache on 127.0.0.1:11000
+# (APACHE_IP_BINDING), so cloudflared has to share the host network namespace
+# to reach it.
+#
+# --metrics on loopback: the default binds 0.0.0.0 and exposes the metrics
+# endpoint to the LAN for no benefit.
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: always
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:20241 run
+    env_file: .env          # TUNNEL_TOKEN, mode 0600, not in git
+    network_mode: host

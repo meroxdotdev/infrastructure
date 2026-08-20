@@ -1,0 +1,14 @@
+[Unit]
+Description=Isolate Docker containers from the LAN (DOCKER-USER rules)
+# PartOf makes this re-run whenever Docker restarts, which recreates its chains.
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/docker-lan-isolation.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -44,7 +44,7 @@ Datasets carry their own properties (`atime=off`, `xattr=sa`,
 ## 4. Packages
 
 ```bash
-apt update && apt install -y nfs-kernel-server sg3-utils smartmontools ipmitool restic rsync bc
+apt update && apt install -y nfs-kernel-server sg3-utils smartmontools ipmitool restic rsync bc borgbackup
 dpkg -i /media/backups/tools/storcli*.deb    # mirrored on purpose, no vendor URL needed
 ```
 
@@ -96,6 +96,18 @@ crontab <repo>/proxmox/r730xd/etc/crontab
 crontab -l
 ```
 
+Two things that file cannot carry:
+
+- The **weekly Synology push line is redacted** and must be added back from
+  `/root/PRIVATE-NOTES.md`. It belongs *above* the `CRON_TZ=UTC` line, on
+  local time — the NAS wake schedule is set in the NAS's own local time and
+  does not follow this crontab.
+- `vzdump` for VM 101 now runs from cron, not from the Proxmox job scheduler,
+  so that it shares the single UTC timezone with everything else. If
+  `/etc/pve/jobs.cfg` is restored from
+  [`etc/jobs.cfg`](etc/jobs.cfg) the job is already disabled there; confirm it
+  stays that way, or the backup runs twice.
+
 ## 8. Spin-down
 
 ```bash
@@ -129,6 +141,40 @@ nightly. Then re-point Longhorn at the new key
 - home-assistant (101) → `qmrestore /media/backups/dump/<latest>.vma.zst 101`
 - ollama (105) → `qmrestore /media/backups/dump/<latest>.vma.zst 105`.
   Keep IP `10.57.57.90`; the n8n alert-triage workflows point at it by address.
+- nextcloud (1000) → not in `dump/`; rebuilt from its own borg archive.
+  See [`nextcloud/README.md`](nextcloud/README.md) §6, and §10c below for the
+  half of it that lives on this host.
+
+## 10c. Nextcloud borg repository
+
+The repository itself is on the `media` pool and survives a reinstall — it
+comes back with `zpool import media`. Three things around it do not, and
+without them AIO cannot reach its own backups:
+
+```bash
+apt install -y borgbackup                       # already in §4
+zfs create media/backups/nextcloud 2>/dev/null || true
+useradd --system --create-home \
+  --home-dir /var/lib/borg-nextcloud --shell /bin/bash borg-nextcloud
+chown borg-nextcloud:borg-nextcloud /media/backups/nextcloud
+chmod 700 /media/backups/nextcloud
+install -d -m 700 -o borg-nextcloud -g borg-nextcloud /var/lib/borg-nextcloud/.ssh
+```
+
+Then authorise AIO's borg key. AIO regenerates it on first backup attempt and
+prints it in its own interface; the line must keep the forced command, or the
+key becomes a general-purpose shell login on this host:
+
+```
+command="borg serve --restrict-to-repository /media/backups/nextcloud",restrict ssh-ed25519 AAAA…
+```
+
+`0600`, owned by `borg-nextcloud`. Verify from the VM before trusting it —
+authentication should be answered by borg itself, not a shell:
+
+```bash
+ssh -i <aio key> borg-nextcloud@10.57.57.250   # → "Borg 1.4.0: Got connection close…"
+```
 
 ## 10b. etcd snapshot credential
 

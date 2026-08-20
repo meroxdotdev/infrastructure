@@ -21,6 +21,8 @@ running copy, these are the reviewable ones:
 | [`etc/storage.cfg`](etc/storage.cfg) | PVE storage |
 | [`etc/network-interfaces`](etc/network-interfaces) | bridges |
 | [`etc/authorized_keys`](etc/authorized_keys) | forced commands (pubkeys redacted) |
+| [`etc/jobs.cfg`](etc/jobs.cfg) | PVE job scheduler — vzdump disabled here, it runs from cron |
+| [`nextcloud/`](nextcloud/) | the Nextcloud VM: compose, firewall rules, runbook |
 
 Neighbours: [pfSense](../../pfsense/REINSTALL.md) · [px-0](../px-0/REINSTALL.md)
 
@@ -31,26 +33,49 @@ work wakes the spun-down SAS disks once per night. Playback wakes them too,
 whenever it happens — that is expected; what is not is the enforcer parking
 them mid-stream, fixed 2026-08-16 (see
 [spindown-setup.md](spindown-setup.md#3-spin-down-enforcer-stateless-replaces-hd-idle)).
-Times are EEST (pve local); K8s and the Oracle VPS run UTC internally
-(shown in parens).
+**Everything schedulable runs on UTC**, since 2026-08-20. The Oracle VPS, the
+K8s cluster and Nextcloud AIO all schedule in UTC and cannot be changed; while
+pve ran on local time the two sets coincided in summer by accident and split
+an hour apart every winter, waking the SAS pool twice a night. pve's crontab
+now carries `CRON_TZ=UTC`, and `vzdump` moved out of the Proxmox job scheduler
+into the same crontab so it moves with the rest.
 
-| Time (EEST) | Job | Runs on |
-|---|---|---|
-| 02:40 (23:40 UTC) | Authentik DB dump | VPS |
-| 02:45 (23:45 UTC) | Joplin DB dump | VPS |
-| 02:50 (23:50 UTC) | VPS extras tar (Guacamole/Traefik/Pi-hole/Homepage/Portainer) | VPS |
-| 02:50 (23:50 UTC) | Longhorn → Garage backup (ARR/Jellyfin configs) | K8s |
-| 02:55 | vzdump home-assistant (VM 101) | pve |
-| 03:00 | pfSense config push (fixed, external) | → pve |
-| 03:00 (00:00 UTC) | VPS → pve backup push | → pve |
-| 03:01 | Garage meta copy (SSD → media) | pve |
-| 03:02 (00:02 UTC) | Immich Postgres pg_dump | K8s |
-| 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve |
-| 03:10 | restic push → Oracle | pve |
-| 03:20 | SAS health check (SMART/defects/zpool counters, mails on anomaly only) | pve |
-| weekly | Relay → Synology (cold storage) | pve |
-| 05:00 1st/mo | restic restore drill | pve |
-| 07:00 1st/mo (04:00 UTC) | Authentik/Joplin restore drill | VPS |
+UTC is the source of truth below; EEST is what it looks like in summer.
+
+| UTC | (EEST) | Job | Runs on |
+|---|---|---|---|
+| 23:40 | 02:40 | Nextcloud borg → `nextcloud/` | VM 1000 |
+| 23:40 | 02:40 | Authentik DB dump | VPS |
+| 23:45 | 02:45 | Joplin DB dump | VPS |
+| 23:50 | 02:50 | VPS extras tar (Guacamole/Traefik/Pi-hole/Homepage/Portainer) | VPS |
+| 23:50 | 02:50 | Longhorn → Garage backup (ARR/Jellyfin configs) | K8s |
+| 23:55 | 02:55 | vzdump home-assistant (VM 101) | pve |
+| 00:00 | 03:00 | VPS → pve backup push | → pve |
+| 00:01 | 03:01 | Garage meta copy (SSD → media) | pve |
+| 00:02 | 03:02 | Immich Postgres pg_dump | K8s |
+| 00:03 | 03:03 | etcd snapshot | pve |
+| 00:05 | 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve |
+| 00:10 | 03:10 | restic push → Oracle | pve |
+| 00:20 | 03:20 | SAS health check (SMART/defects/zpool counters, mails on anomaly only) | pve |
+| 00:25 | 03:25 | spin-down drift check | pve |
+| 00:40 | 03:40 | monthly `media` scrub, 1st | pve |
+| 02:00 | 05:00 | restic restore drill, 1st | pve |
+| 04:00 | 07:00 | Authentik/Joplin restore drill, 1st | VPS |
+
+Two jobs stay on **local** time on purpose, and both are worse off in winter:
+
+- **Weekly relay → Synology.** The NAS wake schedule is set in DSM, in the
+  NAS's own local time, and does not follow pve's crontab. A UTC line would
+  fire before the NAS wakes every winter Sunday, and the script has no
+  heartbeat, so the failure would be silent. Its line sits above `CRON_TZ`.
+- **pfSense config push, 03:00 local**, fixed on pfSense itself. In summer it
+  lands 10 minutes before the restic push and inside the window. In winter it
+  lands *after* restic has already run, so that night's firewall config
+  reaches Oracle one night late, and it wakes the SAS pool separately.
+  Deliberately not moved: the only time that works in both seasons is 02:00
+  local, which would wake the disks 40 minutes early for the seven months the
+  current setting is perfect. A rarely-changing firewall config arriving a day
+  late is the cheaper failure.
 
 The Synology is asleep except a short weekly wake window (DSM Power
 Schedule + WoL, set by hand in DSM UI). Exact day/hours deliberately not
@@ -98,11 +123,17 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 
 ```
 /media/backups/
-├── dump/              vzdump home-assistant, nightly 02:55
-├── pfsense/           config.xml.gz, nightly 03:00 (mode 0700)
+├── dump/              vzdump home-assistant, nightly 23:55 UTC
+├── nextcloud/         borg repo, nightly 23:40 UTC, written by the VM over a
+│                      forced-command SSH key (borg-nextcloud account).
+│                      See nextcloud/README.md.
+├── pfsense/           config.xml.gz, nightly 03:00 local (mode 0700)
 ├── longhorn-garage/   Garage data (live) + meta (nightly copy from SSD)
-├── synology-home/     LIVE documents (Filebrowser WebDAV) — source, not mirror
-├── immich-postgres/   pg_dump, nightly 03:02, 30-day retention
+├── synology-home/     LIVE documents (Filebrowser WebDAV) — source, not mirror.
+│                      Superseded by Nextcloud 2026-08-20; kept as the rollback
+│                      and dropped from both outbound legs so its 30 GB are not
+│                      backed up twice. Delete once the parallel run is over.
+├── immich-postgres/   pg_dump, nightly 00:02 UTC, 30-day retention
 ├── oracle-vps/        VPS service backups, pushed nightly (receive-only)
 └── tools/             Vendor binaries needed to rebuild this host (storcli .deb).
                        Mirrored here on purpose: a reinstall must not depend on
@@ -257,8 +288,12 @@ password. Dest: chrooted SFTP-only user `restic-backup` on the VPS
 (provisioned by the `vps_backup` role). Private key lives on pve only.
 
 Scope: everything under `/media/backups/`, plus `/media/photos` and
-`/root`. **Except** `dump/` — Home Assistant is out of DR scope,
-~14GB/night of waste.
+`/root`. Two exclusions, both deliberate:
+
+- `dump/` — Home Assistant is out of DR scope, ~14 GB/night of waste.
+- `synology-home/` — dropped 2026-08-20. Its contents now live in Nextcloud
+  and reach Oracle through `nextcloud/`; pushing both would send the same
+  30 GB twice. The directory stays on pve as the migration rollback.
 
 `/root` was added 2026-08-11. Without it the cron scripts, `/root/.ssh`,
 `PRIVATE-NOTES.md` and the restic password file existed on exactly one

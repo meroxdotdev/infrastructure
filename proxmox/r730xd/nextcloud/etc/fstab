@@ -1,0 +1,6 @@
+UUID=0b563429-9da7-485f-8b59-fff6e7dfdcef /               ext4    errors=remount-ro 0       1
+UUID=7a090e44-8b8a-441e-baf4-ba393f535f3f /var                       ext4    defaults        0       2
+UUID=27c4986e-5a74-4cdc-b5a2-4de14190d046 /mnt/nextcloud-data            ext4    defaults        0       2
+UUID=85044a77-70fd-4927-becb-41e2abc2749d none            swap    sw              0       0
+/dev/sr0        /media/cdrom0   udf,iso9660 user,noauto     0       0
+UUID=ef53d214-9568-4693-89b7-f51c9507a16d /mnt/nobackup ext4 defaults,nofail 0 2
