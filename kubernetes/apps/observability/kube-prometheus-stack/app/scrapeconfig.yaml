@@ -53,30 +53,37 @@ spec:
       targetLabel: job
       replacement: *name
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
-# px-0 (Beelink), standalone host - same pve-exporter, different module
-# (own token in pve.yml, since px-0 and pve aren't a corosync cluster).
-apiVersion: monitoring.coreos.com/v1alpha1
-kind: ScrapeConfig
-metadata:
-  name: px-0
-spec:
-  staticConfigs:
-    - targets:
-        - 10.57.57.254
-  metricsPath: /pve
-  params:
-    module: ["px0"]
-  relabelings:
-    - sourceLabels: [__address__]
-      targetLabel: __param_target
-    - sourceLabels: [__param_target]
-      targetLabel: instance
-    - targetLabel: __address__
-      replacement: pve-exporter.observability.svc.cluster.local:9221
-    - action: replace
-      targetLabel: job
-      replacement: pve
+# px-0 (Beelink) is powered off (2026-08 downsizing) but was still scraped
+# here, with job=pve - the same job label as the R730xd. One of two pve
+# targets permanently down is 50%, well over TargetDown's 10% threshold, so
+# this fired every day for nothing. Commented rather than deleted: px-0 is
+# still the documented fallback in proxmox/px-0/MIGRATION.md, and this comes
+# back by uncommenting if it is ever powered on again.
+#
+# # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# # px-0 (Beelink), standalone host - same pve-exporter, different module
+# # (own token in pve.yml, since px-0 and pve aren't a corosync cluster).
+# apiVersion: monitoring.coreos.com/v1alpha1
+# kind: ScrapeConfig
+# metadata:
+#   name: px-0
+# spec:
+#   staticConfigs:
+#     - targets:
+#         - 10.57.57.254
+#   metricsPath: /pve
+#   params:
+#     module: ["px0"]
+#   relabelings:
+#     - sourceLabels: [__address__]
+#       targetLabel: __param_target
+#     - sourceLabels: [__param_target]
+#       targetLabel: instance
+#     - targetLabel: __address__
+#       replacement: pve-exporter.observability.svc.cluster.local:9221
+#     - action: replace
+#       targetLabel: job
+#       replacement: pve
 
 # Everything below was dead code: this file was never referenced from
 # kustomization.yaml (found + fixed 2026-08-03), so none of it was ever
