@@ -99,14 +99,16 @@ crontab -l
 Two things that file cannot carry:
 
 - The **weekly Synology push line is redacted** and must be added back from
-  `/root/PRIVATE-NOTES.md`. It belongs *above* the `CRON_TZ=UTC` line, on
-  local time — the NAS wake schedule is set in the NAS's own local time and
-  does not follow this crontab.
-- `vzdump` for VM 101 now runs from cron, not from the Proxmox job scheduler,
-  so that it shares the single UTC timezone with everything else. If
-  `/etc/pve/jobs.cfg` is restored from
-  [`etc/jobs.cfg`](etc/jobs.cfg) the job is already disabled there; confirm it
-  stays that way, or the backup runs twice.
+  `/root/PRIVATE-NOTES.md`. It has to land inside the NAS wake window, which
+  DSM keeps in its own local time.
+- `vzdump` for VM 101 runs from cron, not from the Proxmox job scheduler, so
+  the whole schedule is readable in one file. If `/etc/pve/jobs.cfg` is
+  restored from [`etc/jobs.cfg`](etc/jobs.cfg) the job is already disabled
+  there; confirm it stays that way, or the backup runs twice.
+
+⚠️ **Do not add `CRON_TZ` to this crontab.** Debian's cron does not implement
+it and ignores it silently, so every line keeps its local meaning while looking
+like it was moved. See the warning in [`README.md`](README.md#nightly-schedule).
 
 ## 8. Spin-down
 
@@ -145,6 +147,26 @@ nightly. Then re-point Longhorn at the new key
   See [`nextcloud/README.md`](nextcloud/README.md) §6, and §10c below for the
   half of it that lives on this host.
 
+## 10b. etcd snapshot credential
+
+`scripts/etcd-snapshot.sh` needs `/root/.talos-etcd-backup`, which is a Talos
+config carrying **only** the `os:etcd:backup` role. It is not in this repo and
+not in any backup — it is a credential, and it is cheap to reissue:
+
+```bash
+talosctl -n 10.57.57.80 config new --roles os:etcd:backup \
+  --crt-ttl 8760h /root/.talos-etcd-backup
+chmod 600 /root/.talos-etcd-backup
+```
+
+Also needs `talosctl` on the host itself (`/usr/local/bin`, matching the
+cluster's Talos version). Confirm the scope took: `talosctl reboot` with this
+config must return `PermissionDenied`. If it reboots the node instead, you
+generated an admin config and put it on the backup host.
+
+⚠️ The cert expires one year out (issued 2026-08-17). Nothing warns you — the
+snapshot job just starts failing, and it only writes to the log.
+
 ## 10c. Nextcloud borg repository
 
 The repository itself is on the `media` pool and survives a reinstall — it
@@ -175,26 +197,6 @@ authentication should be answered by borg itself, not a shell:
 ```bash
 ssh -i <aio key> borg-nextcloud@10.57.57.250   # → "Borg 1.4.0: Got connection close…"
 ```
-
-## 10b. etcd snapshot credential
-
-`scripts/etcd-snapshot.sh` needs `/root/.talos-etcd-backup`, which is a Talos
-config carrying **only** the `os:etcd:backup` role. It is not in this repo and
-not in any backup — it is a credential, and it is cheap to reissue:
-
-```bash
-talosctl -n 10.57.57.80 config new --roles os:etcd:backup \
-  --crt-ttl 8760h /root/.talos-etcd-backup
-chmod 600 /root/.talos-etcd-backup
-```
-
-Also needs `talosctl` on the host itself (`/usr/local/bin`, matching the
-cluster's Talos version). Confirm the scope took: `talosctl reboot` with this
-config must return `PermissionDenied`. If it reboots the node instead, you
-generated an admin config and put it on the backup host.
-
-⚠️ The cert expires one year out (issued 2026-08-17). Nothing warns you — the
-snapshot job just starts failing, and it only writes to the log.
 
 ## 11. Verify
 

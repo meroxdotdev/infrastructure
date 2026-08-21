@@ -33,53 +33,50 @@ work wakes the spun-down SAS disks once per night. Playback wakes them too,
 whenever it happens — that is expected; what is not is the enforcer parking
 them mid-stream, fixed 2026-08-16 (see
 [spindown-setup.md](spindown-setup.md#3-spin-down-enforcer-stateless-replaces-hd-idle)).
-**Everything schedulable runs on UTC**, since 2026-08-20. The Oracle VPS, the
-K8s cluster and Nextcloud AIO all schedule in UTC and cannot be changed; while
-pve ran on local time the two sets coincided in summer by accident and split
-an hour apart every winter, waking the SAS pool twice a night. pve's crontab
-now carries `CRON_TZ=UTC`, and `vzdump` moved out of the Proxmox job scheduler
-into the same crontab so it moves with the rest.
+Times below are **local** (pve, EEST in summer). The Oracle VPS, the K8s
+cluster and Nextcloud AIO all schedule in UTC and cannot be changed; pve's cron
+runs on local time. In summer the two sets interleave into one tight window,
+which is the point — everything touching the spun-down SAS pool should wake the
+disks once, together.
 
-UTC is the source of truth below; EEST is what it looks like in summer.
+| Time | Job | Runs on |
+|---|---|---|
+| 02:40 (23:40 UTC) | Nextcloud borg → `nextcloud/` | VM 1000 |
+| 02:40 (23:40 UTC) | Authentik DB dump | VPS |
+| 02:45 (23:45 UTC) | Joplin DB dump | VPS |
+| 02:50 (23:50 UTC) | VPS extras tar (Guacamole/Traefik/Pi-hole/Homepage/Portainer) | VPS |
+| 02:50 (23:50 UTC) | Longhorn → Garage backup (ARR/Jellyfin configs, Immich library) | K8s |
+| 02:55 | vzdump home-assistant (VM 101) — from cron, not the PVE job scheduler | pve |
+| 03:00 | pfSense config push (fixed, external) | → pve |
+| 03:00 (00:00 UTC) | VPS → pve backup push | → pve |
+| 03:01 | Garage meta copy (SSD → media) | pve |
+| 03:02 (00:02 UTC) | Immich Postgres pg_dump | K8s |
+| 03:03 | etcd snapshot | pve |
+| 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve |
+| 03:10 | restic push → Oracle | pve |
+| 03:20 | SAS health check (SMART/defects/zpool counters, mails on anomaly only) | pve |
+| 03:25 | spin-down drift check | pve |
+| weekly | Relay → Synology (cold storage) | pve |
+| 03:40 1st/mo | `media` scrub | pve |
+| 05:00 1st/mo | restic restore drill | pve |
+| 07:00 1st/mo (04:00 UTC) | Authentik/Joplin restore drill | VPS |
 
-| UTC | (EEST) | Job | Runs on |
-|---|---|---|---|
-| 23:40 | 02:40 | Nextcloud borg → `nextcloud/` | VM 1000 |
-| 23:40 | 02:40 | Authentik DB dump | VPS |
-| 23:45 | 02:45 | Joplin DB dump | VPS |
-| 23:50 | 02:50 | VPS extras tar (Guacamole/Traefik/Pi-hole/Homepage/Portainer) | VPS |
-| 23:50 | 02:50 | Longhorn → Garage backup (ARR/Jellyfin configs) | K8s |
-| 23:55 | 02:55 | vzdump home-assistant (VM 101) | pve |
-| 00:00 | 03:00 | VPS → pve backup push | → pve |
-| 00:01 | 03:01 | Garage meta copy (SSD → media) | pve |
-| 00:02 | 03:02 | Immich Postgres pg_dump | K8s |
-| 00:03 | 03:03 | etcd snapshot | pve |
-| 00:05 | 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve |
-| 00:10 | 03:10 | restic push → Oracle | pve |
-| 00:20 | 03:20 | SAS health check (SMART/defects/zpool counters, mails on anomaly only) | pve |
-| 00:25 | 03:25 | spin-down drift check | pve |
-| 00:40 | 03:40 | monthly `media` scrub, 1st | pve |
-| 02:00 | 05:00 | restic restore drill, 1st | pve |
-| 04:00 | 07:00 | Authentik/Joplin restore drill, 1st | VPS |
+**They only interleave because Romania is UTC+3 in summer.** From late October
+the UTC half drops to 01:40-02:02 local while the pve half stays at 02:55-03:25,
+and the SAS pool wakes twice a night instead of once, for about five months.
 
-Two jobs stay on **local** time on purpose, and both are worse off in winter:
+Accepted, not fixed. The ordering that actually matters still holds in both
+seasons — every source writes before restic reads — and the only real fix is
+moving eight cron jobs onto systemd timers pinned to UTC, which is a lot of new
+surface to buy back one spin-up per night.
 
-- **Weekly relay → Synology.** The NAS wake schedule is set in DSM, in the
-  NAS's own local time, and does not follow pve's crontab. A UTC line would
-  fire before the NAS wakes every winter Sunday, and the script has no
-  heartbeat, so the failure would be silent. Its line sits above `CRON_TZ`.
-- **pfSense config push, 03:00 local**, fixed on pfSense itself. In summer it
-  lands 10 minutes before the restic push and inside the window. In winter it
-  lands *after* restic has already run, so that night's firewall config
-  reaches Oracle one night late, and it wakes the SAS pool separately.
-  Deliberately not moved: the only time that works in both seasons is 02:00
-  local, which would wake the disks 40 minutes early for the seven months the
-  current setting is perfect. A rarely-changing firewall config arriving a day
-  late is the cheaper failure.
-
-The Synology is asleep except a short weekly wake window (DSM Power
-Schedule + WoL, set by hand in DSM UI). Exact day/hours deliberately not
-published — source of truth is `crontab -l` on pve and the DSM settings.
+⚠️ **`CRON_TZ=UTC` is not the fix.** Debian's cron does not implement it — the
+string is not even in the binary. It parses as an ordinary environment
+assignment and is silently ignored, so the schedule keeps its local meaning.
+Tried 2026-08-20 and reverted the next morning: it had moved the entire window
+three hours early, which put restic ahead of every source that feeds it. One
+night's Nextcloud, Longhorn, Immich, pfSense and VPS data missed the off-site
+push and went out the following night instead.
 
 ## Storage layout
 
@@ -123,17 +120,17 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 
 ```
 /media/backups/
-├── dump/              vzdump home-assistant, nightly 23:55 UTC
-├── nextcloud/         borg repo, nightly 23:40 UTC, written by the VM over a
-│                      forced-command SSH key (borg-nextcloud account).
-│                      See nextcloud/README.md.
-├── pfsense/           config.xml.gz, nightly 03:00 local (mode 0700)
+├── dump/              vzdump home-assistant, nightly 02:55
+├── nextcloud/         borg repo, nightly 02:40 (AIO schedules in UTC), written
+│                      by the VM over a forced-command SSH key
+│                      (borg-nextcloud account). See nextcloud/README.md.
+├── pfsense/           config.xml.gz, nightly 03:00 (mode 0700)
 ├── longhorn-garage/   Garage data (live) + meta (nightly copy from SSD)
 ├── synology-home/     LIVE documents (Filebrowser WebDAV) — source, not mirror.
 │                      Superseded by Nextcloud 2026-08-20; kept as the rollback
 │                      and dropped from both outbound legs so its 30 GB are not
 │                      backed up twice. Delete once the parallel run is over.
-├── immich-postgres/   pg_dump, nightly 00:02 UTC, 30-day retention
+├── immich-postgres/   pg_dump, nightly 03:02 (k8s schedules in UTC), 30-day retention
 ├── oracle-vps/        VPS service backups, pushed nightly (receive-only)
 └── tools/             Vendor binaries needed to rebuild this host (storcli .deb).
                        Mirrored here on purpose: a reinstall must not depend on
