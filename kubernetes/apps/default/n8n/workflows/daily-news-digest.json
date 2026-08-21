@@ -1,0 +1,383 @@
+{
+  "name": "daily-news-digest",
+  "description": null,
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://www.hotnews.ro/rss",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        -96
+      ],
+      "id": "e118b4b6-dd6f-44a5-a9c4-5e4d84fde750",
+      "name": "RSS HotNews",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const cutoff = Date.now() - 24*60*60*1000;\nconst section = \"\\ud83c\\uddf7\\ud83c\\uddf4 Rom\\u00e2nia\";\nreturn $input.all()\n  .filter(item => {\n    const d = Date.parse(item.json.pubDate || item.json.isoDate || '');\n    return !isNaN(d) && d > cutoff;\n  })\n  .map(item => ({ json: { section, title: item.json.title, link: item.json.link } }));",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        -96
+      ],
+      "id": "f756fb15-5cd4-4c5b-be8f-157af47f3b84",
+      "name": "Tag HotNews"
+    },
+    {
+      "parameters": {
+        "url": "https://biziday.ro/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        32
+      ],
+      "id": "d443cd94-f2e7-407f-9a33-6e496aea91b6",
+      "name": "RSS Biziday",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const cutoff = Date.now() - 24*60*60*1000;\nconst section = \"\\ud83c\\uddf7\\ud83c\\uddf4 Rom\\u00e2nia\";\nreturn $input.all()\n  .filter(item => {\n    const d = Date.parse(item.json.pubDate || item.json.isoDate || '');\n    return !isNaN(d) && d > cutoff;\n  })\n  .map(item => ({ json: { section, title: item.json.title, link: item.json.link } }));",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        32
+      ],
+      "id": "db408bd8-4440-42e7-9c0f-f0f37a70923f",
+      "name": "Tag Biziday"
+    },
+    {
+      "parameters": {
+        "url": "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        160
+      ],
+      "id": "448f5d1e-617d-4345-80a5-9c80f23b0097",
+      "name": "RSS BBC World",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const cutoff = Date.now() - 24*60*60*1000;\nconst section = \"\\ud83c\\udf10 Global\";\nreturn $input.all()\n  .filter(item => {\n    const d = Date.parse(item.json.pubDate || item.json.isoDate || '');\n    return !isNaN(d) && d > cutoff;\n  })\n  .map(item => ({ json: { section, title: item.json.title, link: item.json.link } }));",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        160
+      ],
+      "id": "91fcee78-9723-44e7-9780-371b8237f048",
+      "name": "Tag BBC"
+    },
+    {
+      "parameters": {
+        "url": "https://hnrss.org/frontpage?points=150",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        288
+      ],
+      "id": "8c30cf2f-371e-4760-99ba-d47cf78a7311",
+      "name": "RSS HN",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const cutoff = Date.now() - 24*60*60*1000;\nconst section = \"\\ud83d\\udcbb Tech\";\nreturn $input.all()\n  .filter(item => {\n    const d = Date.parse(item.json.pubDate || item.json.isoDate || '');\n    return !isNaN(d) && d > cutoff;\n  })\n  .map(item => ({ json: { section, title: item.json.title, link: item.json.link } }));",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        288
+      ],
+      "id": "c72fe2d0-632c-4264-9566-1b337319700c",
+      "name": "Tag HN"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        144,
+        32
+      ],
+      "id": "efd60705-294e-4acc-a3ab-f77674ba04b3",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-haiku-4-5\",\n  \"max_tokens\": 1536,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Summarize these headlines into a short daily digest in Romanian, grouped into exactly 3 sections in this order: 🇷🇴 România, 🌍 Global, 💻 Tech. Use the [section] tag already given per headline, don't reclassify. One line per headline: a short summary in Romanian, then the URL at the end of the same line (plain URL, no markdown brackets, Telegram auto-links it). Max 4 headlines per section, pick the most genuinely important/interesting ones, skip filler and clickbait. If a headline sounds sensationalist, unverified, or relies on a single unnamed source, prefix that line with ⚠️ as a caution flag. If a section has nothing worth including, write 'nimic notabil azi' under its header instead of forcing filler. Headlines:\\n{{ $json.data.map(i => `[${i.section}] ${i.title} ${i.link}`).join('\\\\n') }}\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        352,
+        32
+      ],
+      "id": "c71c5cab-62e5-4617-a9eb-969a5f650e15",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "chatId": "REDACTED_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.content[0].text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        576,
+        32
+      ],
+      "id": "46368394-ff6b-4c75-bbd8-c8fb27f77d3f",
+      "name": "Send a text message",
+      "webhookId": "REDACTED_REGENERATED_ON_IMPORT",
+      "credentials": {
+        "telegramApi": {
+          "id": "CZKHXVTPRdJTd75C",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 14
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -800,
+        0
+      ],
+      "id": "8ec1cf54-4c76-4533-b223-86cfdf5f171d",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        16,
+        32
+      ],
+      "id": "b3f5c9a1-7e2d-4a6f-9c1b-2d8e4f6a9b0c",
+      "name": "Merge"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS HotNews",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS Biziday",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS BBC World",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "RSS HN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS HotNews": {
+      "main": [
+        [
+          {
+            "node": "Tag HotNews",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag HotNews": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Biziday": {
+      "main": [
+        [
+          {
+            "node": "Tag Biziday",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Biziday": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "RSS BBC World": {
+      "main": [
+        [
+          {
+            "node": "Tag BBC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag BBC": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "RSS HN": {
+      "main": [
+        [
+          {
+            "node": "Tag HN",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag HN": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  }
+}

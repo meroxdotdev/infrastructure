@@ -1,0 +1,105 @@
+{
+  "name": "triage-and-notify",
+  "description": null,
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "message"
+            },
+            {
+              "name": "severity"
+            },
+            {
+              "name": "source_label"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -384,
+        -64
+      ],
+      "id": "c5e2f3bc-65be-4ba1-89fd-fe777beb91ba",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.57.57.90:11434/api/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"qwen3:4b-instruct\",\n  \"prompt\": \"Reply with ONLY a short phrase (max 15 words) summarizing this infra alert. Copy host names, numbers and percentages exactly as they appear in the alert text. If the alert does not contain a host name or a number, do not supply one and do not guess - describe only what the alert actually says. No emoji, no explanations, no full sentences. Alert: {{ $json.message }}\",\n  \"stream\": false\n}\n",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -96,
+        -144
+      ],
+      "id": "2b7ca200-9fa3-4445-bbc6-15e3c1a19efc",
+      "name": "HTTP Request",
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "REDACTED_TELEGRAM_CHAT_ID",
+        "text": "={{ $('When Executed by Another Workflow').item.json.severity === 'critical' ? '🔴' : $('When Executed by Another Workflow').item.json.severity === 'warning' ? '🟡' : '🟢' }} {{ $('When Executed by Another Workflow').item.json.source_label }} — {{ $json.response ? $json.response.trim() : $('When Executed by Another Workflow').item.json.message + ' (AI triage unavailable)' }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        -64
+      ],
+      "id": "6d642420-1be2-4ef2-b68d-ee27fcdeae4c",
+      "name": "Send a text message",
+      "webhookId": "REDACTED_REGENERATED_ON_IMPORT",
+      "credentials": {
+        "telegramApi": {
+          "id": "CZKHXVTPRdJTd75C",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  }
+}

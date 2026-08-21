@@ -1,0 +1,159 @@
+{
+  "name": "hardware-webhook",
+  "description": null,
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hardware",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c28695b8-75d7-4ca4-9ba0-50fec6c46907",
+      "name": "Webhook",
+      "webhookId": "REDACTED_REGENERATED_ON_IMPORT",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AbTMNXBh4cK7rYwG",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c6714e84-dd3d-4cc7-bbd5-60d515a196b8",
+              "name": "message",
+              "value": "={{ $json.body.source }}: {{ $json.body.summary }} (severity: {{ $json.body.severity }})",
+              "type": "string"
+            },
+            {
+              "id": "ada857a2-8959-4283-9976-17fe72c0d7c0",
+              "name": "severity",
+              "value": "={{ $json.body.severity }}",
+              "type": "string"
+            },
+            {
+              "id": "ed8b8432-d28b-4b93-b218-261d6ae56c93",
+              "name": "source_label",
+              "value": "={{ $json.body.summary.includes('oracle-vps') ? '☁️ VPS' : '🖥️ Proxmox/Hardware' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "b5c8fd89-78e4-4b96-b407-352d405b6a4b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8HpS36Gsnc1KIRoq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8HpS36Gsnc1KIRoq",
+          "cachedResultName": "triage-and-notify"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $json.message }}",
+            "severity": "={{ $json.severity }}",
+            "source_label": "={{ $json.source_label }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "severity",
+              "displayName": "severity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "source_label",
+              "displayName": "source_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "98d35050-8ffa-4ced-b505-e777bd02da04",
+      "name": "Call 'triage-and-notify'"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Call 'triage-and-notify'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  }
+}

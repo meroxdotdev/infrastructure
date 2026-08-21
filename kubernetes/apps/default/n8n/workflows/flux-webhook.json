@@ -1,0 +1,152 @@
+{
+  "name": "flux-webhook",
+  "description": null,
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "flux",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "af435630-6d58-4cd2-b0c6-3f6f13491747",
+      "name": "Webhook",
+      "webhookId": "REDACTED_REGENERATED_ON_IMPORT"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9fa3972a-8ae9-44c8-8e6d-bd2f18ea5a5c",
+              "name": "message",
+              "value": "={{ $json.body.involvedObject.kind }}/{{ $json.body.involvedObject.name }} in {{ $json.body.involvedObject.namespace }}: {{ $json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "1ea49764-0a2a-4c1e-84e2-e39ef4851bf3",
+              "name": "severity",
+              "value": "=critical",
+              "type": "string"
+            },
+            {
+              "id": "332736d1-6bc4-4ee5-a171-801c068eabb2",
+              "name": "source_label",
+              "value": "=🔧 GitOps (Flux)",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e2163fa4-05b8-48b9-8e6f-b17762b25bd6",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8HpS36Gsnc1KIRoq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8HpS36Gsnc1KIRoq",
+          "cachedResultName": "triage-and-notify"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message": "={{ $json.message }}",
+            "severity": "={{ $json.severity }}",
+            "source_label": "={{ $json.source_label }}"
+          },
+          "matchingColumns": [
+            "message"
+          ],
+          "schema": [
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "severity",
+              "displayName": "severity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "source_label",
+              "displayName": "source_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "c2df6806-bab3-4664-b0c6-73dba9076500",
+      "name": "Call 'triage-and-notify'"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Call 'triage-and-notify'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  }
+}
