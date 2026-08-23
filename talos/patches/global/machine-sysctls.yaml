@@ -4,3 +4,15 @@ machine:
     fs.inotify.max_user_instances: "8192"  # Watchdog
     net.core.rmem_max: "7500000" # Cloudflared | QUIC
     net.core.wmem_max: "7500000" # Cloudflared | QUIC
+    # Jellyfin served publicly through the Oracle VPS (us-phoenix-1, 165ms
+    # RTT). CUBIC capped that path at 30 Mbps; the same 200 MB transfer over
+    # the same tunnel reached 103 Mbps with BBR. Zero retransmits and pfSense
+    # at 96% idle during the test, so the algorithm was the limit — not
+    # distance, packet loss or CPU. No effect on LAN traffic: below 1ms RTT
+    # BBR and CUBIC behave identically. Does not need the fq qdisc (TCP has
+    # had internal pacing since kernel 4.13).
+    #
+    # Pods inherit this from the host at netns creation, so a rollout restart
+    # is required for running workloads to pick it up.
+    # See docs/jellyfin-public-exposure.md.
+    net.ipv4.tcp_congestion_control: "bbr"
