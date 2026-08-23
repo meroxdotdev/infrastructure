@@ -12,7 +12,7 @@ Status: **in progress.** Phase 1 applied and verified, phases 2-5 pending.
 ```
 Viewers ──▶ media.merox.dev (grey-cloud A record, no CDN in path)
                  │
-          129.146.107.152 : 443          Oracle VPS, us-phoenix-1
+          <vps-public-ip> : 443          Oracle VPS, us-phoenix-1
           ipset DROP: non-RO             kernel, before TLS
           Traefik entrypoint `public`    ONLY the jellyfin router
                  │  Tailscale (WireGuard)
@@ -328,7 +328,7 @@ Nothing below is in Git.
 |---|---|---|
 | 1 | Cloudflare Zero Trust → Tunnels → VPS tunnel | `inside.merox.dev`: service `https://localhost:443` → `https://172.25.10.2:443` |
 | 2 | VPS | `git pull && ansible-playbook playbooks/site.yml --tags traefik,geoblock` |
-| 3 | Cloudflare DNS | `A` · `media` · `129.146.107.152` · **grey cloud** |
+| 3 | Cloudflare DNS | `A` · `media` · `<vps-public-ip>` · **grey cloud** |
 | 4 | Oracle → VCN → Security List | ingress `TCP 443` from `0.0.0.0/0` |
 | 5 | Jellyfin admin | Known Proxies, accounts, bitrate caps, Quick Connect off |
 
@@ -353,15 +353,15 @@ for rate limiting.
 
 ```bash
 # private services must NOT answer on the public IP
-curl -skI https://129.146.107.152 -H "Host: sso.merox.dev" | head -1   # 404
-curl -skI https://129.146.107.152 -H "Host: rmt.merox.dev"  | head -1   # 404
+curl -skI https://<vps-public-ip> -H "Host: sso.merox.dev" | head -1   # 404
+curl -skI https://<vps-public-ip> -H "Host: rmt.merox.dev"  | head -1   # 404
 
 # private services still work through the tunnel
 curl -sI https://sso.merox.dev | head -1                                # 200/302
 
 # Jellyfin answers publicly, and the record is grey
 curl -sI https://media.merox.dev | head -1                              # 200/302
-dig +short media.merox.dev @1.1.1.1                                     # 129.146.107.152
+dig +short media.merox.dev @1.1.1.1                                     # <vps-public-ip>
 
 # geoblock is live
 ipset list geoblock_allow | grep -c '^[0-9]'                            # >1000

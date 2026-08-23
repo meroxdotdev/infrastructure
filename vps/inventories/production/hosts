@@ -1,7 +1,13 @@
 [vps_servers]
 # ansible_connection=local: run playbooks directly on the Oracle server (SSH port 22 not open in OCI)
 # Remove ansible_connection=local if running from a remote machine with SSH access
-vps01 ansible_host=129.146.107.152 ansible_connection=local
+# ansible_host is intentionally absent: with ansible_connection=local the
+# playbook runs on the box itself and never dials it, so the public address
+# has no reason to sit in a public repo. If you ever need to run from a
+# workstation, pass it on the command line:
+#   ansible-playbook -i inventories/production/hosts playbooks/site.yml \
+#     -e ansible_host=<vps-ip> -e ansible_connection=ssh
+vps01 ansible_connection=local
 
 [vps_servers:vars]
 ansible_python_interpreter=/usr/bin/python3
