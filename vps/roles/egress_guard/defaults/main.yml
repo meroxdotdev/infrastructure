@@ -1,0 +1,26 @@
+---
+# Automatic circuit breaker for outbound data transfer.
+#
+# The tenancy is Pay As You Go, so egress beyond Oracle's 10 TB/month free
+# allowance is billed (~$0.0085/GB). An OCI budget only *alerts*; it does not
+# stop anything. This role stops it.
+#
+# Above `egress_guard_cut_tb` the public port is dropped in DOCKER-USER, which
+# kills the only high-volume public path (Jellyfin). SSH and the Cloudflare
+# tunnel are untouched — the tunnel is outbound and carries dashboards, not
+# video. The rule is removed automatically once the monthly counter rolls over.
+#
+# Why 6 TB is a hard guarantee: the check runs hourly and the home uplink tops
+# out near 430 Mbps, i.e. at most ~0.19 TB can be moved between two checks.
+# Worst case is therefore ~6.2 TB — comfortably below the 10 TB free tier, so
+# no egress bill is possible.
+egress_guard_enabled: true
+egress_guard_interface: "enp0s6"     # the billed uplink, not a docker bridge
+egress_guard_port: 443               # public entrypoint (Jellyfin)
+egress_guard_warn_tb: 3
+egress_guard_cut_tb: 6
+egress_guard_state_dir: "/var/lib/egress-guard"
+
+# Optional healthchecks.io UUID. When set, a successful check pings it, so a
+# silent guard (crashed, or host down) also raises an alarm.
+egress_guard_healthcheck_url: ""

@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Block the public port if monthly egress nears the free-tier limit
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/egress-guard.sh

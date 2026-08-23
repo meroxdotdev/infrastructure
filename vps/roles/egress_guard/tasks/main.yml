@@ -1,0 +1,69 @@
+---
+- name: Install vnstat and jq
+  ansible.builtin.apt:
+    name: [vnstat, jq]
+    state: present
+    update_cache: yes
+  when: egress_guard_enabled
+  tags: ['egress', 'firewall']
+
+- name: Ensure vnstat is collecting
+  ansible.builtin.systemd:
+    name: vnstat
+    enabled: yes
+    state: started
+  when: egress_guard_enabled
+  tags: ['egress', 'firewall']
+
+- name: Create state directory
+  ansible.builtin.file:
+    path: "{{ egress_guard_state_dir }}"
+    state: directory
+    mode: "0755"
+  when: egress_guard_enabled
+  tags: ['egress', 'firewall']
+
+- name: Deploy egress guard script
+  ansible.builtin.template:
+    src: egress-guard.sh.j2
+    dest: /usr/local/sbin/egress-guard.sh
+    mode: "0755"
+  when: egress_guard_enabled
+  tags: ['egress', 'firewall']
+
+- name: Deploy egress guard systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - egress-guard.service
+    - egress-guard.timer
+  when: egress_guard_enabled
+  notify: Reload systemd
+  tags: ['egress', 'firewall']
+
+- name: Flush handlers so the units exist before enabling them
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start the hourly timer
+  ansible.builtin.systemd:
+    name: egress-guard.timer
+    enabled: yes
+    state: started
+  when: egress_guard_enabled
+  tags: ['egress', 'firewall']
+
+- name: Run one check now
+  ansible.builtin.command: /usr/local/sbin/egress-guard.sh
+  register: egress_guard_run
+  changed_when: false
+  failed_when: false
+  when: egress_guard_enabled
+  tags: ['egress', 'firewall']
+
+- name: Show current egress
+  ansible.builtin.debug:
+    msg: "{{ (egress_guard_run.stdout_lines | default([])) + (egress_guard_run.stderr_lines | default([])) }}"
+  when: egress_guard_enabled
+  tags: ['egress', 'firewall']

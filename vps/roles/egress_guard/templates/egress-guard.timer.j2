@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Hourly egress check against the Oracle free-tier allowance
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

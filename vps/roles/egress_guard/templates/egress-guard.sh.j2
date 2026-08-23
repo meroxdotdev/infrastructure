@@ -1,0 +1,61 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Drops the public port when monthly egress approaches Oracle's free tier.
+# See vps/roles/egress_guard/README.md.
+set -eu
+
+IFACE="{{ egress_guard_interface }}"
+PORT="{{ egress_guard_port }}"
+WARN_TB="{{ egress_guard_warn_tb }}"
+CUT_TB="{{ egress_guard_cut_tb }}"
+STATE="{{ egress_guard_state_dir }}"
+
+mkdir -p "$STATE"
+
+TX=$(vnstat --json m -i "$IFACE" 2>/dev/null \
+     | jq -r '.interfaces[0].traffic.month[-1].tx' 2>/dev/null || echo "")
+
+# Refuse to act on a reading we do not trust. Failing closed here would take
+# the service down on a vnstat hiccup; failing open just retries next hour.
+case "$TX" in
+    ''|*[!0-9]*)
+        echo "egress-guard: cannot read vnstat for $IFACE — no action taken" >&2
+        exit 1
+        ;;
+esac
+
+TB=$(awk -v b="$TX" 'BEGIN{printf "%.3f", b/1000000000000}')
+
+# Identical argument order in -C and -I, otherwise the check never matches.
+RULE="-p tcp --dport $PORT -j DROP -m comment --comment egress-guard"
+
+is_blocked() { iptables -C DOCKER-USER $RULE 2>/dev/null; }
+
+over_cut=$(awk -v t="$TB" -v c="$CUT_TB" 'BEGIN{print (t>=c)?1:0}')
+over_warn=$(awk -v t="$TB" -v w="$WARN_TB" 'BEGIN{print (t>=w)?1:0}')
+
+if [ "$over_cut" -eq 1 ]; then
+    if ! is_blocked; then
+        iptables -I DOCKER-USER 1 $RULE
+        echo "egress-guard: ${TB} TB this month >= ${CUT_TB} TB — BLOCKED tcp/$PORT" >&2
+        date -u +%FT%TZ > "$STATE/blocked-since"
+    fi
+    exit 0
+fi
+
+# Below the cut: make sure a rule from a previous month is gone.
+if is_blocked; then
+    iptables -D DOCKER-USER $RULE
+    rm -f "$STATE/blocked-since"
+    echo "egress-guard: ${TB} TB — below ${CUT_TB} TB, unblocked tcp/$PORT" >&2
+fi
+
+if [ "$over_warn" -eq 1 ]; then
+    echo "egress-guard: WARNING ${TB} TB this month (cut at ${CUT_TB} TB)" >&2
+fi
+
+echo "egress-guard: ${TB} TB egress this month on $IFACE, port $PORT open"
+
+{% if egress_guard_healthcheck_url %}
+curl -fsS -m 10 --retry 3 -o /dev/null "{{ egress_guard_healthcheck_url }}" || true
+{% endif %}
