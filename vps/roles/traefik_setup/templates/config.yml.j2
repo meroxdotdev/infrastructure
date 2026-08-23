@@ -1,5 +1,44 @@
 http:
   routers:
+    # ---------------------------------------------------------------------
+    # Jellyfin — the ONLY router bound to the `public` entrypoint (:443,
+    # exposed to the internet through the Oracle NSG). Everything else lives
+    # on `https` (:8443), which is not published in docker and is reachable
+    # only by cloudflared.
+    #
+    # The property this buys: `curl -H "Host: sso.merox.dev" https://<VPS-IP>`
+    # returns 404, because that router does not exist on this port. Isolation
+    # by architecture, not by an IP allowlist — an allowlist is bypassable,
+    # since anyone can point a free Cloudflare zone at this origin IP and
+    # arrive from legitimate Cloudflare addresses.
+    #
+    # RO geoblocking is NOT here: it runs as an ipset rule in DOCKER-USER,
+    # before TLS. See vps/roles/geoblock_ro/README.md for why.
+    # ---------------------------------------------------------------------
+    jellyfin:
+      entryPoints:
+        - "public"
+      rule: "Host(`{{ jellyfin_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: jellyfin
+
+    # Same backend, login endpoint only, with a rate limit.
+    # Higher `priority` so it wins over the Host rule above.
+    jellyfin-auth:
+      entryPoints:
+        - "public"
+      rule: "Host(`{{ jellyfin_domain }}`) && PathPrefix(`/Users/AuthenticateByName`)"
+      priority: 100
+      middlewares:
+        - jellyfin-login-ratelimit
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: jellyfin
+
     guacamole:
       entryPoints:
         - "https"
@@ -12,6 +51,15 @@ http:
       service: guacamole
 
   services:
+    jellyfin:
+      loadBalancer:
+        # Dedicated K8s LB (jellyfin-external), separate from the internal
+        # gateway. Traffic reaches it over Tailscale — pfSense is the subnet
+        # router.
+        servers:
+          - url: "http://{{ jellyfin_backend_ip }}:{{ jellyfin_backend_port }}"
+        passHostHeader: true
+
     guacamole:
       loadBalancer:
         servers:
@@ -19,6 +67,17 @@ http:
         passHostHeader: true
 
   middlewares:
+    # 5 attempts per minute per source IP. There is no proxy in front of the
+    # `public` entrypoint, so `ipStrategy` without `depth` uses the real
+    # connection address — NOT X-Forwarded-For, which a client could forge.
+    jellyfin-login-ratelimit:
+      rateLimit:
+        average: 5
+        period: 1m
+        burst: 3
+        sourceCriterion:
+          ipStrategy: {}
+
     https-redirectscheme:
       redirectScheme:
         scheme: https

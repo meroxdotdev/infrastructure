@@ -22,6 +22,13 @@ authentik_docker_dir:    /srv/docker/oracle-cloud/authentik
 garage_docker_dir:       /srv/docker/oracle-cloud/garage
 
 # Routing vars needed by traefik config.yml.j2 regardless of which roles run
+# Jellyfin — the only service served directly on the VPS public IP.
+# Backend is the dedicated K8s LB, reached over Tailscale.
+# See docs/jellyfin-public-exposure.md.
+jellyfin_domain: "media.merox.dev"
+jellyfin_backend_ip: "10.57.57.107"
+jellyfin_backend_port: 8096
+
 guacamole_domain: "rmt.merox.dev"
 guacamole_ip: "172.25.10.33"
 guacamole_port: 8080

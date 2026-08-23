@@ -11,7 +11,11 @@ services:
         ipv4_address: {{ traefik_container_ip }}
     ports:
       - "80:80"
-      - "443:443"
+      # Host :443 maps to the `public` entrypoint, not to `https`. The
+      # Cloudflare tunnel reaches `https` over the docker bridge instead
+      # (172.25.10.2:443), so it never traverses a published host port.
+      # See docs/jellyfin-public-exposure.md.
+      - "443:8443"
     dns:
       - 1.1.1.1
       - 8.8.8.8

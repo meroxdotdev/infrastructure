@@ -2,19 +2,43 @@ api:
   dashboard: true
   debug: false
 
+# Two deliberately separate paths:
+#
+#   https   :443   container port only. NOT published to the host any more —
+#                  the Cloudflare tunnel reaches it over the docker bridge at
+#                  172.25.10.2:443. Serves everything that existed before, so
+#                  the ~9 `entrypoints=https` labels stay untouched.
+#   public  :8443  container port, published as host :443 and opened in the
+#                  Oracle NSG. ONLY the jellyfin router binds to it, so a
+#                  request to the public IP with `Host: sso.merox.dev` gets a
+#                  404 — that router does not exist on this port.
+#
+# asDefault on `https`: a router with no `entryPoints` otherwise binds to ALL
+# entrypoints (doc.traefik.io/traefik/reference/install-configuration/
+# entrypoints/). With this, anything forgotten stays private rather than
+# exposed to the internet.
 entryPoints:
   http:
     address: ":80"
     http:
       redirections:
         entryPoint:
-          to: https
+          to: public
           scheme: https
   https:
     address: ":443"
+    asDefault: true
+  public:
+    address: ":8443"
 
 serversTransport:
   insecureSkipVerify: true
+
+experimental:
+  plugins:
+    geoblock:
+      moduleName: github.com/david-garcia-garcia/traefik-geoblock
+      version: v0.6.0
 
 providers:
   docker:
