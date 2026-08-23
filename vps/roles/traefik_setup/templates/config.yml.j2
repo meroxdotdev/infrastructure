@@ -67,16 +67,20 @@ http:
         passHostHeader: true
 
   middlewares:
-    # 5 attempts per minute per source IP. There is no proxy in front of the
-    # `public` entrypoint, so `ipStrategy` without `depth` uses the real
-    # connection address — NOT X-Forwarded-For, which a client could forge.
+    # 5 attempts per minute per source IP. `sourceCriterion` is deliberately
+    # omitted: Traefik then defaults to the request's remote address, which is
+    # exactly what is wanted here. There is no proxy in front of the `public`
+    # entrypoint, so X-Forwarded-For would be attacker-controlled.
+    #
+    # Do not write `ipStrategy: {}` to express the default — Traefik rejects it
+    # with "ipStrategy cannot be a standalone element", and a file-provider
+    # parse error takes down every middleware in this file, including
+    # default-headers@file that the docker-label routers depend on.
     jellyfin-login-ratelimit:
       rateLimit:
         average: 5
         period: 1m
         burst: 3
-        sourceCriterion:
-          ipStrategy: {}
 
     https-redirectscheme:
       redirectScheme:
