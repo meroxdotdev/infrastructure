@@ -36,6 +36,16 @@
     - role: pihole_prereqs
       tags: ['pihole', 'dns', 'prereqs']
 
+    # Before traefik: the public port must never exist for a second without
+    # the country filter in front of it.
+    - role: geoblock_ro
+      tags: ['geoblock', 'firewall', 'services']
+
+    # Pay As You Go tenancy: egress past 10 TB/month is billed. Hard stop,
+    # not just an alert. Must be in place before the port is opened.
+    - role: egress_guard
+      tags: ['egress', 'firewall', 'services']
+
     - role: traefik_setup
       tags: ['traefik', 'proxy', 'services']
 
