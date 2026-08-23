@@ -1,0 +1,24 @@
+---
+# Kernel-level geoblocking for Traefik's public port.
+#
+# Why ipset and not a Traefik plugin: it does not depend on the Traefik
+# version (the image floats on `:latest`), it drops before the TLS handshake,
+# and it cannot be fooled with a forged X-Forwarded-For header — the common
+# geoblock plugins read that header by default, and on a directly exposed
+# entrypoint the client controls it completely.
+geoblock_enabled: true
+geoblock_countries: ["ro"]
+geoblock_port: 443
+geoblock_set_name: "geoblock_allow"
+geoblock_data_dir: "/var/lib/geoblock"
+geoblock_source_url: "https://www.ipdeny.com/ipblocks/data/aggregated"
+
+# Safety threshold: if the set ends up with fewer prefixes than this, the rule
+# is NOT applied and the script exits non-zero. Without it, one corrupted
+# download would lock out all public traffic.
+geoblock_min_prefixes: 100
+
+# Extra CIDRs allowed regardless of country. Put people travelling abroad or
+# trusted fixed addresses here.
+geoblock_extra_allow:
+  - "100.64.0.0/10"     # own tailnet

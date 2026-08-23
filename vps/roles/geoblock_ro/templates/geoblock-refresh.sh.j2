@@ -1,0 +1,64 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Rebuilds the allowed-country ipset and (re)applies the DOCKER-USER rule.
+# Run daily by geoblock.timer and at every boot by geoblock.service —
+# DOCKER-USER is flushed whenever docker or the machine restarts.
+set -eu
+
+SET="{{ geoblock_set_name }}"
+TMP="${SET}_tmp"
+DIR="{{ geoblock_data_dir }}"
+PORT="{{ geoblock_port }}"
+MIN="{{ geoblock_min_prefixes }}"
+
+mkdir -p "$DIR"
+
+# 1. Refresh the zone files. On failure keep the previous copy — a network
+#    blip must not take the service down.
+for c in {{ geoblock_countries | join(' ') }}; do
+    if curl -fsS --max-time 30 \
+        "{{ geoblock_source_url }}/${c}-aggregated.zone" -o "$DIR/${c}.zone.new"; then
+        [ -s "$DIR/${c}.zone.new" ] && mv "$DIR/${c}.zone.new" "$DIR/${c}.zone"
+    else
+        echo "geoblock: download failed for '${c}', using local copy" >&2
+    fi
+    rm -f "$DIR/${c}.zone.new"
+done
+
+# 2. Build into a temporary set so the live one is never empty.
+ipset create "$TMP" hash:net family inet maxelem 262144 -exist
+ipset flush  "$TMP"
+
+for c in {{ geoblock_countries | join(' ') }}; do
+    [ -f "$DIR/${c}.zone" ] || continue
+    while IFS= read -r net; do
+        [ -n "$net" ] && ipset add "$TMP" "$net" -exist
+    done < "$DIR/${c}.zone"
+done
+
+{% for cidr in geoblock_extra_allow %}
+ipset add "$TMP" "{{ cidr }}" -exist
+{% endfor %}
+
+# 3. Sanity check before touching anything live.
+COUNT=$(ipset list "$TMP" | grep -c '^[0-9]' || true)
+if [ "$COUNT" -lt "$MIN" ]; then
+    ipset destroy "$TMP"
+    echo "geoblock: only $COUNT prefixes (minimum $MIN) — ABORTING, nothing changed" >&2
+    exit 1
+fi
+
+# 4. Atomic swap: no window in which legitimate traffic is blocked.
+ipset create "$SET" hash:net family inet maxelem 262144 -exist
+ipset swap "$TMP" "$SET"
+ipset destroy "$TMP"
+
+# 5. Rule goes in DOCKER-USER — the chain traffic to published container
+#    ports traverses. UFW never sees this traffic.
+if ! iptables -C DOCKER-USER -p tcp --dport "$PORT" \
+        -m set ! --match-set "$SET" src -j DROP 2>/dev/null; then
+    iptables -I DOCKER-USER 1 -p tcp --dport "$PORT" \
+        -m set ! --match-set "$SET" src -j DROP
+fi
+
+echo "geoblock: $COUNT prefixes active, DROP on tcp/$PORT from elsewhere"

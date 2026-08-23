@@ -1,0 +1,81 @@
+---
+- name: Install ipset
+  ansible.builtin.apt:
+    name: ipset
+    state: present
+    update_cache: yes
+  when: geoblock_enabled
+  tags: ['geoblock', 'firewall']
+
+- name: Create geoblock data directory
+  ansible.builtin.file:
+    path: "{{ geoblock_data_dir }}"
+    state: directory
+    mode: "0755"
+  when: geoblock_enabled
+  tags: ['geoblock', 'firewall']
+
+- name: Deploy geoblock refresh script
+  ansible.builtin.template:
+    src: geoblock-refresh.sh.j2
+    dest: /usr/local/sbin/geoblock-refresh.sh
+    mode: "0755"
+  when: geoblock_enabled
+  notify: Run geoblock refresh
+  tags: ['geoblock', 'firewall']
+
+- name: Deploy geoblock systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - geoblock.service
+    - geoblock.timer
+  when: geoblock_enabled
+  notify: Reload systemd
+  tags: ['geoblock', 'firewall']
+
+- name: Flush handlers so the units exist before enabling them
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable geoblock service (re-applies the rule at every boot)
+  ansible.builtin.systemd:
+    name: geoblock.service
+    enabled: yes
+  when: geoblock_enabled
+  tags: ['geoblock', 'firewall']
+
+- name: Enable and start the daily refresh timer
+  ansible.builtin.systemd:
+    name: geoblock.timer
+    enabled: yes
+    state: started
+  when: geoblock_enabled
+  tags: ['geoblock', 'firewall']
+
+- name: Build the set now and verify it applied
+  ansible.builtin.command: /usr/local/sbin/geoblock-refresh.sh
+  register: geoblock_run
+  changed_when: true
+  when: geoblock_enabled
+  tags: ['geoblock', 'firewall']
+
+- name: Show geoblock result
+  ansible.builtin.debug:
+    msg: "{{ geoblock_run.stdout_lines | default(['skipped']) }}"
+  tags: ['geoblock', 'firewall']
+
+# Disabling: `geoblock_enabled: false` removes the rule but leaves the set
+# and the units on disk — reversible from a single variable.
+- name: Remove the DROP rule when disabled
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    protocol: tcp
+    destination_port: "{{ geoblock_port }}"
+    match: set
+    jump: DROP
+    state: absent
+  when: not geoblock_enabled
+  failed_when: false
+  tags: ['geoblock', 'firewall']
