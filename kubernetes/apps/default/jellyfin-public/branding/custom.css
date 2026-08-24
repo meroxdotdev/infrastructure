@@ -1,0 +1,45 @@
+/* studio.merox.dev - branding for the public Jellyfin instance.
+ *
+ * Set through Dashboard -> General -> Custom CSS, which stores it in the
+ * config PVC rather than in Git. That PVC is deliberately outside the backup
+ * set, so this file is the source to paste back after a recreation, next to
+ * the NVENC setting in encoding.xml.
+ *
+ * Cosmetic only. Custom CSS is served to the browser and the browser is free
+ * to ignore it, so nothing here restricts anything. Selectors follow the
+ * Jellyfin 10.11 web client and want re-checking after a major upgrade.
+ */
+
+/* The disclaimer is rendered as sanitised markdown into .loginDisclaimer,
+ * which is small unstyled text by default. Give it a card so it gets read.
+ * The colours are theme-agnostic: a grey wash reads on both the dark and the
+ * light theme, and the text colour is inherited rather than fixed.
+ */
+.loginDisclaimer {
+  max-width: 30em;
+  margin: 2em auto 0;
+  padding: 1em 1.25em;
+  border-left: 3px solid #00a4dc;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.12);
+  color: inherit;
+  font-size: 0.95em;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.loginDisclaimer p {
+  margin: 0 0 0.6em;
+}
+
+.loginDisclaimer p:last-child {
+  margin-bottom: 0;
+}
+
+/* Resetting a password needs the admin account, so self-service recovery is a
+ * dead end for the two shared users. Hide the link rather than leave them on
+ * a page that cannot help them.
+ */
+#loginPage .btnForgotPassword {
+  display: none !important;
+}

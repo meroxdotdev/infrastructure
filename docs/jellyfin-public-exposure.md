@@ -457,6 +457,7 @@ Nothing below is in Git.
 | 3 | Cloudflare DNS | `A` · `media` · `<vps-public-ip>` · **grey cloud** |
 | 4 | Oracle → VCN → Security List | ingress `TCP 443` from `0.0.0.0/0` |
 | 5 | Jellyfin admin | Known Proxies, accounts, bitrate caps, Quick Connect off |
+| 6 | Jellyfin admin → General | Login disclaimer and Custom CSS, pasted from `kubernetes/apps/default/jellyfin-public/branding/` |
 
 **Order matters, and step 1 must come first.** Traefik already listens on
 `172.25.10.2:443`, so repointing the tunnel there works immediately and is
@@ -472,6 +473,24 @@ Cloudflare WAF, rate limiting and bot protection do **not** apply to a
 grey-cloud record — they only run on proxied traffic. All filtering for
 `media.merox.dev` therefore happens on the VPS: ipset for geography, Traefik
 for rate limiting.
+
+### Login page
+
+The disclaimer and the custom CSS live in
+`kubernetes/apps/default/jellyfin-public/branding/`. Jellyfin keeps both in the
+config PVC, which is outside the backup set, so those two files are the source
+and the dashboard is only where they get pasted. They travel with the NVENC
+setting: anything that recreates the PVC loses all three.
+
+The disclaimer is rendered as sanitised markdown, so paragraphs need blank
+lines between them. Its text is Romanian because the people reading it are -
+it is the one thing in this repo written for viewers rather than for the
+operator.
+
+Neither file restricts anything. Hiding the password-reset link keeps the two
+shared accounts off a page that cannot help them, since only the admin can
+reset a password; a client that ignores the CSS still sees the link, and the
+endpoint behind it is unchanged.
 
 ---
 
