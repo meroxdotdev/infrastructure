@@ -24,11 +24,48 @@
   command: sshd -t
   changed_when: false
 
-- name: Install fail2ban
+- name: Install fail2ban and ipset
   apt:
-    name: fail2ban
+    # ipset is needed by the dockeruser ban action, which keeps banned
+    # addresses in a set rather than one iptables rule each.
+    name: [fail2ban, ipset]
     state: present
     update_cache: yes
+
+# security_hardening runs in the first play, traefik_setup in the second, so
+# the log file does not exist yet on a fresh build. fail2ban refuses to start
+# a jail whose logpath is missing, so create it here rather than letting the
+# first run fail. Traefik takes it over when it starts.
+- name: Ensure the Traefik access log exists for the jail to watch
+  ansible.builtin.file:
+    path: "{{ traefik_log_dir }}"
+    state: directory
+    mode: "0750"
+  when: fail2ban_jellyfin_enabled
+
+- name: Ensure the access log file exists
+  ansible.builtin.copy:
+    content: ""
+    dest: "{{ traefik_log_dir }}/access.log"
+    force: no
+    mode: "0640"
+  when: fail2ban_jellyfin_enabled
+
+- name: Deploy fail2ban filter for Jellyfin auth failures
+  ansible.builtin.template:
+    src: filter-jellyfin-auth.conf.j2
+    dest: /etc/fail2ban/filter.d/jellyfin-auth.conf
+    mode: "0644"
+  when: fail2ban_jellyfin_enabled
+  notify: Restart fail2ban
+
+- name: Deploy fail2ban action that bans in DOCKER-USER
+  ansible.builtin.template:
+    src: action-dockeruser.conf.j2
+    dest: /etc/fail2ban/action.d/dockeruser.conf
+    mode: "0644"
+  when: fail2ban_jellyfin_enabled
+  notify: Restart fail2ban
 
 - name: Deploy fail2ban jail config
   template:

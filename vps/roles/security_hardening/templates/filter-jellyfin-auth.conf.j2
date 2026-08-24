@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Failed Jellyfin logins, read from Traefik's JSON access log.
+#
+# Matches 401 *and* 429. The rate limit in front of this endpoint answers 429
+# once an address exceeds 5 attempts a minute, so a filter that only counted
+# 401 could never reach maxretry - the rate limit shielded the attacker from
+# ever being banned. Sustained 429s on a login endpoint are abuse by
+# definition; a person who fat-fingers a password does not produce them.
+#
+# Lookaheads rather than one ordered pattern: Traefik does not guarantee the
+# order of keys in the JSON object, so matching them positionally is brittle.
+[Definition]
+failregex = ^(?=.*"DownstreamStatus":(?:401|429))(?=.*"RequestPath":"/Users/AuthenticateByName)(?=.*"ClientHost":"<HOST>").*$
+ignoreregex =
+datepattern = "StartUTC":"%%Y-%%m-%%dT%%H:%%M:%%S

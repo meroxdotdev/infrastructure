@@ -14,3 +14,25 @@ docker_log_max_size: "10m"
 docker_log_max_file: "3"
 
 tailscale_network: "100.64.0.0/10"
+
+# Ban repeated failed logins against the public Jellyfin entrypoint.
+#
+# Bans are written to DOCKER-USER, because docker publishes container ports
+# through its own chains and never traverses INPUT, where fail2ban's stock
+# actions write. Target is the Traefik container and its container-side port
+# for the same DNAT reason documented in the geoblock role.
+fail2ban_jellyfin_enabled: true
+fail2ban_jellyfin_maxretry: 8
+fail2ban_jellyfin_findtime: 600
+fail2ban_jellyfin_bantime: 86400
+fail2ban_target_ip: "172.25.10.2"
+fail2ban_target_port: 8443
+
+# Optional healthchecks.io URL. When set, a ban posts to its /fail endpoint,
+# which fires the notification channel already used for backups. Create the
+# check first and put the URL in the vault.
+fail2ban_notify_url: ""
+
+# Defined here as well as in traefik_setup: this role runs first and has to
+# create the file before fail2ban starts. Keep the two in step.
+traefik_log_dir: /var/log/traefik

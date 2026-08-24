@@ -2,7 +2,11 @@
 bantime  = {{ fail2ban_ssh_bantime }}
 findtime = {{ fail2ban_ssh_findtime }}
 maxretry = {{ fail2ban_ssh_maxretry }}
-ignoreip = 127.0.0.1/8 ::1 {{ tailscale_network }}
+# 172.16.0.0/12 covers the docker bridge: a request made from the host to its
+# own published port arrives at Traefik as the bridge gateway, so local health
+# checks and manual testing would otherwise ban the host from its own service.
+# Real external traffic never appears with that source.
+ignoreip = 127.0.0.1/8 ::1 {{ tailscale_network }} 172.16.0.0/12
 
 [sshd]
 enabled  = true
@@ -11,3 +15,23 @@ logpath  = %(sshd_log)s
 backend  = %(sshd_backend)s
 maxretry = {{ fail2ban_ssh_maxretry }}
 bantime  = {{ fail2ban_ssh_bantime }}
+
+{% if fail2ban_jellyfin_enabled %}
+# Failed logins against the public Jellyfin entrypoint.
+#
+# The rate limit in Traefik slows guessing to 5/min but never stops it; a
+# patient attacker on a Romanian residential address can keep going forever.
+# This bans them.
+#
+# ignoreip above already covers the tailnet, so nothing reached over Tailscale
+# can lock itself out.
+[jellyfin-auth]
+enabled   = true
+filter    = jellyfin-auth
+logpath   = {{ traefik_log_dir }}/access.log
+backend   = auto
+maxretry  = {{ fail2ban_jellyfin_maxretry }}
+findtime  = {{ fail2ban_jellyfin_findtime }}
+bantime   = {{ fail2ban_jellyfin_bantime }}
+action    = dockeruser
+{% endif %}
