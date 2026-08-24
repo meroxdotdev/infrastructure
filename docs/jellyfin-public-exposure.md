@@ -264,6 +264,48 @@ Cloudflare tunnel and Tailscale are never touched — only the public port.
 
 ---
 
+## Phase 3c — Detection and banning · DONE
+
+Everything up to here prevents. Nothing noticed. There was no access log, no
+alert, and no mechanism that stopped a patient attacker — the rate limit slows
+guessing to 5/min but never ends it.
+
+**Traefik access log**, JSON, 4xx/5xx only. Successful playback would write a
+line per HLS segment and drown the signal. The file is root-only `0640` and
+rotated daily for 14 days, because Jellyfin sometimes carries an `api_key` in
+the query string and `RequestPath` includes it.
+
+`logrotate` is installed by the role: it is absent from the minimal Oracle
+image, so shipping the config alone would have been an inert file and an
+unbounded log.
+
+**fail2ban jail** reading that log, banning after 8 failures in 10 minutes for
+24 hours. Two things about it are not obvious:
+
+The ban is written to `DOCKER-USER` through an ipset, not to `INPUT` where
+fail2ban's stock actions go. Docker publishes container ports through its own
+chains and never traverses `INPUT`, so a stock ban would have been silently
+inert — the same trap the geoblock rule fell into twice.
+
+The filter matches **401 and 429**. A first version counted only 401 and could
+never fire: after three attempts the rate limit answers 429, so the rate limit
+was shielding the attacker from ever reaching the ban threshold. Sustained 429s
+on a login endpoint are abuse by definition.
+
+`ignoreip` covers the tailnet and the docker bridge — a request from the host to
+its own published port arrives as the bridge gateway, so local checks would
+otherwise ban the host from its own service.
+
+Verified end to end: `fail2ban-regex` matches real log lines and ignores
+unrelated ones, ten failures produced a real ban, and the address landed in the
+ipset with a 24-hour timeout.
+
+Optional: `fail2ban_notify_url` posts to a healthchecks.io `/fail` endpoint on
+ban, firing the notification channel already used for backups. Empty by
+default; create the check and put the URL in the vault.
+
+---
+
 ## Phase 4 — Jellyfin settings · PENDING
 
 **Known Proxies** (Admin → Networking) — add to the existing `10.57.57.101`:
@@ -430,6 +472,7 @@ resolves to `10.57.57.101` at full bitrate.
 | Geo-IP is inexact — roaming and VPNs misfire | `geoblock_extra_allow`, or invite them to the tailnet |
 | An unauthenticated Jellyfin CVE | Renovate tracks the digest; stay current; Phase 5 limits the blast radius |
 | Oracle changes the free tier again | already halved once in 2026; a paid EU edge is ~€22/year |
+| No detection: nothing logged or alerted | closed in phase 3c — access log, fail2ban, optional healthchecks ping |
 | Egress overage billed on the PAYG tenancy | `egress_guard` cuts the public port at 6 TB, hourly — a bill is not reachable |
 | Provider AUP on copyrighted material | applies to every host; a private, authenticated, geoblocked instance is not a discoverable target |
 
