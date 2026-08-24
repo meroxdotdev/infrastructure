@@ -83,11 +83,17 @@ spec:
     route:
       # Internal only, for administering it from the LAN. Public access does
       # not come through here - it arrives at the dedicated LoadBalancer from
-      # the VPS. k8s.${SECRET_DOMAIN} is excluded from external-dns, so this
+      # the VPS. k8s.merox.dev is excluded from external-dns, so this
       # name never reaches public DNS.
+      #
+      # The hostname is written out rather than substituted: that variable
+      # lives in the cluster-secrets Secret, while every app in this namespace
+      # substitutes only from the cluster-vars ConfigMap. Adding sops
+      # decryption for one string is not worth the divergence - the sibling
+      # Jellyfin writes its hostname out for the same reason.
       app:
         hostnames:
-          - "studio.k8s.${SECRET_DOMAIN}"
+          - "studio.k8s.merox.dev"
         parentRefs:
           - name: internal
             namespace: kube-system
