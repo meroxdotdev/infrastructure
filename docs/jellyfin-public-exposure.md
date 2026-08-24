@@ -3,7 +3,9 @@
 Serving `media.merox.dev` to family and close friends over the internet, from
 the existing Oracle VPS, at zero extra cost, without publishing the home IP.
 
-Status: **in progress.** Phase 1 applied and verified, phases 2-5 pending.
+Status: **built and verified end to end.** The Oracle ingress rule for 443 is
+currently removed, so nothing is publicly reachable until it is put back.
+Everything else is in place and was verified while it was open.
 
 ---
 
@@ -158,7 +160,7 @@ over UDP and Tailscale is WireGuard over UDP, so neither is touched.
 
 ---
 
-## Phase 2 — Traefik: two doors · WRITTEN, NOT APPLIED
+## Phase 2 — Traefik: two doors · DONE
 
 | Entrypoint | Container port | Published | Who listens |
 |---|---|---|---|
@@ -211,30 +213,48 @@ connection address rather than a forgeable header.
 
 ---
 
-## Phase 3 — Geoblock · WRITTEN, NOT APPLIED
+## Phase 3 — Geoblock · DONE
 
-New role [`vps/roles/geoblock_ro/`](../vps/roles/geoblock_ro/README.md): an
-ipset of RO prefixes enforced as a `DROP` in `DOCKER-USER` on `tcp/443`,
-refreshed daily by a systemd timer and at every boot.
+Role [`vps/roles/geoblock_ro/`](../vps/roles/geoblock_ro/README.md): an ipset
+enforced as a `DROP` in `DOCKER-USER`, refreshed daily and at every boot.
+
+**Allow by operator, not by country.** The first version used an ipdeny country
+list and leaked: a phone on Surfshark reached the service from several
+countries. Every exit that got through was a hosting network registered in
+Romania and therefore inside the country list — M247 (AS9009) alone announces
+~4250 prefixes against ~610 for every Romanian consumer ISP combined. The
+allow-list is now the prefixes announced by AS8708, AS9050, AS8953, AS12302 and
+AS6910, fetched from RIPEstat.
 
 Not a Traefik plugin: they all read `X-Forwarded-For` by default, which a
 client fully controls on a directly exposed entrypoint. ipset also drops before
 the TLS handshake and does not couple to the floating `traefik:latest` image.
 
+**The rule took three attempts**, two of which looked right and silently were
+not — see the role README. Short version: docker DNATs before `FORWARD`, so
+`--dport 443` matched nothing; `--ctorigdstport 443` additionally matched
+container-initiated outbound HTTPS and dropped its replies; the working form
+matches the container address and its container-side port.
+
+Verified while the port was open: M247, HostRoyale, Datacamp and Googlebot all
+dropped; Orange and DIGI allowed; 343 packets dropped within the first hour.
+
 ---
 
-## Phase 3b — Egress circuit breaker · WRITTEN, NOT APPLIED
+## Phase 3b — Egress circuit breaker · DONE
 
 The tenancy is **Pay As You Go**, so egress past Oracle's 10 TB/month free
 allowance is billed at roughly $0.0085/GB. An OCI budget only alerts.
 
-New role [`vps/roles/egress_guard/`](../vps/roles/egress_guard/README.md): an
-hourly timer reads the monthly TX counter on the billed uplink and drops
-tcp/443 in `DOCKER-USER` above 6 TB.
+Role [`vps/roles/egress_guard/`](../vps/roles/egress_guard/README.md): an
+hourly timer reads the monthly TX counter on the billed uplink and drops the
+public entrypoint above the configured ceiling. The thresholds live in the
+Ansible vault, not here — stating the exact cut-off in a public repo tells
+anyone how much traffic to push to take the service down.
 
 This is a guarantee rather than a hope. The home uplink measures ~430 Mbps, so
-at most ~0.19 TB can move between two hourly checks; worst case lands near
-6.2 TB against a 10 TB allowance, so **no egress bill is reachable**. Baseline
+at most ~0.19 TB can move between two hourly checks, so the worst case stays
+comfortably inside the 10 TB allowance and **no egress bill is reachable**. Baseline
 before Jellyfin was 16 GB/month; three concurrent 10 Mbps streams four hours a
 day would add ~1.6 TB.
 
@@ -304,19 +324,30 @@ cannot complete a browser login flow. Open upstream request:
 
 ---
 
-## Phase 5 — Egress containment · PENDING
+## Phase 5 — Egress containment · DONE
 
-`kubernetes/apps/default/network-policy.yaml` defines only `ingress`. In Cilium
-that leaves egress completely open: a Jellyfin RCE reaches Proxmox
-(`10.57.57.250`), pfSense (`10.57.57.1`), the NAS and the whole internet.
+`kubernetes/apps/default/jellyfin/app/networkpolicy.yaml` gains a
+`jellyfin-egress` policy. The namespace baseline defines ingress only, which in
+Cilium leaves egress wide open — a Jellyfin RCE reached Proxmox, pfSense, the
+Synology and every other pod with nothing in the way.
 
-A VPS in front does **not** reduce this — the same exploit is equally
-reachable through the proxy. This is the change that actually limits the damage.
+A VPS in front does not help against that: the same request is equally
+reachable through the proxy. This is the control that turns "compromise of the
+house" into "compromise of one container", and it is worth more than every
+firewall rule on the edge.
 
-Add a dedicated egress policy allowing only DNS to `kube-dns`, NFS to
-`${NFS_SERVER}:2049`, and HTTPS to world (metadata providers, plugin updates).
-Run `hubble observe --verdict DROPPED` in dry-run first — the same method that
-caught the 12 Jellyseerr drops on the ingress policy.
+Allowed: DNS to kube-dns, and 443/80 to the internet with RFC1918, CGNAT and
+link-local carved out. Without the carve-out, `world` on 443 would still reach
+pfSense's web UI. NFS is deliberately absent — `/media` is an inline nfs volume
+mounted by the kubelet on the node, so that traffic never leaves the pod's
+network namespace.
+
+Verified from inside the pod: TMDb, TheTVDB, the plugin repo and image CDNs all
+reachable; pfSense, Proxmox, pve rpcbind and the Synology all blocked; zero
+DROPPED flows in Hubble and no errors in the Jellyfin log.
+
+Side effects, both wanted: DLNA/SSDP discovery and UPnP port mapping stop
+working.
 
 ---
 
