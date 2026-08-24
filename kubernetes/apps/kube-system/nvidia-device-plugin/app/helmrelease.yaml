@@ -39,3 +39,23 @@ spec:
     nodeSelector:
       nvidia.com/gpu: "true"
     runtimeClassName: nvidia
+    # Time-slicing: advertise the single Quadro as two schedulable units so the
+    # personal and public Jellyfin can both hold one.
+    #
+    # Needed because the public instance transcodes in software otherwise, and
+    # one 1080p software transcode measured 7.2 of the node's 10 cores - a
+    # second concurrent stream has nowhere to run, and on a single-node cluster
+    # it starves etcd before it starves the film.
+    #
+    # This is sharing, not isolation: both pods use the same 5 GB of VRAM (two
+    # transcodes stay under 1 GB) and a wedged context affects both. Pascal
+    # Quadro has no NVENC session cap, unlike GeForce.
+    config:
+      map:
+        default: |-
+          version: v1
+          sharing:
+            timeSlicing:
+              resources:
+                - name: nvidia.com/gpu
+                  replicas: 2

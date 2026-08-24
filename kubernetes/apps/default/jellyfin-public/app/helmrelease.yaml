@@ -33,6 +33,8 @@ spec:
       jellyfin-public:
         annotations:
           reloader.stakater.com/auto: "true"
+        pod:
+          runtimeClassName: nvidia
         containers:
           app:
             image:
@@ -68,6 +70,14 @@ spec:
                 cpu: 100m
               limits:
                 memory: 4Gi
+                # A time-sliced share of the Quadro. Without it Jellyfin
+                # transcodes in software, and one 1080p stream measured 7.2 of
+                # this node's 10 cores.
+                nvidia.com/gpu: 1
+                # Hard ceiling so a transcode can never starve etcd. The node
+                # is single, so there is nowhere for the control plane to move
+                # if this pod takes the machine.
+                cpu: 4
     defaultPodOptions:
       securityContext:
         runAsNonRoot: true
