@@ -57,12 +57,6 @@ accessLog:
 serversTransport:
   insecureSkipVerify: true
 
-experimental:
-  plugins:
-    geoblock:
-      moduleName: github.com/david-garcia-garcia/traefik-geoblock
-      version: v0.6.0
-
 providers:
   docker:
     endpoint: "unix:///var/run/docker.sock"

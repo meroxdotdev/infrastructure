@@ -35,8 +35,12 @@ http:
       middlewares:
         - jellyfin-login-ratelimit
         - default-headers
-      tls:
-        certResolver: cloudflare
+      # TLS on, but no certResolver: the router above already requests the
+      # certificate for this hostname, and Traefik's certificate store is
+      # global. Two routers on one host both asking ACME race each other into
+      # "81058: An identical record already exists" on the _acme-challenge TXT
+      # record, and neither gets a certificate.
+      tls: {}
       service: jellyfin
 
     guacamole:
