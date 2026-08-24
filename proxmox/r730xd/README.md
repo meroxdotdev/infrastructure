@@ -366,3 +366,43 @@ Dead-man's switch for total site outage (power/WAN/pve down — nothing else
 can report that). `/root/scripts/heartbeat-ping.sh`, cron `*/5 * * * *`,
 pings healthchecks.io `homelab-heartbeat` (period 5min, grace 10min,
 alerts via Email to hello@merox.dev — independent of the Telegram channel).
+
+## Drives without SES temperature reporting make the fans scream
+
+A consumer SSD added to the backplane took every fan from ~3200 to ~8900 RPM
+and added 16 W, while the chassis stayed cold — inlet 25 °C, exhaust 28 °C,
+CPU 40 °C. Nothing was overheating; the fans were guessing.
+
+The backplane (`BP13G+EXP`) has **no temperature sensors of its own**
+(`TSs=0` in `storcli /c0/eall show`). Every thermal reading from the front of
+the chassis comes from the drives themselves. One drive that will not answer
+leaves the algorithm blind, so it assumes the worst and ramps everything.
+
+Diagnosis, in one command:
+
+```sh
+for s in 0 1 16; do storcli /c0/e32/s$s show all | grep "Drive Temperature"; done
+```
+
+A healthy drive answers `25C`. The offender answered `N/A`. Reading deeper:
+
+```sh
+sg_logs --temperature /dev/sdX     # Current temperature = 255 C   -> 0xFF, invalid
+smartctl -A /dev/sdX | grep -i temp # 26                           -> sensor works fine
+```
+
+The drive has a working sensor and reports it over ATA SMART, but returns the
+invalid sentinel on the SCSI log page the backplane queries. Enterprise drives
+in the same chassis — including four non-Dell Intel SSDs — answer correctly,
+so "third-party" is not the criterion. Answering is.
+
+What does not help: another slot (all 24 sit behind the same SES expander),
+formatting, or `ThirdPartyPCIFanResponse`. That last one governs PCIe cards,
+and the Quadro in this box is already invisible to iDRAC
+(`PCIe Slot1-4 = Not Readable`) without ever having caused a ramp — proof the
+lever is not connected to this problem.
+
+There is no official Dell fix; their guidance is to use certified drives. The
+options are a drive that reports temperature, an onboard SATA port outside the
+SES enclosure, or a PID fan controller in manual mode. The first is the only
+one that does not trade away a safety mechanism.

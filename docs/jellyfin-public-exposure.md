@@ -1,7 +1,11 @@
 # Jellyfin — public exposure
 
-Serving `media.merox.dev` to family and close friends over the internet, from
+Serving `studio.merox.dev` to family and close friends over the internet, from
 the existing Oracle VPS, at zero extra cost, without publishing the home IP.
+
+What faces the internet is a **second, dedicated Jellyfin** with its own
+curated 1080p library on SSD. The personal instance keeps the full 4K library
+on the SAS array and is never reachable from outside.
 
 Status: **built and verified end to end.** The Oracle ingress rule for 443 is
 currently removed, so nothing is publicly reachable until it is put back.
@@ -12,26 +16,54 @@ Everything else is in place and was verified while it was open.
 ## Architecture
 
 ```
-Viewers ──▶ media.merox.dev (grey-cloud A record, no CDN in path)
+Viewers ──▶ studio.merox.dev (grey-cloud A record, no CDN)
                  │
-          <vps-public-ip> : 443          Oracle VPS, us-phoenix-1
-          ipset DROP: non-RO             kernel, before TLS
-          Traefik entrypoint `public`    ONLY the jellyfin router
+          <vps-public-ip> : 443        Oracle VPS, us-phoenix-1
+          ipset DROP: non-RO ISPs      kernel, before TLS
+          fail2ban ban set             kernel, before TLS
+          Traefik entrypoint `public`  ONLY the jellyfin router
                  │  Tailscale (WireGuard)
                  ▼
-          pfSense subnet router ──▶ 10.57.57.107:8096
-                                    Jellyfin (NFS ro, non-root, caps dropped)
+          pfSense subnet router ──▶ 10.57.57.108:8096
+                                    jellyfin-public
+                                      /media (ro) = rpool/jellyfin-public  SSD
 
-Cloudflare ──tunnel──▶ cloudflared (systemd, host net)
-          inside.merox.dev ──▶ 172.25.10.2:443   Traefik `https`, bridge only
-          sso.merox.dev    ──▶ 172.25.10.72:9000 Authentik, bypasses Traefik
-          rmt.merox.dev    ──▶ 172.25.10.72:9000 Authentik outpost proxy
-
-LAN / Tailscale ──▶ k8s-gateway ──▶ 10.57.57.101  (unchanged, full bitrate)
+LAN / Tailscale ──▶ media.merox.dev ──▶ 10.57.57.107  personal, untouched
+                                          /media (ro) = media/library  SAS, 4K
 ```
 
 The home network gains **no new inbound ports**. The only public listener is
 the VPS.
+
+---
+
+## Two instances, on purpose
+
+The internet-facing service is a separate Jellyfin, not the personal one opened
+up. That buys four things at the cost of a second HelmRelease:
+
+| | Personal | Public |
+|---|---|---|
+| Library | 1.11 TB, 4K, SAS array | curated 1080p, SSD |
+| Reachable from internet | no | yes |
+| Accounts, watch history | yours | two shared accounts |
+| GPU | Quadro P2200 | none - content direct-plays |
+| Longhorn backup | yes | no, fully reconstructible |
+
+A remote code execution in the public instance reaches a container with a
+read-only view of re-encoded films and nothing else. It cannot see the personal
+library, the *arr stack, or the watch history.
+
+**Friends cannot watch 4K because there is no 4K on that filesystem.** That is
+a fact about storage rather than a policy someone can misconfigure.
+
+**Streaming to friends never wakes the SAS array.** Twelve 10K SAS drives cost
+roughly 60-80 W once spun up; the SSD path costs about 1.5 W. The separation
+pays for itself in power, not just in blast radius.
+
+Content is *derived*: films are re-encoded once from the main library to H.264
+1080p, around 6-8 GB each, so roughly 50 titles fit in the 400 GB quota. One
+download, two versions. No second *arr stack, no duplicate indexer load.
 
 ---
 
