@@ -23,3 +23,69 @@ spec:
         - ports:
             - port: "8096"
               protocol: TCP
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Egress containment, added when Jellyfin was exposed publicly.
+#
+# ../../network-policy.yaml defines ingress only. In Cilium that leaves egress
+# entirely open, so an RCE in Jellyfin — and 2026 produced three serious ones,
+# including an unauthenticated RCE (CVE-2026-35033) and a CVSS 9.9 path
+# traversal (CVE-2026-35031) — reaches Proxmox on 10.57.57.250, pfSense on
+# 10.57.57.1, the Synology and every other pod, with nothing in the way.
+#
+# The VPS in front does not help here at all: the same request is equally
+# reachable through the proxy. This is the control that turns "compromise of
+# the house" into "compromise of one container", and it is worth more than
+# every firewall rule on the edge.
+#
+# Declaring any egress rule flips this endpoint to default-deny for egress, so
+# everything Jellyfin genuinely needs has to be listed:
+#
+#   DNS      - name resolution, kube-dns only
+#   443/80   - metadata providers (TMDb, TheTVDB, fanart), plugin catalogue,
+#              artwork CDNs, update checks
+#
+# NFS is deliberately absent: /media comes from an inline nfs volume, which the
+# kubelet mounts on the node. The traffic leaves the node, never the pod's
+# network namespace, so a rule here would be cargo cult.
+#
+# RFC1918, CGNAT and link-local are carved out of the internet rule on purpose.
+# Without the carve-out, "world" on 443 would still reach pfSense's web UI and
+# anything else on the LAN listening on 443 — which is most of what this policy
+# exists to prevent.
+#
+# Side effects, both wanted: DLNA/SSDP discovery (UDP 1900 to the LAN) and
+# UPnP/NAT-PMP port mapping towards the router stop working.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: jellyfin-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: jellyfin
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8        # LAN, node subnet, cluster pod/service nets
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 100.64.0.0/10     # tailnet
+            - 169.254.0.0/16    # link-local, cloud metadata
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "80"
+              protocol: TCP
