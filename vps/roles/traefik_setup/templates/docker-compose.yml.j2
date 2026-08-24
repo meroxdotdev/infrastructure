@@ -31,6 +31,9 @@ services:
       - {{ traefik_docker_dir }}/data/traefik.yml:/traefik.yml:ro
       - {{ traefik_docker_dir }}/data/acme.json:/acme.json
       - {{ traefik_docker_dir }}/config:/config:ro
+      # Access log lives on the host so fail2ban, which runs outside the
+      # container, can read it.
+      - {{ traefik_log_dir }}:/var/log/traefik
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.entrypoints=http"

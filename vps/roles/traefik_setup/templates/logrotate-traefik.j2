@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# The access log can contain api_key values from Jellyfin query strings, so
+# keep the permissions tight and the retention short.
+{{ traefik_log_dir }}/access.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 root root
+    # copytruncate rather than a signal: Traefik holds the file open and has no
+    # reopen signal, so renaming it would leave it writing to the rotated inode.
+    # fail2ban follows the same file, and copytruncate keeps its position valid.
+    copytruncate
+}

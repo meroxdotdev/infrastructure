@@ -31,6 +31,29 @@ entryPoints:
   public:
     address: ":8443"
 
+# Access log. Two reasons: nothing else records who reached the public
+# entrypoint, and fail2ban needs a file to read failed logins from.
+#
+# Only 4xx/5xx are kept. Successful playback would otherwise write a line per
+# HLS segment and drown the signal.
+#
+# Jellyfin sometimes carries an api_key in the query string, and RequestPath
+# includes it. The file is therefore root-only and rotated; do not relax those
+# permissions or ship it somewhere less protected.
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+  bufferingSize: 50
+  filters:
+    statusCodes:
+      - "400-499"
+      - "500-599"
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
+
 serversTransport:
   insecureSkipVerify: true
 

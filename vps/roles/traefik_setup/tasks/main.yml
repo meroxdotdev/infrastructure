@@ -19,6 +19,26 @@
         gateway: "{{ traefik_network_gateway }}"
     state: present
 
+- name: Install logrotate
+  # Not present on the minimal Oracle Ubuntu image. Without it the logrotate
+  # config below is an inert file and the access log grows unbounded.
+  ansible.builtin.apt:
+    name: logrotate
+    state: present
+    update_cache: yes
+
+- name: Create Traefik access log directory
+  ansible.builtin.file:
+    path: "{{ traefik_log_dir }}"
+    state: directory
+    mode: "0750"
+
+- name: Deploy logrotate config for the access log
+  ansible.builtin.template:
+    src: logrotate-traefik.j2
+    dest: /etc/logrotate.d/traefik
+    mode: "0644"
+
 - name: Deploy traefik.yml static configuration
   template:
     src: traefik.yml.j2
