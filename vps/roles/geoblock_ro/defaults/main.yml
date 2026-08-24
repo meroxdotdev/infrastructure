@@ -7,18 +7,57 @@
 # geoblock plugins read that header by default, and on a directly exposed
 # entrypoint the client controls it completely.
 geoblock_enabled: true
-geoblock_countries: ["ro"]
-geoblock_port: 443
+
+# Allow by network operator, not by country.
+#
+# The first version allowed "Romania" from an ipdeny country list and leaked
+# badly: a phone on Surfshark walked through from several countries. Every
+# offending exit was a hosting network *registered* in Romania and therefore
+# inside the country list - M247 (AS9009) alone announces 4251 prefixes of VPN
+# space, versus ~610 for every Romanian consumer ISP combined. Country-level
+# geo-IP cannot separate a residential user from a datacenter in the same
+# country, so the model was wrong, not the data.
+#
+# Consumer ISPs cover the people this is actually for, and exclude datacenters
+# by construction. Someone on a smaller regional ISP will be blocked: add their
+# ASN here, or their address to geoblock_extra_allow.
+geoblock_asns:
+  - { asn: 8708,  name: "DIGI Romania" }
+  - { asn: 9050,  name: "Orange Romania, fixed" }
+  - { asn: 8953,  name: "Orange Romania, mobile" }
+  - { asn: 12302, name: "Vodafone Romania" }
+  - { asn: 6910,  name: "DIGI Romania, border" }
+
+geoblock_ripestat_url: "https://stat.ripe.net/data/announced-prefixes/data.json"
 geoblock_set_name: "geoblock_allow"
 geoblock_data_dir: "/var/lib/geoblock"
-geoblock_source_url: "https://www.ipdeny.com/ipblocks/data/aggregated"
 
-# Safety threshold: if the set ends up with fewer prefixes than this, the rule
-# is NOT applied and the script exits non-zero. Without it, one corrupted
-# download would lock out all public traffic.
+# The rule matches the FORWARDED destination: the Traefik container address and
+# its container-side port, not the published host port. Docker DNATs in nat
+# PREROUTING, so by the time a packet reaches FORWARD the port is already
+# translated and a rule written against the host port matches nothing.
+geoblock_target_ip: "172.25.10.2"
+geoblock_target_port: 8443
+
 geoblock_min_prefixes: 100
 
 # Extra CIDRs allowed regardless of country. Put people travelling abroad or
 # trusted fixed addresses here.
 geoblock_extra_allow:
   - "100.64.0.0/10"     # own tailnet
+
+# Holes punched in the allow set, applied after the country zones as ipset
+# "nomatch" entries so a more specific prefix overrides the broader country
+# block that contains it.
+#
+# Country-level geo-IP cannot distinguish a VPN exit abroad from a real user,
+# when the exit address is registered to this country. ipdeny lists
+# 146.70.0.0/16 as Romania - it is M247 space, used by Surfshark and others as
+# exit nodes worldwide, so a phone on a VPN in any country walked straight
+# through the filter. Verified against a live Surfshark exit, 146.70.120.36.
+#
+# This is whack-a-mole and does not make geoblocking a security boundary. It
+# stays what it always was: noise reduction against automated scanning. The
+# real controls are authentication, staying patched, and the egress cap.
+geoblock_deny_overrides:
+  - "146.70.0.0/16"     # M247 - registered RO, used as VPN exits globally

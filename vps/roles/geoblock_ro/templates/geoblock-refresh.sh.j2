@@ -1,50 +1,59 @@
 #!/bin/sh
 # {{ ansible_managed }}
-# Rebuilds the allowed-country ipset and (re)applies the DOCKER-USER rule.
-# Run daily by geoblock.timer and at every boot by geoblock.service —
+# Rebuilds the allow-list ipset and (re)applies the DOCKER-USER rule.
+# Run daily by geoblock.timer and at every boot by geoblock.service -
 # DOCKER-USER is flushed whenever docker or the machine restarts.
 set -eu
 
 SET="{{ geoblock_set_name }}"
 TMP="${SET}_tmp"
 DIR="{{ geoblock_data_dir }}"
-PORT="{{ geoblock_port }}"
+TARGET_IP="{{ geoblock_target_ip }}"
+TARGET_PORT="{{ geoblock_target_port }}"
 MIN="{{ geoblock_min_prefixes }}"
 
 mkdir -p "$DIR"
 
-# 1. Refresh the zone files. On failure keep the previous copy — a network
-#    blip must not take the service down.
-for c in {{ geoblock_countries | join(' ') }}; do
-    if curl -fsS --max-time 30 \
-        "{{ geoblock_source_url }}/${c}-aggregated.zone" -o "$DIR/${c}.zone.new"; then
-        [ -s "$DIR/${c}.zone.new" ] && mv "$DIR/${c}.zone.new" "$DIR/${c}.zone"
+# 1. Pull the prefixes each allowed network announces. On failure keep the
+#    previous copy - a RIPEstat hiccup must not take the service down.
+for asn in {{ geoblock_asns | map(attribute='asn') | join(' ') }}; do
+    if curl -fsS --max-time 45 \
+        "{{ geoblock_ripestat_url }}?resource=AS${asn}" -o "$DIR/AS${asn}.json.new"; then
+        if jq -e '.data.prefixes | length > 0' "$DIR/AS${asn}.json.new" >/dev/null 2>&1; then
+            jq -r '.data.prefixes[].prefix | select(test(":") | not)' \
+                "$DIR/AS${asn}.json.new" > "$DIR/AS${asn}.zone"
+        fi
     else
-        echo "geoblock: download failed for '${c}', using local copy" >&2
+        echo "geoblock: RIPEstat lookup failed for AS${asn}, using local copy" >&2
     fi
-    rm -f "$DIR/${c}.zone.new"
+    rm -f "$DIR/AS${asn}.json.new"
 done
 
 # 2. Build into a temporary set so the live one is never empty.
 ipset create "$TMP" hash:net family inet maxelem 262144 -exist
 ipset flush  "$TMP"
 
-for c in {{ geoblock_countries | join(' ') }}; do
-    [ -f "$DIR/${c}.zone" ] || continue
+for asn in {{ geoblock_asns | map(attribute='asn') | join(' ') }}; do
+    [ -f "$DIR/AS${asn}.zone" ] || continue
     while IFS= read -r net; do
         [ -n "$net" ] && ipset add "$TMP" "$net" -exist
-    done < "$DIR/${c}.zone"
+    done < "$DIR/AS${asn}.zone"
 done
 
 {% for cidr in geoblock_extra_allow %}
 ipset add "$TMP" "{{ cidr }}" -exist
 {% endfor %}
 
-# 3. Sanity check before touching anything live.
-COUNT=$(ipset list "$TMP" | grep -c '^[0-9]' || true)
+# Holes, applied last: a "nomatch" entry beats the broader prefix containing it.
+{% for cidr in geoblock_deny_overrides %}
+ipset add "$TMP" "{{ cidr }}" nomatch -exist
+{% endfor %}
+
+# 3. Sanity check before touching anything live. nomatch entries do not count.
+COUNT=$(ipset list "$TMP" | grep '^[0-9]' | grep -vc nomatch || true)
 if [ "$COUNT" -lt "$MIN" ]; then
     ipset destroy "$TMP"
-    echo "geoblock: only $COUNT prefixes (minimum $MIN) — ABORTING, nothing changed" >&2
+    echo "geoblock: only $COUNT prefixes (minimum $MIN) - ABORTING, nothing changed" >&2
     exit 1
 fi
 
@@ -53,12 +62,22 @@ ipset create "$SET" hash:net family inet maxelem 262144 -exist
 ipset swap "$TMP" "$SET"
 ipset destroy "$TMP"
 
-# 5. Rule goes in DOCKER-USER — the chain traffic to published container
-#    ports traverses. UFW never sees this traffic.
-if ! iptables -C DOCKER-USER -p tcp --dport "$PORT" \
+# 5. Rule goes in DOCKER-USER - the chain forwarded traffic to containers
+#    traverses. UFW never sees this traffic.
+#
+#    Match the forwarded destination explicitly: the Traefik container address
+#    and its container-side port. Two earlier attempts were wrong.
+#
+#    "--dport 443" matched nothing, because docker DNATs in nat PREROUTING and
+#    FORWARD already sees the container port.
+#
+#    "--ctorigdstport 443" was worse: it also matched connections a container
+#    *initiates* towards an external port 443, dropping the replies to every
+#    outbound HTTPS request the containers made.
+if ! iptables -C DOCKER-USER -p tcp -d "$TARGET_IP" --dport "$TARGET_PORT" \
         -m set ! --match-set "$SET" src -j DROP 2>/dev/null; then
-    iptables -I DOCKER-USER 1 -p tcp --dport "$PORT" \
+    iptables -I DOCKER-USER 1 -p tcp -d "$TARGET_IP" --dport "$TARGET_PORT" \
         -m set ! --match-set "$SET" src -j DROP
 fi
 
-echo "geoblock: $COUNT prefixes active, DROP on tcp/$PORT from elsewhere"
+echo "geoblock: $COUNT prefixes allowed, DROP on $TARGET_IP:$TARGET_PORT from elsewhere"
