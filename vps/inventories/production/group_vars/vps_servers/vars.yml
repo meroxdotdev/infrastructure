@@ -51,6 +51,9 @@ tailscale_authkey_expires: "2027-06-14"
 # vault has: vault_tailscale_auth_key  →  role expects: tailscale_auth_key
 tailscale_auth_key: "{{ vault_tailscale_auth_key }}"
 
+# fail2ban posts here on every ban against the public Jellyfin entrypoint.
+fail2ban_notify_url: "{{ vault_fail2ban_notify_url }}"
+
 # vault has: authentik_pg_pass  →  role/template expects: authentik_db_password
 authentik_db_password: "{{ authentik_pg_pass }}"
 

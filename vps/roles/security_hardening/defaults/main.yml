@@ -28,9 +28,24 @@ fail2ban_jellyfin_bantime: 86400
 fail2ban_target_ip: "172.25.10.2"
 fail2ban_target_port: 8443
 
-# Optional healthchecks.io URL. When set, a ban posts to its /fail endpoint,
-# which fires the notification channel already used for backups. Create the
-# check first and put the URL in the vault.
+# healthchecks.io ping URL, without the /fail suffix - the action appends it.
+# A ban posts to /fail, which fires the notification channel the backups
+# already use. Comes from the vault; see group_vars/vps_servers/vars.yml.
+#
+# Configure the check with a period of 365 days. healthchecks is a dead man's
+# switch: a normal period would alert every day that nobody got banned, which
+# is exactly backwards for an event alert.
+#
+# Known limitation, by design of the tool: healthchecks notifies on state
+# *change*. After a ban the check sits at "down", and a second ban will not
+# raise a new alert until it is pinged back up. Treat the down state as an
+# alert to acknowledge - investigate, then ping the base URL to re-arm:
+#
+#   curl https://hc-ping.com/<uuid>
+#
+# Left deliberately manual rather than auto-re-armed. Backgrounding a delayed
+# ping inside a fail2ban action is fragile, and a persistent down state is
+# harder to miss than a notification that scrolled past.
 fail2ban_notify_url: ""
 
 # Defined here as well as in traefik_setup: this role runs first and has to
