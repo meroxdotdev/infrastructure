@@ -38,6 +38,10 @@ data:
   # shared internal gateway (10.57.57.101) so ACLs can target one service
   LB_IP_IMMICH: "10.57.57.106"
   LB_IP_JELLYFIN: "10.57.57.107"
+  # Public Jellyfin - the only instance reachable from the internet, reverse
+  # proxied by the VPS. Separate address so the Tailscale ACL can grant the VPS
+  # this service alone.
+  LB_IP_JELLYFIN_PUBLIC: "10.57.57.108"
   # LB_IP_K8S_GATEWAY = cluster.yaml: cluster_dns_gateway_addr
   LB_IP_K8S_GATEWAY: "10.57.57.111"
   # LB_IP_GATEWAY_EXTERNAL = cluster.yaml: cloudflare_gateway_addr

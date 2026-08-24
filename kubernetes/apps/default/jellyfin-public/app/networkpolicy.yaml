@@ -1,0 +1,49 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# Egress containment for the internet-facing instance.
+#
+# ../../network-policy.yaml defines ingress only, which in Cilium leaves egress
+# wide open. This is the instance most likely to be exploited, so it gets the
+# tightest egress in the namespace: DNS, and HTTPS/HTTP to the internet for
+# metadata providers and artwork. Nothing else.
+#
+# RFC1918, CGNAT and link-local are carved out deliberately. Without that,
+# "world on 443" still reaches pfSense's web interface, the personal Jellyfin
+# and everything else on the LAN - which is most of what this policy exists to
+# prevent.
+#
+# NFS is absent on purpose: /media is an inline nfs volume the kubelet mounts
+# on the node, so that traffic never leaves the pod's network namespace.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: jellyfin-public-egress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: jellyfin-public
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 100.64.0.0/10
+            - 169.254.0.0/16
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "80"
+              protocol: TCP

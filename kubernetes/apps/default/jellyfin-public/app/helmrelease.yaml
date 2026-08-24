@@ -1,0 +1,123 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+# The instance that faces the internet.
+#
+# Deliberately a second Jellyfin rather than opening the existing one up. The
+# personal instance holds the full 4K library on the SAS pool, the *arr
+# integration and the watch history; none of that should be one unauthenticated
+# CVE away from the public. This one sees a curated 1080p library on SSD and
+# nothing else, so a compromise costs a container and some re-encoded films.
+#
+# Two consequences that are the point, not side effects:
+#   - streaming to friends never wakes the SAS array
+#   - there is no 4K here to serve, so "friends cannot watch 4K" is a fact
+#     about the filesystem rather than a policy someone can misconfigure
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: jellyfin-public
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    controllers:
+      jellyfin-public:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/jellyfin/jellyfin
+              tag: 10.11.11@sha256:45f648c382a0c8b552582fcea40e95cb17c5d475473a891cba0eb7523fb92112
+            env:
+              TZ: Europe/Bucharest
+              JELLYFIN_PublishedServerUris: all=https://studio.merox.dev
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: &port 8096
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: { drop: ["ALL"] }
+            resources:
+              requests:
+                cpu: 100m
+              limits:
+                memory: 4Gi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      # Internal only, for administering it from the LAN. Public access does
+      # not come through here - it arrives at the dedicated LoadBalancer from
+      # the VPS. k8s.${SECRET_DOMAIN} is excluded from external-dns, so this
+      # name never reaches public DNS.
+      app:
+        hostnames:
+          - "studio.k8s.${SECRET_DOMAIN}"
+        parentRefs:
+          - name: internal
+            namespace: kube-system
+            sectionName: https
+    persistence:
+      config:
+        existingClaim: jellyfin-public
+        globalMounts:
+          - path: /config
+      config-cache:
+        existingClaim: jellyfin-public-cache
+        globalMounts:
+          - path: /config/metadata
+      media:
+        # Separate NFS export on the SSD pool, read-only. This instance has no
+        # path to /media/library on the SAS array at all.
+        type: nfs
+        server: ${NFS_SERVER}
+        path: /public/library
+        globalMounts:
+          - path: /media
+            readOnly: true
+      tmpfs:
+        type: emptyDir
+        advancedMounts:
+          jellyfin-public:
+            app:
+              - path: /cache
+                subPath: cache
+              - path: /config/log
+                subPath: log
+              - path: /tmp
+                subPath: tmp

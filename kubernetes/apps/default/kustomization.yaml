@@ -22,6 +22,7 @@ resources:
   # Dashboard
   # Media Stack
   - ./jellyfin/ks.yaml
+  - ./jellyfin-public/ks.yaml
   - ./jellyseerr/ks.yaml
   - ./prowlarr/ks.yaml
   - ./qbittorrent/ks.yaml

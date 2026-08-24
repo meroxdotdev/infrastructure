@@ -1,0 +1,25 @@
+---
+# The address the VPS reverse-proxies to. Dedicated so the Tailscale ACL can
+# grant the VPS exactly this service and nothing else - the same pattern the
+# personal instance uses, and the reason both have their own IP rather than
+# sharing the internal gateway.
+#
+# externalTrafficPolicy stays Cluster: Cilium documents L2 announcements as
+# incompatible with Local, which announces the address on every matching node
+# and drops traffic on the ones without a pod. Jellyfin therefore sees the node
+# address as the client, which is why the node is in its Known Proxies list.
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin-public-lb
+  namespace: default
+  annotations:
+    lbipam.cilium.io/ips: ${LB_IP_JELLYFIN_PUBLIC}
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: jellyfin-public
+  ports:
+    - port: 8096
+      targetPort: 8096
+      protocol: TCP
