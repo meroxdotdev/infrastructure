@@ -16,9 +16,15 @@
 # no egress bill is possible.
 egress_guard_enabled: true
 egress_guard_interface: "enp0s6"     # the billed uplink, not a docker bridge
-egress_guard_port: 443               # public entrypoint (Jellyfin)
-egress_guard_warn_tb: 3
-egress_guard_cut_tb: 6
+# The rule matches the FORWARDED destination: the Traefik container and its
+# container-side port, not the published host port. Docker DNATs before
+# FORWARD, so a rule written against the host port matches nothing.
+egress_guard_target_ip: "172.25.10.2"
+egress_guard_target_port: 8443
+# Thresholds live in the vault, not here: a public repo that states the exact
+# cut-off tells anyone how much traffic to push to take the service down.
+egress_guard_warn_tb: "{{ vault_egress_guard_warn_tb | mandatory }}"
+egress_guard_cut_tb: "{{ vault_egress_guard_cut_tb | mandatory }}"
 egress_guard_state_dir: "/var/lib/egress-guard"
 
 # Optional healthchecks.io UUID. When set, a successful check pings it, so a
