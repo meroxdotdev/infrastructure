@@ -25,8 +25,13 @@ garage_docker_dir:       /srv/docker/oracle-cloud/garage
 # Jellyfin — the only service served directly on the VPS public IP.
 # Backend is the dedicated K8s LB, reached over Tailscale.
 # See docs/jellyfin-public-exposure.md.
-jellyfin_domain: "media.merox.dev"
-jellyfin_backend_ip: "10.57.57.107"
+# Points at the dedicated public instance (10.57.57.108), not the personal
+# one on .107. Separate hostname on purpose: with split-horizon DNS a shared
+# name would resolve to different servers depending on where you are, and a
+# friend on the home wifi would land on the personal instance where their
+# account does not exist.
+jellyfin_domain: "studio.merox.dev"
+jellyfin_backend_ip: "10.57.57.108"
 jellyfin_backend_port: 8096
 
 guacamole_domain: "rmt.merox.dev"
