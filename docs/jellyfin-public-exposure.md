@@ -47,7 +47,7 @@ up. That buys four things at the cost of a second HelmRelease:
 | Library | 1.11 TB, 4K, SAS array | curated 1080p, SSD |
 | Reachable from internet | no | yes |
 | Accounts, watch history | yours | two shared accounts |
-| GPU | Quadro P2200 | none - content direct-plays |
+| GPU | Quadro P2200 | a time-sliced share of the same card |
 | Longhorn backup | yes | no, fully reconstructible |
 
 A remote code execution in the public instance reaches a container with a
@@ -56,6 +56,27 @@ library, the *arr stack, or the watch history.
 
 **Friends cannot watch 4K because there is no 4K on that filesystem.** That is
 a fact about storage rather than a policy someone can misconfigure.
+
+**The public instance needs the GPU too.** The original design assumed
+re-encoded content would direct-play, so it was given no GPU. Measured under a
+real stream, that was wrong: seven of the ten films exceed the client bitrate
+cap and therefore transcode, and one software transcode took 7.2 of the node's
+10 cores and the node to 89%. A second concurrent stream had nowhere to run.
+
+With time-slicing the single Quadro is advertised as two schedulable units, and
+four concurrent streams across both instances sit at 71% node CPU with each pod
+under 3 cores. The binding limit becomes the NVENC engine, which reaches 100%
+at roughly three simultaneous transcodes - VRAM and CPU still have headroom.
+
+Hardware acceleration is **not** automatic once the GPU is attached:
+`HardwareAccelerationType` defaults to `none` and has to be set to `nvenc` in
+`/config/config/encoding.xml`, followed by a restart. That is PVC state, not
+Git, and this instance is deliberately outside the backup set - so after any
+recreation it must be set again, or every stream silently falls back to
+software and takes the node with it.
+
+The pod also carries a hard CPU limit. The cluster is single-node, so there is
+nowhere for the control plane to move if a transcode takes the machine.
 
 **Streaming to friends never wakes the SAS array.** Twelve 10K SAS drives cost
 roughly 60-80 W once spun up; the SSD path costs about 1.5 W. The separation
