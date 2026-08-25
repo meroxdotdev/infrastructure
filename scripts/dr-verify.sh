@@ -79,7 +79,8 @@ verify_phase1() {
 
     # Main compose (docker-compose.yml in /srv/docker/oracle-cloud/)
     container_running "homepage"
-    container_running "glances"
+    container_running "homepage-public"
+    container_running "homelab-stats-server"
     container_running "portainer"
     container_running "pihole"
     container_running "unbound"
@@ -93,7 +94,6 @@ verify_phase1() {
     container_running "authentik-worker"
     container_running "authentik-postgresql"
     container_running "garage"
-    container_running "uptime-kuma"
     container_running "guacamole"
 
     header "Phase 1: Service health"

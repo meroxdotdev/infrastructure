@@ -119,7 +119,7 @@ app-stack-setup:
 	ansible-playbook playbooks/app-stack.yml
 
 app-stack-test:
-	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer|joplin|glances'"
+	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer|joplin'"
 
 # --- Authentik SSO ---
 authentik-setup:

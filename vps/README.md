@@ -66,8 +66,8 @@ make help               # everything else
 updates the inventory with the new IP (and drops `ansible_connection=local`),
 waits for cloud-init, then runs the full deploy. Cloudflare Tunnel, Tailscale
 and Let's Encrypt reconnect automatically with the existing tokens. Afterwards
-restore data from the NAS: `make dr-restore` runs the full restore sequence
-(pull from NAS, DB restore, extras restore) non-interactively — see
+restore data from R730xd: `make dr-restore` runs the full restore sequence
+(pull from R730xd, DB restore, extras restore) non-interactively — see
 [DEPLOY.md Phase 1](../DEPLOY.md) and [roles/vps_backup/README.md](roles/vps_backup/README.md).
 
 ## Conventions & layout

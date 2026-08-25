@@ -117,9 +117,12 @@ a manual update:
   — bump it to the new IP so the _next_ DR's auto-repoint diffs from the
   right baseline.
 
-**IMPORTANT — before Phase 2:** extract Garage S3 credentials and save to vault:
+**IMPORTANT — before Phase 2:** Garage isn't part of the default deploy
+(`site.yml` excludes it — see [vps/README.md](vps/README.md)), so set it up
+first, then extract its S3 credentials and save them to vault:
 
 ```bash
+make garage-setup           # run on the VPS — deploys the Garage container
 make garage-extract-creds   # run on the VPS — extracts keys + updates vault automatically
 ```
 
