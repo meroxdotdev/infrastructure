@@ -22,7 +22,7 @@
       ignore_errors: yes
 
     - name: Check running containers
-      shell: docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Size}}"
+      shell: 'docker ps --format "table {% raw %}{{.Names}}\t{{.Status}}\t{{.Size}}{% endraw %}"'
       register: container_status
       changed_when: false
       ignore_errors: yes
