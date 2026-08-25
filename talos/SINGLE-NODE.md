@@ -1,7 +1,7 @@
 # Shrink the cluster to one node — and back
 
-> **Status: PLAN. Nothing below has been executed.** Written 2026-08-17 against
-> the live cluster. Every number was read off the host, not estimated.
+> **Status: EXECUTED 2026-08-17.** Written against the live cluster before the
+> change; every number was read off the host, not estimated.
 
 Reduces the Talos cluster from 3 control-plane VMs to 1, keeping Flux, every
 manifest and the whole GitOps flow untouched. Designed so the rollback to 3 is
@@ -397,25 +397,27 @@ file alone.
 
 ---
 
-## 7b. Prerequisite: nightly etcd snapshots
+## 7b. Prerequisite: nightly etcd snapshots — DONE
 
-**This is the one thing single-node genuinely makes worse, and it is not
-currently covered — there are no etcd snapshots anywhere in the repo or in
-`pve`'s crontab.**
+**This was the one thing single-node genuinely made worse.** With three
+members a corrupted or lost etcd is rebuilt from its peers; with one there is
+no peer. Most of the state is reconstructible — Flux rebuilds every workload
+from git, secrets are SOPS-encrypted in git, PVC data is in the Longhorn
+backups — so the worst case was a [DR.md](../DR.md) rebuild, ~35 min and
+drilled. A snapshot turns that into a ~5 minute restore, and costs ~10 seconds
+a night.
 
-With three members a corrupted or lost etcd is rebuilt from its peers. With one
-there is no peer. Most of the state is reconstructible — Flux rebuilds every
-workload from git, secrets are SOPS-encrypted in git, PVC data is in the
-Longhorn backups — so the worst case is a [DR.md](../DR.md) rebuild, ~35 min and
-drilled. A snapshot turns that into a ~5 minute restore, and costs ~10 seconds a
-night.
+Implemented as
+[`proxmox/r730xd/scripts/etcd-snapshot.sh`](../proxmox/r730xd/scripts/etcd-snapshot.sh),
+cron `3 3 * * *` — **not** the 23:45 time originally proposed here. That was
+tried first and produced 53 slow fsyncs and a failed Flux Kustomization the
+same night: writing the ~186 MB snapshot to `media` wakes the SAS pool, and
+outside the compact nightly window that wake stalls etcd's own fsyncs on the
+SSDs behind it — the job caused the exact outage it exists to prevent. Inside
+the 03:00–03:30 window the disks are already spinning for other jobs, so it's
+free. See [`proxmox/r730xd/spindown-setup.md`](../proxmox/r730xd/spindown-setup.md).
 
-Add to `pve`'s crontab, before Phase D:
-
-```bash
-# 45 23 * * *  — ahead of the 23:50 Longhorn backup
-talosctl -n 10.57.57.80 etcd snapshot /media/backups/etcd/etcd-$(date +\%F).db
-```
+Restore: `talosctl bootstrap --recover-from=<snapshot>`.
 
 Point it at `/media/backups/etcd/`, which the existing restic push to Oracle
 already sweeps up. Prune by name, not `find -mtime` — the same rsync mtime trap
