@@ -2,6 +2,11 @@
 
 Checklist, not a tutorial.
 
+⚠️ **Not currently deployed (2026-08-25)** — this hardware isn't running
+Proxmox right now (out of scope, possibly a future dev cluster, not
+decided). Kept as a rebuild reference for if/when that changes, not as an
+active DR target — see [`README.md`](README.md).
+
 ⚠️ **Nothing on px-0 is backed up** — no vzdump job, no `jobs.cfg`, both
 dump directories empty (verified 2026-08-11). All three VMs are rebuilt,
 not restored. Acceptable because none holds unique data, but a disk
