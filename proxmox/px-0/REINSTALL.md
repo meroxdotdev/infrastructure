@@ -54,7 +54,6 @@ Defines:
 
 | VMID | What | How |
 |---|---|---|
-| 105 | `ollama` | [`README.md`](README.md) — full recreate script |
 | 100 | `datacenter-manager` | Fresh install from the Proxmox Datacenter Manager ISO, then re-add `pve` and `px-0` as endpoints. Links the two hosts without a corosync cluster; holds no state worth keeping. |
 | 102 | `winserver` | AD lab, kept powered off. Rebuild only if you actually want it. |
 
@@ -67,6 +66,6 @@ ls /mnt/pve/r730xd-backups/         # readable
 qm list
 ```
 
-px-0 is also the default DR-test target — see
-[`docs/dr-quickstart.md`](../../docs/dr-quickstart.md) for the values it
-expects (`cluster-storage`, `local-data`, `vm_memory_mb 16384`).
+`pve`/R730xd is the DR-test target — see
+[`docs/dr-quickstart.md`](../../docs/dr-quickstart.md) for its values
+(`local-zfs`, `media-isos`, `vm_memory_mb 49152`).
