@@ -17,7 +17,7 @@ variable "proxmox_token_secret" {
 variable "proxmox_nodes" {
   description = "Proxmox node names to distribute VMs across"
   type        = list(string)
-  default     = ["px-0", "px-1", "px-2"]
+  default     = ["px-0", "px-0", "px-0"]
 }
 
 variable "talos_version" {

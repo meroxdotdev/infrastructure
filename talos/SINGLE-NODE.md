@@ -327,6 +327,11 @@ from git, not restoring anything. Longhorn rebuilds the extra replicas by itself
 #    - uncomment both blocks in talos/talconfig.yaml
 #    - revert the Longhorn replica counts (defaultReplicaCount "3",
 #      defaultClassReplicaCount 3, csi.* 3, longhornUI 3)
+#    - optionally re-add spegel (removed 2026-08-17, kubernetes-controlplane-1
+#      commit d3a53fb^ has the last copy of its manifests) - it's peer-to-peer
+#      image caching between nodes, worth having again with 3 real ones. Add
+#      its release block back to bootstrap/helmfile.yaml (needs 'kube-system/
+#      coredns', cert-manager needs 'kube-system/spegel' again).
 git revert <the Phase B commit> && git push
 
 # 2. Wipe and boot the two VMs (disks are stale etcd members — must start clean)
