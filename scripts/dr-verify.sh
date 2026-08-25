@@ -230,10 +230,17 @@ verify_phase2() {
         | grep "restored" | grep "attached" | wc -l || echo 0)
     TOTAL=$(kubectl get volumes.longhorn.io -n longhorn-system --no-headers 2>/dev/null \
         | grep -c "restored" || echo 0)
-    if [ "$TOTAL" -ge 8 ]; then
+    # restore-all-volumes (.taskfiles/longhorn/Taskfile.yaml) deliberately
+    # restores only these 6 - jellyseerr/qbittorrent are excluded on purpose
+    # ("session state/easily-reconfigured settings, not worth the restore
+    # weight"), even though both are still nightly-backed-up. See
+    # docs/dr-known-issues.md's "Open" section - this is a known, disputed
+    # gap (backed up but thrown away on restore), not settled either way.
+    # Don't raise this to 8 without first resolving that.
+    if [ "$TOTAL" -ge 6 ]; then
         ok "Restore volumes exist: $TOTAL total, $ATTACHED attached"
     else
-        fail "Only $TOTAL restore volumes found (expected 8 - jellyfin/prowlarr/radarr/sonarr/immich-postgres/n8n/jellyseerr/qbittorrent) — run: task longhorn:restore"
+        fail "Only $TOTAL restore volumes found (expected 6 - jellyfin/prowlarr/radarr/sonarr/immich-postgres/n8n) — run: task longhorn:restore"
     fi
 
     header "Phase 2: Storage — Longhorn BackupTarget"
