@@ -267,8 +267,8 @@ weekly, timed inside the NAS wake window. Schedule is redacted from
 `/root/PRIVATE-NOTES.md`.
 
 - Dest: `admin@10.57.57.201:/volume1/NetBackup/<category>/`
-- Categories: photos (stale copy), synology-home, dump, pfsense,
-  longhorn-garage, immich-postgres, oracle-vps, tools
+- Categories: photos (stale copy), dump, pfsense, longhorn-garage,
+  immich-postgres, oracle-vps, tools, nextcloud
 - Versioned via `rsync --link-dest`, 21-day retention
 
 ⚠️ Retention prunes by **date parsed from the folder name**, never `find
