@@ -95,13 +95,15 @@ spec:
               path: /var/lib/grafana/dashboards/default
     dashboards:
       default:
-        # Comentat - nu ai APC UPS
+        # Disabled - the UPS here is CyberPower, not APC (see
+        # proxmox/r730xd/README.md's UPS section), this SNMP dashboard
+        # doesn't apply.
         # apc-ups:
         #   # renovate: depName="APC UPS (SNMP)"
         #   gnetId: 12340
         #   revision: 1
         #   datasource: Prometheus
-        # Comentat - nu ai Ceph
+        # Disabled - storage here is Longhorn, not Ceph.
         # ceph-cluster:
         #   # renovate: depName="Ceph Cluster"
         #   gnetId: 2842
@@ -128,7 +130,9 @@ spec:
           revision: 6
           datasource:
             - { name: DS_PROMETHEUS, value: Prometheus }
-        # Comentat - nu ai Envoy
+        # Disabled - no standalone Envoy deployment (Cilium uses Envoy
+        # internally for Gateway API, but doesn't expose the metrics this
+        # dashboard expects).
         # envoy:
         #    # renovate: depName="Envoy Proxy Monitoring gRPC"
         #    gnetId: 23239
@@ -175,7 +179,6 @@ spec:
           gnetId: 11454
           revision: 14
           datasource: Prometheus
-        # Dashboard pentru Longhorn
         longhorn:
           # renovate: depName="Longhorn"
           gnetId: 13032
@@ -192,14 +195,17 @@ spec:
           gnetId: 19105
           revision: 7
           datasource: Prometheus
-        # Comentat - nu ai smartctl exporter
+        # Disabled - smartctl-exporter isn't deployed anywhere in this
+        # cluster (disk health is watched by proxmox/r730xd/scripts/
+        # sas-health-check.sh on pve instead).
         # smartctl-exporter:
         #   # renovate: depName="SMARTctl Exporter Dashboard"
         #   gnetId: 22604
         #   revision: 2
         #   datasource:
         #     - { name: DS_PROMETHEUS, value: Prometheus }
-        # Comentat - nu ai UniFi
+        # Disabled - no UniFi equipment in this network (pfSense is the
+        # router/firewall, see pfsense/REINSTALL.md).
         # unifi-pdu:
         #   # renovate: depName="UniFi-Poller: PDU Insights - Prometheus"
         #   gnetId: 23027
@@ -226,7 +232,8 @@ spec:
         #   gnetId: 11312
         #   revision: 9
         #   datasource: Prometheus
-        # Comentat - nu ai VolSync
+        # Disabled - VolSync isn't deployed (Longhorn handles PVC backup
+        # directly, see kubernetes/apps/storage/longhorn/recurringjob/).
         # volsync:
         #   # renovate: depName="VolSync Dashboard"
         #   gnetId: 21356
@@ -234,7 +241,12 @@ spec:
         #   datasource:
         #     - { name: DS_PROMETHEUS, value: Prometheus }
         #     - { name: VAR_REPLICATIONDESTNAME, value: .*-dst }
-        # Comentat - nu ai ZFS
+        # Disabled - not because there's no ZFS (pve has two pools, rpool
+        # and media) but because node_exporter's ZFS metrics only come from
+        # nodes it runs on (the Talos nodes, no ZFS there), not from pve
+        # itself - same reasoning as kube-prometheus-stack's disabled
+        # zfs-rules. Pool capacity is covered by the PveStorageNearFull
+        # alert instead; pool health by sas-health-check.sh on pve.
         # zfs:
         #   # renovate: depName="ZFS"
         #   gnetId: 7845
