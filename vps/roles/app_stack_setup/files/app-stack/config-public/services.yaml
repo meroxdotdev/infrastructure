@@ -44,7 +44,7 @@
     - Proxmox VE:
         icon: proxmox.png
         href: https://merox.dev/blog/homelab-tour
-        description: Hypervisor, 2 standalone hosts
+        description: Hypervisor
 
     - Talos Kubernetes:
         icon: kubernetes.png
@@ -119,11 +119,6 @@
         icon: joplin.png
         href: https://merox.dev/blog/homelab-tour
         description: Notes sync
-
-    - Code Server:
-        icon: vscode.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Browser-based IDE
 
     - Home Assistant:
         icon: mdi-home-assistant
