@@ -19,7 +19,7 @@ These are stored in `/config/config/network.xml` on the PVC. Verify after every 
 | Subnet          | Purpose                              |
 | --------------- | ------------------------------------ |
 | `10.57.57.0/24` | Main LAN / NAS subnet                |
-| `10.57.97.0/24` | Kubernetes node subnet               |
+| `10.57.97.0/24` | Home WiFi                            |
 | `100.64.0.0/10` | **Tailscale CGNAT range** — critical |
 
 > Without `100.64.0.0/10`, Jellyfin treats Tailscale clients as "remote" and throttles bitrate.
