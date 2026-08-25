@@ -49,7 +49,7 @@
     - Talos Kubernetes:
         icon: kubernetes.png
         href: https://merox.dev/blog/homelab-tour
-        description: 3-node cluster, GitOps via Flux
+        description: GitOps via Flux
 
     - Longhorn:
         icon: longhorn.png
