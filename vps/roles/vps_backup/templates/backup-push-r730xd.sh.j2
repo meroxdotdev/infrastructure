@@ -1,9 +1,10 @@
 #!/bin/bash
 # Off-site push of VPS service backups (Authentik/Joplin/Guacamole/Traefik/
 # Pi-hole/Homepage/Portainer) to R730xd (the always-on backup hub). From
-# there, R730xd's own weekly push relays a copy to Synology cold storage,
-# and Synology's HyperBackup relays onward to this same Oracle VPS - see
-# proxmox/r730xd/README.md for the full loop.
+# there, R730xd's own weekly push relays a copy to Synology (cold storage)
+# and, independently, its nightly restic push sends the same data to Oracle
+# (open format, no DSM dependency - replaced Synology's HyperBackup relay,
+# retired 2026-07-26) - see proxmox/r730xd/README.md for the full loop.
 #
 # Deliberately does NOT touch this VPS's own local Garage instance - that's
 # a temporary rollback safety net from the pre-2026-07-21 Longhorn cutover,
