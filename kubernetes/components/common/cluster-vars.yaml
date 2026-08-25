@@ -19,13 +19,6 @@ data:
   # (Synology). Synology is now cold-backup only, no longer the media host.
   NFS_SERVER: "10.57.57.250"
 
-  # -- Homepage widget IPs (app-specific, not in cluster.yaml)
-  HOMEPAGE_PROXMOX_IP: "10.57.57.254"
-  HOMEPAGE_MYSPEED_IP: "10.57.57.62"
-
-  # -- Router IP (cluster.yaml: node_default_gateway)
-  HOMEPAGE_ROUTER_IP: "10.57.57.1"
-
   # -- Cilium LoadBalancer IPs (must be within the pool in cilium/app/networks.yaml)
   # LB_IP_GATEWAY_INTERNAL = cluster.yaml: cluster_gateway_addr
   LB_IP_GATEWAY_INTERNAL: "10.57.57.101"

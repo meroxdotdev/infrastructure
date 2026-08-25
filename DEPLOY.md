@@ -277,12 +277,13 @@ cp /path/to/age.key ./age.key
 # --- b) All infrastructure IPs used by apps (Flux postBuild substitution) ---
 # Edit: kubernetes/components/common/cluster-vars.yaml
 #   NFS_SERVER              → R730xd (pve) IP - serves media/photos/backups NFS exports
-#   HOMEPAGE_PROXMOX_IP     → Proxmox host IP
-#   HOMEPAGE_ROUTER_IP      → Router/gateway IP
-#   HOMEPAGE_MYSPEED_IP     → MySpeed service IP
 #   LB_IP_GATEWAY_INTERNAL  → Cilium internal gateway LB IP
 #   LB_IP_QBITTORRENT       → qBittorrent LB IP
 #   LB_IP_PORTAINER         → Portainer agent LB IP
+#   LB_IP_NETBOOTXYZ        → netboot.xyz LB IP
+#   LB_IP_IMMICH            → Immich LB IP (dedicated, Tailscale ACL scoping)
+#   LB_IP_JELLYFIN          → Jellyfin (personal) LB IP (dedicated, Tailscale ACL scoping)
+#   LB_IP_JELLYFIN_PUBLIC   → Jellyfin (public) LB IP (VPS reverse-proxy target)
 #   LB_IP_K8S_GATEWAY       → k8s-gateway (DNS) LB IP
 #   LB_IP_GATEWAY_EXTERNAL  → Cilium external gateway LB IP
 #
