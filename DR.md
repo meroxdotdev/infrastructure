@@ -298,7 +298,7 @@ restic restore latest --include /media/backups/longhorn-garage --target /tmp/gar
 **3. Stand up a fresh Garage instance** anywhere the cluster can reach — a
 new LXC on `px-0`, or the VPS temporarily — with the recovered
 `data`/`meta` bind-mounted in. Reuse `vps/roles/garage_setup`, setting
-`garage_require_tailscale` / `garage_webui_enabled` per host, same as
+`garage_webui_enabled` per host, same as
 `vps/playbooks/garage-setup-r730xd.yml`.
 
 **4. Repoint Longhorn at it:**

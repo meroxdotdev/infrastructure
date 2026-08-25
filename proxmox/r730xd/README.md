@@ -144,7 +144,7 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
   `bc:24:11:8b:b7:e9`), 2 vCPU / 2GB, unprivileged, `nesting=1`.
 - Provision: `ansible-playbook -i inventories/production/hosts
   playbooks/garage-setup-r730xd.yml` (reuses `garage_setup` role,
-  `garage_require_tailscale=false`, `garage_webui_enabled=false`).
+  `garage_webui_enabled=false`).
 - S3: `http://10.57.57.61:3900`, region `us-east-1`, bucket `longhorn`.
   Credentials: `docker exec garage /garage key info longhorn-key
   --show-secret`; consumed via `minio-secret.sops.yaml` in the Longhorn app.
