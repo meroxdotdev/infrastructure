@@ -70,7 +70,7 @@
   no_log: true
   tags: backup
 
-- name: Deploy VPS extras backup script (guacamole/traefik/pihole/openclaw)
+- name: Deploy VPS extras backup script (guacamole/traefik/pihole/homepage/portainer)
   template:
     src: backup-vps-extras.sh.j2
     dest: /usr/local/bin/backup-vps-extras.sh
