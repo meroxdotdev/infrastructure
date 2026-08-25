@@ -8,12 +8,14 @@
 # would take Alertmanager/n8n/Ollama down with it. Sources:
 #  - R730xd's iDRAC (Redfish) - power draw + fan RPM. Read-only iDRAC
 #    account (homepage-ro), no configure/power-control privilege.
-#  - Proxmox VE API - ZFS pool usage per node. pve (R730xd) and px-0
-#    (Beelink) are standalone hosts, not a corosync cluster, so each has
-#    its own API endpoint and its own token - NOT one shared PDM endpoint.
-#  - pwrstat on px-0, over SSH with a key restricted (via authorized_keys
-#    command=) to always run "pwrstat -status" regardless of what's asked -
-#    same read-only discipline as the iDRAC account above.
+#  - Proxmox VE API - ZFS pool usage per node. Built to scrape standalone
+#    Proxmox hosts independently (no corosync cluster, each needs its own
+#    API endpoint/token) because px-0/Beelink used to be scraped here too -
+#    it's currently out of scope (hardware retained, not running Proxmox).
+#  - UPS state used to come from pwrstat on px-0 over a restricted SSH key;
+#    disabled along with px-0 (see below) - the actual shutdown safety
+#    mechanism is unaffected, it runs locally via NUT on pve. This only
+#    loses early Telegram warning of UPS state changes.
 # Deployed by ansible (app_stack_setup role).
 set -euo pipefail
 
@@ -80,10 +82,11 @@ for target in "${PVE_TARGETS[@]}"; do
     "https://$host:$port/api2/json/nodes/$node/storage" || echo '{"data":[]}' > "$STORAGE_DIR/$node.json"
 done
 
-# Restricted key always runs "pwrstat -status" regardless of the command
-# requested here (enforced server-side via authorized_keys command=).
-ssh -i /root/.ssh/vps-to-px0-ups -o BatchMode=yes -o StrictHostKeyChecking=yes \
-  -o ConnectTimeout=8 root@10.57.57.254 "pwrstat -status" > "$PWRSTAT_FILE" 2>/dev/null || true
+# Disabled: was "ssh -i /root/.ssh/vps-to-px0-ups ... root@10.57.57.254
+# pwrstat -status" - px-0 is out of scope, this always failed silently
+# (PWRSTAT_FILE stays empty, ups.reachable becomes false downstream, no
+# false alerts fire). Re-enable if px-0 starts running Proxmox again, or
+# rebuild against NUT on pve directly (upsc cyberpower) instead.
 
 mkdir -p "$OUT_DIR"
 
