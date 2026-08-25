@@ -105,7 +105,7 @@ deploys, updates or rebuilds any part.
 | Cloudflare         | DNS + Tunnel + Pages (blog)                                                                | Free                        |
 | Tailscale          | Management VPN mesh                                                                        | Free                        |
 | Oracle Cloud       | Primary VPS (4 vCPU ARM, 24GB)                                                             | Free tier                   |
-| Hetzner            | Fallback VPS — only if Oracle Cloud free tier is lost. Provision on-demand: `make dr-full` | ~€5.39/mo if needed         |
+| Hetzner            | Fallback VPS — only if Oracle Cloud free tier is lost. Provision on-demand: `make dr-full` | ~€7.85/mo if needed         |
 | GitHub             | Repos + Actions (CI blog, Renovate)                                                        | Free                        |
 | Let's Encrypt      | HTTPS certificates (auto-renew)                                                            | Free                        |
 | Proxmox            | Hypervisor for K8s nodes                                                                   | Own hardware                |
