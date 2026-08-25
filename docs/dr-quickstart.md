@@ -7,6 +7,10 @@ not a tutorial.
 **You need:** `age.key`, `talos/talsecret.sops.yaml`, SSH access to the
 target Proxmox host, this repo checked out.
 
+> Prod runs 1 node today, DR still provisions 3 — uncomment nodes 2/3 in
+> `talos/talconfig.yaml` first (see [`talos/SINGLE-NODE.md`](../talos/SINGLE-NODE.md#3-phase-b--git-changes)),
+> re-comment after. See [`DR.md`](../DR.md#phase-1--provision-dr-nodes) for why.
+
 ## 0. Pick a target host
 
 | | px-0 | pve (R730xd) |
@@ -39,9 +43,9 @@ Copy `terraform.tfvars.example` → `terraform.tfvars`, fill in:
 ## 3. Stop prod (only if reusing prod IPs/MACs, which is the default)
 
 ```bash
-ssh root@<prod-proxmox-host> "qm shutdown 800; qm shutdown 802; qm shutdown 804"
+ssh root@<prod-proxmox-host> "qm shutdown 800"   # only VM running prod today (1-node cluster)
 ```
-Leaves the VMs off, untouched — nothing destroyed.
+Leaves the VM off, untouched — nothing destroyed.
 
 ## 4. Create the DR VMs
 
@@ -107,5 +111,5 @@ anything still stuck after 5 min.
 ```bash
 cd talos/terraform
 terraform destroy -auto-approve
-ssh root@<prod-proxmox-host> "qm start 800; qm start 802; qm start 804"
+ssh root@<prod-proxmox-host> "qm start 800"
 ```
