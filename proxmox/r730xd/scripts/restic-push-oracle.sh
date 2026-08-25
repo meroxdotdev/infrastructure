@@ -8,7 +8,7 @@ trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" 
 
 restic backup /media/backups/oracle-vps /media/backups/immich-postgres \
   /media/backups/pfsense /media/backups/longhorn-garage /media/backups/etcd \
-  /media/backups/synology-home /media/backups/tools /media/photos /root --tag nightly
+  /media/backups/nextcloud /media/backups/tools /media/photos /root --tag nightly
 restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 restic check
 
