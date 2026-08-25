@@ -107,25 +107,20 @@ make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 
 `dr-verify-phase1` prints it and warns if it changed from `100.72.22.38`.
 
 `make dr-restore` already auto-repoints Pi-hole's `*.cloud.merox.dev`
-records (joplin, agents, traefik, status, garage, …). Two things still need
-a manual update:
-
-- the Storage Cloud link in
-  `kubernetes/apps/default/homepage/app/resources/services.yaml`
-  (the NAS off-site sync auto-detects its own IP, so nothing else there).
-- `tailscale_expected_ip` in `vps/inventories/production/group_vars/vps_servers/vars.yml`
-  — bump it to the new IP so the _next_ DR's auto-repoint diffs from the
-  right baseline.
+records (joplin, agents, traefik, status, garage, …). One thing still needs
+a manual update: `tailscale_expected_ip` in
+`vps/inventories/production/group_vars/vps_servers/vars.yml` — bump it to
+the new IP so the _next_ DR's auto-repoint diffs from the right baseline.
+(The NAS off-site sync auto-detects its own IP, so nothing else there.)
 
 **Garage needs no attention here.** It moved off the VPS to its own LXC on
 R730xd (`10.57.57.61:3900`, provisioned by the separate
 `garage-setup-r730xd.yml` playbook) on 2026-07-21 — a stable, independent
 host untouched by a VPS rebuild. Longhorn's `minio-secret.sops.yaml` keeps
-pointing at it and needs no changes. The VPS's own local Garage instance
-(`make garage-setup`, `scripts/garage-extract-creds.sh`) was only ever a
-temporary rollback safety net for the first couple of weeks after the
-2026-07-21 cutover and is long since decommissioned — don't run it as part
-of this flow.
+pointing at it and needs no changes. The VPS's own local Garage instance was
+only ever a temporary rollback safety net for the first couple of weeks
+after the 2026-07-21 cutover; it and its setup commands were removed once
+that window closed.
 
 If R730xd's Garage LXC is *also* gone (not just the VPS), that's a
 different, harder scenario — see
@@ -411,7 +406,7 @@ kubectl -n flux-system get receiver github-webhook \
 [ ] make dr-preflight — all checks PASS (no FAIL)
 [ ] Phase 1 complete — make dr-full finished, all containers up (make dr-verify-phase1)
 [ ] Tailscale IP noted (dr-verify-phase1 prints it) — if different from 100.72.22.38,
-    update kubernetes/apps/default/homepage/app/resources/services.yaml (Storage Cloud link)
+    bump tailscale_expected_ip in vps/inventories/production/group_vars/vps_servers/vars.yml
 [ ] cloudflare_tunnel_token present in vault and cloudflared container connected
     (docker logs cloudflared — no "Tunnel token is not valid"; check
     https://inside.merox.dev loads)

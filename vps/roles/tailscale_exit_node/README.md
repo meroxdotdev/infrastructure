@@ -13,4 +13,4 @@ after 90 days**; refresh it in the Tailscale admin console before any DR run
 `make dr-restore` (vps_backup role's `restore-extras.sh`) auto-repoints
 Pi-hole's `*.cloud.merox.dev` local DNS records to the new IP — see
 `vps/roles/vps_backup/README.md` and DEPLOY.md Phase 1 for the remaining
-manual steps (homepage Storage Cloud link, `tailscale_expected_ip` in vars.yml).
+manual step (`tailscale_expected_ip` in vars.yml).
