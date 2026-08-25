@@ -10,10 +10,10 @@
 # tunnel are untouched — the tunnel is outbound and carries dashboards, not
 # video. The rule is removed automatically once the monthly counter rolls over.
 #
-# Why 6 TB is a hard guarantee: the check runs hourly and the home uplink tops
-# out near 430 Mbps, i.e. at most ~0.19 TB can be moved between two checks.
-# Worst case is therefore ~6.2 TB — comfortably below the 10 TB free tier, so
-# no egress bill is possible.
+# Why the vaulted cutoff is a hard guarantee: the check runs hourly and the
+# home uplink tops out near 430 Mbps, i.e. at most ~0.19 TB can be moved
+# between two checks — see egress_guard_cut_tb below for how that bounds the
+# worst case against the 10 TB free tier.
 egress_guard_enabled: true
 egress_guard_interface: "enp0s6"     # the billed uplink, not a docker bridge
 # The rule matches the FORWARDED destination: the Traefik container and its

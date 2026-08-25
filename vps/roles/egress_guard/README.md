@@ -12,11 +12,13 @@ moving real volume, so the exposure needs a hard stop rather than a warning.
 ## How it bounds the bill
 
 An hourly timer reads the monthly TX counter for the billed uplink and, above
-`egress_guard_cut_tb` (6 TB), inserts a `DROP` for tcp/443 in `DOCKER-USER`.
+`egress_guard_cut_tb`, inserts a `DROP` for tcp/443 in `DOCKER-USER`. The exact
+value lives in the vault, not here — a public repo stating the cut-off tells
+anyone how much traffic to push to take the service down.
 
 That is a guarantee, not a hope: the home uplink measures ~430 Mbps, so at most
-~0.19 TB can move between two hourly checks. Worst case is ~6.2 TB against a
-10 TB allowance, so **an egress bill is not reachable**.
+~0.19 TB can move between two hourly checks — comfortably inside the 10 TB
+allowance even at the worst case, so **an egress bill is not reachable**.
 
 Normal use never comes close. Three concurrent 10 Mbps streams for four hours a
 day is ~1.6 TB/month, and the baseline before Jellyfin was ~16 GB.
