@@ -180,17 +180,11 @@
 <div class="wrap">
 
 <header class="prose">
-  <p class="eyebrow">merox.dev · 25 august 2026 (re-audit)</p>
+  <p class="eyebrow">merox.dev · 25 august 2026</p>
   <h1>Unde stă fiecare lucru și cum se salvează</h1>
   <p class="lede">Harta completă a storage-ului: fiecare serviciu din homelab și de pe VPS,
   pe ce mașină rulează, unde îi stau datele, și pe ce drum ajung în backup.
   Toate cifrele sunt citite de pe host, nu estimate.</p>
-  <div class="note" style="font-size:.82rem;padding:.6rem .9rem">
-    <strong>Re-audit din 25 august</strong>, după decomisionarea px-0 (16 aug) și trecerea
-    K8s la un singur nod (17 aug) — vezi <code>talos/SINGLE-NODE.md</code> și memoria
-    de proiect. px-0 dispare complet din harta asta; Nextcloud (VM 1000) e acum real,
-    nu doar planificat.
-  </div>
   <div class="legend" style="margin-top:.4rem">
     <span class="pill p-ssd">SSD · rpool</span>
     <span class="pill p-sas">SAS · media</span>
@@ -275,7 +269,7 @@
       <ul class="svc">
         <li><span>VM 800 Talos (1 nod)</span><span>229 G</span></li>
         <li><span>VM 1000 nextcloud</span><span>16,2 G</span></li>
-        <li><span>VM 105 ollama · migrat de pe px-0</span><span>7,4 G</span></li>
+        <li><span>VM 105 ollama</span><span>7,4 G</span></li>
         <li><span>VM 101 home-assistant</span><span>3,5 G</span></li>
         <li><span>LXC 103 garage-r730xd</span><span>1,0 G</span></li>
         <li><span>server NFS</span><span>—</span></li>
@@ -283,13 +277,11 @@
       </ul>
       <hr>
       <ul class="svc">
-        <li style="color:var(--warn)"><span>VM 100 windows11 · rulează acum</span><span>58,4 G</span></li>
+        <li style="color:var(--warn)"><span>VM 100 windows11</span><span>58,4 G</span></li>
       </ul>
       <div class="note" style="font-size:.78rem;padding:.5rem .7rem">
-        px-0 (Beelink) e complet decomisionat de pe 16 aug — hardware păstrat,
-        posibil viitor cluster de dev, nedecis. Tot ce rula pe el (VM 100 pdm,
-        VM 105 ollama, pwrstatd → oprire pve, țintă test DR) fie a migrat aici,
-        fie nu se mai aplică. Vezi memoria de proiect <code>project_px0_decommissioned</code>.
+        px-0 (Beelink) nu rulează Proxmox — hardware păstrat, posibil viitor
+        cluster de dev, nedecis.
       </div>
     </div>
 
@@ -344,7 +336,7 @@
     <div class="card">
       <div class="card-hd">
         <span class="name">Kubernetes</span>
-        <span class="sub">1 × Talos (VM 800), pe pve — de la 3 noduri, 17 aug</span>
+        <span class="sub">1 × Talos (VM 800), pe pve</span>
       </div>
       <ul class="svc">
         <li><span>22 PVC-uri, 193 Gi alocați</span><span>~28 G reali</span></li>
@@ -353,9 +345,9 @@
         <li><span>11 PVC-uri excluse</span><span class="pill p-skip">regenerabile</span></li>
       </ul>
       <div class="note warn" style="font-size:.79rem;padding:.55rem .8rem">
-        Single-node de pe 17 aug (<code>talos/SINGLE-NODE.md</code>). Nicio replică
-        Longhorn nu mai există pe alt nod — protecția vine doar din mirror-ul ZFS
-        + backup-ul nightly, nu din redundanța Kubernetes.
+        Un singur nod (<code>talos/SINGLE-NODE.md</code>). Nicio replică Longhorn
+        nu există pe alt nod — protecția vine doar din mirror-ul ZFS + backup-ul
+        nightly, nu din redundanța Kubernetes.
       </div>
     </div>
   </div>
@@ -448,9 +440,10 @@
     </div>
     <figcaption>Săgeata continuă pleacă în fiecare noapte, cea punctată o dată pe săptămână
     în fereastra în care NAS-ul e trezit. Pentru orice fișier ies 4 copii în 2 locații
-    fizice, una offsite — 3-2-1 respectat. <strong>Nextcloud (VM 1000)</strong> scrie deja
-    în <code>media/backups/nextcloud</code> (6,8 G) dar mecanismul exact — cron intern,
-    script separat de cel de mai sus — nu a fost încă verificat și nu apare desenat aici.</figcaption>
+    fizice, una offsite — 3-2-1 respectat. <strong>Nextcloud (VM 1000)</strong> e a opta
+    sursă: AIO borg 23:40 UTC scrie în <code>media/backups/nextcloud</code> (6,8 G) direct
+    prin SSH, în afara ferestrei de mai sus — vezi
+    <code>proxmox/r730xd/nextcloud/README.md</code> §6. Nu apare desenat aici.</figcaption>
   </figure>
 </section>
 
@@ -564,8 +557,8 @@
 
         <tr class="grouprow"><td colspan="5">pve — direct pe host</td></tr>
         <tr><td>Home Assistant (VM 101)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">3,5 G</td><td><span class="pill p-ok">vzdump → doar Synology</span></td></tr>
-        <tr><td>Ollama (VM 105)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">7,4 G</td><td><span class="pill p-warn">fără vzdump — verifică</span></td></tr>
-        <tr><td>Nextcloud (VM 1000)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">16,2 G</td><td><span class="pill p-warn">scrie în media/backups/nextcloud (6,8 G), mecanism neconfirmat</span></td></tr>
+        <tr><td>Ollama (VM 105)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">7,4 G</td><td><span class="pill p-skip">deliberat exclus — model re-fetchable, OS reproductibil din runbook</span></td></tr>
+        <tr><td>Nextcloud (VM 1000)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">16,2 G</td><td><span class="pill p-ok">AIO borg 23:40 UTC → restic + Synology</span></td></tr>
         <tr><td>windows11 (VM 100)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">58,4 G</td><td><span class="pill p-warn">fără vzdump — verifică, vezi §6</span></td></tr>
         <tr><td>Garage S3 — date (LXC 103)</td><td>pve</td><td class="mono"><code>media/backups/longhorn-garage</code> <span class="pill p-sas">SAS</span></td><td class="num">19,0 G</td><td><span class="pill p-ok">e chiar ținta de backup</span></td></tr>
         <tr><td>Garage S3 — meta</td><td>pve</td><td class="mono"><code>rpool/garage-meta</code> <span class="pill p-ssd">SSD</span></td><td class="num">29,5 M</td><td><span class="pill p-ok">copiat nightly 03:01</span></td></tr>
@@ -589,9 +582,7 @@
     <span class="pill p-skip">galben</span> înseamnă exclus <em>intenționat</em>, pentru că
     se reconstruiește din git sau se re-descarcă — nu e o scăpare.
     <span class="pill p-warn">roșu</span> înseamnă neverificat sau lipsă, nu neapărat prin
-    proiectare — spre deosebire de px-0 (dispărut acum), care era rebuild-only intenționat,
-    astea trei (Ollama, Nextcloud, windows11) sunt VM-uri noi/schimbate de care nu s-a
-    ocupat încă nimeni explicit. Vezi §6.
+    proiectare. windows11 e singurul serviciu fără nicio plasă documentată. Vezi §6.
   </div>
 </section>
 
@@ -607,9 +598,8 @@
       <thead><tr><th>Element</th><th>Problema</th><th style="text-align:right">Recuperează</th><th>Stare</th></tr></thead>
       <tbody>
         <tr><td class="mono">discard=on pe discurile Talos</td><td>blocurile eliberate în guest nu se întorc la ZFS</td><td class="num">~90–145 G</td><td><span class="pill p-skip">cere repornire — încă neverificat</span></td></tr>
-        <tr><td class="mono">VM windows11</td><td>rulează acum (era oprit la ultimul audit); nu s-a reconfirmat dacă RDP-ul e încă expus</td><td class="num">58,4 G</td><td><span class="pill p-warn">re-verifică</span></td></tr>
-        <tr><td class="mono">VM windows11 · Nextcloud · Ollama</td><td>nicio vzdump în crontab-ul lui pve pentru VM 100/105/1000 — doar VM 101 are</td><td class="num">—</td><td><span class="pill p-warn">decide dacă merită vzdump</span></td></tr>
-        <tr><td class="mono">Nextcloud — mecanism de backup</td><td><code>media/backups/nextcloud</code> are date (6,8 G) dar sursa exactă (script intern VM, altceva) nu a fost identificată</td><td class="num">—</td><td><span class="pill p-warn">de investigat</span></td></tr>
+        <tr><td class="mono">VM windows11</td><td>rulează; nu s-a confirmat dacă RDP-ul e expus</td><td class="num">58,4 G</td><td><span class="pill p-warn">re-verifică</span></td></tr>
+        <tr><td class="mono">VM windows11</td><td>nicio vzdump în crontab-ul lui pve pentru VM 100 — doar VM 101 are. Ollama (VM 105) nu are nevoie, documentat; Nextcloud (VM 1000) e acoperit separat, prin AIO borg</td><td class="num">—</td><td><span class="pill p-warn">decide dacă merită vzdump</span></td></tr>
         <tr><td class="mono">media/photos</td><td>copie stale de la migrarea Immich; doar Filebrowser o citește</td><td class="num">3,28 G</td><td><span class="pill p-skip">după Filebrowser</span></td></tr>
         <tr><td class="mono">backups/synology-home</td><td>documente live pe pool-ul de spin-down, în arborele de backup</td><td class="num">29,5 G</td><td><span class="pill p-skip">nerezolvat, chiar cu Nextcloud real acum</span></td></tr>
         <tr><td class="mono">Leg Synology fără healthcheck</td><td>un eșec e invizibil</td><td class="num">—</td><td><span class="pill p-skip">tot deschis</span></td></tr>
@@ -618,18 +608,10 @@
   </div>
 
   <div class="note">
-    <strong>Rezolvate de la ultimul audit (16 aug), fără nicio acțiune legată de storage:</strong>
-    netdata (manifeste + 17,8 G de PVC-uri), Prometheus <code>retentionSize</code>,
-    VM 104 <code>pdm</code> duplicat și VM 102 <code>ubuntu-server</code> gol au dispărut
-    odată cu decomisionarea px-0 și curățarea generală — niciunul nu mai există în
-    inventarul curent. <code>media/games</code> a dispărut și el din <code>zfs list</code>.
-  </div>
-  <div class="note">
     <strong>Ordinea recomandată.</strong> Întâi <code>discard=on</code> — poate schimba
-    tot calculul de spațiu. Apoi cele trei VM-uri fără vzdump (windows11, Nextcloud,
-    Ollama) și mecanismul de backup al Nextcloud, pentru că astea sunt singurele
-    servicii live fără nicio plasă confirmată acum. <code>media/photos</code> și
-    <code>synology-home</code> rămân legate de Filebrowser, deci vin la final.
+    tot calculul de spațiu. Apoi windows11, singurul serviciu live fără nicio plasă
+    confirmată acum. <code>media/photos</code> și <code>synology-home</code> rămân
+    legate de Filebrowser, deci vin la final.
   </div>
 </section>
 
