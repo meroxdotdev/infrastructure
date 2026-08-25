@@ -25,9 +25,9 @@ Before starting, have these ready:
 hcloud_token        = "<hetzner-api-token>"
 ssh_public_key_path = "~/.ssh/cloudlab_dr_test.pub"
 server_name         = "cloudlab-vps"
-server_type         = "cax21"
+server_type         = "cx33"     # proven to work for DR - cax21/ARM is untested
 server_location     = "nbg1"
-allowed_ips         = ["0.0.0.0/0", "::/0"]
+allowed_ips         = ["<your-home-ip>/32"]   # never 0.0.0.0/0 - this opens SSH + Tailscale to the internet
 ```
 
 > Generate SSH key if missing: `ssh-keygen -t ed25519 -f ~/.ssh/cloudlab_dr_test -C "cloudlab-dr-test" -N ""`

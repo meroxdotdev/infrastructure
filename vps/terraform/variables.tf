@@ -29,7 +29,6 @@ variable "server_location" {
 }
 
 variable "allowed_ips" {
-  description = "IPs allowed for SSH and Tailscale ingress (your home IP + any other trusted IPs)"
+  description = "IPs allowed for SSH and Tailscale ingress (your home IP + any other trusted IPs) - required, no default: SSH and Tailscale must never be open to 0.0.0.0/0"
   type        = list(string)
-  default     = ["0.0.0.0/0", "::/0"]
 }
