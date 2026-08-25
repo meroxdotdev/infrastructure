@@ -7,25 +7,26 @@ Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.
 - **In a hurry:** [`docs/dr-quickstart.md`](docs/dr-quickstart.md) — same
   procedure, commands only.
 - **Rebuilding a host instead of the cluster:**
-  [pve](proxmox/r730xd/REINSTALL.md) · [px-0](proxmox/px-0/REINSTALL.md) ·
-  [pfSense](pfsense/REINSTALL.md)
+  [pve](proxmox/r730xd/REINSTALL.md) · [pfSense](pfsense/REINSTALL.md)
 
-**Tested end-to-end:** 2026-06-06 (px-0), 2026-08-03 (pve/R730xd — prod VMs
-stopped, not deleted, restarted clean afterward). ~45 min with
-troubleshooting; ~35 min clean.
+**Tested end-to-end:** 2026-06-06 (px-0, while it was still deployed),
+2026-08-03 (pve/R730xd — prod VMs stopped, not deleted, restarted clean
+afterward). ~45 min with troubleshooting; ~35 min clean.
 
 ## Which host to target
 
-| Target | Tests | Trade-off |
-|---|---|---|
-| **px-0** | Real host-failure DR (prod lives on R730xd) | Only ~50GB RAM free — 8GB/node (default) is NOT enough to schedule the full stack; use `vm_memory_mb = 16384` minimum, and even then it's below prod's 48GB/node |
-| **pve (R730xd)** | Restore procedure only, not host failure (same physical box) | 238GB+ RAM free once prod VMs are stopped — can match prod exactly (`vm_memory_mb = 49152`), so nothing gets stuck on scheduling |
+**pve (R730xd) is the only option today** — px-0 (Beelink) is out of scope
+(hardware retained, not running Proxmox, possibly a future dev cluster,
+undecided). 238GB+ RAM free once prod VMs are stopped — can match prod
+exactly (`vm_memory_mb = 49152`), so nothing gets stuck on scheduling.
 
-Both are valid drills, for different questions:
-
-- **px-0** — "the R730xd died, can we recover?"
-- **pve** — "did recent changes break the restore procedure?" Faster, no
-  resource-sizing surprises.
+⚠️ **Accepted gap:** this only tests "did recent changes break the restore
+procedure?" — DR VMs land on the same physical box as prod, so it does
+**not** test "the R730xd died, can we recover?" (that needs a second host,
+which px-0 used to provide). No current substitute for that specific
+question; the Hetzner VPS DR path (`vps/`, `make dr-full`) is the only
+different-hardware test left, and it only covers the VPS side. Revisit if
+the px-0/px-1/px-2 dev-cluster idea ever happens.
 
 ---
 
@@ -52,15 +53,16 @@ Both are valid drills, for different questions:
 > # fill in proxmox_token_id and proxmox_token_secret
 > ```
 >
-> **Storage layout on this cluster** (discovered DR 2026-06-04): `cluster-storage`
-> exists only on px-0; `local-data` exists on all nodes but is node-local — an ISO
-> downloaded on one node can't be used by VMs on another. Working DR config:
-> `proxmox_nodes = ["px-0", "px-0", "px-0"]`, `disk_storage = "local-data"`.
+> **Storage layout on pve:** `local-zfs` for `disk_storage`, `media-isos`
+> for `iso_storage` — the `local` storage there only has content=snippets,
+> no iso support. Working DR config: `proxmox_nodes = ["pve", "pve", "pve"]`.
+> (px-0 used to need `cluster-storage`/`local-data` instead — moot while
+> it's out of scope, see [talconfig discussion above](#which-host-to-target).)
 
 ```bash
 cd /srv/kubernetes/infrastructure
 
-# Creates 3 VMs on Proxmox px-0 (500 GB disk, prod MACs → static IPs via talconfig)
+# Creates 3 VMs on Proxmox pve (500 GB disk, prod MACs → static IPs via talconfig)
 # (runs terraform apply interactively — for non-interactive use:
 #  cd talos/terraform && terraform init && terraform apply -auto-approve)
 task dr:create-vms
@@ -171,14 +173,10 @@ kubectl get helmreleases -A | grep -v "True\|READY"
 # Destroy DR VMs after test (or when ready to fail back to prod)
 task dr:destroy-vms
 
-# Restart prod nodes via Proxmox UI:
-# VM 800 → kubernetes-controlplane-1 (pve / R730xd)
-# VM 802 → kubernetes-controlplane-2 (pve / R730xd)
-# VM 804 → kubernetes-controlplane-3 (pve / R730xd)
-# (verified live 2026-08-02: all 3 control-plane VMs run on R730xd, not
-# split across px-0/Beelink as previously documented here. px-0 now hosts
-# datacenter-manager (100), winserver (102, stopped), ollama (105) instead.
-# px-1/px-2 OptiPlexes remain retired.)
+# Restart the prod node via Proxmox UI:
+# VM 800 → kubernetes-controlplane-1 (pve / R730xd) - the only control-plane
+# VM since the 2026-08-17 single-node downsize (see talos/SINGLE-NODE.md).
+# px-0/px-1/px-2 are all out of scope (hardware retained, not deployed).
 ```
 
 ---
