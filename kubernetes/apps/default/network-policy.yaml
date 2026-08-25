@@ -15,8 +15,8 @@
 # portainer-agent does NOT live in this namespace despite the directory
 # location (kubernetes/apps/default/portainer-agent/) - its ks.yaml targets
 # the separate "portainer" namespace (cluster-admin ClusterRoleBinding, see
-# its rbac.yaml), so this policy does not cover it. That namespace currently
-# has no CiliumNetworkPolicy of its own - REVIEW_REQUIRED.
+# its rbac.yaml), so this policy does not cover it. See
+# portainer-agent/app/networkpolicy.yaml for that namespace's own policy.
 #
 # App-specific intra-namespace exceptions (immich-server -> immich-postgres/
 # valkey, the *arr stack talking to each other) live next to those apps'
