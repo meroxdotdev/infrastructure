@@ -540,7 +540,7 @@
         <tr><td>Radarr · Sonarr · Prowlarr · qBittorrent</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span> + NFS <span class="pill p-sas">SAS</span></td><td class="num">0,32 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
         <tr><td>Jellyseerr</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,01 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
         <tr><td>n8n</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,01 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
-        <tr><td>Filebrowser</td><td>k8s</td><td class="mono">PVC + NFS spre 5 surse</td><td class="num">0,07 G</td><td><span class="pill p-skip">încă activ — verifică dacă planul de retragere mai ține, acum că Nextcloud e real</span></td></tr>
+        <tr><td>Filebrowser</td><td>k8s</td><td class="mono">PVC + NFS spre 5 surse</td><td class="num">0,07 G</td><td><span class="pill p-skip">activ — una din cele 5 surse (documents) e înlocuită de Nextcloud</span></td></tr>
         <tr><td>Cache-uri (jellyfin ×2, jellyseerr, radarr, sonarr)</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,47 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
         <tr><td>Headlamp · Portainer agent · Authentik outpost</td><td>k8s</td><td class="mono">fără stare</td><td class="num">—</td><td><span class="pill p-skip">nimic de salvat</span></td></tr>
 
@@ -562,7 +562,7 @@
         <tr><td>windows11 (VM 100)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">58,4 G</td><td><span class="pill p-warn">fără vzdump — verifică, vezi §6</span></td></tr>
         <tr><td>Garage S3 — date (LXC 103)</td><td>pve</td><td class="mono"><code>media/backups/longhorn-garage</code> <span class="pill p-sas">SAS</span></td><td class="num">19,0 G</td><td><span class="pill p-ok">e chiar ținta de backup</span></td></tr>
         <tr><td>Garage S3 — meta</td><td>pve</td><td class="mono"><code>rpool/garage-meta</code> <span class="pill p-ssd">SSD</span></td><td class="num">29,5 M</td><td><span class="pill p-ok">copiat nightly 03:01</span></td></tr>
-        <tr><td>Documente live (Filebrowser WebDAV)</td><td>pve</td><td class="mono"><code>backups/synology-home</code> <span class="pill p-sas">SAS</span></td><td class="num">29,5 G</td><td><span class="pill p-ok">e sursă, nu copie</span></td></tr>
+        <tr><td>Documente (Filebrowser WebDAV)</td><td>pve</td><td class="mono"><code>backups/synology-home</code> <span class="pill p-sas">SAS</span></td><td class="num">29,5 G</td><td><span class="pill p-skip">înlocuit de Nextcloud</span></td></tr>
         <tr><td>ISO-uri / template-uri</td><td>pve</td><td class="mono"><code>media/isos</code> <span class="pill p-sas">SAS</span></td><td class="num">3,55 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">VPS Oracle</td></tr>
@@ -601,7 +601,7 @@
         <tr><td class="mono">VM windows11</td><td>rulează; nu s-a confirmat dacă RDP-ul e expus</td><td class="num">58,4 G</td><td><span class="pill p-warn">re-verifică</span></td></tr>
         <tr><td class="mono">VM windows11</td><td>nicio vzdump în crontab-ul lui pve pentru VM 100 — doar VM 101 are. Ollama (VM 105) nu are nevoie, documentat; Nextcloud (VM 1000) e acoperit separat, prin AIO borg</td><td class="num">—</td><td><span class="pill p-warn">decide dacă merită vzdump</span></td></tr>
         <tr><td class="mono">media/photos</td><td>copie stale de la migrarea Immich; doar Filebrowser o citește</td><td class="num">3,28 G</td><td><span class="pill p-skip">după Filebrowser</span></td></tr>
-        <tr><td class="mono">backups/synology-home</td><td>documente live pe pool-ul de spin-down, în arborele de backup</td><td class="num">29,5 G</td><td><span class="pill p-skip">nerezolvat, chiar cu Nextcloud real acum</span></td></tr>
+        <tr><td class="mono">backups/synology-home</td><td>date înlocuite de Nextcloud, încă montate în Filebrowser și încă pe disc</td><td class="num">29,5 G</td><td><span class="pill p-skip">de curățat</span></td></tr>
         <tr><td class="mono">Leg Synology fără healthcheck</td><td>un eșec e invizibil</td><td class="num">—</td><td><span class="pill p-skip">tot deschis</span></td></tr>
       </tbody>
     </table>
