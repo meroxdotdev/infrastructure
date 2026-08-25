@@ -92,10 +92,6 @@ instanceName: merox-main
 # API PROVIDERS
 # ============================================================================
 providers:
-  portainer:
-    url: https://172.25.10.30:9443
-    key: "{{HOMEPAGE_VAR_PORTAINER_KEY}}"
-
   proxmox:
     url: https://10.57.57.254:8006
     username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
