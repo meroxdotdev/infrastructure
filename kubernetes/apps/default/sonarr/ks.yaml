@@ -17,7 +17,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      VOLSYNC_CAPACITY: 5Gi
     substituteFrom:
       - name: cluster-vars
         kind: ConfigMap
