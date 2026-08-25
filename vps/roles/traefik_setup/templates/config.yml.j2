@@ -43,17 +43,6 @@ http:
       tls: {}
       service: jellyfin
 
-    guacamole:
-      entryPoints:
-        - "https"
-      rule: "Host(`{{ guacamole_domain }}`)"
-      middlewares:
-        - middlewares-authentik
-        - default-headers
-      tls:
-        certResolver: cloudflare
-      service: guacamole
-
   services:
     jellyfin:
       loadBalancer:
@@ -62,12 +51,6 @@ http:
         # router.
         servers:
           - url: "http://{{ jellyfin_backend_ip }}:{{ jellyfin_backend_port }}"
-        passHostHeader: true
-
-    guacamole:
-      loadBalancer:
-        servers:
-          - url: "http://{{ guacamole_ip }}:{{ guacamole_port }}"
         passHostHeader: true
 
   middlewares:
