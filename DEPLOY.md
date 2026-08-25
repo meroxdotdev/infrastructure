@@ -38,8 +38,8 @@ allowed_ips         = ["0.0.0.0/0", "::/0"]
 
 > ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Cloudflare Tunnel,
 > Pi-hole + Unbound, Portainer, Homepage, Joplin + Postgres, Guacamole, Authentik SSO.
-> Garage S3 is on-demand only (`make garage-setup`), not part of the default deploy —
-> see [DR.md](DR.md#r730xd--garage-total-loss-fallback).
+> Garage S3 doesn't run on this VPS — it's an independent LXC on R730xd, untouched
+> by this deploy. See [DR.md](DR.md#r730xd--garage-total-loss-fallback).
 >
 > **How it works:** Terraform provisions the Hetzner server (cloud-init installs python3 + creates dirs).
 > `make dr-full` then runs Ansible from your local machine over SSH to deploy all services.
