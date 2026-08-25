@@ -8,8 +8,10 @@ metadata:
 spec:
   # Suspended: transcoding moved to Nvidia (see nvidia-device-plugin and
   # docs/gpu-transcoding.md). Kept in git, not deleted, as the rollback path
-  # to Intel QSV — the old controlplane-1 VM with the iGPU passthrough is
-  # also kept powered off (not deleted) on px-0 for the same reason.
+  # to Intel QSV — the old controlplane-1 VM with the iGPU passthrough
+  # would have run on px-0, but that hardware isn't currently deployed at
+  # all (see docs/gpu-transcoding.md's rollback section for what that
+  # actually requires today).
   suspend: true
   commonMetadata:
     labels:

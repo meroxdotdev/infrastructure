@@ -19,7 +19,6 @@ system_packages:
 traefik_docker_dir:      /srv/docker/oracle-cloud/traefik
 guacamole_docker_dir:    /srv/docker/oracle-cloud/guacamole
 authentik_docker_dir:    /srv/docker/oracle-cloud/authentik
-garage_docker_dir:       /srv/docker/oracle-cloud/garage
 
 # Routing vars needed by traefik config.yml.j2 regardless of which roles run
 # Jellyfin — the only service served directly on the VPS public IP.

@@ -10,7 +10,7 @@
       - gnupg
       - lsb-release
       - python3-pip
-      - python3-docker  # ← Folosim pachetul Debian în loc de pip
+      - python3-docker  # Debian package, not pip
     state: present
     update_cache: yes
   tags: ['docker', 'setup']

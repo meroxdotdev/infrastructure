@@ -1,12 +1,14 @@
 .PHONY: help install ping setup update check facts lint \
+        docker-setup docker-test \
         traefik-setup traefik-test \
-        garage-setup garage-test \
         guacamole-setup guacamole-test \
         cloudflared-setup cloudflared-test app-stack-setup app-stack-test \
         authentik-setup authentik-test authentik-backup \
+        db-backups-setup backup-sync-now \
         cleanup check-resources health-check \
         terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
-        dr-verify-phase1 dr-verify-phase2 garage-extract-creds \
+        dr-verify-phase1 dr-verify-phase2 \
+        restore restore-authentik restore-joplin \
         restore-pull-r730xd restore-extras restore-auto dr-restore \
         vault-edit vault-show-required view-vault
 
@@ -19,8 +21,7 @@ help:
 	@echo "  dr-full            Pre-flight + provision Hetzner + full deploy (~15 min)"
 	@echo "  dr-verify-phase1   Verify VPS phase (run on the VPS)"
 	@echo "  dr-verify-phase2   Verify K8s phase (run from local machine)"
-	@echo "  dr-restore         DR: restore all data from NAS (pull + DB + extras, non-interactive)"
-	@echo "  garage-extract-creds  Extract Garage S3 creds + update vault (between Phase 1+2)"
+	@echo "  dr-restore         DR: restore all data from R730xd (pull + DB + extras, non-interactive)"
 	@echo "  terraform-apply    Provision server on Hetzner only"
 	@echo "  terraform-plan     Preview what Terraform will create"
 	@echo "  terraform-init     Initialize Terraform (first time only)"
@@ -33,7 +34,7 @@ help:
 	@echo "  health-check       Post-deploy verification"
 	@echo ""
 	@echo "Individual services:"
-	@echo "  traefik-setup      garage-setup       guacamole-setup"
+	@echo "  traefik-setup      guacamole-setup"
 	@echo "  authentik-setup    cloudflared-setup"
 	@echo "  app-stack-setup    (cloudlab-merox app stack)"
 	@echo ""
@@ -97,12 +98,6 @@ traefik-setup:
 traefik-test:
 	ansible vps_servers -m shell -a "docker ps | grep traefik && docker logs traefik --tail 20"
 
-garage-setup:
-	ansible-playbook playbooks/garage-setup.yml
-
-garage-test:
-	ansible vps_servers -m shell -a "docker ps | grep -E 'garage|garage-webui' && docker exec garage /garage status"
-
 guacamole-setup:
 	ansible-playbook playbooks/site.yml --tags guacamole
 
@@ -119,7 +114,7 @@ app-stack-setup:
 	ansible-playbook playbooks/app-stack.yml
 
 app-stack-test:
-	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer|joplin|glances'"
+	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer|joplin'"
 
 # --- Authentik SSO ---
 authentik-setup:
@@ -201,9 +196,6 @@ dr-verify-phase1:
 dr-verify-phase2:
 	@bash ../scripts/dr-verify.sh --phase 2
 
-garage-extract-creds:
-	@bash ../scripts/garage-extract-creds.sh
-
 dr-full:
 	@echo "Starting full disaster recovery..."
 	$(MAKE) dr-preflight
@@ -246,9 +238,6 @@ vault-show-required:
 	@echo ""
 	@echo "  # Tailscale — HAS vault_ prefix"
 	@echo "  vault_tailscale_auth_key:      '<from tailscale admin panel>'"
-	@echo ""
-	@echo "  # NAS backup rsync auth — HAS vault_ prefix"
-	@echo "  vault_rsyncd_password:         '<must match /var/services/homes/admin/.vps-rsync.pass on NAS>'"
 	@echo ""
 	@echo "  # Pi-hole — no vault_ prefix"
 	@echo "  pihole_webpassword:            '<strong password>'"

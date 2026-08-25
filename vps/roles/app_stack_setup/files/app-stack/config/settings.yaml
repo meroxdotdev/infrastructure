@@ -19,7 +19,7 @@ layout:
   # gains/loses an entry in services.yaml.
   Compute & Hardware:
     style: row
-    columns: 4
+    columns: 2
     icon: mdi-server
     useEqualHeights: true
 
@@ -49,7 +49,7 @@ layout:
 
   Network:
     style: column
-    columns: 4
+    columns: 3
     icon: mdi-server-network
     useEqualHeights: false
 
@@ -91,15 +91,9 @@ instanceName: merox-main
 # ============================================================================
 # API PROVIDERS
 # ============================================================================
-providers:
-  portainer:
-    url: https://172.25.10.30:9443
-    key: "{{HOMEPAGE_VAR_PORTAINER_KEY}}"
-
-  proxmox:
-    url: https://10.57.57.254:8006
-    username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
-    password: "{{HOMEPAGE_VAR_PROXMOX_PASS}}"
-
-  longhorn:
-    url: http://10.57.57.80:30887/
+# proxmox and longhorn providers removed: neither is consumed by any widget
+# below (the Proxmox card pointed at px-0, out of scope; the Longhorn card is
+# disabled in widgets.yaml for being unreachable from the VPS). Restore from
+# git history alongside re-adding the corresponding widget, pointed at pve
+# (10.57.57.250) for Proxmox.
+providers: {}

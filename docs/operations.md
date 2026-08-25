@@ -50,7 +50,7 @@ make dr-full            # provision fallback VPS + cloud-init deploys everything
 ```
 
 ---
----
+
 ## Maintenance
 
 ### Adding a node

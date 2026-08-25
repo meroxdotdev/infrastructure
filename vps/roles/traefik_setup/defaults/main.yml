@@ -1,5 +1,5 @@
 ---
-traefik_docker_dir: /srv/docker/traefik
+traefik_docker_dir: /srv/docker/oracle-cloud/traefik
 traefik_compose_version: "3.8"
 traefik_image: "traefik:latest"
 traefik_network_name: network-cloud-merox

@@ -180,7 +180,7 @@
 <div class="wrap">
 
 <header class="prose">
-  <p class="eyebrow">merox.dev · 16 august 2026</p>
+  <p class="eyebrow">merox.dev · 25 august 2026</p>
   <h1>Unde stă fiecare lucru și cum se salvează</h1>
   <p class="lede">Harta completă a storage-ului: fiecare serviciu din homelab și de pe VPS,
   pe ce mașină rulează, unde îi stau datele, și pe ce drum ajung în backup.
@@ -218,28 +218,28 @@
         <g>
           <rect x="20" y="26" width="330" height="196" rx="10" fill="none" stroke="currentColor" stroke-width="1.6"/>
           <text x="36" y="50" class="svg-mono" font-size="13" font-weight="700" fill="currentColor">rpool — 4 × SSD enterprise, mirror</text>
-          <text x="36" y="68" class="svg-mono" font-size="11" fill="currentColor" opacity=".62">1,73 T · 448 G folosiți · 1,24 T liberi</text>
+          <text x="36" y="68" class="svg-mono" font-size="11" fill="currentColor" opacity=".62">1,73 T · 505 G folosiți · 1,24 T liberi</text>
           <line x1="36" y1="80" x2="334" y2="80" stroke="currentColor" stroke-width="1" opacity=".2"/>
           <text x="36" y="102" font-size="12.5" font-weight="650" fill="currentColor">Tot ce se atinge în timpul zilei</text>
-          <text x="36" y="126" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">VM-uri Talos → toate PVC-urile k8s</text>
-          <text x="36" y="146" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">Immich · Jellyfin config · ARR · n8n</text>
+          <text x="36" y="126" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">VM Talos (1 nod) → toate PVC-urile k8s</text>
+          <text x="36" y="146" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">Immich · Jellyfin ×2 · ARR · n8n</text>
           <text x="36" y="166" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">observability (Prometheus, Loki…)</text>
-          <text x="36" y="186" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">Home Assistant · Garage meta</text>
-          <text x="36" y="208" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".45">+ Nextcloud, când vine</text>
+          <text x="36" y="186" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">Home Assistant · Ollama · Garage meta</text>
+          <text x="36" y="208" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">Nextcloud (VM 1000)</text>
         </g>
 
         <!-- SAS -->
         <g>
           <rect x="410" y="26" width="330" height="196" rx="10" fill="url(#hatch)" stroke="currentColor" stroke-width="1.6" stroke-dasharray="6 4"/>
           <text x="426" y="50" class="svg-mono" font-size="13" font-weight="700" fill="currentColor">media — 12 × SAS, 2 × RAIDZ2</text>
-          <text x="426" y="68" class="svg-mono" font-size="11" fill="currentColor" opacity=".62">4,2 T utilizabil · 1,09 T folosiți · adormit ~90%</text>
+          <text x="426" y="68" class="svg-mono" font-size="11" fill="currentColor" opacity=".62">6,53 T total · 1,86 T folosiți · adormit ~90%</text>
           <line x1="426" y1="80" x2="724" y2="80" stroke="currentColor" stroke-width="1" opacity=".2"/>
           <text x="426" y="102" font-size="12.5" font-weight="650" fill="currentColor">Doar două lucruri</text>
-          <text x="426" y="126" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">library — filme/seriale, 1021 G</text>
-          <text x="426" y="146" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">backups — zona de aterizare, 89 G</text>
+          <text x="426" y="126" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">library — filme/seriale, 1,11 T</text>
+          <text x="426" y="146" class="svg-mono" font-size="11.5" fill="currentColor" opacity=".8">backups — zona de aterizare, 123 G</text>
           <text x="426" y="172" font-size="11.5" fill="currentColor" opacity=".62">citit în rafale lungi ·</text>
           <text x="426" y="190" font-size="11.5" fill="currentColor" opacity=".62">scris o dată pe noapte</text>
-          <text x="426" y="208" class="svg-mono" font-size="11" fill="currentColor" opacity=".45">(+ isos, 2,8 G — rece, tolerat)</text>
+          <text x="426" y="208" class="svg-mono" font-size="11" fill="currentColor" opacity=".45">(+ isos, 3,55 G · photos, 3,28 G — reci, tolerate)</text>
         </g>
 
         <line x1="352" y1="124" x2="406" y2="124" stroke="currentColor" stroke-width="1.6" marker-end="url(#ar)"/>
@@ -267,34 +267,21 @@
         <span class="sub">10.57.57.250 · Xeon E5-2630 v3 · 251 GB</span>
       </div>
       <ul class="svc">
-        <li><span>VM 800/802/804 Talos</span><span>380 G</span></li>
-        <li><span>VM 101 home-assistant</span><span>3,6 G</span></li>
+        <li><span>VM 800 Talos (1 nod)</span><span>229 G</span></li>
+        <li><span>VM 1000 nextcloud</span><span>16,2 G</span></li>
+        <li><span>VM 105 ollama</span><span>7,4 G</span></li>
+        <li><span>VM 101 home-assistant</span><span>3,5 G</span></li>
         <li><span>LXC 103 garage-r730xd</span><span>1,0 G</span></li>
         <li><span>server NFS</span><span>—</span></li>
         <li><span>toate cron-urile de backup</span><span>—</span></li>
       </ul>
       <hr>
       <ul class="svc">
-        <li style="color:var(--warn)"><span>VM 100 windows11 · oprit</span><span>57,4 G</span></li>
-        <li style="color:var(--warn)"><span>VM 104 pdm · duplicat</span><span>2,2 G</span></li>
-        <li style="color:var(--warn)"><span>VM 102 ubuntu · gol</span><span>~0</span></li>
+        <li style="color:var(--warn)"><span>VM 100 windows11</span><span>58,4 G</span></li>
       </ul>
-    </div>
-
-    <div class="card">
-      <div class="card-hd">
-        <span class="name">px-0 — Beelink</span>
-        <span class="sub">10.57.57.254 · i9-13900H · 64 GB</span>
-      </div>
-      <ul class="svc">
-        <li><span>VM 100 pdm</span><span>—</span></li>
-        <li><span>VM 105 ollama</span><span>—</span></li>
-        <li><span>pwrstatd → oprire pve</span><span>—</span></li>
-        <li><span>țintă test DR</span><span>—</span></li>
-      </ul>
-      <div class="note warn" style="font-size:.8rem;padding:.6rem .8rem">
-        <strong>Zero backup-uri.</strong> Un singur NVMe, fără redundanță.
-        Tot ce e aici e „se reconstruiește", nu „se restaurează".
+      <div class="note" style="font-size:.78rem;padding:.5rem .7rem">
+        px-0 (Beelink) nu rulează Proxmox — hardware păstrat, posibil viitor
+        cluster de dev, nedecis.
       </div>
     </div>
 
@@ -349,17 +336,18 @@
     <div class="card">
       <div class="card-hd">
         <span class="name">Kubernetes</span>
-        <span class="sub">3 × Talos, toate VM-uri pe pve</span>
+        <span class="sub">1 × Talos (VM 800), pe pve</span>
       </div>
       <ul class="svc">
-        <li><span>23 PVC-uri, 155 Gi alocați</span><span>36,7 G reali</span></li>
-        <li><span>Longhorn, 3 replici</span><span>110 G pe rpool</span></li>
+        <li><span>22 PVC-uri, 193 Gi alocați</span><span>~28 G reali</span></li>
+        <li><span>Longhorn, 1 replică</span><span>fără multiplicare</span></li>
         <li><span>10 PVC-uri în backup</span><span class="pill p-ok">nightly</span></li>
-        <li><span>13 PVC-uri excluse</span><span class="pill p-skip">regenerabile</span></li>
+        <li><span>12 PVC-uri excluse</span><span class="pill p-skip">regenerabile</span></li>
       </ul>
-      <div class="note" style="font-size:.79rem;padding:.55rem .8rem">
-        Cele 3 replici sunt toate pe <code>rpool</code>. Protejează dacă se
-        strică un VM Talos — nu dacă moare pool-ul.
+      <div class="note warn" style="font-size:.79rem;padding:.55rem .8rem">
+        Un singur nod (<code>talos/SINGLE-NODE.md</code>). Nicio replică Longhorn
+        nu există pe alt nod — protecția vine doar din mirror-ul ZFS + backup-ul
+        nightly, nu din redundanța Kubernetes.
       </div>
     </div>
   </div>
@@ -418,7 +406,7 @@
         <!-- hub -->
         <rect x="340" y="120" width="196" height="98" rx="10" fill="none" stroke="currentColor" stroke-width="2"/>
         <text x="438" y="146" text-anchor="middle" class="svg-mono" font-size="12.5" font-weight="700" fill="currentColor">/media/backups</text>
-        <text x="438" y="163" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".6">pe pve · pool SAS · 89 G</text>
+        <text x="438" y="163" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".6">pe pve · pool SAS · 123 G</text>
         <line x1="356" y1="174" x2="520" y2="174" stroke="currentColor" stroke-width="1" opacity=".2"/>
         <text x="438" y="192" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".75">snapshot ZFS 03:05</text>
         <text x="438" y="208" text-anchor="middle" class="svg-mono" font-size="10" fill="currentColor" opacity=".55">retenție 14 zile</text>
@@ -452,7 +440,10 @@
     </div>
     <figcaption>Săgeata continuă pleacă în fiecare noapte, cea punctată o dată pe săptămână
     în fereastra în care NAS-ul e trezit. Pentru orice fișier ies 4 copii în 2 locații
-    fizice, una offsite — 3-2-1 respectat.</figcaption>
+    fizice, una offsite — 3-2-1 respectat. <strong>Nextcloud (VM 1000)</strong> e a opta
+    sursă: AIO borg 23:40 UTC scrie în <code>media/backups/nextcloud</code> (6,8 G) direct
+    prin SSH, în afara ferestrei de mai sus — vezi
+    <code>proxmox/r730xd/nextcloud/README.md</code> §6. Nu apare desenat aici.</figcaption>
   </figure>
 </section>
 
@@ -542,42 +533,45 @@
       </thead>
       <tbody>
         <tr class="grouprow"><td colspan="5">Kubernetes · default</td></tr>
-        <tr><td>Immich</td><td>k8s</td><td class="mono">PVC ×3 <span class="pill p-ssd">SSD</span></td><td class="num">4,49 G</td><td><span class="pill p-ok">Longhorn + pg_dump</span></td></tr>
-        <tr><td>Jellyfin — config</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,91 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
-        <tr><td>Jellyfin — bibliotecă</td><td>k8s</td><td class="mono">NFS <code>media/library</code> <span class="pill p-sas">SAS</span></td><td class="num">1021 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
-        <tr><td>Radarr · Sonarr · Prowlarr · qBittorrent</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span> + NFS <span class="pill p-sas">SAS</span></td><td class="num">2,23 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
-        <tr><td>Jellyseerr</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,14 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
-        <tr><td>n8n</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,16 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
-        <tr><td>Filebrowser</td><td>k8s</td><td class="mono">PVC + NFS spre 5 surse</td><td class="num">0,17 G</td><td><span class="pill p-skip">se retrage</span></td></tr>
-        <tr><td>Cache-uri (jellyfin, jellyseerr, radarr, sonarr)</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">1,26 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>Immich</td><td>k8s</td><td class="mono">PVC ×3 <span class="pill p-ssd">SSD</span></td><td class="num">17,7 G</td><td><span class="pill p-ok">Longhorn + pg_dump</span></td></tr>
+        <tr><td>Jellyfin — config</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,32 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
+        <tr><td>Jellyfin — bibliotecă</td><td>k8s</td><td class="mono">NFS <code>media/library</code> <span class="pill p-sas">SAS</span></td><td class="num">1,11 T</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
+        <tr><td>Jellyfin-public</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span> + NFS <code>public/library</code> <span class="pill p-sas">SAS</span></td><td class="num">0,08 G</td><td><span class="pill p-skip">deliberat exclus — reconstruibil în minute</span></td></tr>
+        <tr><td>Radarr · Sonarr · Prowlarr · qBittorrent</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span> + NFS <span class="pill p-sas">SAS</span></td><td class="num">0,32 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
+        <tr><td>Jellyseerr</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,01 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
+        <tr><td>n8n</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,01 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
+        <tr><td>Filebrowser</td><td>k8s</td><td class="mono">PVC + NFS spre 5 surse</td><td class="num">0,07 G</td><td><span class="pill p-skip">activ — una din cele 5 surse (documents) e înlocuită de Nextcloud</span></td></tr>
+        <tr><td>Cache-uri (jellyfin ×2, jellyseerr, radarr, sonarr)</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,47 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
         <tr><td>Headlamp · Portainer agent · Authentik outpost</td><td>k8s</td><td class="mono">fără stare</td><td class="num">—</td><td><span class="pill p-skip">nimic de salvat</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">Kubernetes · observability</td></tr>
-        <tr><td>Prometheus</td><td>k8s</td><td class="mono">PVC 15 Gi <span class="pill p-ssd">SSD</span></td><td class="num">17,03 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
-        <tr><td>Loki + Promtail</td><td>k8s</td><td class="mono">PVC 20 Gi <span class="pill p-ssd">SSD</span></td><td class="num">3,42 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
-        <tr><td>Grafana</td><td>k8s</td><td class="mono">PVC 10 Gi <span class="pill p-ssd">SSD</span></td><td class="num">0,80 G</td><td><span class="pill p-skip">dashboard-uri în git</span></td></tr>
-        <tr><td>Alertmanager</td><td>k8s</td><td class="mono">PVC 1 Gi <span class="pill p-ssd">SSD</span></td><td class="num">0,09 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>Prometheus</td><td>k8s</td><td class="mono">PVC 15 Gi <span class="pill p-ssd">SSD</span></td><td class="num">9,0 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>Loki + Promtail</td><td>k8s</td><td class="mono">PVC 20 Gi <span class="pill p-ssd">SSD</span></td><td class="num">necuantificat<br><span style="font-size:.7rem;opacity:.6">imagine distroless, fără shell</span></td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>Grafana</td><td>k8s</td><td class="mono">PVC 10 Gi <span class="pill p-ssd">SSD</span></td><td class="num">0,07 G</td><td><span class="pill p-skip">dashboard-uri în git</span></td></tr>
+        <tr><td>Alertmanager</td><td>k8s</td><td class="mono">PVC 1 Gi <span class="pill p-ssd">SSD</span></td><td class="num">~0 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">Kubernetes · network / storage / system</td></tr>
         <tr><td>Cloudflare Tunnel · k8s-gateway · external-dns</td><td>k8s</td><td class="mono">fără stare</td><td class="num">—</td><td><span class="pill p-skip">declarativ, în git</span></td></tr>
-        <tr><td>netboot.xyz</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,12 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
+        <tr><td>netboot.xyz</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,03 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
         <tr><td>Longhorn · Cilium · cert-manager · Flux</td><td>k8s</td><td class="mono">config în git</td><td class="num">—</td><td><span class="pill p-skip">declarativ</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">pve — direct pe host</td></tr>
-        <tr><td>Home Assistant (VM 101)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">3,56 G</td><td><span class="pill p-ok">vzdump → doar Synology</span></td></tr>
-        <tr><td>Garage S3 — date (LXC 103)</td><td>pve</td><td class="mono"><code>media/backups/…</code> <span class="pill p-sas">SAS</span></td><td class="num">5,43 G</td><td><span class="pill p-ok">e chiar ținta de backup</span></td></tr>
-        <tr><td>Garage S3 — meta</td><td>pve</td><td class="mono"><code>rpool/garage-meta</code> <span class="pill p-ssd">SSD</span></td><td class="num">9,9 M</td><td><span class="pill p-ok">copiat nightly 03:01</span></td></tr>
-        <tr><td>Documente live (Filebrowser WebDAV)</td><td>pve</td><td class="mono"><code>backups/synology-home</code> <span class="pill p-sas">SAS</span></td><td class="num">29,5 G</td><td><span class="pill p-ok">e sursă, nu copie</span></td></tr>
-        <tr><td>ISO-uri / template-uri</td><td>pve</td><td class="mono"><code>media/isos</code> <span class="pill p-sas">SAS</span></td><td class="num">2,82 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
+        <tr><td>Home Assistant (VM 101)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">3,5 G</td><td><span class="pill p-ok">vzdump → doar Synology</span></td></tr>
+        <tr><td>Ollama (VM 105)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">7,4 G</td><td><span class="pill p-skip">deliberat exclus — model re-fetchable, OS reproductibil din runbook</span></td></tr>
+        <tr><td>Nextcloud (VM 1000)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">16,2 G</td><td><span class="pill p-ok">AIO borg 23:40 UTC → restic + Synology</span></td></tr>
+        <tr><td>windows11 (VM 100)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">58,4 G</td><td><span class="pill p-warn">fără vzdump — verifică, vezi §6</span></td></tr>
+        <tr><td>Garage S3 — date (LXC 103)</td><td>pve</td><td class="mono"><code>media/backups/longhorn-garage</code> <span class="pill p-sas">SAS</span></td><td class="num">19,0 G</td><td><span class="pill p-ok">e chiar ținta de backup</span></td></tr>
+        <tr><td>Garage S3 — meta</td><td>pve</td><td class="mono"><code>rpool/garage-meta</code> <span class="pill p-ssd">SSD</span></td><td class="num">29,5 M</td><td><span class="pill p-ok">copiat nightly 03:01</span></td></tr>
+        <tr><td>Documente (Filebrowser WebDAV)</td><td>pve</td><td class="mono"><code>backups/synology-home</code> <span class="pill p-sas">SAS</span></td><td class="num">29,5 G</td><td><span class="pill p-skip">înlocuit de Nextcloud</span></td></tr>
+        <tr><td>ISO-uri / template-uri</td><td>pve</td><td class="mono"><code>media/isos</code> <span class="pill p-sas">SAS</span></td><td class="num">3,55 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">VPS Oracle</td></tr>
         <tr><td>Authentik (SSO)</td><td>VPS</td><td class="mono">volum Docker</td><td class="num">—</td><td><span class="pill p-ok">dump 02:40 → pve</span></td></tr>
         <tr><td>Joplin + Postgres</td><td>VPS</td><td class="mono">volum Docker</td><td class="num">—</td><td><span class="pill p-ok">dump 02:45 → pve</span></td></tr>
-        <tr><td>Traefik · Pi-hole · Guacamole · Homepage · Portainer</td><td>VPS</td><td class="mono">volume Docker</td><td class="num">—</td><td><span class="pill p-ok">tar 02:50 → pve</span></td></tr>
+        <tr><td>Traefik · Pi-hole · Guacamole · Homepage ×2 · Portainer</td><td>VPS</td><td class="mono">volume Docker</td><td class="num">—</td><td><span class="pill p-ok">tar 02:50 → pve</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">Alte mașini</td></tr>
         <tr><td>pfSense — configurație</td><td>fw</td><td class="mono">config.xml.gz</td><td class="num">—</td><td><span class="pill p-ok">push 03:00 → pve</span></td></tr>
-        <tr><td>PDM · ollama · winserver</td><td>px-0</td><td class="mono">NVMe unic, fără redundanță</td><td class="num">—</td><td><span class="pill p-warn">niciun backup</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -587,8 +581,8 @@
     <span class="pill p-ok">verde</span> înseamnă că există o copie în afara mașinii-sursă.
     <span class="pill p-skip">galben</span> înseamnă exclus <em>intenționat</em>, pentru că
     se reconstruiește din git sau se re-descarcă — nu e o scăpare.
-    <span class="pill p-warn">roșu</span> e singurul loc unde nu există nicio plasă:
-    px-0, unde totul e rebuild-only prin proiectare.
+    <span class="pill p-warn">roșu</span> înseamnă neverificat sau lipsă, nu neapărat prin
+    proiectare. windows11 e singurul serviciu fără nicio plasă documentată. Vezi §6.
   </div>
 </section>
 
@@ -603,27 +597,21 @@
     <table>
       <thead><tr><th>Element</th><th>Problema</th><th style="text-align:right">Recuperează</th><th>Stare</th></tr></thead>
       <tbody>
-        <tr><td class="mono">netdata — manifeste</td><td>serviciu oprit, manifestele încă în git</td><td class="num">—</td><td><span class="pill p-ok">scos din git</span></td></tr>
-        <tr><td class="mono">netdata — PVC-uri</td><td>zero pod-uri, volumele au rămas</td><td class="num">17,8 G</td><td><span class="pill p-skip">de șters</span></td></tr>
-        <tr><td class="mono">Prometheus retentionSize</td><td>20 GB pe un volum de 16,1 GB — garda nu se putea declanșa</td><td class="num">—</td><td><span class="pill p-ok">reparat în git</span></td></tr>
-        <tr><td class="mono">discard=on pe discurile Talos</td><td>blocurile eliberate în guest nu se întorc la ZFS</td><td class="num">~90–145 G</td><td><span class="pill p-skip">cere repornire pe rând</span></td></tr>
-        <tr><td class="mono">VM windows11</td><td>oprit; auditul îi semnala RDP-ul deschis</td><td class="num">57,4 G</td><td><span class="pill p-warn">așteaptă decizia ta</span></td></tr>
-        <tr><td class="mono">VM datacenter-manager (pve)</td><td>duplicat — cel real rulează pe px-0</td><td class="num">2,2 G</td><td><span class="pill p-warn">așteaptă decizia ta</span></td></tr>
-        <tr><td class="mono">VM ubuntu-server</td><td>coajă goală, 64 G rezervați</td><td class="num">~0</td><td><span class="pill p-warn">așteaptă decizia ta</span></td></tr>
+        <tr><td class="mono">discard=on pe discurile Talos</td><td>blocurile eliberate în guest nu se întorc la ZFS</td><td class="num">~90–145 G</td><td><span class="pill p-skip">cere repornire — încă neverificat</span></td></tr>
+        <tr><td class="mono">VM windows11</td><td>rulează; nu s-a confirmat dacă RDP-ul e expus</td><td class="num">58,4 G</td><td><span class="pill p-warn">re-verifică</span></td></tr>
+        <tr><td class="mono">VM windows11</td><td>nicio vzdump în crontab-ul lui pve pentru VM 100 — doar VM 101 are. Ollama (VM 105) nu are nevoie, documentat; Nextcloud (VM 1000) e acoperit separat, prin AIO borg</td><td class="num">—</td><td><span class="pill p-warn">decide dacă merită vzdump</span></td></tr>
         <tr><td class="mono">media/photos</td><td>copie stale de la migrarea Immich; doar Filebrowser o citește</td><td class="num">3,28 G</td><td><span class="pill p-skip">după Filebrowser</span></td></tr>
-        <tr><td class="mono">media/games</td><td>gol</td><td class="num">~0</td><td><span class="pill p-skip">de șters</span></td></tr>
-        <tr><td class="mono">backups/synology-home</td><td>documente live pe pool-ul de spin-down, în arborele de backup</td><td class="num">29,5 G</td><td><span class="pill p-skip">după Nextcloud</span></td></tr>
-        <tr><td class="mono">Leg Synology fără healthcheck</td><td>un eșec e invizibil</td><td class="num">—</td><td><span class="pill p-skip">mâine</span></td></tr>
+        <tr><td class="mono">backups/synology-home</td><td>date înlocuite de Nextcloud, încă montate în Filebrowser și încă pe disc</td><td class="num">29,5 G</td><td><span class="pill p-skip">de curățat</span></td></tr>
+        <tr><td class="mono">Leg Synology fără healthcheck</td><td>un eșec e invizibil</td><td class="num">—</td><td><span class="pill p-skip">tot deschis</span></td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="note">
     <strong>Ordinea recomandată.</strong> Întâi <code>discard=on</code> — poate schimba
-    tot calculul de spațiu, deci merită știut înainte de a dimensiona orice altceva.
-    Apoi PVC-urile netdata și VM-urile moarte. <code>media/photos</code>,
-    <code>media/games</code> și <code>synology-home</code> sunt legate de retragerea
-    Filebrowser și de Nextcloud, deci vin la final.
+    tot calculul de spațiu. Apoi windows11, singurul serviciu live fără nicio plasă
+    confirmată acum. <code>media/photos</code> și <code>synology-home</code> rămân
+    legate de Filebrowser, deci vin la final.
   </div>
 </section>
 

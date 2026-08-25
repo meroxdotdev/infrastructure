@@ -10,6 +10,14 @@
 # dynamic provisioning.
 # Post-restore, run: task longhorn:post-restore-jellyfin
 # Jellyfin images re-download automatically in ~10 min after that task runs.
+#
+# csi.volumeAttributes.numberOfReplicas below is cosmetic: these PVs bind by
+# claimRef to volumes that already exist by the time this file is applied
+# (restore-volume creates the Volume CRD first), so no CreateVolume call ever
+# reads it. The real replica count is the Volume CRD's spec.numberOfReplicas,
+# set dynamically from the actual node count by .taskfiles/longhorn/Taskfile.yaml.
+# Kept at "1" here to match today's single-node reality and avoid looking
+# like a live contradiction — not because changing it would do anything.
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -29,7 +37,7 @@ spec:
     driver: driver.longhorn.io
     fsType: ext4
     volumeAttributes:
-      numberOfReplicas: "3"
+      numberOfReplicas: "1"
       staleReplicaTimeout: "30"
     volumeHandle: immich-postgres-restored
   persistentVolumeReclaimPolicy: Retain
@@ -53,7 +61,7 @@ spec:
     driver: driver.longhorn.io
     fsType: ext4
     volumeAttributes:
-      numberOfReplicas: "3"
+      numberOfReplicas: "1"
       staleReplicaTimeout: "30"
     volumeHandle: n8n-restored
   persistentVolumeReclaimPolicy: Retain
@@ -77,7 +85,7 @@ spec:
     driver: driver.longhorn.io
     fsType: ext4
     volumeAttributes:
-      numberOfReplicas: "3"
+      numberOfReplicas: "1"
       staleReplicaTimeout: "30"
     volumeHandle: jellyfin-restored
   persistentVolumeReclaimPolicy: Retain
@@ -101,7 +109,7 @@ spec:
     driver: driver.longhorn.io
     fsType: ext4
     volumeAttributes:
-      numberOfReplicas: "3"
+      numberOfReplicas: "1"
       staleReplicaTimeout: "30"
     volumeHandle: prowlarr-restored
   persistentVolumeReclaimPolicy: Retain
@@ -125,7 +133,7 @@ spec:
     driver: driver.longhorn.io
     fsType: ext4
     volumeAttributes:
-      numberOfReplicas: "3"
+      numberOfReplicas: "1"
       staleReplicaTimeout: "30"
     volumeHandle: radarr-restored
   persistentVolumeReclaimPolicy: Retain
@@ -149,7 +157,7 @@ spec:
     driver: driver.longhorn.io
     fsType: ext4
     volumeAttributes:
-      numberOfReplicas: "3"
+      numberOfReplicas: "1"
       staleReplicaTimeout: "30"
     volumeHandle: sonarr-restored
   persistentVolumeReclaimPolicy: Retain
@@ -181,7 +189,7 @@ spec:
     driver: driver.longhorn.io
     fsType: ext4
     volumeAttributes:
-      numberOfReplicas: "3"
+      numberOfReplicas: "1"
       staleReplicaTimeout: "30"
     volumeHandle: jellyseerr-restored
   persistentVolumeReclaimPolicy: Retain
@@ -205,7 +213,7 @@ spec:
     driver: driver.longhorn.io
     fsType: ext4
     volumeAttributes:
-      numberOfReplicas: "3"
+      numberOfReplicas: "1"
       staleReplicaTimeout: "30"
     volumeHandle: qbittorrent-restored
   persistentVolumeReclaimPolicy: Retain

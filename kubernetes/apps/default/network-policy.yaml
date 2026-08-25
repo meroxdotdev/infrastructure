@@ -8,9 +8,15 @@
 #
 # `default` mixes trust levels badly: low-trust apps that touch untrusted
 # external data (jellyfin, the *arr stack, qbittorrent, n8n) sit next to
-# high-value ones (authentik-outpost, headlamp, portainer-agent — the latter
-# has cluster-admin, see rbac.yaml). Without this, any one of the low-trust
-# apps getting popped means free reach to all the others on the pod network.
+# high-value ones (authentik-outpost, headlamp). Without this, any one of
+# the low-trust apps getting popped means free reach to all the others on
+# the pod network.
+#
+# portainer-agent does NOT live in this namespace despite the directory
+# location (kubernetes/apps/default/portainer-agent/) - its ks.yaml targets
+# the separate "portainer" namespace (cluster-admin ClusterRoleBinding, see
+# its rbac.yaml), so this policy does not cover it. See
+# portainer-agent/app/networkpolicy.yaml for that namespace's own policy.
 #
 # App-specific intra-namespace exceptions (immich-server -> immich-postgres/
 # valkey, the *arr stack talking to each other) live next to those apps'

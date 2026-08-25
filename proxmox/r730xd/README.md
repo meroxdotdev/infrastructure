@@ -26,6 +26,63 @@ running copy, these are the reviewable ones:
 
 Neighbours: [pfSense](../../pfsense/REINSTALL.md) · [px-0](../px-0/REINSTALL.md)
 
+## Ollama VM
+
+Standalone VM (not a Talos node, not part of the K8s cluster) dedicated to
+running Ollama for the alert-triage AI stack (see n8n in
+`kubernetes/apps/default/n8n/`). Kept fully outside the cluster so it gets
+its own hypervisor-enforced memory ceiling instead of sharing a
+kernel/cgroup tree with any kubelet. Not in the Ansible inventory, same as
+everything else on this page — provisioned/documented directly.
+
+- **VMID 105**, name `ollama`, IP `10.57.57.90` (static, cloud-init).
+- 4 vCPU, 8GB RAM hard-capped (`balloon: 0` — won't grow into host
+  headroom under pressure), 40GB disk on `local-zfs`.
+- Ubuntu 24.04 LTS, cloud-init user `ollama`, SSH key-only
+  (`/root/.ssh/ollama-vm-key` on pve — private key lives only there, same
+  discipline as the other restricted keys documented below).
+- Ollama installed via the official install script, `OLLAMA_HOST=0.0.0.0`
+  override in `/etc/systemd/system/ollama.service.d/override.conf` so it's
+  reachable from the K8s cluster (default is loopback-only).
+- Model: `qwen3:4b-instruct`, CPU inference (no GPU on this VM — the only
+  GPU passthrough on this host is dedicated to `kubernetes-controlplane-1`
+  for Jellyfin transcoding).
+- API reachable at `http://10.57.57.90:11434` from anywhere on the LAN/K8s
+  cluster (no auth — trusted network only, not exposed externally).
+
+**Recreating this VM** (host loss, or starting over):
+
+```bash
+# on pve, as root
+cd /tmp && wget -q https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img \
+  -O ubuntu-2404-cloudimg.img
+ssh-keygen -t ed25519 -f /root/.ssh/ollama-vm-key -N "" -C "root-to-ollama-vm"
+
+qm create 105 --name ollama --memory 8192 --balloon 0 --cores 4 --cpu host \
+  --net0 virtio,bridge=vmbr0,firewall=1 --scsihw virtio-scsi-single \
+  --ostype l26 --agent enabled=1
+qm importdisk 105 /tmp/ubuntu-2404-cloudimg.img local-zfs
+qm set 105 --scsi0 local-zfs:vm-105-disk-0,iothread=1
+qm set 105 --ide2 local-zfs:cloudinit
+qm set 105 --boot order=scsi0
+qm set 105 --serial0 socket --vga serial0
+qm set 105 --ipconfig0 ip=10.57.57.90/24,gw=10.57.57.1
+qm set 105 --sshkeys /root/.ssh/ollama-vm-key.pub
+qm set 105 --ciuser ollama
+qm resize 105 scsi0 40G
+qm start 105
+
+# once booted (ssh -i /root/.ssh/ollama-vm-key ollama@10.57.57.90):
+curl -fsSL https://ollama.com/install.sh | sudo sh
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0"\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+ollama pull qwen3:4b-instruct
+```
+
+Nothing on this VM needs backing up — the model is a re-fetchable cache,
+not unique data, and the OS is fully reproducible from the steps above.
+
 ## Nightly schedule
 
 All jobs touching the `media` pool run in one compact window, so scheduled
@@ -144,7 +201,7 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
   `bc:24:11:8b:b7:e9`), 2 vCPU / 2GB, unprivileged, `nesting=1`.
 - Provision: `ansible-playbook -i inventories/production/hosts
   playbooks/garage-setup-r730xd.yml` (reuses `garage_setup` role,
-  `garage_require_tailscale=false`, `garage_webui_enabled=false`).
+  `garage_webui_enabled=false`).
 - S3: `http://10.57.57.61:3900`, region `us-east-1`, bucket `longhorn`.
   Credentials: `docker exec garage /garage key info longhorn-key
   --show-secret`; consumed via `minio-secret.sops.yaml` in the Longhorn app.
@@ -267,8 +324,8 @@ weekly, timed inside the NAS wake window. Schedule is redacted from
 `/root/PRIVATE-NOTES.md`.
 
 - Dest: `admin@10.57.57.201:/volume1/NetBackup/<category>/`
-- Categories: photos (stale copy), synology-home, dump, pfsense,
-  longhorn-garage, immich-postgres, oracle-vps, tools
+- Categories: photos (stale copy), dump, pfsense, longhorn-garage,
+  immich-postgres, oracle-vps, tools, nextcloud
 - Versioned via `rsync --link-dest`, 21-day retention
 
 ⚠️ Retention prunes by **date parsed from the folder name**, never `find

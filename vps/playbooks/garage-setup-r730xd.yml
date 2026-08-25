@@ -16,5 +16,4 @@
   roles:
     - role: garage_setup
       vars:
-        garage_require_tailscale: false
         garage_webui_enabled: false

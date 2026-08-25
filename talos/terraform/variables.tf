@@ -15,15 +15,15 @@ variable "proxmox_token_secret" {
 }
 
 variable "proxmox_nodes" {
-  description = "Proxmox node names to distribute VMs across"
+  description = "Proxmox node names to distribute VMs across. pve is the only host currently running Proxmox - px-0 is out of scope (hardware retained, not deployed)."
   type        = list(string)
-  default     = ["px-0", "px-1", "px-2"]
+  default     = ["pve", "pve", "pve"]
 }
 
 variable "talos_version" {
   description = "Talos version — must match talos/talenv.yaml"
   type        = string
-  default     = "v1.13.3"
+  default     = "v1.13.9"
 }
 
 variable "talos_image_id" {
@@ -77,7 +77,7 @@ variable "vm_disk_gb" {
 variable "node_macs" {
   description = "Fixed MAC addresses for DR VMs — must match talconfig.yaml hardwareAddr. Set to prod MACs so DHCP gives same IPs and talconfig needs no patching."
   type        = list(string)
-  default     = ["bc:24:11:a7:ba:13", "bc:24:11:a5:4b:9e", "bc:24:11:0e:cd:ab"]
+  default     = ["bc:24:11:a7:ba:13", "bc:24:11:a5:4b:9e", "bc:24:11:96:87:40"]
 }
 
 variable "node_ips" {

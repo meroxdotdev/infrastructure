@@ -84,11 +84,22 @@ for that side of the story.
 ## What Longhorn backs up (K8s side)
 
 Only volumes opted in via PVC label `recurring-job-group.longhorn.io/media: enabled`:
-`jellyfin`, `prowlarr`, `radarr`, `sonarr` (configs, ~3GB total actual size).
-Deliberately NOT backed up: `jellyseerr`/`qbittorrent` (dropped 2026-07-21 —
-session state and easily-reconfigured settings, not worth restoring),
-Prometheus/Loki/Grafana/Netdata history, alertmanager, all `*-cache` volumes —
-regenerable, were ~35GB of noise.
+`jellyfin`, `jellyseerr`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr`, `n8n`,
+and Immich's three (`immich-postgres`, `immich-library-ssd`,
+`immich-external-library-ssd`) — 10 PVCs total.
+
+`jellyseerr`/`qbittorrent` were dropped from this list 2026-07-21 (session
+state, not worth restoring) and re-added 2026-08-15 after that turned out to
+delete live prod data, not just skip a DR restore — see
+[`docs/dr-known-issues.md`](../../../docs/dr-known-issues.md) row on
+`jellyseerr`/`qbittorrent` static PVs for the full incident. DR's
+`restore-all-volumes` task still only restores 6 of these 10 by name
+(`jellyfin`/`prowlarr`/`radarr`/`sonarr`/`immich-postgres`/`n8n`) — the same
+doc's "Open" section covers that gap.
+
+Deliberately NOT backed up: Prometheus/Loki/Grafana/Netdata history,
+alertmanager, `filebrowser`, all `*-cache` volumes — regenerable, were
+~35GB of noise.
 
 ## Restore drill (monthly)
 

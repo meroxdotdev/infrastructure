@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# The "portainer" namespace has no baseline default-deny (unlike default/
+# network-policy.yaml's default-deny-lateral) - this is the only workload in
+# it, so the policy lives next to it instead of as a separate namespace-wide
+# file.
+#
+# portainer-agent holds a cluster-admin ClusterRoleBinding (see rbac.yaml) -
+# the highest-value target in the cluster - but its Service is type
+# LoadBalancer, which Kubernetes also gives a ClusterIP. Without this,
+# any pod in any namespace could reach the agent's API on 9001 straight
+# through that ClusterIP, entirely bypassing the LB IP (10.57.57.103) and
+# whatever Tailscale ACL scoping restricts who reaches that address from
+# outside the cluster.
+#
+# The real caller is the Portainer EE server on the VPS (100.72.22.38),
+# reaching in via pfSense's Tailscale subnet route to 10.57.57.0/24 - not a
+# cluster pod - so Cilium sees it as `world`, the same entity the *arr
+# stack's public-facing services rely on. Verify after rollout with
+# `hubble observe --namespace portainer --verdict DROPPED`; if the Portainer
+# server stops connecting, that's the first place to check.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: portainer-agent-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app: portainer-agent
+  ingress:
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "9001"
+              protocol: TCP

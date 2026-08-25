@@ -545,7 +545,7 @@ resolves to `10.57.57.101` at full bitrate.
 | An unauthenticated Jellyfin CVE | Renovate tracks the digest; stay current; Phase 5 limits the blast radius |
 | Oracle changes the free tier again | already halved once in 2026; a paid EU edge is ~€22/year |
 | No detection: nothing logged or alerted | closed in phase 3c — access log, fail2ban, optional healthchecks ping |
-| Egress overage billed on the PAYG tenancy | `egress_guard` cuts the public port at 6 TB, hourly — a bill is not reachable |
+| Egress overage billed on the PAYG tenancy | `egress_guard` cuts the public port hourly at the vaulted threshold, comfortably under the 10 TB allowance — a bill is not reachable |
 | Provider AUP on copyrighted material | applies to every host; a private, authenticated, geoblocked instance is not a discoverable target |
 
 Separate from any terms: sharing a library outside the household is a legal

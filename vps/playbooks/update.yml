@@ -12,7 +12,7 @@
 
     - name: Upgrade all packages
       ansible.builtin.apt:
-        upgrade: dist
+        upgrade: "yes"
         autoremove: yes
         autoclean: yes
       tags: ['upgrade']

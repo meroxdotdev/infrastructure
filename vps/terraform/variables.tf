@@ -17,9 +17,9 @@ variable "server_name" {
 }
 
 variable "server_type" {
-  description = "Hetzner server type. cx33=4vCPU x86 8GB €7.85 | cax21=4vCPU ARM 8GB €9.67 (may be unavailable) | cx23=2vCPU x86 4GB €4.83 | cax31=8vCPU ARM 16GB €19.35"
+  description = "Hetzner server type. cx33=4vCPU x86 8GB €7.85 (proven to work for DR) | cax21=4vCPU ARM 8GB €9.67 (untested) | cx23=2vCPU x86 4GB €4.83 | cax31=8vCPU ARM 16GB €19.35"
   type        = string
-  default     = "cax21"
+  default     = "cx33"
 }
 
 variable "server_location" {
@@ -29,7 +29,6 @@ variable "server_location" {
 }
 
 variable "allowed_ips" {
-  description = "IPs allowed for SSH and Tailscale ingress (your home IP + any other trusted IPs)"
+  description = "IPs allowed for SSH and Tailscale ingress (your home IP + any other trusted IPs) - required, no default: SSH and Tailscale must never be open to 0.0.0.0/0"
   type        = list(string)
-  default     = ["0.0.0.0/0", "::/0"]
 }

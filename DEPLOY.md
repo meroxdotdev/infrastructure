@@ -25,9 +25,9 @@ Before starting, have these ready:
 hcloud_token        = "<hetzner-api-token>"
 ssh_public_key_path = "~/.ssh/cloudlab_dr_test.pub"
 server_name         = "cloudlab-vps"
-server_type         = "cax21"
+server_type         = "cx33"     # proven to work for DR - cax21/ARM is untested
 server_location     = "nbg1"
-allowed_ips         = ["0.0.0.0/0", "::/0"]
+allowed_ips         = ["<your-home-ip>/32"]   # never 0.0.0.0/0 - this opens SSH + Tailscale to the internet
 ```
 
 > Generate SSH key if missing: `ssh-keygen -t ed25519 -f ~/.ssh/cloudlab_dr_test -C "cloudlab-dr-test" -N ""`
@@ -38,8 +38,8 @@ allowed_ips         = ["0.0.0.0/0", "::/0"]
 
 > ~15 min. Sets up: SSH hardening, fail2ban, Docker, Tailscale, Traefik, Cloudflare Tunnel,
 > Pi-hole + Unbound, Portainer, Homepage, Joplin + Postgres, Guacamole, Authentik SSO.
-> Garage S3 is on-demand only (`make garage-setup`), not part of the default deploy —
-> see [DR.md](DR.md#r730xd--garage-total-loss-fallback).
+> Garage S3 doesn't run on this VPS — it's an independent LXC on R730xd, untouched
+> by this deploy. See [DR.md](DR.md#r730xd--garage-total-loss-fallback).
 >
 > **How it works:** Terraform provisions the Hetzner server (cloud-init installs python3 + creates dirs).
 > `make dr-full` then runs Ansible from your local machine over SSH to deploy all services.
@@ -107,70 +107,24 @@ make dr-verify-phase1   # run on the VPS (or: bash scripts/dr-verify.sh --phase 
 `dr-verify-phase1` prints it and warns if it changed from `100.72.22.38`.
 
 `make dr-restore` already auto-repoints Pi-hole's `*.cloud.merox.dev`
-records (joplin, agents, traefik, status, garage, …). Two things still need
-a manual update:
+records (joplin, agents, traefik, status, garage, …). One thing still needs
+a manual update: `tailscale_expected_ip` in
+`vps/inventories/production/group_vars/vps_servers/vars.yml` — bump it to
+the new IP so the _next_ DR's auto-repoint diffs from the right baseline.
+(The NAS off-site sync auto-detects its own IP, so nothing else there.)
 
-- the Storage Cloud link in
-  `kubernetes/apps/default/homepage/app/resources/services.yaml`
-  (the NAS off-site sync auto-detects its own IP, so nothing else there).
-- `tailscale_expected_ip` in `vps/inventories/production/group_vars/vps_servers/vars.yml`
-  — bump it to the new IP so the _next_ DR's auto-repoint diffs from the
-  right baseline.
+**Garage needs no attention here.** It moved off the VPS to its own LXC on
+R730xd (`10.57.57.61:3900`, provisioned by the separate
+`garage-setup-r730xd.yml` playbook) on 2026-07-21 — a stable, independent
+host untouched by a VPS rebuild. Longhorn's `minio-secret.sops.yaml` keeps
+pointing at it and needs no changes. The VPS's own local Garage instance was
+only ever a temporary rollback safety net for the first couple of weeks
+after the 2026-07-21 cutover; it and its setup commands were removed once
+that window closed.
 
-**IMPORTANT — before Phase 2:** extract Garage S3 credentials and save to vault:
-
-```bash
-make garage-extract-creds   # run on the VPS — extracts keys + updates vault automatically
-```
-
-> **DR-over-SSH note:** `garage-extract-creds` and `dr-verify-phase1` assume they run
-> _on_ the VPS (local `docker ps`/`docker exec`). When running from your Mac/Linux
-> machine via `make dr-full` (SSH mode), they currently fail/false-negative. Workaround
-> used during the 2026-06-13 drill:
->
-> ```bash
-> # verify (from local machine):
-> scp scripts/dr-verify.sh root@<NEW_IP>:/tmp/ && ssh root@<NEW_IP> "bash /tmp/dr-verify.sh --phase 1"
->
-> # garage creds (from local machine):
-> ssh root@<NEW_IP> "docker exec garage /garage key info longhorn-key --show-secret"
-> # then manually upsert garage_access_key_id / garage_secret_access_key into vault:
-> cd vps
-> ansible-vault decrypt inventories/production/group_vars/all/vault.yml \
->   --vault-password-file .vault_pass --output /tmp/vault-plain.yml
-> # edit /tmp/vault-plain.yml, add/update the two garage_* keys, then:
-> ansible-vault encrypt /tmp/vault-plain.yml --vault-password-file .vault_pass \
->   --encrypt-vault-id default --output inventories/production/group_vars/all/vault.yml
-> shred -u /tmp/vault-plain.yml
-> ```
->
-> (`--encrypt-vault-id default` is required because `ansible.cfg` already sets
-> `vault_password_file`, which combined with `--vault-password-file` makes
-> `ansible-vault` see two `default` vault-ids.)
-
-**IMPORTANT — Longhorn BackupTarget (K8s side):** the new Garage instance has a
-**new** access key + secret + Tailscale IP. Longhorn's `minio-secret` (used by the
-`BackupTarget` CR) must be updated and resynced, or Longhorn backups/restores will
-silently fail (`BackupTarget available: false`):
-
-```bash
-export SOPS_AGE_KEY_FILE=./age.key
-sops -d -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
-# edit AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (from garage-extract-creds above)
-# and AWS_ENDPOINTS (http://<new-tailscale-ip>:3900)
-sops -e -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
-
-# apply immediately (Flux will pick it up too, but this is instant):
-sops --decrypt kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml | kubectl apply -f -
-
-# force Longhorn to re-check the backup target now instead of waiting ~5min:
-kubectl -n longhorn-system patch backuptargets.longhorn.io default --type=merge \
-  -p "{\"spec\":{\"syncRequestedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
-
-# verify:
-kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.status.available}'
-# expect: true
-```
+If R730xd's Garage LXC is *also* gone (not just the VPS), that's a
+different, harder scenario — see
+[DR.md's "R730xd / Garage total loss fallback"](DR.md#r730xd--garage-total-loss-fallback).
 
 **Cloudflare Tunnel (cloudflared):** runs as a native systemd service on the VPS
 (`systemctl status cloudflared`), not a Docker container — confirmed
@@ -269,12 +223,9 @@ make app-stack-setup
 # Guacamole: change default credentials (guacadmin / guacadmin) immediately
 # Pi-hole: verify DNS at https://pihole.cloud.merox.dev/admin
 # Joplin: clients will sync automatically once server is up
-
-# Retrieve Garage S3 credentials and save to vault:
-ssh root@<NEW_IP> "docker exec garage /garage key info longhorn-key --show-secret"
-ansible-vault edit inventories/production/group_vars/all/vault.yml
-# Add: garage_access_key_id and garage_secret_access_key
 ```
+
+Garage needs no attention here — it lives on R730xd, independent of the VPS. See the note in Phase 1 above.
 
 **Verify:**
 
@@ -321,12 +272,13 @@ cp /path/to/age.key ./age.key
 # --- b) All infrastructure IPs used by apps (Flux postBuild substitution) ---
 # Edit: kubernetes/components/common/cluster-vars.yaml
 #   NFS_SERVER              → R730xd (pve) IP - serves media/photos/backups NFS exports
-#   HOMEPAGE_PROXMOX_IP     → Proxmox host IP
-#   HOMEPAGE_ROUTER_IP      → Router/gateway IP
-#   HOMEPAGE_MYSPEED_IP     → MySpeed service IP
 #   LB_IP_GATEWAY_INTERNAL  → Cilium internal gateway LB IP
 #   LB_IP_QBITTORRENT       → qBittorrent LB IP
 #   LB_IP_PORTAINER         → Portainer agent LB IP
+#   LB_IP_NETBOOTXYZ        → netboot.xyz LB IP
+#   LB_IP_IMMICH            → Immich LB IP (dedicated, Tailscale ACL scoping)
+#   LB_IP_JELLYFIN          → Jellyfin (personal) LB IP (dedicated, Tailscale ACL scoping)
+#   LB_IP_JELLYFIN_PUBLIC   → Jellyfin (public) LB IP (VPS reverse-proxy target)
 #   LB_IP_K8S_GATEWAY       → k8s-gateway (DNS) LB IP
 #   LB_IP_GATEWAY_EXTERNAL  → Cilium external gateway LB IP
 #
@@ -454,10 +406,7 @@ kubectl -n flux-system get receiver github-webhook \
 [ ] make dr-preflight — all checks PASS (no FAIL)
 [ ] Phase 1 complete — make dr-full finished, all containers up (make dr-verify-phase1)
 [ ] Tailscale IP noted (dr-verify-phase1 prints it) — if different from 100.72.22.38,
-    update kubernetes/apps/default/homepage/app/resources/services.yaml (Storage Cloud link)
-[ ] make garage-extract-creds — Garage S3 credentials saved to vault (REQUIRED before Phase 2)
-[ ] kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml updated (new Garage
-    access key + secret + Tailscale IP) and applied; BackupTarget available=true
+    bump tailscale_expected_ip in vps/inventories/production/group_vars/vps_servers/vars.yml
 [ ] cloudflare_tunnel_token present in vault and cloudflared container connected
     (docker logs cloudflared — no "Tunnel token is not valid"; check
     https://inside.merox.dev loads)

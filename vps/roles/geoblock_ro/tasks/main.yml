@@ -68,12 +68,20 @@
 
 # Disabling: `geoblock_enabled: false` removes the rule but leaves the set
 # and the units on disk — reversible from a single variable.
+#
+# match_set with a "!" prefix negates it (confirmed against the module
+# source: produces "-m set ! --match-set <name> src", matching the rule
+# geoblock-refresh.sh actually creates) - this must mirror that rule
+# exactly, including the destination IP, or state: absent silently matches
+# nothing instead of deleting it.
 - name: Remove the DROP rule when disabled
   ansible.builtin.iptables:
     chain: DOCKER-USER
     protocol: tcp
-    destination_port: "{{ geoblock_port }}"
-    match: set
+    destination: "{{ geoblock_target_ip }}"
+    destination_port: "{{ geoblock_target_port }}"
+    match_set: "!{{ geoblock_set_name }}"
+    match_set_flags: src
     jump: DROP
     state: absent
   when: not geoblock_enabled

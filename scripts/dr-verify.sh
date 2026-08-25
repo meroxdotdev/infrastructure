@@ -79,7 +79,8 @@ verify_phase1() {
 
     # Main compose (docker-compose.yml in /srv/docker/oracle-cloud/)
     container_running "homepage"
-    container_running "glances"
+    container_running "homepage-public"
+    container_running "homelab-stats-server"
     container_running "portainer"
     container_running "pihole"
     container_running "unbound"
@@ -92,8 +93,6 @@ verify_phase1() {
     container_running "authentik-server"
     container_running "authentik-worker"
     container_running "authentik-postgresql"
-    container_running "garage"
-    container_running "uptime-kuma"
     container_running "guacamole"
 
     header "Phase 1: Service health"
@@ -127,20 +126,10 @@ verify_phase1() {
     # Authentik: check metrics port 9300 (always up when server is healthy)
     container_http_ok "Authentik" "authentik-server" 9300 "/metrics"
 
-    # Garage S3 — check via garage CLI (more reliable than HTTP)
-    if docker exec garage /garage status 2>/dev/null | grep -q "HEALTHY"; then
-        ok "Garage S3 healthy"
-    else
-        fail "Garage S3 not healthy (docker exec garage /garage status)"
-    fi
-
-    # Portainer API (exposed on host port 9000)
-    if curl -sf --max-time 5 "http://localhost:9000/api/system/status" &>/dev/null || \
-       curl -sf --max-time 5 "http://localhost:9443/api/system/status" &>/dev/null; then
-        ok "Portainer API responds"
-    else
-        warn "Portainer API not responding — may need admin password set first"
-    fi
+    # Portainer binds to the Tailscale IP only (100.72.22.38:9000/9443, see
+    # docker-compose.yml), not localhost — check via the container's internal
+    # IP instead, same as the Authentik check above.
+    container_http_ok "Portainer" "portainer" 9000 "/api/system/status"
 
     header "Phase 1: System"
     DISK=$(df -h / | awk 'NR==2 {print $5}' | sed 's/%//')
@@ -155,9 +144,7 @@ verify_phase1() {
         ok "Tailscale connected ($TS_IP)"
         TS_EXPECTED=$(grep "^tailscale_expected_ip:" "$VARS_FILE" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
         if [ -n "$TS_EXPECTED" ] && [ "$TS_IP" != "$TS_EXPECTED" ]; then
-            warn "  IP changed from $TS_EXPECTED to $TS_IP — update tailscale_expected_ip in"
-            warn "  vars.yml AND the Storage Cloud link in"
-            warn "  kubernetes/apps/default/homepage/app/resources/services.yaml"
+            warn "  IP changed from $TS_EXPECTED to $TS_IP — update tailscale_expected_ip in vars.yml"
         fi
     else
         fail "Tailscale not connected (tailscale status)"
@@ -207,10 +194,11 @@ verify_phase2() {
 
     header "Phase 2: Storage — Longhorn nodes"
     LH_NODES=$(kubectl -n longhorn-system get nodes.longhorn.io --no-headers 2>/dev/null | wc -l)
-    if [ "$LH_NODES" -ge 3 ]; then
+    K8S_NODES=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+    if [ "$LH_NODES" -ge "$K8S_NODES" ]; then
         ok "Longhorn: $LH_NODES nodes registered"
     else
-        warn "Longhorn: only $LH_NODES node(s) registered (expected 3)"
+        warn "Longhorn: only $LH_NODES/$K8S_NODES node(s) registered"
     fi
 
     header "Phase 2: Storage — CSI driver registration"
@@ -242,10 +230,17 @@ verify_phase2() {
         | grep "restored" | grep "attached" | wc -l || echo 0)
     TOTAL=$(kubectl get volumes.longhorn.io -n longhorn-system --no-headers 2>/dev/null \
         | grep -c "restored" || echo 0)
-    if [ "$TOTAL" -ge 9 ]; then
+    # restore-all-volumes (.taskfiles/longhorn/Taskfile.yaml) deliberately
+    # restores only these 6 - jellyseerr/qbittorrent are excluded on purpose
+    # ("session state/easily-reconfigured settings, not worth the restore
+    # weight"), even though both are still nightly-backed-up. See
+    # docs/dr-known-issues.md's "Open" section - this is a known, disputed
+    # gap (backed up but thrown away on restore), not settled either way.
+    # Don't raise this to 8 without first resolving that.
+    if [ "$TOTAL" -ge 6 ]; then
         ok "Restore volumes exist: $TOTAL total, $ATTACHED attached"
     else
-        fail "Only $TOTAL restore volumes found (expected 9+) — run: task longhorn:restore"
+        fail "Only $TOTAL restore volumes found (expected 6 - jellyfin/prowlarr/radarr/sonarr/immich-postgres/n8n) — run: task longhorn:restore"
     fi
 
     header "Phase 2: Storage — Longhorn BackupTarget"

@@ -5,19 +5,12 @@
 # ============================================================================
 # COMPUTE & HARDWARE
 # ============================================================================
+# Proxmox (px-0) card removed: px-0 is out of scope (hardware retained,
+# not running Proxmox) - the widget would just show a permanent connection
+# error, which trains you to ignore dashboard errors instead of noticing
+# real ones. Restore from git history if px-0 (or a dev cluster on that
+# hardware) starts running Proxmox again.
 - Compute & Hardware:
-
-    - Proxmox (px-0):
-        id: proxmox
-        icon: proxmox.png
-        href: https://dc.merox.dev
-        description: px-0 only - widget talks to its own API, not PDM (see below)
-        ping: 10.57.57.254
-        widget:
-          type: proxmox
-          url: https://10.57.57.254:8006
-          username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
-          password: "{{HOMEPAGE_VAR_PROXMOX_PASS}}"
 
     - R730xd:
         id: r730xd-hw
@@ -41,26 +34,10 @@
               format: number
               suffix: " RPM"
 
-    - UPS:
-        id: ups
-        icon: mdi-battery-charging-high
-        description: CyberPower, via px-0 (restricted SSH, read-only)
-        widget:
-          type: customapi
-          url: http://homelab-stats-server/homelab-stats.json
-          refreshInterval: 60000
-          mappings:
-            - field: ups.state
-              label: State
-              format: text
-            - field: ups.battery_pct
-              label: Battery
-              format: number
-              suffix: "%"
-            - field: ups.load_watts
-              label: Load
-              format: number
-              suffix: " W"
+    # UPS card removed: its data source (pwrstat via px-0) is disabled -
+    # see homelab-stats.sh.j2 - so this would always show "Unreachable".
+    # Real UPS shutdown safety is unaffected (local NUT on pve). Restore
+    # from git history if the local-NUT-based rebuild ever happens.
 
     - Oracle VPS:
         id: oracle-vps
@@ -260,10 +237,9 @@
         href: http://tplink.merox.dev
         description: WiFi
 
-    - Speed Test:
-        icon: mdi-speedometer
-        href: https://speed.merox.dev
-        description: Bandwidth (px-0)
+    # Speed Test bookmark removed: the service behind speed.merox.dev ran
+    # on px-0, which is out of scope. Restore from git history if it comes
+    # back on a different host.
 
 # ============================================================================
 # CLOUD / VPS

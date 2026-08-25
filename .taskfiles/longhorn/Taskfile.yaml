@@ -198,6 +198,11 @@ tasks:
           exit 0
         fi
 
+        # Replica count matches the cluster being restored onto (1 on prod today,
+        # 3 on a DR drill) — capped at 3, Longhorn's own best-practice ceiling.
+        NODE_COUNT=$(kubectl get nodes --no-headers | wc -l)
+        REPLICAS=$(( NODE_COUNT < 3 ? NODE_COUNT : 3 ))
+
         # Create Volume CRD in longhorn-system (NOT in default — manager ignores default)
         kubectl apply -f - <<EOF
         apiVersion: longhorn.io/v1beta2
@@ -206,7 +211,7 @@ tasks:
           name: {{.NAME}}
           namespace: {{.LONGHORN_NS}}
         spec:
-          numberOfReplicas: 3
+          numberOfReplicas: $REPLICAS
           frontend: blockdev
           fromBackup: "$BACKUP_URL"
           restoreVolumeRecurringJob: enabled
@@ -354,16 +359,17 @@ tasks:
           kubectl rollout status daemonset/longhorn-csi-plugin -n {{.LONGHORN_NS}} --timeout=60s
 
           echo "  Verifying driver.longhorn.io registered on nodes..."
+          NODE_COUNT=$(kubectl get nodes --no-headers | wc -l)
           for i in $(seq 1 10); do
             REGISTERED=$(kubectl get csinodes -o json 2>/dev/null | \
               python3 -c "import json,sys; d=json.load(sys.stdin); \
               nodes=[n for n in d['items'] if any(drv['name']=='driver.longhorn.io' for drv in n['spec']['drivers'])]; \
               print(len(nodes))" 2>/dev/null || echo 0)
-            if [ "$REGISTERED" -eq 3 ]; then
-              echo "  ✓ driver.longhorn.io registered on all 3 nodes"
+            if [ "$REGISTERED" -eq "$NODE_COUNT" ]; then
+              echo "  ✓ driver.longhorn.io registered on all $NODE_COUNT node(s)"
               break
             fi
-            echo "  ... registered on $REGISTERED/3 nodes (attempt $i/10)"
+            echo "  ... registered on $REGISTERED/$NODE_COUNT nodes (attempt $i/10)"
             sleep 6
           done
         else

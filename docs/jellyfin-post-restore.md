@@ -19,7 +19,7 @@ These are stored in `/config/config/network.xml` on the PVC. Verify after every 
 | Subnet          | Purpose                              |
 | --------------- | ------------------------------------ |
 | `10.57.57.0/24` | Main LAN / NAS subnet                |
-| `10.57.97.0/24` | Kubernetes node subnet               |
+| `10.57.97.0/24` | Home WiFi                            |
 | `100.64.0.0/10` | **Tailscale CGNAT range** — critical |
 
 > Without `100.64.0.0/10`, Jellyfin treats Tailscale clients as "remote" and throttles bitrate.
@@ -196,7 +196,7 @@ These do **not** need manual intervention after restore:
 | -------------------------------------------------------------------- | ----------------------------------------------- |
 | Nvidia GPU device (`nvidia.com/gpu: 1`) + `runtimeClassName: nvidia` | `helmrelease.yaml` → `resources.limits` / `pod` |
 | Video group access (`supplementalGroups: [44]`)                      | `helmrelease.yaml` → `securityContext`          |
-| NFS media mount (read-only from Synology)                            | `helmrelease.yaml` → `persistence.media`        |
+| NFS media mount (read-only from R730xd, `NFS_SERVER` var)            | `helmrelease.yaml` → `persistence.media`        |
 | Longhorn PVCs for config + metadata cache                            | `pvc.yaml`                                      |
 | `JELLYFIN_PublishedServerUris` env var                               | `helmrelease.yaml` → `env`                      |
 | TLS + ingress via Cilium Gateway (`media.merox.dev`)                 | `helmrelease.yaml` → `route`                    |

@@ -50,12 +50,12 @@ REMOTE_EOF
 {
   echo "=== weekly push start $(date) ==="
   sync_category photos /media/photos/
-  sync_category documents /media/backups/synology-home/
   sync_category vm-backups /media/backups/dump/
   sync_category pfsense /media/backups/pfsense/
   sync_category longhorn-garage /media/backups/longhorn-garage/
   sync_category immich-postgres /media/backups/immich-postgres/
   sync_category oracle-vps /media/backups/oracle-vps/
   sync_category tools /media/backups/tools/
+  sync_category nextcloud /media/backups/nextcloud/
   echo "=== weekly push done $(date) ==="
 } >> "$LOG" 2>&1

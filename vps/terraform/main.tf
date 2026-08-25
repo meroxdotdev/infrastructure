@@ -78,7 +78,7 @@ resource "hcloud_server" "cloudlab" {
       - python3
       - python3-pip
     runcmd:
-      - mkdir -p /srv/docker /backup/synology
+      - mkdir -p /srv/docker
   EOF
 
   labels = {
