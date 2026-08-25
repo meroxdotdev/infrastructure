@@ -69,16 +69,21 @@
 # Disabling: `geoblock_enabled: false` removes the rule but leaves the set
 # and the units on disk — reversible from a single variable.
 #
-# Raw command, not the ansible.builtin.iptables module: the live rule (built
-# by geoblock-refresh.sh) matches on destination IP *and* a negated ipset
-# match, which the module's parameters can't express precisely enough to
-# guarantee the same rule gets deleted rather than silently matching nothing.
+# match_set with a "!" prefix negates it (confirmed against the module
+# source: produces "-m set ! --match-set <name> src", matching the rule
+# geoblock-refresh.sh actually creates) - this must mirror that rule
+# exactly, including the destination IP, or state: absent silently matches
+# nothing instead of deleting it.
 - name: Remove the DROP rule when disabled
-  ansible.builtin.command: >
-    iptables -D DOCKER-USER -p tcp -d {{ geoblock_target_ip }}
-    --dport {{ geoblock_target_port }}
-    -m set ! --match-set {{ geoblock_set_name }} src -j DROP
+  ansible.builtin.iptables:
+    chain: DOCKER-USER
+    protocol: tcp
+    destination: "{{ geoblock_target_ip }}"
+    destination_port: "{{ geoblock_target_port }}"
+    match_set: "!{{ geoblock_set_name }}"
+    match_set_flags: src
+    jump: DROP
+    state: absent
   when: not geoblock_enabled
-  changed_when: true
   failed_when: false
   tags: ['geoblock', 'firewall']
