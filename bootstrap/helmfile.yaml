@@ -26,21 +26,13 @@ releases:
     values: ['../kubernetes/apps/kube-system/coredns/app/helm/values.yaml']
     needs: ['kube-system/cilium']
 
-  - name: spegel
-    namespace: kube-system
-    atomic: true
-    chart: oci://ghcr.io/spegel-org/helm-charts/spegel
-    version: 0.7.4
-    values: ['../kubernetes/apps/kube-system/spegel/app/helm/values.yaml']
-    needs: ['kube-system/coredns']
-
   - name: cert-manager
     namespace: cert-manager
     atomic: true
     chart: oci://quay.io/jetstack/charts/cert-manager
     version: v1.21.1
     values: ['../kubernetes/apps/cert-manager/cert-manager/app/helm/values.yaml']
-    needs: ['kube-system/spegel']
+    needs: ['kube-system/coredns']
 
   # Install Prometheus CRDs out-of-band so they exist before Flux reconciles
   # kube-prometheus-stack, avoiding "no matches for kind" errors on fresh bootstrap.
