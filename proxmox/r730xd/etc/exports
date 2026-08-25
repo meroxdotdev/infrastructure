@@ -5,13 +5,23 @@
 # against live nfsd peers first.
 #
 #   10.57.57.80/82/84  Talos nodes (all pod mounts originate here)
-#   10.57.57.254       px-0, mounts /media/backups as PVE storage
-#                      "r730xd-backups" (DR-test target, see DR.md)
+#
+# px-0 (10.57.57.254) used to mount /media/backups and /media/isos as PVE
+# storage "r730xd-backups" (DR-test target) - removed 2026-08-25, px-0 is
+# out of scope (hardware retained, not running Proxmox). Re-add its IP to
+# the relevant lines below if it starts running Proxmox again.
 #
 # Adding a client means adding its IP here, not widening back to /24.
 /media/library                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
-/media/backups                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.254(rw,sync,no_subtree_check,no_root_squash,crossmnt)
+/media/backups                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
 /media/backups/synology-home    10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
 /media/backups/longhorn-garage  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
-/media/isos                     10.57.57.80(ro,sync,no_subtree_check,no_root_squash) 10.57.57.82(ro,sync,no_subtree_check,no_root_squash) 10.57.57.84(ro,sync,no_subtree_check,no_root_squash) 10.57.57.254(ro,sync,no_subtree_check,no_root_squash)
+/media/isos                     10.57.57.80(ro,sync,no_subtree_check,no_root_squash) 10.57.57.82(ro,sync,no_subtree_check,no_root_squash) 10.57.57.84(ro,sync,no_subtree_check,no_root_squash)
 /media/photos                   10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
+
+
+# Public Jellyfin library, on the SSD pool so streaming to friends never wakes
+# the SAS array. Read-only: the instance behind it is the only thing reachable
+# from the internet and has no reason to write. Quota caps it at 400G so it
+# cannot crowd out the VM disks that share rpool.
+/public/library                 10.57.57.80(ro,sync,no_subtree_check,no_root_squash) 10.57.57.82(ro,sync,no_subtree_check,no_root_squash) 10.57.57.84(ro,sync,no_subtree_check,no_root_squash)
