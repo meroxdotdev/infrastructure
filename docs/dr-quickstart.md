@@ -11,15 +11,19 @@ target Proxmox host, this repo checked out.
 > `talos/talconfig.yaml` first (see [`talos/SINGLE-NODE.md`](../talos/SINGLE-NODE.md#3-phase-b--git-changes)),
 > re-comment after. See [`DR.md`](../DR.md#phase-1--provision-dr-nodes) for why.
 
-## 0. Pick a target host
+## 0. Target host
 
-| | px-0 | pve (R730xd) |
-|---|---|---|
-| Tests | real host failure | restore procedure only |
-| RAM headroom | ~50GB free | 238GB+ free (once prod is stopped) |
-| `vm_memory_mb` to use | `16384` | `49152` (matches prod) |
-| `disk_storage` | `cluster-storage` | `local-zfs` |
-| `iso_storage` | `local-data` | `media-isos` |
+**pve (R730xd) is the only option** — px-0 is out of scope (hardware
+retained, not deployed). Tests restore procedure only, not real host
+failure (same physical box as prod) — see [`DR.md`](../DR.md#which-host-to-target)
+for that gap.
+
+| | pve (R730xd) |
+|---|---|
+| RAM headroom | 238GB+ free (once prod is stopped) |
+| `vm_memory_mb` to use | `49152` (matches prod) |
+| `disk_storage` | `local-zfs` |
+| `iso_storage` | `media-isos` |
 
 ## 1. API token on the target host
 
