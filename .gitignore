@@ -13,8 +13,6 @@ talos/talconfig.yaml.prod-backup
 /age.key
 /vps/.vault_pass
 /cloudflare-tunnel.json
-/github-deploy.key
-/github-deploy.key.pub
 /github-push-token.txt
 # Security audit output — NEVER commit, this repo is public.
 # Contains the WAN IP, the full internal topology, open ports per segment and
