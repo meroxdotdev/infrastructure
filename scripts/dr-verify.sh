@@ -207,10 +207,11 @@ verify_phase2() {
 
     header "Phase 2: Storage — Longhorn nodes"
     LH_NODES=$(kubectl -n longhorn-system get nodes.longhorn.io --no-headers 2>/dev/null | wc -l)
-    if [ "$LH_NODES" -ge 3 ]; then
+    K8S_NODES=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+    if [ "$LH_NODES" -ge "$K8S_NODES" ]; then
         ok "Longhorn: $LH_NODES nodes registered"
     else
-        warn "Longhorn: only $LH_NODES node(s) registered (expected 3)"
+        warn "Longhorn: only $LH_NODES/$K8S_NODES node(s) registered"
     fi
 
     header "Phase 2: Storage — CSI driver registration"
@@ -242,10 +243,10 @@ verify_phase2() {
         | grep "restored" | grep "attached" | wc -l || echo 0)
     TOTAL=$(kubectl get volumes.longhorn.io -n longhorn-system --no-headers 2>/dev/null \
         | grep -c "restored" || echo 0)
-    if [ "$TOTAL" -ge 9 ]; then
+    if [ "$TOTAL" -ge 6 ]; then
         ok "Restore volumes exist: $TOTAL total, $ATTACHED attached"
     else
-        fail "Only $TOTAL restore volumes found (expected 9+) — run: task longhorn:restore"
+        fail "Only $TOTAL restore volumes found (expected 6 - jellyfin/prowlarr/radarr/sonarr/immich-postgres/n8n) — run: task longhorn:restore"
     fi
 
     header "Phase 2: Storage — Longhorn BackupTarget"
