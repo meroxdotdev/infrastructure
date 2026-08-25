@@ -196,7 +196,7 @@ These do **not** need manual intervention after restore:
 | -------------------------------------------------------------------- | ----------------------------------------------- |
 | Nvidia GPU device (`nvidia.com/gpu: 1`) + `runtimeClassName: nvidia` | `helmrelease.yaml` → `resources.limits` / `pod` |
 | Video group access (`supplementalGroups: [44]`)                      | `helmrelease.yaml` → `securityContext`          |
-| NFS media mount (read-only from Synology)                            | `helmrelease.yaml` → `persistence.media`        |
+| NFS media mount (read-only from R730xd, `NFS_SERVER` var)            | `helmrelease.yaml` → `persistence.media`        |
 | Longhorn PVCs for config + metadata cache                            | `pvc.yaml`                                      |
 | `JELLYFIN_PublishedServerUris` env var                               | `helmrelease.yaml` → `env`                      |
 | TLS + ingress via Cilium Gateway (`media.merox.dev`)                 | `helmrelease.yaml` → `route`                    |
