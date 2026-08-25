@@ -53,12 +53,13 @@ spec:
       targetLabel: job
       replacement: *name
 ---
-# px-0 (Beelink) is powered off (2026-08 downsizing) but was still scraped
+# px-0 (Beelink) is out of scope (2026-08 downsizing) but was still scraped
 # here, with job=pve - the same job label as the R730xd. One of two pve
 # targets permanently down is 50%, well over TargetDown's 10% threshold, so
-# this fired every day for nothing. Commented rather than deleted: px-0 is
-# still the documented fallback in proxmox/px-0/MIGRATION.md, and this comes
-# back by uncommenting if it is ever powered on again.
+# this fired every day for nothing. Commented rather than deleted: the
+# hardware is still owned (see proxmox/px-0/README.md), just not currently
+# deployed - possibly a future dev cluster, not decided. Uncomment if it
+# starts running Proxmox again.
 #
 # # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
 # # px-0 (Beelink), standalone host - same pve-exporter, different module
