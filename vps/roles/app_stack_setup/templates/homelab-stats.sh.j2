@@ -22,15 +22,16 @@ IDRAC_USER="{{ vault_idrac_username }}"
 IDRAC_PASS="{{ vault_idrac_password }}"
 
 # node:host:token triples - one per standalone Proxmox host.
+# px-0 (Beelink) used to be queried here too - it's currently out of scope
+# (hardware retained, not running Proxmox, possibly a future dev cluster,
+# not decided). Re-add "px-0:10.57.57.254:8006:{{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
+# to PVE_TARGETS below if it starts running Proxmox again.
 {% if vault_pve_r730xd_username is defined %}
 PVE_TARGETS=(
   "pve:10.57.57.250:8006:{{ vault_pve_r730xd_username }}={{ vault_pve_r730xd_password }}"
-  "px-0:10.57.57.254:8006:{{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
 )
 {% else %}
-PVE_TARGETS=(
-  "px-0:10.57.57.254:8006:{{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
-)
+PVE_TARGETS=()
 {% endif %}
 
 # Alert delivery - optional/empty-safe so this deploys fine before Phase 0
