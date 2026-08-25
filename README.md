@@ -207,9 +207,9 @@ Step 2 first needs `age.key` in place and new-hardware values edited into
 
 | Device                                     | Role                                                                                                                                                                                                | Specs                                       |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Dell PowerEdge R730xd (`pve`, `10.57.57.250`) | Proxmox host + backup hub. All 3 K8s control-plane VMs · Quadro P2200 passthrough to controlplane-1 (Jellyfin) · NFS server for the `media` SAS pool · Garage LXC (Longhorn's S3 target). [REINSTALL](proxmox/r730xd/REINSTALL.md) | Xeon E5-2630 v3 (8C/16T, 1 socket), 251GB RAM, Quadro P2200 |
-| Beelink GTi 13 Pro (`px-0`, `10.57.57.254`) | Proxmox host, no K8s nodes. Datacenter Manager · `ollama` (alert triage) · `winserver` (stopped, AD lab) · UPS shutdown trigger for pve · default DR-test target. **No backups.** [REINSTALL](proxmox/px-0/REINSTALL.md) | i9-13900H, 64GB, 2x1TB NVMe (Crucial P3)    |
-| Dell OptiPlex 3050 #1/#2 (px-1 / px-2)     | Retired — powered off                                                                                                                                                                                | i5-6500T, 16GB, 128GB NVMe                  |
+| Dell PowerEdge R730xd (`pve`, `10.57.57.250`) | Proxmox host + backup hub, the only Proxmox host currently running. 1 K8s control-plane VM (single-node since 2026-08-17, see [talos/SINGLE-NODE.md](talos/SINGLE-NODE.md)) · Quadro P2200 passthrough to controlplane-1 (Jellyfin) · `ollama` (alert triage) · NFS server for the `media` SAS pool · Garage LXC (Longhorn's S3 target). [REINSTALL](proxmox/r730xd/REINSTALL.md) | Xeon E5-2630 v3 (8C/16T, 1 socket), 251GB RAM, Quadro P2200 |
+| Beelink GTi 13 Pro (`px-0`, `10.57.57.254`) | Out of scope — hardware retained, not running Proxmox. Possibly a future standalone dev cluster with px-1/px-2, undecided. [REINSTALL](proxmox/px-0/REINSTALL.md) (rebuild reference, not current state) | i9-13900H, 64GB, 2x1TB NVMe (Crucial P3)    |
+| Dell OptiPlex 3050 #1/#2 (px-1 / px-2)     | Out of scope — hardware retained, powered off, same possible future as px-0                                                                                                                        | i5-6500T, 16GB, 128GB NVMe                  |
 | Synology DS223+                            | Cold storage only — see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#downstream-legs) for the weekly push mechanism and Power Schedule                                                     | 2x2TB HDD RAID1                             |
 | XCY X44 (`fw`, `10.57.57.1`)               | pfSense — gateway, DHCP, Tailscale subnet router. [REINSTALL](pfsense/REINSTALL.md)                                                                                                                 | N100, 8GB                                   |
 | Oracle Cloud ARM VPS                       | Off-site services (primary)                                                                                                                                                                         | 4 vCPU ARM, 24GB RAM, 200GB                 |
@@ -229,7 +229,7 @@ infrastructure/
 ├── bootstrap/                  # Cluster bootstrap helmfile
 ├── proxmox/
 │   ├── r730xd/                 # Backup hub: runbooks, cron scripts, /etc snapshots
-│   └── px-0/                   # Second Proxmox host: runbook + /etc snapshots
+│   └── px-0/                   # Out-of-scope host: rebuild reference, not deployed
 ├── pfsense/                    # Firewall runbook + its config-push script
 ├── docs/                       # operations, troubleshooting, post-restore guides
 ├── DEPLOY.md                   # Full rebuild + DR guide
@@ -250,7 +250,6 @@ infrastructure/
 | **R730xd lost** (hardware failure)       | [DR.md "R730xd/Garage total loss fallback"](DR.md#r730xd--garage-total-loss-fallback) — rebuild Garage from Synology/Oracle copy, repoint Longhorn, `task longhorn:restore` |
 | **pve reinstalled** (host, not data)     | [proxmox/r730xd/REINSTALL.md](proxmox/r730xd/REINSTALL.md) — the `media` pool survives; import it, do not recreate |
 | **pfSense lost** (gateway down)          | [pfsense/REINSTALL.md](pfsense/REINSTALL.md) — console access, not SSH. A config restore does **not** bring back its own backup script |
-| **px-0 lost**                            | [proxmox/px-0/REINSTALL.md](proxmox/px-0/REINSTALL.md) — no backups exist; every VM is rebuild-only |
 | Full rebuild from scratch                | DEPLOY.md: Phase 1 (VPS) → Phase 2 (K8s)                                                  |
 | New hardware (different IPs / disks)     | Edit `talos/talconfig.yaml`, `cluster-vars.yaml`, `cilium/networks.yaml`                  |
 | Nvidia GPU absent on new hardware        | Remove `runtimeClassName: nvidia` + `nvidia.com/gpu` limit from Jellyfin HelmRelease, disable nvidia-device-plugin |
@@ -265,8 +264,10 @@ one before it:
 2. **pve** — needs the restic password to pull `/root` back from Oracle.
    → [proxmox/r730xd/REINSTALL.md](proxmox/r730xd/REINSTALL.md)
 3. **K8s** — on top of a working pve. → [DR.md](DR.md)
-4. **px-0** — optional. Only the UPS shutdown trigger and DR tests depend
-   on it. → [proxmox/px-0/REINSTALL.md](proxmox/px-0/REINSTALL.md)
+
+px-0 is out of scope (not currently deployed) — nothing depends on it for
+this rebuild order. [proxmox/px-0/REINSTALL.md](proxmox/px-0/REINSTALL.md)
+stays as a rebuild reference if that changes.
 
 **VPS is independent** — on Oracle, needs nothing from home, rebuild any
 time with `cd vps && make dr-full`.
