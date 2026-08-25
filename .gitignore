@@ -25,14 +25,9 @@ talos/talconfig.yaml.prod-backup
 /SECURITY-AUDIT.md
 /audit-log.md
 
-# Template config files
-/cluster.yaml
-/nodes.yaml
 # Kubernetes
 kubeconfig
 talosconfig
-# Dashboard secrets
-agent/dashboard/.env
 # Misc.
 /SCRATCHPAD.md
 .private/
