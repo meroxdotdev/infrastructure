@@ -52,9 +52,11 @@ Authentik runs DB migrations automatically on startup.
 
 ## Backup
 
-A daily cron job (`/usr/local/bin/backup-authentik.sh`, runs at 01:15) dumps PostgreSQL to
-`/srv/backups/authentik/` with 7-day retention. Deployed automatically by this role
-(re-run `make db-backups-setup` to (re)install it).
+A daily cron job (`/usr/local/bin/backup-authentik.sh`, runs at 23:40 UTC —
+02:40 EEST, alongside the rest of the VPS/k8s/Nextcloud UTC-scheduled nightly
+backups) dumps PostgreSQL to `/srv/backups/authentik/` with 7-day retention.
+Deployed automatically by this role (re-run `make db-backups-setup` to
+(re)install it).
 
 For an on-demand dump:
 
