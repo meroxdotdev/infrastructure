@@ -31,6 +31,17 @@ Both are valid drills, for different questions:
 
 ## Phase 1 — Provision DR nodes
 
+> **Prerequisite as of the 2026-08-17 single-node downsize:** production now
+> runs 1 control-plane node, but DR always provisions 3 (deliberately — it
+> exercises recovery independent of prod's current node count).
+> `talos/talconfig.yaml` has nodes 2 and 3 commented out to match prod, so
+> **uncomment both blocks first** (see
+> [talos/SINGLE-NODE.md §3](talos/SINGLE-NODE.md)), run the DR drill, then
+> re-comment them afterward to keep `talconfig.yaml` truthful about prod.
+> Skipping this makes `task dr:apply-talos-configs` and
+> `scripts/gen-dr-talconfig.sh` fail fast with a clear error rather than
+> partially applying.
+
 ### Option A — Terraform (automated, recommended)
 
 > **First time on this machine:** Terraform needs a Proxmox API token.

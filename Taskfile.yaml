@@ -59,6 +59,15 @@ tasks:
     cmds:
       - |
         set -euo pipefail
+
+        NODE_COUNT=$(yq '.nodes | length' {{.TALOS_DIR}}/talconfig.yaml)
+        if [ "$NODE_COUNT" -ne 3 ]; then
+          echo "  ✗ talos/talconfig.yaml declares $NODE_COUNT node(s), but DR always provisions 3 VMs."
+          echo "    Uncomment nodes 2 and 3 in talos/talconfig.yaml first (see talos/SINGLE-NODE.md §3),"
+          echo "    run this task, then re-comment them afterward to keep talconfig.yaml truthful."
+          exit 1
+        fi
+
         echo "→ Scanning subnet for Talos maintenance-mode nodes (port 50000)..."
         DHCP_IPS=$(nmap -Pn -n -p 50000 --open 10.57.57.0/24 2>/dev/null | grep "Nmap scan report" | awk '{print $NF}')
         COUNT=$(echo "$DHCP_IPS" | grep -c "10\." || true)
