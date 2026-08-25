@@ -93,7 +93,6 @@ verify_phase1() {
     container_running "authentik-server"
     container_running "authentik-worker"
     container_running "authentik-postgresql"
-    container_running "garage"
     container_running "guacamole"
 
     header "Phase 1: Service health"
@@ -126,13 +125,6 @@ verify_phase1() {
 
     # Authentik: check metrics port 9300 (always up when server is healthy)
     container_http_ok "Authentik" "authentik-server" 9300 "/metrics"
-
-    # Garage S3 — check via garage CLI (more reliable than HTTP)
-    if docker exec garage /garage status 2>/dev/null | grep -q "HEALTHY"; then
-        ok "Garage S3 healthy"
-    else
-        fail "Garage S3 not healthy (docker exec garage /garage status)"
-    fi
 
     # Portainer API (exposed on host port 9000)
     if curl -sf --max-time 5 "http://localhost:9000/api/system/status" &>/dev/null || \
