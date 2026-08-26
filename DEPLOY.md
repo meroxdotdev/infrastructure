@@ -159,14 +159,13 @@ direct.
 > **Requires `cloudflare_tunnel_token` in vault** (the _connector_ token from
 > Cloudflare Zero Trust → Networks → Tunnels → "one" → Configure — looks like
 > `eyJhIjoi...`). This is **different** from `homepage_cloudflare_token` (an API
-> token used only by Homepage's Cloudflared widget). As of 2026-06-13 this var is
-> **not yet in vault** — until it's added, `inside.merox.dev`, `sso.merox.dev`,
-> and `rmt.merox.dev` are unreachable from
+> token used only by Homepage's Cloudflared widget). If it's missing or wrong,
+> `inside.merox.dev`, `sso.merox.dev`, and `rmt.merox.dev` are unreachable from
 > the internet after a fresh deploy (container runs but logs
-> `Provided Tunnel token is not valid`). One-time fix:
+> `Provided Tunnel token is not valid`). Fix:
 >
 > ```bash
-> cd vps && make vault-edit   # add: cloudflare_tunnel_token: "eyJhIjoi..."
+> cd vps && make vault-edit   # add/update: cloudflare_tunnel_token: "eyJhIjoi..."
 > ansible-playbook playbooks/site.yml --tags cloudflared
 > ```
 
@@ -207,7 +206,7 @@ make install
 # 3. Full deploy
 make setup
 
-# 4. Deploy the app stack (Homepage, Pi-hole, Portainer, Joplin, Code Server —
+# 4. Deploy the app stack (Homepage, Pi-hole, Portainer, Joplin —
 #    not part of `make setup`, see vps/roles/app_stack_setup/)
 make app-stack-setup
 ```
