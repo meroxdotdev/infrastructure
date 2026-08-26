@@ -10,12 +10,11 @@
 #    account (homepage-ro), no configure/power-control privilege.
 #  - Proxmox VE API - ZFS pool usage per node. Built to scrape standalone
 #    Proxmox hosts independently (no corosync cluster, each needs its own
-#    API endpoint/token) because px-0/Beelink used to be scraped here too -
-#    it's currently out of scope (hardware retained, not running Proxmox).
-#  - UPS state used to come from pwrstat on px-0 over a restricted SSH key;
-#    disabled along with px-0 (see below) - the actual shutdown safety
-#    mechanism is unaffected, it runs locally via NUT on pve. This only
-#    loses early Telegram warning of UPS state changes.
+#    API endpoint/token) to support more than one host if that ever happens.
+#  - UPS state via pwrstat over a restricted SSH key is disabled (see below)
+#    - the actual shutdown safety mechanism is unaffected, it runs locally
+#    via NUT on pve. This only loses early Telegram warning of UPS state
+#    changes.
 # Deployed by ansible (app_stack_setup role).
 set -euo pipefail
 
@@ -23,11 +22,9 @@ IDRAC_HOST="{{ vault_idrac_host }}"
 IDRAC_USER="{{ vault_idrac_username }}"
 IDRAC_PASS="{{ vault_idrac_password }}"
 
-# node:host:token triples - one per standalone Proxmox host.
-# px-0 (Beelink) used to be queried here too - it's currently out of scope
-# (hardware retained, not running Proxmox, possibly a future dev cluster,
-# not decided). Re-add "px-0:10.57.57.254:8006:{{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
-# to PVE_TARGETS below if it starts running Proxmox again.
+# node:host:token triples - one per standalone Proxmox host. Add another
+# "name:ip:8006:user={{ homepage_proxmox_username }}={{ homepage_proxmox_password }}"
+# entry to PVE_TARGETS below if a second Proxmox host ever exists.
 {% if vault_pve_r730xd_username is defined %}
 PVE_TARGETS=(
   "pve:10.57.57.250:8006:{{ vault_pve_r730xd_username }}={{ vault_pve_r730xd_password }}"
@@ -82,11 +79,10 @@ for target in "${PVE_TARGETS[@]}"; do
     "https://$host:$port/api2/json/nodes/$node/storage" || echo '{"data":[]}' > "$STORAGE_DIR/$node.json"
 done
 
-# Disabled: was "ssh -i /root/.ssh/vps-to-px0-ups ... root@10.57.57.254
-# pwrstat -status" - px-0 is out of scope, this always failed silently
-# (PWRSTAT_FILE stays empty, ups.reachable becomes false downstream, no
-# false alerts fire). Re-enable if px-0 starts running Proxmox again, or
-# rebuild against NUT on pve directly (upsc cyberpower) instead.
+# Disabled: pwrstat-over-SSH source. PWRSTAT_FILE stays empty,
+# ups.reachable becomes false downstream, no false alerts fire. Rebuild
+# against NUT on pve directly (upsc cyberpower) instead if this needs
+# re-enabling.
 
 mkdir -p "$OUT_DIR"
 

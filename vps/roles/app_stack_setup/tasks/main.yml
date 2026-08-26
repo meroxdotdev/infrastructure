@@ -81,11 +81,9 @@
     - "{{ app_stack_dir }}/idrac-stats"
   become: yes
 
-# px-0 is out of scope (hardware retained, not running Proxmox) -
 # homelab-stats.sh no longer uses this key, so remove the now-orphaned
-# private key from disk rather than leaving stale credential material
-# around. Re-add the deploy task (git history) if px-0 comes back.
-- name: Remove superseded px-0 UPS status SSH private key
+# private key from disk rather than leaving stale credential material around.
+- name: Remove superseded UPS status SSH private key
   ansible.builtin.file:
     path: /root/.ssh/vps-to-px0-ups
     state: absent
