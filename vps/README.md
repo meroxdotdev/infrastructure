@@ -19,6 +19,8 @@ Traefik (reverse proxy + ACME), Pi-hole + Unbound, Authentik SSO, Portainer EE,
 Homepage, Joplin Server + Postgres, Guacamole — one role per service under
 `roles/`, full URL table in the [main README](../README.md#everything-at-a-glance).
 All web traffic goes through Cloudflare Tunnel — no open inbound ports.
+Its hostname routing table lives in the Cloudflare dashboard, not git — see
+[roles/cloudflared_setup/README.md](roles/cloudflared_setup/README.md).
 
 Garage S3 doesn't run on this VPS at all — it's an independent LXC on R730xd
 (`garage-setup-r730xd.yml`, see
