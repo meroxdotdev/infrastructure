@@ -1,7 +1,7 @@
 # merox.dev Infrastructure
 
-3-node Talos Kubernetes cluster on Proxmox + an Oracle Cloud VPS for
-off-site services and S3. Declarative and GitOps-managed — `git push`
+Single-node Talos Kubernetes cluster on Proxmox + an Oracle Cloud VPS for
+off-site services. Declarative and GitOps-managed — `git push`
 deploys, updates or rebuilds any part.
 
 - **Contents** — Flux manifests (media stack, observability, networking),
@@ -26,13 +26,14 @@ deploys, updates or rebuilds any part.
 | Homepage (public)  | inside.merox.dev                | Curated overview, no credentials — bookmarks + anonymized stats     |
 | Joplin Server      | joplin.cloud.merox.dev          | Notes sync (PostgreSQL backend)                                     |
 | Guacamole          | rmt.merox.dev                   | Remote desktop gateway (Authentik SSO)                              |
-| Garage S3          | _(not deployed by default)_     | On-demand DR tooling only, not routed by Traefik — see [DR.md](DR.md#r730xd--garage-total-loss-fallback) |
+| Garage S3          | _(not deployed on the VPS)_     | Real target is the R730xd LXC (see Hardware table below) — the VPS carries a Garage role too, kept only as a DR-only fallback, see [DR.md](DR.md#r730xd--garage-total-loss-fallback) |
 
 ### Kubernetes — on-premise (`kubernetes/` → Flux GitOps)
 
 | Service              | Namespace     | Purpose                                                        |
 | -------------------- | ------------- | -------------------------------------------------------------- |
-| Jellyfin             | default       | Media server (Nvidia Quadro P2200 transcoding)                  |
+| Jellyfin             | default       | Media server, personal, LAN/Tailscale only (Nvidia Quadro P2200 transcoding) |
+| Jellyfin-public      | default       | Media server, curated 1080p library, internet-facing via the VPS — see [docs/jellyfin-public-exposure.md](docs/jellyfin-public-exposure.md) |
 | Jellyseerr           | default       | Media request management                                       |
 | Radarr / Sonarr      | default       | Movie / TV show automation                                     |
 | Prowlarr             | default       | Torrent indexer                                                |
@@ -51,6 +52,7 @@ deploys, updates or rebuilds any part.
 | cert-manager         | cert-manager  | Automated TLS certificates (ACME)                              |
 | Cloudflare Tunnel    | network       | External exposure — zero open ports                            |
 | k8s-gateway          | network       | Internal DNS for `*.merox.dev`                                 |
+| netboot.xyz          | network       | PXE network boot menu for bare-metal installs                  |
 
 ### Blog — Cloudflare Pages (private repo `meroxdotdev/merox`)
 
@@ -80,7 +82,7 @@ deploys, updates or rebuilds any part.
 | K8s secrets (Cloudflare token, Authentik, Longhorn S3)     | SOPS/AGE → `*.sops.yaml` in repo               | Flux on apply                 |
 | **`age.key`** ← **back this up**                           | `infrastructure/age.key` _(gitignored)_        | SOPS decryption               |
 | VPS secrets (Tailscale key, Cloudflare, Authentik, Garage) | Ansible Vault → `vps/.../vault.yml`            | `make setup` / `make dr-full` |
-| Pi-hole, Joplin DB, Code Server passwords                  | `/srv/docker/oracle-cloud/.env` _(gitignored)_ | Docker Compose                |
+| Pi-hole, Joplin DB passwords                                | `/srv/docker/oracle-cloud/.env` _(gitignored)_ | Docker Compose                |
 | Talos bootstrap secrets                                    | `talos/talsecret.sops.yaml` _(SOPS encrypted)_ | `task bootstrap:talos`        |
 | **restic repo password** ← **unrecoverable**               | password manager, entry `restic bak password`  | offsite backup on Oracle      |
 
@@ -177,7 +179,7 @@ Step 2 first needs `age.key` in place and new-hardware values edited into
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  R730xd (Proxmox host, 10.57.57.250) — the hub           │
-│  ├── Kubernetes Cluster (Talos Linux + Flux, 3 CP VMs)   │
+│  ├── Kubernetes Cluster (Talos Linux + Flux, 1 CP VM)    │
 │  │   ├── Cilium (CNI + Gateway API)                      │
 │  │   ├── Longhorn (storage → backs up to Garage LXC)     │
 │  │   ├── cert-manager, k8s-gateway                       │
