@@ -215,12 +215,37 @@ verify_phase2() {
         fi
     done
 
+    # A real duplicate install (2026-06-04, found 2026-08-26) sat undetected
+    # for 82 days because this check only looked for a Flux HelmRelease CRD -
+    # the actual leftover was a raw `helm install` (a plain Secret,
+    # sh.helm.release.v1.longhorn.v1) plus 35 orphaned Volume CRs, 5 Engine
+    # CRs, an EngineImage, 4 Services, 3 ConfigMaps, 2 Secrets and an
+    # OCIRepository, none of which a HelmRelease-only check would ever see.
+    # Check every object kind Longhorn actually creates, not just one of them.
     header "Phase 2: Storage — Duplicate Longhorn check"
+    DUP_FOUND=0
     if kubectl get helmrelease longhorn -n default &>/dev/null; then
         fail "Duplicate default/longhorn HelmRelease found — will break ALL volume attachments!"
         fail "Fix: kubectl delete helmrelease longhorn -n default && helm uninstall longhorn -n default"
-    else
-        ok "No duplicate default/longhorn HelmRelease"
+        DUP_FOUND=1
+    fi
+    if kubectl get secret -n default --no-headers 2>/dev/null | grep -q '^sh\.helm\.release\.v1\.longhorn\.'; then
+        fail "Raw Helm release record for 'longhorn' found in default (sh.helm.release.v1.longhorn.*) — a plain 'helm install' bypassing Flux, not caught by the HelmRelease check above"
+        DUP_FOUND=1
+    fi
+    for kind in volumes.longhorn.io engines.longhorn.io replicas.longhorn.io engineimages.longhorn.io; do
+        COUNT=$(kubectl get "$kind" -n default --no-headers 2>/dev/null | wc -l)
+        if [ "$COUNT" -gt 0 ]; then
+            fail "$COUNT $kind object(s) found in default namespace — should only exist in longhorn-system"
+            DUP_FOUND=1
+        fi
+    done
+    if kubectl get ocirepository longhorn -n default &>/dev/null; then
+        fail "OCIRepository 'longhorn' found in default namespace — should only exist in longhorn-system"
+        DUP_FOUND=1
+    fi
+    if [ "$DUP_FOUND" -eq 0 ]; then
+        ok "No duplicate Longhorn install (HelmRelease, raw Helm release, Volume/Engine/Replica/EngineImage CRs, or OCIRepository) in default"
     fi
 
     header "Phase 2: Storage — Restore volumes"
