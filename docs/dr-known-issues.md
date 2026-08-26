@@ -20,7 +20,6 @@ Back to the runbook: [../DR.md](../DR.md).
 | `immich-postgres`/`n8n` PVC binds to a fresh **empty** volume instead of the restored one | `bootstrap:apps` (Phase 3) already reconciled every Kustomization, including these two, before `longhorn:restore` (Phase 4) runs — their PVCs (plain, dynamically-provisioned, unlike the ARR apps' static claimRef'd PVs) get created and dynamic-provisioned immediately, "winning" the race against the restore | New `unbind-premature-dynamic-pvcs` task (runs before `apply-pvs`) deletes the pod+PVC if bound to a non-`*-restored-pv` volume, so `reconcile-apps` recreates it correctly bound afterward |
 | `prometheus` PVC stuck `FailedAttachVolume: not found` on a **fresh DR restore** | `pvs.yaml` declared a static PV pointing at a Longhorn volume that was never backed up, so it doesn't exist on a from-scratch cluster — `apply-pvs` recreates the dead PV every run, winning the PVC bind race before the dynamic provisioner can | Removed the dead PV block from `pvs.yaml` — prometheus gets a fresh dynamic volume like the rest of observability |
 | ⚠️ `jellyseerr`/`qbittorrent` static PVs looked dead by the same logic, but weren't — **do not remove them again** | 2026-08-03's first pass at the row above also dropped `jellyseerr-restored-pv`/`qbittorrent-restored-pv` from `pvs.yaml`, reasoning they were "dropped from backup 2026-07-21, no longer exist" — true for a fresh DR cluster (never backed up = genuinely absent there), false for **prod** (`pve`/R730xd), where those exact Longhorn volumes are the live, real, un-backed-up app data and still existed with real content. Removing them from git deleted the PVs off prod too (same manifest, same `longhorn` Kustomization, no DR/prod distinction) — `kubernetes.io/pv-protection` blocked full deletion since the PVCs were still bound, so both PVs sat `Terminating` for 2 days, silently breaking both apps, until caught 2026-08-05 | Re-added both PV blocks (`9af0230`) — same `volumeHandle`, so they rebind to the existing Longhorn volume instead of provisioning empty. **If jellyseerr/qbittorrent are still excluded from the nightly `media` backup group, this recovered data has no ongoing backup protection** — confirm that's intentional, or re-add the `recurring-job-group.longhorn.io/media` label |
-| `terraform apply` fails: `storage 'local-data' does not support vm images` | px-0's `local-data` storage had its content-type changed (sometime after the 2026-06 tests) to `iso,import,vztmpl,snippets` — no longer `images` | Use `cluster-storage` for `disk_storage` on px-0 (still `local-data` for `iso_storage`) — already fixed in `terraform.tfvars.example` |
 | DR node never gets its static IP, `dr:apply-talos-configs` reports `UNKNOWN` MAC | `terraform.tfvars.example`'s `node_macs` had a stale MAC for controlplane-3 that no longer matches the real prod VM's NIC (`talconfig.yaml` is the source of truth, always re-verify against it) | Fixed in `terraform.tfvars.example`; if this happens again, `qm set <vmid> -net0 virtio=<correct-mac>,bridge=vmbr0` + reboot the VM |
 | `bootstrap:apps`/`longhorn:restore` fail with `task: Unsupported bash version` or `Missing required deps` | macOS ships bash 3.2 (Taskfile needs 4+); `helmfile`/`kustomize` aren't installed by default outside the `mise` toolchain | `brew install bash helmfile kustomize` once per machine, run with `/opt/homebrew/bin` ahead of `/usr/bin` on `PATH` |
 | `dr-verify.sh` reported `Only 6 restore volumes found (expected 9+)` on a healthy restore, and `only N/3 Longhorn nodes registered` on the single-node cluster | Both checks had hardcoded expectations from the pre-2026-07-21/pre-2026-08-17 topology: `restore-all-volumes` restores exactly 6 by design, and the cluster now runs 1 node, not 3 | Volume check now expects 6; Longhorn-node check now compares against the actual `kubectl get nodes` count instead of a fixed 3 |
@@ -31,9 +30,7 @@ Back to the runbook: [../DR.md](../DR.md).
 ## Open — found 2026-08-15, **not** yet fixed
 
 Unlike the table above, nothing here is repaired in the repo. All five were
-hit during a full restore onto px-0 (a migration trial, later rolled back —
-see [Compute on px-0](#compute-on-px-0-evaluated-and-rejected) below). They
-will recur on the next real DR.
+hit during a full DR restore trial and will recur on the next real DR.
 
 | Symptom | Root cause | Workaround |
 |---|---|---|
@@ -43,26 +40,3 @@ will recur on the next real DR.
 | First **cold** boot of a Terraform-made DR node lands in maintenance mode instead of the installed system | `main.tf` sets `boot_order = ["ide2", "scsi0"]` and leaves the ISO attached. Masked in practice because Talos upgrades use `kexec`, so the VMs rarely cold-boot — but a power cut or `qm stop`/`qm start` exposes it | After Talos installs: `qm set <vmid> --boot order=scsi0` and `--ide2 none,media=cdrom`. The `lifecycle { ignore_changes = [cdrom] }` block means Terraform will not fight this |
 
 Note: `--phase all` runs VPS checks with local `docker ps` — from a laptop every one of them fails meaninglessly; use `--phase 2` for the cluster.
-
-## Compute on px-0 — evaluated and rejected
-
-2026-08-15: the whole cluster was moved to px-0 (Beelink) to see whether
-leaving the R730xd as a storage-only host would save power. It does not.
-Measured with the SAS pool parked in both cases:
-
-| | Cluster on R730xd | Cluster on px-0 |
-|---|---|---|
-| pve | 136W | 118W |
-| px-0 | 31W | 102W |
-| **UPS total** | **167W** | **222W** |
-
-**+55W, roughly 40 kWh/month worse.** The R730xd's floor is set by 12 SAS
-disks, two PSUs and its fans, not by CPU load, so unloading its CPU recovers
-only ~18W — while the i9-13900H sits at ~3.8GHz hosting three always-on VMs
-even at a cluster-wide 1.0 core of real work, and never drops into deep idle.
-Moving compute off a machine that stays powered on for storage does not save
-power; it just adds a second machine's worth.
-
-Rolled back the same day by starting VMs 800/802/804 (kept stopped, never
-reset). Worth re-testing only if the R730xd ever stops being needed for
-storage — that, not the VM placement, is where the 136W lives.

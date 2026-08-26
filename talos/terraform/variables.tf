@@ -15,7 +15,7 @@ variable "proxmox_token_secret" {
 }
 
 variable "proxmox_nodes" {
-  description = "Proxmox node names to distribute VMs across. pve is the only host currently running Proxmox - px-0 is out of scope (hardware retained, not deployed)."
+  description = "Proxmox node names to distribute VMs across."
   type        = list(string)
   default     = ["pve", "pve", "pve"]
 }

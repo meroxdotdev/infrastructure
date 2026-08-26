@@ -25,7 +25,7 @@ running copy, these are the reviewable ones:
 | [`etc/jobs.cfg`](etc/jobs.cfg) | PVE job scheduler — vzdump disabled here, it runs from cron |
 | [`nextcloud/`](nextcloud/) | the Nextcloud VM: compose, firewall rules, runbook |
 
-Neighbours: [pfSense](../../pfsense/REINSTALL.md) · [px-0](../px-0/REINSTALL.md)
+Neighbours: [pfSense](../../pfsense/REINSTALL.md)
 
 ## Ollama VM
 
@@ -151,9 +151,7 @@ enforcer script (see [spindown-setup.md](spindown-setup.md)).
 - Exports ACL: **per host, not the subnet** (narrowed 2026-08-11 — it was
   `10.57.57.0/24`, which with `no_root_squash` gave every device on the LAN
   root on the backup tree). Allowed clients: `10.57.57.80/82/84` (Talos
-  nodes — all pod mounts originate there). `10.57.57.254` (px-0) is listed
-  in `/etc/exports` too but is currently unused — px-0 isn't running
-  Proxmox, so nothing is mounting `r730xd-backups` from there right now.
+  nodes — all pod mounts originate there).
   Adding a client means adding its IP to `/etc/exports`, not widening back
   to `/24`. Previous file kept as `/etc/exports.bak-2026-08-11`.
 - Immich/Filebrowser hardcode `10.57.57.250`; the ARR stack uses the

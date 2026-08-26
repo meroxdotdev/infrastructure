@@ -14,8 +14,7 @@ target Proxmox host, this repo checked out.
 
 ## 0. Target host
 
-**pve (R730xd) is the only option** — px-0 is out of scope (hardware
-retained, not deployed). Tests restore procedure only, not real host
+**Target: pve (R730xd).** Tests restore procedure only, not real host
 failure (same physical box as prod) — see [`DR.md`](../DR.md#which-host-to-target)
 for that gap.
 

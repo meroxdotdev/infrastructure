@@ -6,10 +6,8 @@ proxmox_token_id     = "root@pam!terraform"   # create at: Proxmox → Datacente
 proxmox_token_secret = "your-token-secret-here"
 
 # REQUIRED for DR on Proxmox homelab (fixed MACs = prod node MACs from talconfig.yaml):
-# pve/R730xd is the only Proxmox host currently running (huge headroom, use
-# since prod is already down there during a drill — see DR.md "Which host
-# to target"). px-0 is out of scope (hardware retained, not deployed) - if
-# it or a future dev cluster ever comes back as a DR target, update this.
+# Target: pve/R730xd (huge headroom, use since prod is already down there
+# during a drill — see DR.md "Which host to target").
 proxmox_nodes = ["pve", "pve", "pve"]
 disk_storage  = "local-zfs"
 

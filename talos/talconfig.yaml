@@ -54,9 +54,9 @@ nodes:
   # exact `qm create` lines are in SINGLE-NODE.md's "VM recreation spec".
   #
   # ⚠ The MAC below for controlplane-2 does NOT match the VM that was actually
-  # running (BC:24:11:43:4E:63), most likely drift from the 2026-08-15 px-0 DR
-  # test. deviceSelector matches on MAC, so reconcile the two before applying,
-  # or the node boots with no address. controlplane-3's MAC was never verified
+  # running (BC:24:11:43:4E:63), most likely drift from an earlier DR test on
+  # different hardware. deviceSelector matches on MAC, so reconcile the two
+  # before applying, or the node boots with no address. controlplane-3's MAC was never verified
   # against a live VM.
   #
   # - hostname: "kubernetes-controlplane-2"

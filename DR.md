@@ -9,24 +9,21 @@ Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.
 - **Rebuilding a host instead of the cluster:**
   [pve](proxmox/r730xd/REINSTALL.md) · [pfSense](pfsense/REINSTALL.md)
 
-**Tested end-to-end:** 2026-06-06 (px-0, while it was still deployed),
-2026-08-03 (pve/R730xd — prod VMs stopped, not deleted, restarted clean
-afterward). ~45 min with troubleshooting; ~35 min clean.
+**Tested end-to-end:** 2026-08-03 (pve/R730xd — prod VMs stopped, not
+deleted, restarted clean afterward). ~35 min clean.
 
 ## Which host to target
 
-**pve (R730xd) is the only option today** — px-0 (Beelink) is out of scope
-(hardware retained, not running Proxmox, possibly a future dev cluster,
-undecided). 238GB+ RAM free once prod VMs are stopped — can match prod
-exactly (`vm_memory_mb = 49152`), so nothing gets stuck on scheduling.
+**pve (R730xd)** — 238GB+ RAM free once prod VMs are stopped — can match
+prod exactly (`vm_memory_mb = 49152`), so nothing gets stuck on scheduling.
 
 ⚠️ **Accepted gap:** this only tests "did recent changes break the restore
 procedure?" — DR VMs land on the same physical box as prod, so it does
-**not** test "the R730xd died, can we recover?" (that needs a second host,
-which px-0 used to provide). No current substitute for that specific
+**not** test "the R730xd died, can we recover?" That needs a second Proxmox
+host, and none exists today. No current substitute for that specific
 question; the Hetzner VPS DR path (`vps/`, `make dr-full`) is the only
-different-hardware test left, and it only covers the VPS side. Revisit if
-the px-0/px-1/px-2 dev-cluster idea ever happens.
+different-hardware test left, and it only covers the VPS side. Revisit if a
+second Proxmox host ever exists.
 
 ---
 
@@ -57,8 +54,6 @@ the px-0/px-1/px-2 dev-cluster idea ever happens.
 > **Storage layout on pve:** `local-zfs` for `disk_storage`, `media-isos`
 > for `iso_storage` — the `local` storage there only has content=snippets,
 > no iso support. Working DR config: `proxmox_nodes = ["pve", "pve", "pve"]`.
-> (px-0 used to need `cluster-storage`/`local-data` instead — moot while
-> it's out of scope, see [talconfig discussion above](#which-host-to-target).)
 
 ```bash
 cd /srv/kubernetes/infrastructure
@@ -177,7 +172,6 @@ task dr:destroy-vms
 # Restart the prod node via Proxmox UI:
 # VM 800 → kubernetes-controlplane-1 (pve / R730xd) - the only control-plane
 # VM since the 2026-08-17 single-node downsize (see talos/SINGLE-NODE.md).
-# px-0/px-1/px-2 are all out of scope (hardware retained, not deployed).
 ```
 
 ---

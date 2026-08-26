@@ -1,21 +1,16 @@
-# GPU Transcoding — Nvidia (current) & Intel QSV (rollback)
+# GPU Transcoding — Nvidia Quadro P2200
 
-Jellyfin hardware transcoding moved from Intel Quick Sync (iGPU passthrough on
-px-0 / Beelink) to Nvidia NVENC/NVDEC (Quadro P2200 passthrough on the R730xd,
-`10.57.57.250`) when `controlplane-1` was rebuilt on the R730xd. Both hardware
-paths are documented here — the Intel config is **kept, not deleted**, as a
-rollback option.
+Jellyfin hardware transcoding runs on Nvidia NVENC/NVDEC (Quadro P2200
+passthrough on the R730xd, `10.57.57.250`) to `kubernetes-controlplane-1`.
 
 ---
 
-## 1. Current setup — Nvidia Quadro P2200
-
-### Hardware / host (Proxmox, R730xd `10.57.57.250`)
+## Hardware / host (Proxmox, R730xd `10.57.57.250`)
 
 The GPU (`04:00.0` VGA + `04:00.1` Audio, IOMMU group 19, cleanly isolated) is
 passed through to the `kubernetes-controlplane-1` VM via `vfio-pci`.
 
-Host-level config (mirrors the working Intel pattern from px-0):
+Host-level config:
 
 | File                                                                               | Purpose                                                                                                                                    |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -28,7 +23,7 @@ VM config: `hostpci0: 0000:04:00.0` (video function only, no audio — Talos
 doesn't need it), disk on `local-lvm` (low latency, required for etcd — not
 `bulk-backups`).
 
-### Talos
+## Talos
 
 Quadro P2200 is **Pascal** (GP106) — the current Nvidia "production" driver
 branch (595.x) dropped Pascal support (`NVRM: ... will ignore this GPU`).
@@ -53,19 +48,20 @@ Pascal requires the **LTS branch** (580.x):
   but Kubernetes needs an explicit `RuntimeClass` object to expose it — see
   `kubernetes/apps/kube-system/nvidia-device-plugin/app/runtimeclass.yaml`.
 
-### Kubernetes
+## Kubernetes
 
 - `kubernetes/apps/kube-system/nvidia-device-plugin/` — Flux app (OCIRepository
-    - HelmRelease, chart `nvidia-device-plugin` 0.19.3, mirrors the structure of
-      `intel-device-plugin-operator/`). Exposes `nvidia.com/gpu` as an allocatable
-      resource on labeled nodes.
+  + HelmRelease, chart `nvidia-device-plugin` 0.19.3). Exposes `nvidia.com/gpu`
+  as an allocatable resource on labeled nodes.
 - `kubernetes/apps/default/jellyfin/app/helmrelease.yaml`:
-    - `resources.limits`: `nvidia.com/gpu: 1` (was `gpu.intel.com/i915: 1`)
+    - `resources.limits`: `nvidia.com/gpu: 1`
     - `pod.runtimeClassName: nvidia`
 
-### Jellyfin (`encoding.xml`, on the PVC — not in git, see
+## Jellyfin encoding.xml
 
-[jellyfin-post-restore.md](./jellyfin-post-restore.md))
+Stored in `/config/config/encoding.xml` on the PVC — not in git, see
+[jellyfin-post-restore.md](./jellyfin-post-restore.md) for the post-restore
+checklist.
 
 | Setting                                              | Value                                                                                                                    |
 | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -79,7 +75,7 @@ Pascal requires the **LTS branch** (580.x):
 Encoding support on P2200: **decode** h264/hevc/vc1/vp9/mpeg2/mpeg4 (no AV1);
 **encode** h264/hevc via NVENC (no AV1 encode on Pascal either).
 
-### Verifying it actually works
+## Verifying it actually works
 
 Not just `nvidia-smi` — confirm a real transcode:
 
@@ -92,62 +88,3 @@ kubectl exec -n default "$POD" -- /usr/lib/jellyfin-ffmpeg/ffmpeg -hwaccel cuda 
 
 Then check `Stream mapping: ... -> h264_nvenc` in the output, and/or force a
 transcode from an actual client and check Playback Info shows `nvenc`.
-
----
-
-## 2. Rollback — Intel Quick Sync (iGPU, px-0 / Beelink)
-
-The Intel GitOps manifests are still in git, just suspended.
-
-⚠️ **px-0 doesn't run Proxmox at all right now** — see
-[`proxmox/px-0/README.md`](../proxmox/px-0/README.md). Reverting to Intel
-means reinstalling Proxmox on px-0 first
-([`proxmox/px-0/REINSTALL.md`](../proxmox/px-0/REINSTALL.md)), then rebuilding
-the vfio host config below from scratch — none of it survives on the bare
-host. The values are recorded here (verified working 2026-08-15, back when
-px-0 last ran Proxmox) so they don't have to be rediscovered.
-
-To revert:
-
-1. **Hardware**: reinstall Proxmox on px-0, recreate the vfio host config
-   (`intel_iommu=on iommu=pt`, `module_blacklist=i915,…`,
-   `options vfio-pci ids=8086:a7a0,8086:51ca`), then stand up a
-   `controlplane-1` VM with `hostpci0 0000:00:02.0,pcie=1` — **and
-   `--machine q35`**, since the default i440fx never gives the guest a
-   render node. Confirm with `talosctl -n 10.57.57.80 ls /dev/dri` (`card0` +
-   `renderD128`) and `talosctl dmesg | grep i915` (*"GuC: submission
-   enabled"*).
-   It will conflict with the R730xd `controlplane-1` (same MAC/IP), so remove
-   that one from etcd first (`talosctl etcd remove-member`). This is a full
-   hardware move, not a quick toggle.
-2. **GitOps**:
-    - Un-suspend: remove `spec.suspend: true` from
-      `kubernetes/apps/kube-system/intel-device-plugin-operator/ks.yaml`
-      (both Kustomization blocks).
-    - Remove/comment the `nvidia-device-plugin` line in
-      `kubernetes/apps/kube-system/kustomization.yaml`.
-    - `kubernetes/apps/default/jellyfin/app/helmrelease.yaml`: revert
-      `resources.limits` to `gpu.intel.com/i915: 1` and drop
-      `pod.runtimeClassName`.
-    - `talos/talconfig.yaml`: revert `kubernetes-controlplane-1`'s
-      `talosImageURL` to the plain (non-nvidia) schematic
-      (`8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510`),
-      revert `nodeLabels` to `intel.feature.node.kubernetes.io/gpu: "true"`,
-      and drop the `patches: [nvidia-kernel-modules.yaml]` entry.
-
-      ⚠️ Use that schematic as-is. It already contains `i915` and
-      `intel-ucode` — the Nvidia one is literally it plus the two nvidia
-      extensions — and it also carries `iscsi-tools`, `mei` and
-      `util-linux-tools`. A hand-rolled "just i915 + intel-ucode" schematic
-      boots fine and looks correct, then `longhorn-manager` crash-loops on
-      that node with *"please make sure you have iscsiadm/open-iscsi
-      installed"*; its DaemonSet install times out and every PVC-backed app
-      fails behind it. Cost an hour on 2026-08-15. Check any schematic before
-      trusting it: `curl -s https://factory.talos.dev/schematics/<id>`.
-3. **Jellyfin `encoding.xml`**: see the "Re-applying the encoding.xml
-   manually" section in
-   [jellyfin-post-restore.md](./jellyfin-post-restore.md) — set
-   `HardwareAccelerationType` back to `qsv`, device `/dev/dri/renderD128`,
-   re-enable the Intel Low-Power encoders and VPP tonemapping, restore `av1`
-   to `HardwareDecodingCodecs` (Intel Iris Xe on the i9-13900H decodes AV1;
-   Pascal does not).

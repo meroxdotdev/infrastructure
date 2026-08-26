@@ -26,8 +26,8 @@ transaction translator, and there it re-enumerates on a metronomic
   90 s with nothing at all holding `/dev/usb/hiddev0`
 - **zero USB errors** in `dmesg`; a bad cable or port throws `-71`/`-110`,
   this throws nothing
-- the same UPS and cable were stable on px-0, which has xHCI (px-0 doesn't
-  run Proxmox any more, so this is history, not a suggestion to move it back)
+- the same UPS and cable were stable on a different host with xHCI, isolating
+  the cause to this chassis's EHCI-only USB controllers
 
 `pwrstatd` (PowerPanel) talks to `/dev/usb/hiddev0` and cannot survive that
 churn: it reported only `State: Normal` and never once read battery charge,
@@ -35,10 +35,6 @@ runtime or load — so `lowbatt-threshold` and `runtime-threshold` had nothing
 to fire on. NUT's `usbhid-ups` goes through **libusb**, reconnects across
 each re-enumeration and reads the full variable set. The device still flaps;
 it simply stopped mattering.
-
-⚠️ Do not move the UPS back to px-0. That was the old design and it made a
-graceful shutdown of the machine holding all the data depend on a second
-host being awake.
 
 ## Drives without SES temperature reporting make the fans scream
 

@@ -53,9 +53,9 @@ Verify it's populated in the UI after deploy.
 ## 2. Encoding / Hardware Acceleration (Admin → Playback)
 
 Stored in `/config/config/encoding.xml` on the PVC. Full codec support
-matrix, host-level GPU passthrough config, and the Intel QSV rollback
-procedure live in [gpu-transcoding.md](./gpu-transcoding.md) — this section
-is only the checklist of values to verify after a restore.
+matrix and host-level GPU passthrough config live in
+[gpu-transcoding.md](./gpu-transcoding.md) — this section is only the
+checklist of values to verify after a restore.
 
 ### Hardware Acceleration (current — Nvidia NVENC/NVDEC)
 
@@ -66,8 +66,8 @@ is only the checklist of values to verify after a restore.
 | Intel Low-Power H.264/HEVC encoder | n/a (Intel-only, disabled) |
 
 Codec support (decode/encode, Pascal-specific AV1 gap) is documented once in
-[gpu-transcoding.md](./gpu-transcoding.md#1-current-setup--nvidia-quadro-p2200)
-— not repeated here.
+[gpu-transcoding.md](./gpu-transcoding.md#jellyfin-encodingxml) — not
+repeated here.
 
 ### Tonemapping
 
@@ -76,10 +76,6 @@ Codec support (decode/encode, Pascal-specific AV1 gap) is documented once in
 | VPP Tonemapping (HDR→SDR)         | ❌ disabled — Intel-only feature |
 | Tonemapping (generic OpenCL/CUDA) | ✅ enabled                       |
 | Algorithm                         | bt2390                           |
-
-Intel QSV rollback values live entirely in
-[gpu-transcoding.md](./gpu-transcoding.md#2-rollback--intel-quick-sync-igpu-px-0--beelink)
-— not duplicated here.
 
 ### Segment Management
 

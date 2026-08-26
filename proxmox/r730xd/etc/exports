@@ -6,11 +6,6 @@
 #
 #   10.57.57.80/82/84  Talos nodes (all pod mounts originate here)
 #
-# px-0 (10.57.57.254) used to mount /media/backups and /media/isos as PVE
-# storage "r730xd-backups" (DR-test target) - removed 2026-08-25, px-0 is
-# out of scope (hardware retained, not running Proxmox). Re-add its IP to
-# the relevant lines below if it starts running Proxmox again.
-#
 # Adding a client means adding its IP here, not widening back to /24.
 /media/library                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
 /media/backups                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
