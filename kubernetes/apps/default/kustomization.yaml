@@ -29,8 +29,6 @@ resources:
   - ./sonarr/ks.yaml
   # Photos
   - ./immich/ks.yaml
-  # File management
-  - ./filebrowser/ks.yaml
   # Automation
   - ./n8n/ks.yaml
   # Management

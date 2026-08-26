@@ -93,11 +93,6 @@
           username: "{{HOMEPAGE_VAR_SYNOLOGY_USER}}"
           password: "{{HOMEPAGE_VAR_SYNOLOGY_PASS}}"
 
-    - Filebrowser:
-        icon: mdi-folder-multiple
-        href: https://files.k8s.merox.dev
-        description: R730xd SAS pool browser, WebDAV
-
 # ============================================================================
 # KUBERNETES
 # ============================================================================

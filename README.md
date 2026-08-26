@@ -39,7 +39,6 @@ deploys, updates or rebuilds any part.
 | Prowlarr             | default       | Torrent indexer                                                |
 | qBittorrent          | default       | Torrent client (fixed IP: 10.57.57.102)                        |
 | Immich               | default       | Photo/video library (photos.k8s.merox.dev) — replaces Synology Photos |
-| Filebrowser          | default       | Web browser for the R730xd SAS pool (files.k8s.merox.dev), incl. WebDAV |
 | n8n                  | default       | Workflow automation                                            |
 | Headlamp             | default       | Kubernetes dashboard (cluster-admin UI)                        |
 | Authentik outpost    | default       | SSO proxy for K8s apps                                         |

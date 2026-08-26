@@ -536,7 +536,6 @@
         <tr><td>Radarr · Sonarr · Prowlarr · qBittorrent</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span> + NFS <span class="pill p-sas">SAS</span></td><td class="num">0,32 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
         <tr><td>Jellyseerr</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,01 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
         <tr><td>n8n</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,01 G</td><td><span class="pill p-ok">Longhorn</span></td></tr>
-        <tr><td>Filebrowser</td><td>k8s</td><td class="mono">PVC + NFS spre 5 surse</td><td class="num">0,07 G</td><td><span class="pill p-skip">activ — una din cele 5 surse (documents) e înlocuită de Nextcloud</span></td></tr>
         <tr><td>Cache-uri (jellyfin ×2, jellyseerr, radarr, sonarr)</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,47 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
         <tr><td>Headlamp · Portainer agent · Authentik outpost</td><td>k8s</td><td class="mono">fără stare</td><td class="num">—</td><td><span class="pill p-skip">nimic de salvat</span></td></tr>
 
@@ -595,7 +594,7 @@
         <tr><td class="mono">discard=on pe discurile Talos</td><td>blocurile eliberate în guest nu se întorc la ZFS</td><td class="num">~90–145 G</td><td><span class="pill p-skip">cere repornire — încă neverificat</span></td></tr>
         <tr><td class="mono">VM windows11</td><td>rulează; nu s-a confirmat dacă RDP-ul e expus</td><td class="num">58,4 G</td><td><span class="pill p-warn">re-verifică</span></td></tr>
         <tr><td class="mono">VM windows11</td><td>nicio vzdump în crontab-ul lui pve pentru VM 100 — doar VM 101 are. Ollama (VM 105) nu are nevoie, documentat; Nextcloud (VM 1000) e acoperit separat, prin AIO borg</td><td class="num">—</td><td><span class="pill p-warn">decide dacă merită vzdump</span></td></tr>
-        <tr><td class="mono">media/photos</td><td>copie stale de la migrarea Immich; doar Filebrowser o citește</td><td class="num">3,28 G</td><td><span class="pill p-skip">după Filebrowser</span></td></tr>
+        <tr><td class="mono">media/photos</td><td>copie stale de la migrarea Immich; nimic nu o mai citește (Filebrowser eliminat)</td><td class="num">3,28 G</td><td><span class="pill p-skip">candidat la ștergere</span></td></tr>
         <tr><td class="mono">Leg Synology fără healthcheck</td><td>un eșec e invizibil</td><td class="num">—</td><td><span class="pill p-skip">tot deschis</span></td></tr>
       </tbody>
     </table>
@@ -604,8 +603,8 @@
   <div class="note">
     <strong>Ordinea recomandată.</strong> Întâi <code>discard=on</code> — poate schimba
     tot calculul de spațiu. Apoi windows11, singurul serviciu live fără nicio plasă
-    confirmată acum. <code>media/photos</code> rămâne legat de Filebrowser,
-    deci vine la final.
+    confirmată acum. <code>media/photos</code> nu mai are niciun consumator,
+    deci e sigur de șters oricând.
   </div>
 </section>
 

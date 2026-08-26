@@ -98,8 +98,7 @@ delete live prod data, not just skip a DR restore — see
 doc's "Open" section covers that gap.
 
 Deliberately NOT backed up: Prometheus/Loki/Grafana/Netdata history,
-alertmanager, `filebrowser`, all `*-cache` volumes — regenerable, were
-~35GB of noise.
+alertmanager, all `*-cache` volumes — regenerable, were ~35GB of noise.
 
 ## Restore drill (monthly)
 

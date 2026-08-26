@@ -234,11 +234,10 @@ metadata, not the files. **Two independent paths, deliberately:**
 rpool (SSD). Same `media` label, so Longhorn → Garage is their primary
 protection too.
 
-⚠️ `/media/photos` is a **stale leftover**, not live Immich data. The
-export still exists (Filebrowser reads it; briefly removed 2026-08-06,
-which broke Filebrowser, re-added 2026-08-07), and the weekly Synology and
-nightly restic legs still copy it. Fine as a second safety net — do not
-treat it as current.
+⚠️ `/media/photos` is a **stale leftover**, not live Immich data. No longer
+NFS-exported (its only consumer, Filebrowser, was removed), but the weekly
+Synology and nightly restic legs still copy it directly from disk. Fine as
+a second safety net — do not treat it as current.
 
 ## R730xd / Garage total loss fallback
 

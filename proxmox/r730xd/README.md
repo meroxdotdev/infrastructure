@@ -144,9 +144,11 @@ enforcer script (see [spindown-setup.md](spindown-setup.md)).
 | Dataset | NFS export | Consumers |
 |---|---|---|
 | `media/library` | rw | Jellyfin (ro), Sonarr/Radarr/qBittorrent (rw) via `NFS_SERVER` var |
-| `media/photos` | rw | Filebrowser only (browsing the stale safety-net copy) — Immich itself moved to Longhorn/SSD PVCs 2026-08-06. Export was briefly removed then, which broke Filebrowser (found + fixed 2026-08-07); re-added, this time checked against all known consumers first |
-| `media/isos` | ro | Filebrowser |
-| `media/backups` | rw | Filebrowser (ro), Immich pg_dump CronJob, backup jobs |
+| `media/backups` | rw | Immich pg_dump CronJob, backup jobs |
+
+`media/photos` and `media/isos` are no longer NFS-exported — both existed
+only for Filebrowser, which was removed (Immich has its own Longhorn/SSD
+storage and never used this export). The datasets themselves are untouched.
 
 - Exports ACL: **per host, not the subnet** (narrowed 2026-08-11 — it was
   `10.57.57.0/24`, which with `no_root_squash` gave every device on the LAN
@@ -154,8 +156,7 @@ enforcer script (see [spindown-setup.md](spindown-setup.md)).
   nodes — all pod mounts originate there).
   Adding a client means adding its IP to `/etc/exports`, not widening back
   to `/24`. Previous file kept as `/etc/exports.bak-2026-08-11`.
-- Immich/Filebrowser hardcode `10.57.57.250`; the ARR stack uses the
-  `NFS_SERVER` cluster-var.
+- The ARR stack uses the `NFS_SERVER` cluster-var for its `media/library` mount.
 
 ⚠️ `no_root_squash` is still set on every export — a permitted client can
 still act as root on the exported trees. Removing it is **not** a drop-in
