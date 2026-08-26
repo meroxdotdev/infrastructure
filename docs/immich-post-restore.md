@@ -55,11 +55,10 @@ Both PVCs are labeled for the nightly Longhorn→Garage recurring backup
 
 The external library's content originally came from Synology's
 `/volume1/homes/merox/Photos/PhotoLibrary/` (excluding the `@eaDir` thumbnail
-cache) via the `media/backups/synology-home` pull — see
-[[project_synology_decommission]]. It's intentionally **read-only** and
-separate from Immich's own upload location, so Immich never reorganizes or
-modifies the original files; it just re-derives albums/dates from EXIF and
-folder structure on scan.
+cache), imported once and now living entirely on its own Longhorn PVC. It's
+intentionally **read-only** and separate from Immich's own upload location,
+so Immich never reorganizes or modifies the original files; it just
+re-derives albums/dates from EXIF and folder structure on scan.
 
 **After first deploy**, configure the External Library manually (not
 git-managed — Immich has no config-as-code for this): Administration →
@@ -81,8 +80,5 @@ with the extensions already created per step 2), scale back up.
 
 ## 5. Explicitly not done here
 
-- Synology Photos is **not** decommissioned — it stays live side-by-side
-  until this is verified working end-to-end (mobile upload, browsing,
-  thumbnails). See [[project_synology_decommission]] for the full sequencing.
 - ML features are off — re-enabling later requires real RAM/CPU budget
   review, not just flipping the value.

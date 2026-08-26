@@ -9,7 +9,6 @@
 # Adding a client means adding its IP here, not widening back to /24.
 /media/library                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
 /media/backups                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
-/media/backups/synology-home    10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
 /media/backups/longhorn-garage  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
 /media/isos                     10.57.57.80(ro,sync,no_subtree_check,no_root_squash) 10.57.57.82(ro,sync,no_subtree_check,no_root_squash) 10.57.57.84(ro,sync,no_subtree_check,no_root_squash)
 /media/photos                   10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)

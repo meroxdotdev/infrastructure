@@ -558,7 +558,6 @@
         <tr><td>windows11 (VM 100)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">58,4 G</td><td><span class="pill p-warn">fără vzdump — verifică, vezi §6</span></td></tr>
         <tr><td>Garage S3 — date (LXC 103)</td><td>pve</td><td class="mono"><code>media/backups/longhorn-garage</code> <span class="pill p-sas">SAS</span></td><td class="num">19,0 G</td><td><span class="pill p-ok">e chiar ținta de backup</span></td></tr>
         <tr><td>Garage S3 — meta</td><td>pve</td><td class="mono"><code>rpool/garage-meta</code> <span class="pill p-ssd">SSD</span></td><td class="num">29,5 M</td><td><span class="pill p-ok">copiat nightly 03:01</span></td></tr>
-        <tr><td>Documente (Filebrowser WebDAV)</td><td>pve</td><td class="mono"><code>backups/synology-home</code> <span class="pill p-sas">SAS</span></td><td class="num">29,5 G</td><td><span class="pill p-skip">înlocuit de Nextcloud</span></td></tr>
         <tr><td>ISO-uri / template-uri</td><td>pve</td><td class="mono"><code>media/isos</code> <span class="pill p-sas">SAS</span></td><td class="num">3,55 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">VPS Oracle</td></tr>
@@ -597,7 +596,6 @@
         <tr><td class="mono">VM windows11</td><td>rulează; nu s-a confirmat dacă RDP-ul e expus</td><td class="num">58,4 G</td><td><span class="pill p-warn">re-verifică</span></td></tr>
         <tr><td class="mono">VM windows11</td><td>nicio vzdump în crontab-ul lui pve pentru VM 100 — doar VM 101 are. Ollama (VM 105) nu are nevoie, documentat; Nextcloud (VM 1000) e acoperit separat, prin AIO borg</td><td class="num">—</td><td><span class="pill p-warn">decide dacă merită vzdump</span></td></tr>
         <tr><td class="mono">media/photos</td><td>copie stale de la migrarea Immich; doar Filebrowser o citește</td><td class="num">3,28 G</td><td><span class="pill p-skip">după Filebrowser</span></td></tr>
-        <tr><td class="mono">backups/synology-home</td><td>date înlocuite de Nextcloud, încă montate în Filebrowser și încă pe disc</td><td class="num">29,5 G</td><td><span class="pill p-skip">de curățat</span></td></tr>
         <tr><td class="mono">Leg Synology fără healthcheck</td><td>un eșec e invizibil</td><td class="num">—</td><td><span class="pill p-skip">tot deschis</span></td></tr>
       </tbody>
     </table>
@@ -606,8 +604,8 @@
   <div class="note">
     <strong>Ordinea recomandată.</strong> Întâi <code>discard=on</code> — poate schimba
     tot calculul de spațiu. Apoi windows11, singurul serviciu live fără nicio plasă
-    confirmată acum. <code>media/photos</code> și <code>synology-home</code> rămân
-    legate de Filebrowser, deci vin la final.
+    confirmată acum. <code>media/photos</code> rămâne legat de Filebrowser,
+    deci vine la final.
   </div>
 </section>
 

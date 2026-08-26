@@ -80,9 +80,10 @@ spec:
               limits:
                 # 256Mi was sized for "trivial single-container app" and was
                 # wrong — this fork builds an in-memory index of every file
-                # across all sources, and synology-home alone has ~108k
-                # files. Confirmed via OOMKilled (exit 137) crash loop that
-                # left large sources permanently mid-index/empty-looking.
+                # across all sources, and a large source (tens of thousands
+                # of files) is enough to exceed it. Confirmed via OOMKilled
+                # (exit 137) crash loop that left large sources permanently
+                # mid-index/empty-looking.
                 memory: 1Gi
     defaultPodOptions:
       securityContext:
@@ -137,18 +138,6 @@ spec:
         globalMounts:
           - path: /srv/backups
             readOnly: true
-      documents:
-        type: nfs
-        # Deliberately hardcoded, see library/backups above. Read-write and
-        # separate from the "backups" mount above (which stays read-only) —
-        # this is the live, editable documents location (former Synology
-        # Drive content), exposed here for WebDAV access. Same underlying
-        # NFS export as "backups", just scoped to one writable subpath so
-        # dump/longhorn-garage/pfsense stay protected from accidental edits.
-        server: "10.57.57.250"
-        path: /media/backups/synology-home
-        globalMounts:
-          - path: /srv/documents
       photos:
         type: nfs
         # Deliberately hardcoded, see library/backups above. Read-only:

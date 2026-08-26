@@ -22,8 +22,4 @@ repo is public and those URLs are capability tokens. Real values are in
 `/root/PRIVATE-NOTES.md` on pve (restic backs it up). After a restore,
 paste the three UUIDs back.
 
-⚠️ `backup-synology-home.sh` is in no crontab, deliberately.
-`synology-home` is now the live source, not a mirror, so the script would
-`--delete` over live documents. Kept for reference; do not schedule it.
-
 What each job is for: [`../README.md`](../README.md).

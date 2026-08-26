@@ -183,10 +183,6 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 │                      (borg-nextcloud account). See nextcloud/README.md.
 ├── pfsense/           config.xml.gz, nightly 03:00 (mode 0700)
 ├── longhorn-garage/   Garage data (live) + meta (nightly copy from SSD)
-├── synology-home/     LIVE documents (Filebrowser WebDAV) — source, not mirror.
-│                      Superseded by Nextcloud 2026-08-20; kept as the rollback
-│                      and dropped from both outbound legs so its 30 GB are not
-│                      backed up twice. Delete once the parallel run is over.
 ├── immich-postgres/   pg_dump, nightly 03:02 (k8s schedules in UTC), 30-day retention
 ├── oracle-vps/        VPS service backups, pushed nightly (receive-only)
 └── tools/             Vendor binaries needed to rebuild this host (storcli .deb).
@@ -320,12 +316,9 @@ password. Dest: chrooted SFTP-only user `restic-backup` on the VPS
 (provisioned by the `vps_backup` role). Private key lives on pve only.
 
 Scope: everything under `/media/backups/`, plus `/media/photos` and
-`/root`. Two exclusions, both deliberate:
+`/root`. One exclusion, deliberate:
 
 - `dump/` — Home Assistant is out of DR scope, ~14 GB/night of waste.
-- `synology-home/` — dropped 2026-08-20. Its contents now live in Nextcloud
-  and reach Oracle through `nextcloud/`; pushing both would send the same
-  30 GB twice. The directory stays on pve as the migration rollback.
 
 `/root` was added 2026-08-11. Without it the cron scripts, `/root/.ssh`,
 `PRIVATE-NOTES.md` and the restic password file existed on exactly one
