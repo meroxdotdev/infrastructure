@@ -5,6 +5,7 @@ kind: Kustomization
 namespace: default
 resources:
   - ./secret.sops.yaml
+  - ./ocirepository.yaml
   - ./pvc.yaml
   - ./postgres-helmrelease.yaml
   - ./helmrelease.yaml
