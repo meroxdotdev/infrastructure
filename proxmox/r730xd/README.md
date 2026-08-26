@@ -7,6 +7,7 @@ restic push to Oracle.
 
 Related: [REINSTALL.md](REINSTALL.md) (rebuild this host from bare metal) ·
 [spindown-setup.md](spindown-setup.md) (SAS spin-down rebuild runbook) ·
+[known-issues.md](known-issues.md) (forensic record — UPS, fan noise) ·
 [DR.md](../../DR.md) (total-loss recovery) ·
 [vps_backup role](../../vps/roles/vps_backup/README.md) (VPS-side detail)
 
@@ -150,8 +151,9 @@ enforcer script (see [spindown-setup.md](spindown-setup.md)).
 - Exports ACL: **per host, not the subnet** (narrowed 2026-08-11 — it was
   `10.57.57.0/24`, which with `no_root_squash` gave every device on the LAN
   root on the backup tree). Allowed clients: `10.57.57.80/82/84` (Talos
-  nodes — all pod mounts originate there) and `10.57.57.254` (px-0, mounts
-  `/media/backups` as PVE storage `r730xd-backups`, the DR-test target).
+  nodes — all pod mounts originate there). `10.57.57.254` (px-0) is listed
+  in `/etc/exports` too but is currently unused — px-0 isn't running
+  Proxmox, so nothing is mounting `r730xd-backups` from there right now.
   Adding a client means adding its IP to `/etc/exports`, not widening back
   to `/24`. Previous file kept as `/etc/exports.bak-2026-08-11`.
 - Immich/Filebrowser hardcode `10.57.57.250`; the ARR stack uses the
@@ -260,33 +262,11 @@ Config: `/etc/nut/ups.conf` (driver), `/etc/nut/upsmon.conf` (MONITOR +
 `LB`, which this UPS reports at `battery.runtime.low = 300` — five minutes of
 runtime left, against a measured total of ~12 minutes at 35% load.
 
-**Why NUT and not PowerPanel** — this is the load-bearing detail, do not
-"simplify" it back. The R730xd is **EHCI-only**: `lspci` shows two Enhanced
-Host Controllers and no xHCI at all, and every external port sits behind an
-internal hub. This UPS is a *low-speed* (1.5 Mbps) HID device, so it reaches
-the CPU through the hub's transaction translator, and there it re-enumerates
-on a metronomic 8-seconds-up / 3-seconds-down cycle. Verified 2026-08-17:
-
-- identical on both EHCI controllers (`00:1a.0` and `00:1d.0`)
-- identical with the monitoring daemon running *and* stopped — 17 events in
-  90 s with nothing at all holding `/dev/usb/hiddev0`
-- **zero USB errors** in `dmesg`; a bad cable or port throws `-71`/`-110`,
-  this throws nothing
-- the same UPS and cable were stable on px-0, which has xHCI
-
-`pwrstatd` talks to `/dev/usb/hiddev0` and cannot survive that churn: it
-reported only `State: Normal` and never once read battery charge, runtime or
-load — so `lowbatt-threshold` and `runtime-threshold` had nothing to fire on.
-NUT's `usbhid-ups` goes through **libusb**, reconnects across each re-enumeration
-and reads the full variable set. The device still flaps; it simply stopped
-mattering.
-
-`powerpanel` is installed but **masked/disabled**. Leave it that way — the two
-fight over the same device.
-
-⚠️ Do not move the UPS back to px-0. That was the old design and it made a
-graceful shutdown of the machine holding all the data depend on a second host
-being awake.
+NUT is used instead of PowerPanel (`powerpanel` is installed but
+**masked/disabled** — leave it that way, the two fight over the same device)
+because of a USB controller quirk specific to this chassis — do not
+"simplify" this choice away without reading
+[known-issues.md](known-issues.md#why-nut-not-powerpanel-for-the-ups) first.
 
 Snapshots of both config files are in [`etc/nut/`](etc/nut/). `upsd.users` is
 **not** here — it holds a generated password. Reissue it on a rebuild and put
@@ -426,40 +406,14 @@ alerts via Email to hello@merox.dev — independent of the Telegram channel).
 
 ## Drives without SES temperature reporting make the fans scream
 
-A consumer SSD added to the backplane took every fan from ~3200 to ~8900 RPM
-and added 16 W, while the chassis stayed cold — inlet 25 °C, exhaust 28 °C,
-CPU 40 °C. Nothing was overheating; the fans were guessing.
-
-The backplane (`BP13G+EXP`) has **no temperature sensors of its own**
-(`TSs=0` in `storcli /c0/eall show`). Every thermal reading from the front of
-the chassis comes from the drives themselves. One drive that will not answer
-leaves the algorithm blind, so it assumes the worst and ramps everything.
-
-Diagnosis, in one command:
+If all chassis fans suddenly ramp to ~8900 RPM with nothing actually hot: a
+drive on the SAS backplane isn't answering SES temperature queries, and the
+fan controller assumes the worst. Diagnose with:
 
 ```sh
 for s in 0 1 16; do storcli /c0/e32/s$s show all | grep "Drive Temperature"; done
 ```
 
-A healthy drive answers `25C`. The offender answered `N/A`. Reading deeper:
-
-```sh
-sg_logs --temperature /dev/sdX     # Current temperature = 255 C   -> 0xFF, invalid
-smartctl -A /dev/sdX | grep -i temp # 26                           -> sensor works fine
-```
-
-The drive has a working sensor and reports it over ATA SMART, but returns the
-invalid sentinel on the SCSI log page the backplane queries. Enterprise drives
-in the same chassis — including four non-Dell Intel SSDs — answer correctly,
-so "third-party" is not the criterion. Answering is.
-
-What does not help: another slot (all 24 sit behind the same SES expander),
-formatting, or `ThirdPartyPCIFanResponse`. That last one governs PCIe cards,
-and the Quadro in this box is already invisible to iDRAC
-(`PCIe Slot1-4 = Not Readable`) without ever having caused a ramp — proof the
-lever is not connected to this problem.
-
-There is no official Dell fix; their guidance is to use certified drives. The
-options are a drive that reports temperature, an onboard SATA port outside the
-SES enclosure, or a PID fan controller in manual mode. The first is the only
-one that does not trade away a safety mechanism.
+A healthy drive answers `25C`; the offending one answers `N/A`. Full
+root-cause writeup and fix options:
+[known-issues.md](known-issues.md#drives-without-ses-temperature-reporting-make-the-fans-scream).

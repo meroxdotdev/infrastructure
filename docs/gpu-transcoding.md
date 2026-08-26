@@ -99,23 +99,24 @@ transcode from an actual client and check Playback Info shows `nvenc`.
 
 The Intel GitOps manifests are still in git, just suspended.
 
-⚠️ **The old Intel `controlplane-1` VM no longer exists.** This section used
-to say it was still on px-0 as a powered-off VMID 800 — checked 2026-08-15,
-px-0 holds only `100` (datacenter-manager), `102` (winserver, stopped) and
-`105` (ollama). Reverting to Intel means *building* a node on px-0, not
-powering one back on.
+⚠️ **px-0 doesn't run Proxmox at all right now** — see
+[`proxmox/px-0/README.md`](../proxmox/px-0/README.md). Reverting to Intel
+means reinstalling Proxmox on px-0 first
+([`proxmox/px-0/REINSTALL.md`](../proxmox/px-0/REINSTALL.md)), then rebuilding
+the vfio host config below from scratch — none of it survives on the bare
+host. The values are recorded here (verified working 2026-08-15, back when
+px-0 last ran Proxmox) so they don't have to be rediscovered.
 
 To revert:
 
-1. **Hardware**: stand up a `controlplane-1` on px-0 and pass the iGPU
-   through. The host-side vfio config is still in place from the first Intel
-   era (`intel_iommu=on iommu=pt`, `module_blacklist=i915,…`,
-   `options vfio-pci ids=8086:a7a0,8086:51ca`), so the VM side is just
-   `hostpci0 0000:00:02.0,pcie=1` — **and `--machine q35`**, since the
-   default i440fx never gives the guest a render node. Confirm with
-   `talosctl -n 10.57.57.80 ls /dev/dri` (`card0` + `renderD128`) and
-   `talosctl dmesg | grep i915` (*"GuC: submission enabled"*). Verified
-   working 2026-08-15.
+1. **Hardware**: reinstall Proxmox on px-0, recreate the vfio host config
+   (`intel_iommu=on iommu=pt`, `module_blacklist=i915,…`,
+   `options vfio-pci ids=8086:a7a0,8086:51ca`), then stand up a
+   `controlplane-1` VM with `hostpci0 0000:00:02.0,pcie=1` — **and
+   `--machine q35`**, since the default i440fx never gives the guest a
+   render node. Confirm with `talosctl -n 10.57.57.80 ls /dev/dri` (`card0` +
+   `renderD128`) and `talosctl dmesg | grep i915` (*"GuC: submission
+   enabled"*).
    It will conflict with the R730xd `controlplane-1` (same MAC/IP), so remove
    that one from etcd first (`talosctl etcd remove-member`). This is a full
    hardware move, not a quick toggle.
