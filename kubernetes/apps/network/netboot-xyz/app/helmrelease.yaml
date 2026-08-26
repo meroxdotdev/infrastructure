@@ -5,10 +5,11 @@
 # ClusterIP), hence LoadBalancer + Cilium L2 instead of the usual Gateway
 # HTTPRoute pattern everything else in this repo uses.
 #
-# Not wired into DHCP yet: pfSense's DHCP options 66 (next-server, this
-# LB IP) / 67 (filename, netboot.xyz.kpxe for BIOS or netboot.xyz.efi for
-# UEFI) still need setting for PXE clients to actually find this - separate
-# step, deliberately not touched here.
+# Wired into DHCP on pfSense (Kea backend, LAN → Network Booting): Next
+# Server 10.57.57.104 (this LB IP), Default BIOS File Name
+# netboot.xyz.kpxe, UEFI 64 bit File Name netboot.xyz.efi. That's pfSense
+# config, not in this repo — restored from config.xml.gz on a pfSense
+# rebuild, see pfsense/REINSTALL.md.
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
