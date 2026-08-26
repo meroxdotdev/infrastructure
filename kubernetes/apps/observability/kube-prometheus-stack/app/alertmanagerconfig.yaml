@@ -11,12 +11,14 @@ spec:
     # Telegram messages for other VMs that already got announced (still
     # inside their own 10m firing window). Alerts without an "id" label
     # (dockerhub/oom rules) just group as before, empty-id is uniform.
-    # "instance" is also required: pve and px-0 are independent PVE hosts,
-    # VM IDs aren't unique between them (both can have a "qemu/100") - without
-    # it, a restart on one host can silently get swallowed by an already-
-    # notified group from the OTHER host's same-numbered VM (found live:
-    # datacenter-manager/px-0 never got announced because windows11/pve had
-    # already used up that {id=qemu/100} group's notification earlier).
+    # "instance" is also required: if a second PVE host is ever added, VM IDs
+    # aren't unique between independent Proxmox hosts (both can have a
+    # "qemu/100") - without it, a restart on one host can silently get
+    # swallowed by an already-notified group from the OTHER host's
+    # same-numbered VM. Found live on a prior second host before it was
+    # decommissioned: a VM restart never got announced because another
+    # host's same-numbered VM had already used up that {id=qemu/100}
+    # group's notification earlier.
     groupBy: ["alertname", "job", "id", "instance"]
     groupInterval: 10m
     groupWait: 1m

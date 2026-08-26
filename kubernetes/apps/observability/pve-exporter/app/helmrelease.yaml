@@ -2,10 +2,8 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 # Scrapes pve/R730xd for host and VM/LXC metrics. Read-only PVEAuditor
 # token only. Built to scrape standalone Proxmox hosts independently (no
-# corosync cluster, each needs its own module/token in pve.yml) because
-# px-0/Beelink used to be scraped here too - it's currently out of scope
-# (hardware retained, not running Proxmox), see scrapeconfig.yaml's
-# commented-out px-0 block. Re-add its module/token here if it comes back.
+# corosync cluster, each needs its own module/token in pve.yml) to support
+# a second host if one ever exists.
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:

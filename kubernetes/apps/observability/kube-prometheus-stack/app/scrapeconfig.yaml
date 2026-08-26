@@ -53,39 +53,6 @@ spec:
       targetLabel: job
       replacement: *name
 ---
-# px-0 (Beelink) is out of scope (2026-08 downsizing) but was still scraped
-# here, with job=pve - the same job label as the R730xd. One of two pve
-# targets permanently down is 50%, well over TargetDown's 10% threshold, so
-# this fired every day for nothing. Commented rather than deleted: the
-# hardware is still owned (see proxmox/px-0/README.md), just not currently
-# deployed - possibly a future dev cluster, not decided. Uncomment if it
-# starts running Proxmox again.
-#
-# # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
-# # px-0 (Beelink), standalone host - same pve-exporter, different module
-# # (own token in pve.yml, since px-0 and pve aren't a corosync cluster).
-# apiVersion: monitoring.coreos.com/v1alpha1
-# kind: ScrapeConfig
-# metadata:
-#   name: px-0
-# spec:
-#   staticConfigs:
-#     - targets:
-#         - 10.57.57.254
-#   metricsPath: /pve
-#   params:
-#     module: ["px0"]
-#   relabelings:
-#     - sourceLabels: [__address__]
-#       targetLabel: __param_target
-#     - sourceLabels: [__param_target]
-#       targetLabel: instance
-#     - targetLabel: __address__
-#       replacement: pve-exporter.observability.svc.cluster.local:9221
-#     - action: replace
-#       targetLabel: job
-#       replacement: pve
-
 # Everything below was dead code: this file was never referenced from
 # kustomization.yaml (found + fixed 2026-08-03), so none of it was ever
 # actually applied. Confirmed with user on the same date that none of these

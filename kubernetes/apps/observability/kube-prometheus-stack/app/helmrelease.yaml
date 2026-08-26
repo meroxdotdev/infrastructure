@@ -204,11 +204,11 @@ spec:
               # pve_uptime_seconds resetting (not pve_up==0) is what actually
               # answers "did a VM/LXC restart" - pve_up==0 alone would also
               # fire permanently for guests that are just deliberately kept
-              # off (windows11, ubuntu-server on pve; winserver on px-0).
-              # `id` alone collides across hosts (pve and px-0 are independent
-              # PVE instances, both have a "qemu/100") - join on (id, instance)
-              # or a rule silently errors out on the shared ID instead of
-              # firing (found the hard way: a real reboot never reached
+              # off (windows11, ubuntu-server on pve). `id` alone would
+              # collide if a second Proxmox host is ever added (both would
+              # have a "qemu/100") - join on (id, instance) or a rule
+              # silently errors out on the shared ID instead of firing
+              # (found the hard way: a real reboot never reached
               # Alertmanager because of this).
               - alert: PveGuestRestarted
                 annotations:
@@ -243,17 +243,10 @@ spec:
                 for: 15m
                 labels:
                   severity: warning
-              # synology-nas is excluded on purpose: the NAS is powered off
-              # except for a short weekly wake window (DSM Power Schedule + WoL,
-              # see proxmox/r730xd/README.md), so px-0's NFS mount to it is
-              # down almost all the time by design. Left in, this alert fires
-              # permanently — and the cost is not the noise, it is that it
-              # trains you to ignore storage alerts, which is exactly the habit
-              # that hurts when a real one arrives.
               - alert: PveStorageUnavailable
                 annotations:
                   summary: "Proxmox storage {{ $labels.id }} is unavailable."
-                expr: pve_up{id=~"storage/.*", id!="storage/px-0/synology-nas"} == 0
+                expr: pve_up{id=~"storage/.*"} == 0
                 for: 15m
                 labels:
                   severity: warning
