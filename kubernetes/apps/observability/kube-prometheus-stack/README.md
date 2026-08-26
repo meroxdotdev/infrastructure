@@ -1,5 +1,11 @@
 # kube-prometheus-stack
 
+⚠️ **Not a Flux-managed component** — this directory is the Flux app for the
+in-cluster Prometheus/Grafana/Alertmanager stack (see `app/helmrelease.yaml`
+for that), but the docker-compose snippets below run on the Synology NAS,
+outside the cluster, to feed it NAS hardware metrics. Deployed by hand on
+the NAS, not via GitOps.
+
 ## NAS Deployments
 
 ### node-exporter
