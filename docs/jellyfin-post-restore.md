@@ -52,10 +52,10 @@ Verify it's populated in the UI after deploy.
 
 ## 2. Encoding / Hardware Acceleration (Admin → Playback)
 
-Stored in `/config/config/encoding.xml` on the PVC. **This file was updated on 2026-07-17**
-when `controlplane-1` moved from px-0 (Intel iGPU) to the R730xd (Nvidia Quadro P2200).
-Full context, host-level passthrough config, and the rollback procedure to Intel QSV live in
-[gpu-transcoding.md](./gpu-transcoding.md) — this section only covers current values.
+Stored in `/config/config/encoding.xml` on the PVC. Full codec support
+matrix, host-level GPU passthrough config, and the Intel QSV rollback
+procedure live in [gpu-transcoding.md](./gpu-transcoding.md) — this section
+is only the checklist of values to verify after a restore.
 
 ### Hardware Acceleration (current — Nvidia NVENC/NVDEC)
 
@@ -65,25 +65,9 @@ Full context, host-level passthrough config, and the rollback procedure to Intel
 | Hardware encoding                  | ✅ enabled                 |
 | Intel Low-Power H.264/HEVC encoder | n/a (Intel-only, disabled) |
 
-### Supported Codecs — Hardware Decoding (Quadro P2200 / Pascal)
-
-| Codec        | Support                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| H.264        | ✅ hardware (h264_cuvid)                                                                   |
-| HEVC / H.265 | ✅ hardware (hevc_cuvid)                                                                   |
-| VP9          | ✅ hardware                                                                                |
-| VC-1         | ✅ hardware                                                                                |
-| MPEG-2       | ✅ hardware                                                                                |
-| MPEG-4       | ✅ hardware                                                                                |
-| AV1          | ❌ **not supported** — Pascal's NVDEC predates AV1 decode (added in Ampere, RTX 30-series) |
-
-### Supported Codecs — Hardware Encoding (output)
-
-| Codec        | Support                              |
-| ------------ | ------------------------------------ |
-| H.264        | ✅ hardware (h264_nvenc)             |
-| HEVC / H.265 | ✅ hardware (hevc_nvenc)             |
-| AV1          | ❌ hardware doesn't support (Pascal) |
+Codec support (decode/encode, Pascal-specific AV1 gap) is documented once in
+[gpu-transcoding.md](./gpu-transcoding.md#1-current-setup--nvidia-quadro-p2200)
+— not repeated here.
 
 ### Tonemapping
 
@@ -93,21 +77,9 @@ Full context, host-level passthrough config, and the rollback procedure to Intel
 | Tonemapping (generic OpenCL/CUDA) | ✅ enabled                       |
 | Algorithm                         | bt2390                           |
 
-<details>
-<summary>Previous setup — Intel QuickSync (px-0, i9-13900HK) — kept for rollback reference</summary>
-
-| Setting                        | Value                                                                        |
-| ------------------------------ | ---------------------------------------------------------------------------- |
-| Hardware acceleration          | Intel QuickSync (QSV)                                                        |
-| VAAPI / QSV device             | `/dev/dri/renderD128`                                                        |
-| Low Power H.264 / HEVC encoder | enabled                                                                      |
-| Hardware decoding              | H.264, HEVC, VP9, AV1 (decode only), MPEG-2, MPEG-4, VC-1 (all `_qsv`)       |
-| Hardware encoding              | H.264, HEVC (`_qsv`); AV1 encode not supported on Iris Xe (crashes exit 218) |
-| VPP Tonemapping                | enabled, algorithm bt2390                                                    |
-
-See [gpu-transcoding.md](./gpu-transcoding.md) for the full revert runbook.
-
-</details>
+Intel QSV rollback values live entirely in
+[gpu-transcoding.md](./gpu-transcoding.md#2-rollback--intel-quick-sync-igpu-px-0--beelink)
+— not duplicated here.
 
 ### Segment Management
 
