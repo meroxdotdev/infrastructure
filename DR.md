@@ -37,8 +37,9 @@ the px-0/px-1/px-2 dev-cluster idea ever happens.
 > exercises recovery independent of prod's current node count).
 > `talos/talconfig.yaml` has nodes 2 and 3 commented out to match prod, so
 > **uncomment both blocks first** (see
-> [talos/SINGLE-NODE.md §3](talos/SINGLE-NODE.md)), run the DR drill, then
-> re-comment them afterward to keep `talconfig.yaml` truthful about prod.
+> [talos/SINGLE-NODE.md](talos/SINGLE-NODE.md#rollback-to-3-nodes)), run the
+> DR drill, then re-comment them afterward to keep `talconfig.yaml` truthful
+> about prod.
 > Skipping this makes `task dr:apply-talos-configs` and
 > `scripts/gen-dr-talconfig.sh` fail fast with a clear error rather than
 > partially applying.

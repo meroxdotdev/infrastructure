@@ -8,7 +8,8 @@ not a tutorial.
 target Proxmox host, this repo checked out.
 
 > Prod runs 1 node today, DR still provisions 3 — uncomment nodes 2/3 in
-> `talos/talconfig.yaml` first (see [`talos/SINGLE-NODE.md`](../talos/SINGLE-NODE.md#3-phase-b--git-changes)),
+> `talos/talconfig.yaml` first (see
+> [`talos/SINGLE-NODE.md`](../talos/SINGLE-NODE.md#rollback-to-3-nodes)),
 > re-comment after. See [`DR.md`](../DR.md#phase-1--provision-dr-nodes) for why.
 
 ## 0. Target host

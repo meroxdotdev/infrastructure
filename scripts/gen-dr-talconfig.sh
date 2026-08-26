@@ -88,7 +88,7 @@ data = yaml.safe_load(content)
 
 if len(data['nodes']) != 3:
     print(f"ERROR: talconfig.yaml declares {len(data['nodes'])} node(s), expected 3 for DR.", file=sys.stderr)
-    print("Uncomment nodes 2 and 3 in talos/talconfig.yaml first (see talos/SINGLE-NODE.md §3),", file=sys.stderr)
+    print("Uncomment nodes 2 and 3 in talos/talconfig.yaml first (see talos/SINGLE-NODE.md),", file=sys.stderr)
     print("run this script, then re-comment them afterward to keep talconfig.yaml truthful.", file=sys.stderr)
     sys.exit(1)
 

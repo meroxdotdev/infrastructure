@@ -51,7 +51,7 @@ nodes:
   # See talos/SINGLE-NODE.md; uncomment both blocks to roll back to three.
   #
   # Their VMs no longer exist, so a rollback must recreate them first — the
-  # exact `qm create` lines are in SINGLE-NODE.md §7 Tier 2.
+  # exact `qm create` lines are in SINGLE-NODE.md's "VM recreation spec".
   #
   # ⚠ The MAC below for controlplane-2 does NOT match the VM that was actually
   # running (BC:24:11:43:4E:63), most likely drift from the 2026-08-15 px-0 DR
