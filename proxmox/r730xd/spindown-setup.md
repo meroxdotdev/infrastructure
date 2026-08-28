@@ -155,11 +155,26 @@ systemctl daemon-reload
 03:40 starts the scrub as the backup window closes, so it extends one awake
 block instead of creating another.
 
-⚠️ **`Persistent=false` is load-bearing.** With the default `true`, editing this
-file makes systemd treat the new calendar point as a missed run and start a
-scrub *immediately* — which is exactly what happened on 2026-08-17 at 13:23,
-mid-afternoon. Recover with `zpool scrub -p media`; the paused state persists,
-and the next scheduled run resumes from where it stopped rather than restarting.
+⚠️ **`Persistent=false` is load-bearing, and it is not a default.** systemd's
+own default for `Persistent=` is `false`; the `true` comes from the base
+template unit `/etc/systemd/system/zfs-scrub-monthly@.timer`, which sets it
+explicitly. The drop-in inherits that, so the line above is the only thing
+clearing it — verify with `systemctl show zfs-scrub-monthly@media.timer -p
+Persistent`, never by reading `override.conf` alone.
+
+With it left on, any `daemon-reload` or boot after the calendar point has
+passed counts as a missed run and starts a full-pool scrub *immediately*,
+mid-day and outside the window. That is what happened on 2026-08-17 at 13:23
+and again at 14:36. Recover with `zpool scrub -p media`; the paused state
+persists, and the next scheduled run resumes from where it stopped rather than
+restarting.
+
+**Audited 2026-08-28: the line was missing on the host** — the drop-in carried
+only `OnCalendar` and `AccuracySec`, so `Persistent=yes` was still in effect
+and the failure mode documented above was still armed. Added and verified.
+A paused scrub left over from the 2026-08-17 incident had also been sitting at
+`0B / 1.78T scanned` for eleven days, waiting for the next timer fire to resume
+it.
 
 There is also a **second, latent trigger**: `/etc/cron.d/zfsutils-linux` runs
 `/usr/lib/zfs-linux/scrub` on the second Sunday of the month unless the pool
