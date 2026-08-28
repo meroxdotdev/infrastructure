@@ -7,6 +7,8 @@ restic push to Oracle.
 
 Related: [REINSTALL.md](REINSTALL.md) (rebuild this host from bare metal) ·
 [spindown-setup.md](spindown-setup.md) (SAS spin-down rebuild runbook) ·
+[rpool-shrink.md](rpool-shrink.md) (drop rpool to a 2-disk mirror, with
+[`rpool-shrink-preflight.sh`](rpool-shrink-preflight.sh)) ·
 [known-issues.md](known-issues.md) (forensic record — UPS, fan noise) ·
 [DR.md](../../DR.md) (total-loss recovery) ·
 [vps_backup role](../../vps/roles/vps_backup/README.md) (VPS-side detail)
@@ -137,6 +139,13 @@ night's Nextcloud, Longhorn, Immich, pfSense and VPS data missed the off-site
 push and went out the following night instead.
 
 ## Storage layout
+
+`rpool`: ZFS mirror, 2× 960GB Intel SATA SSD (backplane slots 0-1). Boot
+pool, every VM/LXC disk, `rpool/garage-meta`, `rpool/jellyfin-public`. 888G,
+51% full (453G allocated, 2026-08-28). Was a 4-disk RAID10 until 2026-08-27,
+when `mirror-1` was evacuated online and its two SSDs pulled for the OptiPlex
+nodes — what that cost, and how to do it again, in
+[rpool-shrink.md](rpool-shrink.md).
 
 `media` pool: 2× RAIDZ2-6 (12× 600GB SAS), spin-down via the stateless
 enforcer script (see [spindown-setup.md](spindown-setup.md)).

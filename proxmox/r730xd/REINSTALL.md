@@ -14,7 +14,7 @@ and the Oracle leg goes with it, leaving only the Synology relay and the
 ZFS snapshots — both on hardware in the same building.
 
 **Survives:** the `media` pool (12× SAS). Import it, do not recreate it.
-**Does not survive:** `rpool` (boot mirror, 4× Intel SSD) — takes
+**Does not survive:** `rpool` (boot mirror, 2× Intel SSD) — takes
 `rpool/garage-meta` and the Garage LXC's `subvol-103-disk-0` with it.
 
 ## 1. Controller first
@@ -24,7 +24,8 @@ disks instead of the drives. See [`spindown-setup.md`](spindown-setup.md).
 
 ## 2. Install Proxmox
 
-`rpool`, ZFS **RAID10** across the 4× 960GB Intel SSDs. Hostname `pve`,
+`rpool`, ZFS **mirror** across the 2× 960GB Intel SSDs in backplane slots
+0-1. Hostname `pve`,
 IP `10.57.57.250/24`, gateway `10.57.57.1`.
 
 Then match [`etc/network-interfaces`](etc/network-interfaces) — `vmbr0`
