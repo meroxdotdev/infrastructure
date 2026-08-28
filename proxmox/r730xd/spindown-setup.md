@@ -27,8 +27,14 @@ disks. There is no way to split them — the backplane has one uplink.
 So waking a SAS disk stalls the SSDs. The wake answers sense `2/04/01`
 ("becoming ready"), `megaraid_sas` turns that into a **blocking** AEN poll
 (`megasas_get_pd_list`), and everything else on the controller queues behind
-it — including the four SSDs carrying the k8s control-plane VMs. `zil_commit`
-stalls, so etcd's fsync stalls, on all three nodes at once.
+it — including the SSDs carrying the k8s control-plane VM. `zil_commit`
+stalls, so etcd's fsync stalls with it.
+
+Two things have changed since that was first written, and both cut the same
+way. `rpool` is a 2-disk mirror since 2026-08-27, not a 4-disk RAID10
+([rpool-shrink.md](rpool-shrink.md)) — half the spindles absorbing the stall.
+And the cluster has been single-node since 2026-08-17, so there is no quorum
+to lose: etcd gets slow, it no longer flaps.
 
 Measured 2026-08-16, with the old per-disk enforcer: 24 parks in one hour of
 streaming, 346 etcd fsyncs over 1s, 6-11 raft leader elections/day, one 122s
@@ -175,6 +181,45 @@ and the failure mode documented above was still armed. Added and verified.
 A paused scrub left over from the 2026-08-17 incident had also been sitting at
 `0B / 1.78T scanned` for eleven days, waiting for the next timer fire to resume
 it.
+
+#### What a scrub actually costs — measured 2026-08-28
+
+The eleven-day-old paused scrub was resumed by hand at 09:40 and ran to
+completion: **1.78T, `0B repaired`, 0 errors on all 12 disks, 30 minutes of
+real work.** Not the hours the "multi-hour full-pool read" above assumes.
+
+The cost is **not uniform across those 30 minutes**, which is the part worth
+knowing. A scrub has two phases and only the first one hurts:
+
+| Phase | What it does | etcd `wal_fsync` p99 | `backend_commit` p99 |
+|---|---|---|---|
+| idle baseline | — | 10.8 ms | 46.9 ms |
+| **metadata scan**, ~1 min | random metadata reads, `scanned` climbs at ~8 G/s | **473 ms** | **636 ms** |
+| sequential issue, ~29 min | streaming reads, `issued` at 1.2-1.9 G/s | 15.1 ms → 4.0 ms | 8.0 ms → 5.7 ms |
+
+etcd recovered to **below** its pre-scrub baseline while the scrub was still
+running. Zero leader elections, zero fsyncs over 1s, no pod restarts. The only
+casualty was one `kube-state-metrics` liveness probe (503) during the metadata
+minute; it recovered on its own.
+
+So the earlier framing — that scrub contention on `rpool` is a risk spread
+over the whole run — is wrong. **The expensive part is the first minute.** The
+03:40 window is still the right place for it, but because of the metadata
+scan, not because of sustained bandwidth. It also means a scrub that has
+already been running for a few minutes is past its dangerous part; pausing it
+then buys nothing and just leaves another zombie.
+
+Power: 112 W idle → 182 W for the duration → ~35 Wh total. Not a
+consideration.
+
+⚠️ **The enforcer log goes silent for the whole scrub.** The `scrub in
+progress` gate does `exit 0` *before* the line is appended to
+`spindown-history.log`, so there is a gap, not a run of awake readings — and
+the last line before the gap is a pre-scrub reading that still says
+`asleep=12/12`. Do not read it as "the disks stayed parked", and do not build
+a wait-loop on it: check the disks directly with `smartctl -n standby` on the
+`/dev/sg*` nodes. After completion the counter restarts from zero, so parking
+takes two more quiet ticks — measured 10:10 done → 10:16:56 all 12 parked.
 
 There is also a **second, latent trigger**: `/etc/cron.d/zfsutils-linux` runs
 `/usr/lib/zfs-linux/scrub` on the second Sunday of the month unless the pool
