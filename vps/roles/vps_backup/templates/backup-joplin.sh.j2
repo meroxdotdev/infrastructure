@@ -4,8 +4,6 @@
 # (same approach as restore-db.sh) — no vault dependency.
 set -euo pipefail
 
-HC_URL="{{ vps_backup_hc_joplin_url | default('') }}"
-trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" || true' ERR
 
 BACKUP_DIR="/srv/backups/joplin"
 mkdir -p "$BACKUP_DIR"
@@ -18,4 +16,3 @@ docker exec -e PGPASSWORD="$PASS" joplin-db \
 
 find "$BACKUP_DIR" -name 'joplin_*.sql.gz' -mtime +{{ vps_backup_retention_days }} -delete
 
-[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true

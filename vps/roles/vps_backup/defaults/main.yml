@@ -29,9 +29,10 @@ vps_backup_restic_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfpCdCt+R3x/
 # string = pinging silently skipped, so this is safe to deploy before the
 # checks exist. Create the checks in the same healthchecks.io account already
 # used for the K8s Watchdog heartbeat, then set the matching vault_hc_* var.
-vps_backup_hc_extras_url: "{{ vault_hc_backup_extras_url | default('') }}"
-vps_backup_hc_joplin_url: "{{ vault_hc_backup_joplin_url | default('') }}"
-vps_backup_hc_push_url: "{{ vault_hc_backup_push_url | default('') }}"
+# One check for the whole nightly chain, not one per step. Reuses the existing
+# vault_hc_backup_push_url — the same healthcheck, renamed to
+# `vps-nightly-backup` in the healthchecks.io UI, so no vault edit is needed.
+vps_backup_hc_nightly_url: "{{ vault_hc_backup_push_url | default('') }}"
 vps_backup_hc_restore_drill_url: "{{ vault_hc_restore_drill_url | default('') }}"
 
 # Monthly restore drill - proves the DB dumps are actually restorable, not

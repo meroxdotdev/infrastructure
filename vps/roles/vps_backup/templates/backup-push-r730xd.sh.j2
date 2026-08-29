@@ -22,8 +22,6 @@
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
 
-HC_URL="{{ vps_backup_hc_push_url | default('') }}"
-trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" || true' ERR
 
 R730XD_USER="{{ vps_backup_r730xd_user }}"
 R730XD_HOST="{{ vps_backup_r730xd_host }}"
@@ -34,5 +32,4 @@ SSH_OPTS="ssh -i $SSH_KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 # as its root, so the remote path below is relative to that, not absolute.
 rsync -a --delete -e "$SSH_OPTS" "{{ vps_backup_root }}/" "$R730XD_USER@$R730XD_HOST:/srv-backups/"
 
-[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
 echo "$(date -Is) backup push to R730xd completed"

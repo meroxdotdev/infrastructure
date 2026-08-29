@@ -115,18 +115,17 @@ set. Logs: `/var/log/restore-drill.log`.
 
 ## Alerting (healthchecks.io)
 
-`backup-vps-extras.sh`, `backup-joplin.sh`, `backup-push-r730xd.sh` and
-`restore-drill.sh` all ping a healthchecks.io URL on success, and on
-failure via an `ERR` trap hitting `<url>/fail` — same account already used
-for the K8s cluster's Watchdog heartbeat (see `alertmanagerconfig.yaml`),
-just one more check per job instead of a second monitoring stack. Wiring is
-in place but **inert until configured**: each script reads its URL from
-`vault_hc_backup_extras_url` / `vault_hc_backup_joplin_url` /
-`vault_hc_backup_push_url` / `vault_hc_restore_drill_url` (empty = no-op,
-safe to deploy before the checks exist). Create the 4 checks in the
-healthchecks.io account, set their expected period to match the cron
-schedule (daily for the first 3, monthly for the drill) with a few hours of
-grace, then:
+Two checks, not four. `nightly-backup.sh` runs the Joplin dump, the extras
+tar and the push to the R730xd as one 15-minute sequence and pings once —
+they fail as a unit and are investigated as a unit, so a check per step was
+three places to look for one answer. The three scripts themselves no longer
+ping: each exits non-zero, and that is the whole interface. `restore-drill.sh`
+keeps its own because it runs monthly, not nightly.
+
+Same account as the K8s Watchdog heartbeat (see `alertmanagerconfig.yaml`),
+no second monitoring stack. URLs come from `vault_hc_backup_push_url` (the
+check renamed `vps-nightly-backup`) and `vault_hc_restore_drill_url`. Empty
+is a no-op, so this is safe to deploy before the checks exist. Then:
 
 ```bash
 cd vps

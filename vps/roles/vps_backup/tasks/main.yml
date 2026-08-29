@@ -112,35 +112,37 @@
     mode: "0700"
   tags: backup
 
-- name: Schedule daily Joplin DB backup
+- name: Install nightly backup chain wrapper
+  template:
+    src: nightly-backup.sh.j2
+    dest: /usr/local/bin/nightly-backup.sh
+    owner: root
+    group: root
+    mode: "0700"
+  tags: backup
+
+# Was three cron entries and three healthchecks for one 15-minute sequence.
+# They fail as a unit and are investigated as a unit. Timed so the push lands
+# on pve alongside pfSense's fixed 03:00 EEST push, keeping the nightly SAS
+# window compact for spin-down.
+- name: Schedule the nightly backup chain (Joplin, extras, push to R730xd)
   cron:
-    name: "joplin-db-backup"
+    name: "nightly-backup"
     minute: "45"
     hour: "23"
-    job: "/usr/local/bin/backup-joplin.sh >> /var/log/joplin-backup.log 2>&1"
+    job: "/usr/local/bin/nightly-backup.sh >> /var/log/nightly-backup.log 2>&1"
     user: root
   tags: backup
 
-- name: Schedule daily VPS extras backup
+- name: Remove the three cron entries the wrapper replaced
   cron:
-    name: "vps-extras-backup"
-    minute: "50"
-    hour: "23"
-    job: "/usr/local/bin/backup-vps-extras.sh >> /var/log/vps-extras-backup.log 2>&1"
+    name: "{{ item }}"
+    state: absent
     user: root
-  tags: backup
-
-- name: Schedule nightly backup push to R730xd (always-on hub, no wake
-    window to work around - unlike the old Synology-direct path this
-    replaces). Timed 10min after the last local dump (vps-extras, 23:50 UTC)
-    so it lands on pve right alongside pfSense's own fixed 03:00 EEST push -
-    keeps the whole nightly SAS backup window compact for spin-down.
-  cron:
-    name: "backup-push-r730xd"
-    minute: "0"
-    hour: "0"
-    job: "/usr/local/bin/backup-push-r730xd.sh >> /var/log/backup-r730xd.log 2>&1"
-    user: root
+  loop:
+    - joplin-db-backup
+    - vps-extras-backup
+    - backup-push-r730xd
   tags: backup
 
 # --- restic landing user: R730xd -> Oracle VPS, DSM-independent offsite leg ---

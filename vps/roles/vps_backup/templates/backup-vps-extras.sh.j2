@@ -5,8 +5,6 @@
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
 
-HC_URL="{{ vps_backup_hc_extras_url | default('') }}"
-trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" || true' ERR
 
 BACKUP_ROOT="{{ vps_backup_root }}"
 RETENTION_DAYS={{ vps_backup_retention_days }}
@@ -41,4 +39,3 @@ backup_tar homepage /srv/docker/oracle-cloud/config \
 # Portainer: embedded state (users, endpoints, stacks) — docker volume
 backup_tar portainer /var/lib/docker/volumes/oracle-cloud_portainer_data/_data
 
-[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
