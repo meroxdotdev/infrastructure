@@ -113,6 +113,7 @@ disks once, together.
 | 03:10 | restic push → Oracle | pve |
 | 03:20 | SAS health check (SMART/defects/zpool counters, mails on anomaly only) | pve |
 | 03:25 | spin-down drift check | pve |
+| 03:30 | git drift check — does the host still match the repo? | pve |
 | weekly | Relay → Synology (cold storage) | pve |
 | 03:40 1st/mo | `media` scrub | pve |
 | 05:00 1st/mo | restic restore drill | pve |

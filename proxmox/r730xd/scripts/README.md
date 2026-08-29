@@ -3,11 +3,17 @@
 Verbatim copies of the scripts on `pve`. The host is the running copy;
 this is the reviewable one and the source for a reinstall.
 
+That split means every change has to be applied twice, so
+[`git-drift-check.sh`](git-drift-check.sh) runs nightly and mails root when
+the two disagree — on scripts, the crontab, `/etc/exports`, `storage.cfg`
+and the network config.
+
 | Script | Lives at | Triggered by |
 |---|---|---|
 | most of them | `/root/scripts/` | cron — [`../etc/crontab`](../etc/crontab) |
 | `pfsense-backup-receive.sh` | `/root/` | forced command, pfSense's key |
 | `etcd-snapshot.sh` | `/root/scripts/` | cron 03:03 — needs `/root/.talos-etcd-backup` |
+| `git-drift-check.sh` | `/root/scripts/` | cron 03:30 — fetches this repo and diffs it against the host |
 
 
 Forced commands are pinned in [`../etc/authorized_keys`](../etc/authorized_keys).
@@ -17,9 +23,10 @@ Forced commands are pinned in [`../etc/authorized_keys`](../etc/authorized_keys)
 [`../install-spindown.sh`](../install-spindown.sh), which stays their
 single source of truth.
 
-⚠️ Every `hc-ping.com` URL reads `REPLACE-ME-SEE-PRIVATE-NOTES` — this
-repo is public and those URLs are capability tokens. Real values are in
-`/root/PRIVATE-NOTES.md` on pve (restic backs it up). After a restore,
-paste the three UUIDs back.
+Every `hc-ping.com` URL here reads `REPLACE-ME-SEE-PRIVATE-NOTES`: this repo
+is public and those URLs are capability tokens. Real values live in
+`/root/PRIVATE-NOTES.md` on pve, which restic backs up — paste them back after
+a restore. The drift check normalises these before comparing, so a differing
+URL is not reported as drift.
 
 What each job is for: [`../README.md`](../README.md).
