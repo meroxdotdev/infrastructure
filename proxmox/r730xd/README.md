@@ -325,8 +325,31 @@ export RESTIC_PASSWORD_FILE=/path/to/password             # password manager
 restic snapshots && restic restore latest --target /tmp/restored
 ```
 
-Off-host, the alias doesn't exist — use `sftp:restic-backup@<vps-ip>:/data`
-with the key from `/root/.ssh/`.
+Off-host, the alias doesn't exist — use `sftp:restic-backup@<vps-ip>:/data`.
+
+⚠️ **If pve is gone, so is that key.** It lives in `/root/.ssh/` on pve,
+which means it only exists inside the backup it is needed to open. Drilled
+2026-08-29 and the way out is the VPS: you reach it over Tailscale
+independently of home, so authorise a fresh key there.
+
+```bash
+# on the replacement machine
+ssh-keygen -t ed25519 -f /root/.ssh/restic-recovery -N ""
+
+# on the VPS, as a sudoer
+echo "restrict $(cat /root/.ssh/restic-recovery.pub)" \
+  | sudo tee -a /srv/restic-repo/.ssh/authorized_keys
+
+# back on the replacement machine — the repo password comes from the
+# password manager, it is not on the VPS either
+export RESTIC_REPOSITORY="sftp:restic-backup@100.72.22.38:/data"
+restic snapshots
+```
+
+`restrict` is not optional: without it the key is a general-purpose login on
+the VPS rather than an SFTP-only one. Remove the line once recovery is done —
+`make db-backups-setup` rewrites the file from
+`vps_backup_restic_public_key` and will drop it anyway.
 
 Monthly drill: [`scripts/restic-restore-drill.sh`](scripts/restic-restore-drill.sh),
 cron `0 5 1 * *`. Restores pfsense + immich-postgres to a throwaway dir,
