@@ -12,8 +12,9 @@ currently removed, so nothing is publicly reachable until it's put back
 (manual steps below). Jellyfin account settings (Phase 4) are the one part
 still pending — do those before reopening the port.
 
-Full measurements, rejected alternatives, and build log:
-[jellyfin-public-exposure-log.md](jellyfin-public-exposure-log.md).
+Measurements, rejected alternatives and the build log lived in
+`jellyfin-public-exposure-log.md`, removed 2026-08-29 once the build was
+done. Git still has it: `git show 9385285:docs/jellyfin-public-exposure-log.md`.
 
 ---
 

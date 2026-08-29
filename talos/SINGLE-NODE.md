@@ -9,8 +9,9 @@ the 3-node HA was illusory (one `pve` outage always took down all three) and
 cost 3x the Longhorn replicas and etcd raft overhead for a failure mode
 (single-VM death) that never happened.
 
-Full rationale, sizing math, and the exact migration steps:
-[single-node-migration-log.md](single-node-migration-log.md).
+The sizing math and the exact migration steps lived in
+`single-node-migration-log.md`, removed 2026-08-29 once the migration was
+done. Git still has it: `git show 9385285:talos/single-node-migration-log.md`.
 
 Related: [talconfig.yaml](talconfig.yaml) · [DR.md](../DR.md) ·
 [longhorn helmrelease](../kubernetes/apps/storage/longhorn/app/helmrelease.yaml)
