@@ -275,9 +275,6 @@ weekly, timed inside the NAS wake window. Schedule is redacted from
 -mtime` — `rsync -a` copies source mtimes, which once made the script
 delete a snapshot the moment it was created.
 
-⚠️ This is the only leg with **no healthcheck ping**. A silent failure is
-invisible; check the log date if in doubt.
-
 ### pve → Oracle (restic)
 
 Open format — restorable anywhere with the `restic` binary + repo
