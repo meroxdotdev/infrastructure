@@ -31,11 +31,16 @@ norm() { sed 's|https://hc-ping\.com/[A-Za-z0-9_-]*|HCURL|g' "$1"; }
 # --- scripts ---------------------------------------------------------------
 for f in "$G"/scripts/*.sh; do
   n=$(basename "$f")
-  h="/root/scripts/$n"
-  if [ ! -f "$h" ]; then
+  # Most live in /root/scripts, but pfsense-backup-receive.sh is pinned as a
+  # forced command at /root/ — check both rather than special-casing names.
+  h=""
+  for c in "/root/scripts/$n" "/root/$n"; do
+    [ -f "$c" ] && { h="$c"; break; }
+  done
+  if [ -z "$h" ]; then
     DRIFT="$DRIFT\n  missing on host: scripts/$n"
   elif ! diff -q <(norm "$f") <(norm "$h") >/dev/null 2>&1; then
-    DRIFT="$DRIFT\n  differs: scripts/$n"
+    DRIFT="$DRIFT\n  differs: $h"
   fi
 done
 
