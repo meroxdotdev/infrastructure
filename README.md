@@ -9,7 +9,7 @@ Rebuild from nothing takes ~35 minutes and needs three things — this repo,
 
 **This page is the index.** Anything with real detail lives behind a link.
 
-## The whole thing, in five lines
+## The whole thing, in six lines
 
 Read this first if it has been a while.
 
@@ -19,6 +19,7 @@ Read this first if it has been a while.
 | **Compute** | One Proxmox host (`pve`) runs a single-node Talos Kubernetes cluster in VM 800. Flux reconciles it from this repo, so a push is the deploy — there is no other way to change it. |
 | **Storage** | ZFS. `media` is twelve SAS disks in two raidz2 vdevs, holds bulk and spins down when idle; `rpool` is a mirrored SSD pair holding anything an application touches during the day. |
 | **Backup** | Every source writes into `/media/backups/` on pve. From there restic pushes it to Oracle nightly, and a weekly rsync relays a plain-file copy to the Synology. Only what git cannot rebuild is backed up. |
+| **Off-site** | An Oracle Cloud VPS runs what should outlive the house: Authentik SSO, Traefik, Pi-hole, Joplin, Guacamole, Homepage. It depends on nothing at home, pushes its own state to pve nightly, and is rebuilt with `cd vps && make dr-full`. Tailscale is what joins the two sites. |
 | **Recovery** | [`docs/dr-quickstart.md`](docs/dr-quickstart.md) — eight `task` commands, drilled on separate hardware. `age.key` and the restic password cannot be recreated; everything else can. |
 
 Every scheduled job reports to healthchecks.io, so silence is the alarm.
