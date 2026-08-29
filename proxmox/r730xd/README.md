@@ -183,6 +183,9 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 
 ```
 /media/backups/
+├── dump/              empty — PVE recreates it for any dir storage with
+│                      content=backup. Nothing writes here since the
+│                      home-assistant vzdump was retired 2026-08-29.
 ├── nextcloud/         borg repo, nightly 02:40 (AIO schedules in UTC), written
 │                      by the VM over a forced-command SSH key
 │                      (borg-nextcloud account). See nextcloud/README.md.
