@@ -20,7 +20,9 @@
 # <min> <hr> * * <day> /root/scripts/weekly-push-to-synology.sh
 
 # --- nightly backup window ---
-55 2 * * *  /usr/bin/vzdump 101 --mode snapshot --compress zstd --storage sas-backups --prune-backups keep-last=1 >> /var/log/vzdump-cron.log 2>&1
+# vzdump of VM 101 (home-assistant) removed 2026-08-29: the VM is stopped, is
+# in no service table, and dump/ is excluded from restic — so it woke the SAS
+# pool nightly to write 2.4 GB that never left the box.
 1 3 * * *   /root/scripts/garage-meta-nightly-copy.sh >> /var/log/garage-meta-copy.log 2>&1
 3 3 * * *   /root/scripts/etcd-snapshot.sh >> /var/log/etcd-snapshot.log 2>&1
 5 3 * * *   /root/scripts/zfs-snapshot-backups.sh >> /var/log/zfs-snapshot.log 2>&1

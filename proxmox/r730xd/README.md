@@ -24,7 +24,7 @@ running copy, these are the reviewable ones:
 | [`etc/storage.cfg`](etc/storage.cfg) | PVE storage |
 | [`etc/network-interfaces`](etc/network-interfaces) | bridges |
 | [`etc/authorized_keys`](etc/authorized_keys) | forced commands (pubkeys redacted) |
-| [`etc/jobs.cfg`](etc/jobs.cfg) | PVE job scheduler — vzdump disabled here, it runs from cron |
+| [`etc/jobs.cfg`](etc/jobs.cfg) | PVE job scheduler — no vzdump jobs; nothing on this host is dumped |
 | [`nextcloud/`](nextcloud/) | the Nextcloud VM: compose, firewall rules, runbook |
 
 Neighbours: [pfSense](../../pfsense/REINSTALL.md)
@@ -224,7 +224,6 @@ disks once, together.
 | 02:45 (23:45 UTC) | Joplin DB dump | VPS |
 | 02:50 (23:50 UTC) | VPS extras tar (Guacamole/Traefik/Pi-hole/Homepage/Portainer) | VPS |
 | 02:50 (23:50 UTC) | Longhorn → Garage backup (ARR/Jellyfin configs, Immich library) | K8s |
-| 02:55 | vzdump home-assistant (VM 101) — from cron, not the PVE job scheduler | pve |
 | 03:00 | pfSense config push (fixed, external) | → pve |
 | 03:00 (00:00 UTC) | VPS → pve backup push | → pve |
 | 03:01 | Garage meta copy (SSD → media) | pve |
@@ -305,7 +304,6 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 
 ```
 /media/backups/
-├── dump/              vzdump home-assistant, nightly 02:55
 ├── nextcloud/         borg repo, nightly 02:40 (AIO schedules in UTC), written
 │                      by the VM over a forced-command SSH key
 │                      (borg-nextcloud account). See nextcloud/README.md.
@@ -444,9 +442,7 @@ password. Dest: chrooted SFTP-only user `restic-backup` on the VPS
 (provisioned by the `vps_backup` role). Private key lives on pve only.
 
 Scope: everything under `/media/backups/`, plus `/media/photos` and
-`/root`. One exclusion, deliberate:
-
-- `dump/` — Home Assistant is out of DR scope, ~14 GB/night of waste.
+`/root`. No exclusions — every directory under `/media/backups/` is pushed.
 
 `/root` was added 2026-08-11. Without it the cron scripts, `/root/.ssh`,
 `PRIVATE-NOTES.md` and the restic password file existed on exactly one

@@ -143,8 +143,7 @@ pfSense, VM dumps, docs  ──nightly──▶ ┘      │
 | VPS | ≤1 night of its own service backups | `make dr-full` + `make dr-restore` (~15 min) |
 | K8s cluster | Nothing that isn't in Git/Garage | `task bootstrap:apps` + `task longhorn:restore` |
 
-Deliberately **not** covered: `/media/library` (movies/TV, re-downloadable)
-and the Home Assistant VM dump (out of DR scope).
+Deliberately **not** covered: `/media/library` (movies/TV, re-downloadable).
 
 **Still manual** (keep copies off the VPS): `age.key`, `vps/.vault_pass`,
 `/srv/docker/oracle-cloud/.env`.
