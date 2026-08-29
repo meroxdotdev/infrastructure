@@ -9,6 +9,22 @@ Rebuild from nothing takes ~35 minutes and needs three things — this repo,
 
 **This page is the index.** Anything with real detail lives behind a link.
 
+## The whole thing, in five lines
+
+Read this first if it has been a while.
+
+| | |
+|---|---|
+| **Network** | pfSense routes and hands out addresses. Tailscale is the only way in from outside and nothing is port-forwarded; what is public reaches the internet through an outbound-only Cloudflare tunnel. |
+| **Compute** | One Proxmox host (`pve`) runs a single-node Talos Kubernetes cluster in VM 800. Flux reconciles it from this repo, so a push is the deploy — there is no other way to change it. |
+| **Storage** | ZFS. `media` is twelve SAS disks in two raidz2 vdevs, holds bulk and spins down when idle; `rpool` is a mirrored SSD pair holding anything an application touches during the day. |
+| **Backup** | Every source writes into `/media/backups/` on pve. From there restic pushes it to Oracle nightly, and a weekly rsync relays a plain-file copy to the Synology. Only what git cannot rebuild is backed up. |
+| **Recovery** | [`docs/dr-quickstart.md`](docs/dr-quickstart.md) — eight `task` commands, drilled on separate hardware. `age.key` and the restic password cannot be recreated; everything else can. |
+
+Every scheduled job reports to healthchecks.io, so silence is the alarm.
+`nightly-checks.sh` on pve also compares the host against this repo and fails
+if they have drifted apart.
+
 ## Everything at a glance
 
 ### VPS — Oracle Cloud (`vps/` → `make setup`)
