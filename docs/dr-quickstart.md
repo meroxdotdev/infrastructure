@@ -1,119 +1,91 @@
 # DR Quickstart
 
-One-page version of [`DR.md`](../DR.md) — same procedure, no explanations.
-Read `DR.md` first if anything here is unclear; this page is a checklist,
-not a tutorial.
+Rebuild the whole cluster from scratch. Eight commands, no manual edits.
+Reasoning lives in [`DR.md`](../DR.md).
 
-**You need:** `age.key`, `talos/talsecret.sops.yaml`, SSH access to the
-target Proxmox host, this repo checked out.
+**Last run:** 2026-08-29 on px-0 — 71 min of prod downtime.
 
-> Prod runs 1 node today, DR still provisions 3 — uncomment nodes 2/3 in
-> `talos/talconfig.yaml` first (see
-> [`talos/SINGLE-NODE.md`](../talos/SINGLE-NODE.md#rollback-to-3-nodes)),
-> re-comment after. See [`DR.md`](../DR.md#phase-1--provision-dr-nodes) for why.
+**You need:** `age.key`, `talos/talsecret.sops.yaml`, SSH to the target
+Proxmox host, this repo. On macOS once:
+`brew install bash helmfile kustomize yq`, with `/opt/homebrew/bin` ahead of
+`/usr/bin` on `PATH`.
 
-## 0. Target host
-
-**Target: pve (R730xd).** Tests restore procedure only, not real host
-failure (same physical box as prod) — see [`DR.md`](../DR.md#which-host-to-target)
-for that gap.
-
-| | pve (R730xd) |
-|---|---|
-| RAM headroom | 238GB+ free (once prod is stopped) |
-| `vm_memory_mb` to use | `49152` (matches prod) |
-| `disk_storage` | `local-zfs` |
-| `iso_storage` | `media-isos` |
-
-## 1. API token on the target host
+**Setup, once per machine:** copy `talos/terraform/terraform.tfvars.example`
+to `terraform.tfvars` and paste the Proxmox API token. It is gitignored
+because it holds that token; everything else in it is already filled in.
 
 ```bash
-ssh root@<target-host-ip>
-pveum user token remove root@pam terraform 2>&1   # ignore "no such token"
-pveum user token add root@pam terraform --privsep 0 --output-format json
-# copy the "value" field — that's the token secret, shown once
+ssh root@10.57.57.254 "pveum user token add root@pam terraform --privsep 0"
 ```
 
-## 2. `talos/terraform/terraform.tfvars`
+The DR cluster mirrors prod's topology — one node per MAC in
+`terraform.tfvars`, which matches `talconfig.yaml`. Nothing needs commenting
+or uncommenting. To test a 3-node restore, uncomment nodes 2/3 in
+`talconfig.yaml` and add their MACs/IPs to `terraform.tfvars`; the tooling
+follows.
 
-Copy `terraform.tfvars.example` → `terraform.tfvars`, fill in:
-- `proxmox_url` (target host's `https://<ip>:8006`)
-- `proxmox_token_secret` (from step 1)
-- `proxmox_nodes` / `disk_storage` / `iso_storage` — table above
-- `vm_memory_mb` — table above
-- **`node_macs`** — copy fresh from `talos/talconfig.yaml` `hardwareAddr`
-  fields, every time. They drift.
+---
 
-## 3. Stop prod (only if reusing prod IPs/MACs, which is the default)
+## Run
 
 ```bash
-ssh root@<prod-proxmox-host> "qm shutdown 800"   # only VM running prod today (1-node cluster)
-```
-Leaves the VM off, untouched — nothing destroyed.
+# 0. Catch drift before you start — fails if anything backed up nightly
+#    is missing from the restore list
+bash scripts/dr-preflight.sh
 
-## 4. Create the DR VMs
+# 1. Stop prod — DR reuses its IPs and MACs
+ssh root@10.57.57.250 "qm shutdown 800 --timeout 180"
 
-```bash
-cd talos/terraform
-terraform init
-terraform apply -auto-approve
-```
+# 2. Create the DR VM(s)
+task dr:create-vms
 
-## 5. Apply Talos configs (wait ~60s after step 4 first)
-
-```bash
-cd ../..
+# 3. Apply Talos configs (wait ~60s first — nodes need to reach maintenance mode)
 task dr:apply-talos-configs
-```
-If a node doesn't get matched (`UNKNOWN` MAC), find its current maintenance-mode
-IP (`nmap -Pn -n -p 50000 --open 10.57.57.0/24`) and apply manually:
-```bash
-talosctl apply-config -n <ip> --insecure -f talos/clusterconfig/<file>.yaml
-```
 
-## 6. Bootstrap etcd + kubeconfig
+# 4. Bootstrap etcd, fetch kubeconfig
+task bootstrap:talos
 
-```bash
-cd talos
-until talhelper gencommand bootstrap | bash; do sleep 10; done
-until talhelper gencommand kubeconfig --extra-flags="$(pwd)/.. --force" | bash; do sleep 10; done
-cd ..
-kubectl get nodes    # NotReady is fine, no CNI yet
-```
-
-## 7. Bootstrap apps
-
-```bash
-export KUBECONFIG=./kubeconfig
+# 5. Install Flux, Cilium, Longhorn and every app from Git
 task bootstrap:apps
-kubectl get helmrelease longhorn -n longhorn-system -w   # ctrl-C once READY=True
-```
 
-macOS only, once per machine: `brew install bash helmfile kustomize`, and
-make sure `/opt/homebrew/bin` is ahead of `/usr/bin` on `PATH`.
-
-## 8. Restore Longhorn volumes
-
-```bash
+# 6. Restore all volumes from Garage S3
 task longhorn:restore
+
+# 7. Check
+task dr:verify
+
+# 8. Tear down and bring prod back (restore-prod can run 10-15 min)
+task dr:destroy-vms
+task dr:restore-prod
 ```
 
-## 9. Verify
+## What "healthy" looks like
 
 ```bash
 kubectl get pods -A | grep -v "Running\|Completed"
-kubectl get pvc -A | grep -v Bound
-kubectl get helmreleases -A | grep -v "True\|READY"
+kubectl get pvc -A | grep -v Bound          # must be empty
 ```
-`jellyfin` Pending + `nvidia-device-plugin` crashing = expected (no GPU on
-DR nodes unless you added passthrough). Everything else should clear within
-a few minutes — retry the `flux reconcile helmrelease <name> -n <ns>` for
-anything still stuck after 5 min.
 
-## 10. Done testing — clean up
+On a host without the Quadro P2200 exactly three things stay down, and
+nothing else:
 
-```bash
-cd talos/terraform
-terraform destroy -auto-approve
-ssh root@<prod-proxmox-host> "qm start 800"
 ```
+jellyfin              Pending
+jellyfin-public       Pending
+nvidia-device-plugin  Init:CrashLoopBackOff
+```
+
+That is the GPU being absent, not a fault. Everything else — including the
+Immich photo library, the ARR configs, `jellyseerr` and `qbittorrent` — must
+come back `Running` with its data.
+
+## If something is off
+
+`talosctl get machinestatus` reporting `booting` forever is normal on
+GPU-less hardware: `ext-nvidia-persistenced` waits for a driver that will
+never load. Judge the node by `talosctl services` instead — `etcd` and
+`kubelet` at `Running/OK` means it is fine.
+
+Anything else: [`dr-known-issues.md`](dr-known-issues.md) is the forensic
+record of every failure mode already fixed, and why the code looks the way
+it does.

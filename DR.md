@@ -9,37 +9,64 @@ Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.
 - **Rebuilding a host instead of the cluster:**
   [pve](proxmox/r730xd/REINSTALL.md) · [pfSense](pfsense/REINSTALL.md)
 
-**Tested end-to-end:** 2026-08-03 (pve/R730xd — prod VMs stopped, not
-deleted, restarted clean afterward). ~35 min clean.
+**Tested end-to-end:** 2026-08-29 on **px-0**, a different physical host —
+71 min of prod downtime, prod VM stopped and restarted clean afterward.
+Previously 2026-08-03 on pve/R730xd.
 
 ## Which host to target
 
-**pve (R730xd)** — 238GB+ RAM free once prod VMs are stopped — can match
-prod exactly (`vm_memory_mb = 49152`), so nothing gets stuck on scheduling.
+**px-0 (Beelink)** — the real test. Different physical box, so it answers
+"the R730xd died, can we recover?" and not just "did a recent change break
+the restore?". 62GB RAM comfortably runs the single node at
+`vm_memory_mb = 32768` — enough for every workload except the GPU ones.
 
-⚠️ **Accepted gap:** this only tests "did recent changes break the restore
-procedure?" — DR VMs land on the same physical box as prod, so it does
-**not** test "the R730xd died, can we recover?" That needs a second Proxmox
-host, and none exists today. No current substitute for that specific
-question; the Hetzner VPS DR path (`vps/`, `make dr-full`) is the only
-different-hardware test left, and it only covers the VPS side. Revisit if a
-second Proxmox host ever exists.
+**pve (R730xd)** — 238GB+ RAM free once prod is stopped, so it can match
+prod exactly (`vm_memory_mb = 49152`). Use it only when px-0 is unavailable,
+and note it cannot test host failure: the DR VMs land on the same box as
+prod.
+
+**What neither host tests:** anything that needs the Quadro P2200. On px-0,
+`jellyfin`, `jellyfin-public` and `nvidia-device-plugin` stay down by
+design — see step 8 of the quickstart.
 
 ---
 
+## Why the restore looks the way it does
+
+Longhorn's native path — a CSI `VolumeSnapshot` with `type: bak` plus a PVC
+`dataSource` — cannot restore into a rebuilt cluster. It verifies the source
+volume before provisioning, and after a full loss that volume is gone:
+`failed to verify data source: volume.longhorn.io ... not found`.
+[longhorn/longhorn#4083](https://github.com/longhorn/longhorn/issues/4083)
+is closed as **wontfix**.
+
+So this repo restores by creating Longhorn `Volume` CRs with `fromBackup`
+and binding them through static PVs with `claimRef` in
+`kubernetes/apps/storage/restore-pvs/pvs.yaml`. That is deliberate and
+correct for full-cluster DR, not a workaround — do not "simplify" it into
+VolumeSnapshots.
+
+The cost of that design is bookkeeping: a volume must be labelled for the
+nightly job, listed in `restore-all-volumes`, and given a PV in `pvs.yaml`.
+Drift between those three silently discards data — it cost the entire Immich
+photo library. All three are now cross-checked automatically:
+`dr-preflight.sh` compares labels against the restore list,
+`unbind-premature-dynamic-pvcs` derives its work from `pvs.yaml`, and
+`dr-verify.sh` derives its expected volume count from the restore task.
+
 ## Phase 1 — Provision DR nodes
 
-> **Prerequisite as of the 2026-08-17 single-node downsize:** production now
-> runs 1 control-plane node, but DR always provisions 3 (deliberately — it
-> exercises recovery independent of prod's current node count).
-> `talos/talconfig.yaml` has nodes 2 and 3 commented out to match prod, so
-> **uncomment both blocks first** (see
-> [talos/SINGLE-NODE.md](talos/SINGLE-NODE.md#rollback-to-3-nodes)), run the
-> DR drill, then re-comment them afterward to keep `talconfig.yaml` truthful
-> about prod.
-> Skipping this makes `task dr:apply-talos-configs` and
-> `scripts/gen-dr-talconfig.sh` fail fast with a clear error rather than
-> partially applying.
+> **No prerequisite edits.** DR provisions one node per MAC in
+> `talos/terraform/terraform.tfvars`, and both that file and
+> `talos/talconfig.yaml` default to prod's topology — one node since the
+> 2026-08-17 downsize. Restoring what you actually run is the point.
+>
+> To exercise a 3-node restore instead, uncomment nodes 2 and 3 in
+> `talconfig.yaml` (see
+> [talos/SINGLE-NODE.md](talos/SINGLE-NODE.md#rollback-to-3-nodes)) and add
+> their MACs/IPs to `terraform.tfvars`. `task dr:apply-talos-configs` refuses
+> to run if the two counts disagree, so a half-done change fails fast instead
+> of partially applying.
 
 ### Option A — Terraform (automated, recommended)
 
@@ -56,54 +83,30 @@ second Proxmox host ever exists.
 > no iso support. Working DR config: `proxmox_nodes = ["pve", "pve", "pve"]`.
 
 ```bash
-cd /srv/kubernetes/infrastructure
-
-# Creates 3 VMs on Proxmox pve (500 GB disk, prod MACs → static IPs via talconfig)
-# (runs terraform apply interactively — for non-interactive use:
-#  cd talos/terraform && terraform init && terraform apply -auto-approve)
-task dr:create-vms
+task dr:create-vms          # one VM per MAC in terraform.tfvars
 
 # Wait ~60s for Talos maintenance mode, then:
-# Scans subnet, identifies nodes by MAC, applies static-IP configs, waits for .80/.82/.84
+# scans the subnet, identifies nodes by MAC, applies configs, waits for static IPs
 task dr:apply-talos-configs
 ```
 
-### Option B — Manual (no Terraform)
-
-Create 3 VMs on Proxmox manually with these settings:
-
-| Setting | Value |
-|---|---|
-| OS | Talos v1.13.3 ISO (`factory.talos.dev/image/8d37fcc.../v1.13.3/metal-amd64.iso`) |
-| CPU | 4 vCPU, type: host |
-| RAM | 8 GB |
-| Disk | 500 GB (scsi, local-data) |
-| Network | vmbr0 |
-| MAC addresses | `bc:24:11:a7:ba:13` / `bc:24:11:a5:4b:9e` / `bc:24:11:0e:cd:ab` |
-
-Then apply configs (same as Option A — the task scans the subnet):
-```bash
-task dr:apply-talos-configs
-```
-
-**After either option:** nodes reboot with static IPs `10.57.57.80 / .82 / .84` (from talconfig, `dhcp: false`).
+Nodes boot on DHCP in maintenance mode and reboot onto their static IPs from
+`talconfig.yaml` once the config lands. Building the VMs by hand instead is
+possible but pointless — match `terraform.tfvars` (cores, RAM, disk, MAC,
+bridge, Talos ISO) and run the same second command.
 
 ---
 
 ## Phase 2 — Bootstrap Talos + Kubernetes
 
 ```bash
-cd /srv/kubernetes/infrastructure
-
-# Bootstrap etcd (run until it succeeds — takes a few seconds)
-until talhelper gencommand bootstrap | bash; do sleep 10; done
-
-# Get kubeconfig
-until talhelper gencommand kubeconfig --extra-flags="$(pwd) --force" | bash; do sleep 10; done
-
-# Verify (NotReady is normal — CNI not yet installed)
-kubectl get nodes
+task bootstrap:talos        # etcd + kubeconfig
+kubectl get nodes           # NotReady is normal — no CNI yet
 ```
+
+The nodes install to disk and reboot before etcd will accept a bootstrap, so
+the task retries for a couple of minutes. It skips re-applying configs when
+`dr:apply-talos-configs` already placed them.
 
 ---
 
@@ -129,13 +132,16 @@ task longhorn:restore
 **What it does (automatically):**
 1. Patches BackupTarget → S3
 2. Waits for BackupVolumes + Backup CRs to sync from Garage S3 (~60-90s)
-3. Creates restore Volume CRDs for: `jellyfin`, `prowlarr`, `radarr`, `sonarr`, `immich-postgres`, `n8n`
-   (`jellyseerr`/`qbittorrent` dropped from backup 2026-07-21 — start empty, dynamically provisioned)
+3. Creates restore Volume CRDs for every volume in `restore-all-volumes` —
+   currently 10: `jellyfin`, `prowlarr`, `radarr`, `sonarr`, `jellyseerr`,
+   `qbittorrent`, `immich-postgres`, `n8n`, and both Immich libraries
 4. Waits for replica initialization
 5. Applies PV manifests with correct claimRefs
 6. Fixes PVC field ownership (Flux SSA compatibility)
 7. Creates `prometheus` + `alertmanager` PVCs fresh (observability is deliberately not backed up; `grafana`/`loki` PVCs are provisioned dynamically by their charts)
 8. Force-reconciles all app HelmReleases
+9. Waits for pods to settle, then clears HelmReleases left stalled by the
+   volume-attach race (`flux reconcile --reset`)
 
 **Expected duration:** ~10 min (only media/ARR config volumes download from S3; observability starts empty).
 
