@@ -247,6 +247,24 @@ a second safety net — do not treat it as current.
 
 ## R730xd / Garage total loss fallback
 
+**Drilled 2026-08-29 on px-0**, with nothing carried over from pve. What it
+measured, end to end:
+
+| Step | Result |
+|---|---|
+| Reach the restic repo without pve's key | Works — authorise a fresh key on the VPS, see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#pve--oracle-restic) |
+| Restore `longhorn-garage` from Oracle | 17.4 GiB in **29 min** (~11 MB/s), 56 541 files, byte-identical to the source |
+| Start Garage on the restored tree | Healthy node, one command |
+| Bucket intact | `longhorn`, **17.6 GiB, 11 296 objects**, `longhorn-key` present with RWO |
+
+From there it is the ordinary [quickstart](docs/dr-quickstart.md) — the cluster
+restoring from Garage is drilled separately and twice.
+
+**Pull from the Synology first when the house is intact.** It holds the same
+tree at LAN speed instead of 29 minutes over the internet, at the cost of
+being up to a week stale — the push is weekly. Oracle is for the case where
+both on-prem machines are gone.
+
 Longhorn's backup target (Garage LXC 103) sits on the same physical host as
 `kubernetes-controlplane-1`. R730xd being both a live cluster node and the
 backup hub is an accepted blast-radius tradeoff.
