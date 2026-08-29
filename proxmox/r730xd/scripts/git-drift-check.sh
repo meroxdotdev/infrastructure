@@ -51,9 +51,12 @@ done
 # --- crontab ---------------------------------------------------------------
 # The Synology line is redacted in git: its schedule reveals the NAS wake
 # window. Compare everything else.
+# Compare on meaning, not spacing: install-spindown.sh writes its lines with
+# single spaces while etc/crontab uses two, which is not drift.
+squeeze() { tr -s ' ' | sort; }
 if ! diff -q \
-  <(grep '^[0-9*]' "$G/etc/crontab" | sort) \
-  <(crontab -l 2>/dev/null | grep '^[0-9*]' | grep -v weekly-push-to-synology | sort) \
+  <(grep '^[0-9*]' "$G/etc/crontab" | squeeze) \
+  <(crontab -l 2>/dev/null | grep '^[0-9*]' | grep -v weekly-push-to-synology | squeeze) \
   >/dev/null 2>&1; then
   DRIFT="$DRIFT\n  differs: crontab"
 fi
@@ -72,7 +75,7 @@ check "$G/etc/nut/ups.conf"       /etc/nut/ups.conf       "/etc/nut/ups.conf"
 
 # --- report ----------------------------------------------------------------
 if [ -n "$DRIFT" ]; then
-  echo "$(date '+%F %T') DRIFT:$DRIFT"
+  printf '%s DRIFT:%b\n' "$(date '+%F %T')" "$DRIFT"
   curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "$(printf 'host and git disagree:%b' "$DRIFT")" "$HC_URL/fail" || true
 else
   echo "$(date '+%F %T') ok (host matches git)"
