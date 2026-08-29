@@ -131,6 +131,52 @@ else
     warn "kubectl not found — needed for Phase 2 (install via mise)"
 fi
 
+# --- Backup/restore parity -------------------------------------------------
+# Every PVC labelled for the nightly `media` job must also appear in
+# restore-all-volumes, or DR throws away data that was backed up all along.
+# This drifted unnoticed for months and cost the entire Immich photo library
+# plus the jellyseerr/qbittorrent configs — see docs/dr-known-issues.md.
+echo ""
+echo "Backup/restore parity"
+echo "====================="
+
+TASKFILE="$REPO_ROOT/.taskfiles/longhorn/Taskfile.yaml"
+# Parse per-document: a file can hold both labelled and unlabelled PVCs
+# (jellyfin's pvc.yaml carries jellyfin AND jellyfin-cache), so grepping the
+# file and listing every name in it produces false alarms.
+BACKED_UP=$(python3 - "$REPO_ROOT" <<'PYEOF' 2>/dev/null
+import sys, pathlib, yaml
+label = "recurring-job-group.longhorn.io/media"
+names = set()
+for f in pathlib.Path(sys.argv[1], "kubernetes/apps").rglob("pvc.yaml"):
+    for doc in yaml.safe_load_all(f.read_text()):
+        if not doc or doc.get("kind") != "PersistentVolumeClaim":
+            continue
+        if (doc.get("metadata", {}).get("labels") or {}).get(label) == "enabled":
+            names.add(doc["metadata"]["name"])
+print("\n".join(sorted(names)))
+PYEOF
+)
+
+# An entry is either "NAME: <pvc>-restored" or carries an explicit PVC_NAME.
+RESTORED=$( { grep -o 'PVC_NAME: [a-z0-9-]*' "$TASKFILE" | awk '{print $2}';
+              grep -o 'NAME: [a-z0-9-]*-restored' "$TASKFILE" | sed 's/NAME: //;s/-restored$//'; \
+            } 2>/dev/null | sort -u)
+
+MISSING=""
+for pvc in $BACKED_UP; do
+    echo "$RESTORED" | grep -qx "$pvc" || MISSING="$MISSING $pvc"
+done
+
+if [ -z "$BACKED_UP" ]; then
+    warn "Could not read PVC backup labels — parity not checked"
+elif [ -n "$MISSING" ]; then
+    fail "Backed up nightly but NOT restored on DR:$MISSING"
+    fail "  Add each to restore-all-volumes and pvs.yaml, or drop its media label"
+else
+    ok "Every nightly-backed-up PVC is in the restore list"
+fi
+
 echo ""
 echo "========================================"
 echo -e "  ${GREEN}PASS: $PASS${NC}  ${YELLOW}WARN: $WARN${NC}  ${RED}FAIL: $FAIL${NC}"

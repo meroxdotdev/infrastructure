@@ -12,6 +12,8 @@ vars:
   TALOS_DIR: '{{.ROOT_DIR}}/talos'
   PRIVATE_DIR: '{{.ROOT_DIR}}/.private'
   TALOSCONFIG: '{{.ROOT_DIR}}/talos/clusterconfig/talosconfig'
+  PROD_HOST: '10.57.57.250'   # pve — hosts the prod cluster VM
+  PROD_VMID: '800'            # kubernetes-controlplane-1
 
 env:
   KUBECONFIG: '{{.ROOT_DIR}}/kubeconfig'
@@ -35,7 +37,7 @@ tasks:
       - which flux
 
   dr:create-vms:
-    desc: "DR: create 3 Talos VMs on Proxmox via Terraform (fixed MACs = prod MACs)"
+    desc: "DR: create the Talos DR VMs on Proxmox via Terraform (one per MAC in terraform.tfvars)"
     dir: '{{.TALOS_DIR}}/terraform'
     cmds:
       - terraform init -upgrade
@@ -60,11 +62,17 @@ tasks:
       - |
         set -euo pipefail
 
+        # DR provisions one VM per MAC in terraform.tfvars; talconfig.yaml must
+        # declare the same number of nodes. Both default to prod's topology, so
+        # the normal case needs no edits anywhere.
         NODE_COUNT=$(yq '.nodes | length' {{.TALOS_DIR}}/talconfig.yaml)
-        if [ "$NODE_COUNT" -ne 3 ]; then
-          echo "  ✗ talos/talconfig.yaml declares $NODE_COUNT node(s), but DR always provisions 3 VMs."
-          echo "    Uncomment nodes 2 and 3 in talos/talconfig.yaml first (see talos/SINGLE-NODE.md),"
-          echo "    run this task, then re-comment them afterward to keep talconfig.yaml truthful."
+        MAC_COUNT=$(sed -n 's/^node_macs *= *\[\(.*\)\].*/\1/p' \
+          {{.TALOS_DIR}}/terraform/terraform.tfvars | grep -o '"' | wc -l)
+        MAC_COUNT=$((MAC_COUNT / 2))
+        if [ "$NODE_COUNT" -ne "$MAC_COUNT" ]; then
+          echo "  ✗ talconfig.yaml declares $NODE_COUNT node(s), terraform.tfvars has $MAC_COUNT MAC(s)."
+          echo "    They must match. Either uncomment the extra nodes in talconfig.yaml"
+          echo "    (see talos/SINGLE-NODE.md) or trim node_macs/node_ips in terraform.tfvars."
           exit 1
         fi
 
@@ -149,11 +157,12 @@ tasks:
         PYEOF
 
         echo ""
-        echo "→ Waiting for nodes on static IPs (.80/.82/.84)..."
+        STATIC_IPS=$(yq -r '.nodes[].ipAddress' {{.TALOS_DIR}}/talconfig.yaml | tr '\n' ' ')
+        echo "→ Waiting for nodes on static IPs ($STATIC_IPS)..."
         for i in $(seq 1 30); do
-          OPEN=$(nmap -Pn -n -p 50000 10.57.57.80 10.57.57.82 10.57.57.84 2>/dev/null | grep -c "open" || true)
-          echo "  [$i/30] $OPEN/3 on static IPs"
-          [ "$OPEN" -eq 3 ] && echo "  ✓ All 3 nodes on static IPs!" && break
+          OPEN=$(nmap -Pn -n -p 50000 $STATIC_IPS 2>/dev/null | grep -c "open" || true)
+          echo "  [$i/30] $OPEN/$NODE_COUNT on static IPs"
+          [ "$OPEN" -eq "$NODE_COUNT" ] && echo "  ✓ All $NODE_COUNT node(s) on static IPs!" && break
           sleep 10
         done
 
@@ -182,3 +191,25 @@ tasks:
   dr:verify:
     desc: "DR: run full verification (phase 1+2+3)"
     cmd: bash {{.SCRIPTS_DIR}}/dr-verify.sh --phase all
+
+  dr:restore-prod:
+    desc: "DR: start the prod cluster VM again and clear pods orphaned by the shutdown"
+    summary: |
+      Run after dr:destroy-vms. Starting VM 800 leaves a handful of pods in
+      Error from the shutdown; each is already replaced by a Running one, so
+      they are noise that otherwise sits in `kubectl get pods -A` for days.
+    cmds:
+      - ssh root@{{.PROD_HOST}} "qm start {{.PROD_VMID}}"
+      - |
+        echo "→ Waiting for the node to go Ready..."
+        until kubectl get nodes --no-headers 2>/dev/null | grep -q " Ready "; do sleep 15; done
+        echo "→ Waiting for workloads to settle..."
+        for i in $(seq 1 20); do
+          bad=$(kubectl get pods -A --no-headers 2>/dev/null | grep -vc "Running\|Completed")
+          [ "$bad" -le 8 ] && break
+          sleep 30
+        done
+        kubectl get pods -A --no-headers | awk '$4=="Error"{print $1, $2}' \
+          | while read -r ns p; do kubectl delete pod -n "$ns" "$p" --wait=false >/dev/null; done
+        echo "  ✓ Prod back; $(kubectl get pods -A --no-headers | grep -vc 'Running\|Completed') pods not Running"
+    silent: true

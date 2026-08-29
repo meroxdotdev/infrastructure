@@ -21,16 +21,15 @@ output "node_macs" {
 output "next_steps" {
   description = "What to do after terraform apply"
   value       = <<-EOT
-    VMs created with fixed MACs (same as prod). Next steps:
+    ${length(var.node_macs)} VM(s) created with prod's MACs. Next:
 
-    1. Wait ~60s for Talos maintenance mode + DHCP to initialize
-    2. Verify nodes on prod IPs (Pi-hole gives same IPs via MAC reservation):
-         until nmap -Pn -n -p 50000 ${var.node_ips[0]} ${var.node_ips[1]} ${var.node_ips[2]} 2>&1 | grep -c open | grep -q 3; do sleep 5; done
+    1. Wait ~60s for Talos to reach maintenance mode (it boots on DHCP first)
+    2. task dr:apply-talos-configs    # matches MAC → config, waits for static IPs
+    3. task bootstrap:talos
+    4. task bootstrap:apps
+    5. task longhorn:restore
+    6. task dr:verify
 
-    3. Bootstrap Talos (no talconfig patching needed — IPs/MACs same as prod):
-         task bootstrap:talos
-
-    4. After testing — destroy DR cluster:
-         terraform destroy
+    Tear down with: task dr:destroy-vms && task dr:restore-prod
   EOT
 }

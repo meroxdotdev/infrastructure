@@ -10,8 +10,27 @@ tasks:
     cmds:
       - '[ -f talsecret.sops.yaml ] || talhelper gensecret | sops --filename-override talos/talsecret.sops.yaml --encrypt /dev/stdin > talsecret.sops.yaml'
       - talhelper genconfig
-      - talhelper gencommand apply --extra-flags="--insecure" | bash
-      - until talhelper gencommand bootstrap | bash; do sleep 10; done
+      - |
+        # On a DR run the configs are already on the nodes (dr:apply-talos-configs
+        # matched them by MAC while they were still on DHCP). Applying again with
+        # --insecure fails, because the nodes now speak TLS.
+        FIRST=$(yq -r '.nodes[0].ipAddress' talconfig.yaml)
+        if talosctl --nodes "$FIRST" get machineconfig >/dev/null 2>&1; then
+          echo "→ Configs already applied, skipping insecure apply"
+        else
+          talhelper gencommand apply --extra-flags="--insecure" | bash
+        fi
+      - |
+        # Nodes install to disk and reboot first, so bootstrap is refused for a
+        # couple of minutes. "AlreadyExists" means a previous attempt landed —
+        # that is success, not a reason to keep looping.
+        echo "→ Bootstrapping etcd (nodes reboot first, expect ~2 min of retries)..."
+        for i in $(seq 1 60); do
+          OUT=$(talhelper gencommand bootstrap | bash 2>&1) && break
+          case "$OUT" in *AlreadyExists*) break ;; esac
+          sleep 15
+        done
+        echo "  ✓ etcd bootstrapped"
       - until talhelper gencommand kubeconfig --extra-flags="{{.ROOT_DIR}} --force" | bash; do sleep 10; done
     preconditions:
       - test -f {{.ROOT_DIR}}/.sops.yaml

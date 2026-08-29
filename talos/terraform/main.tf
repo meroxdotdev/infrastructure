@@ -26,7 +26,7 @@ resource "proxmox_virtual_environment_download_file" "talos_iso" {
 
 # 3 control-plane VMs, distributed across Proxmox nodes
 resource "proxmox_virtual_environment_vm" "talos_node" {
-  count     = 3
+  count     = length(var.node_macs)
   name      = "kubernetes-dr-${count.index + 1}"
   node_name = var.proxmox_nodes[count.index % length(var.proxmox_nodes)]
   vm_id     = var.vmid_start + count.index

@@ -45,6 +45,58 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: longhorn
 ---
+# The two Immich library volumes. Restoring them is not enough on its own —
+# without a claimRef'd PV here the PVCs bind to a fresh empty dynamic volume
+# and the restored data sits detached and unused, which is exactly how the
+# whole photo library was lost on every DR before 2026-08-29.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-library-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 20Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: immich-library-ssd
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: immich-library-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-external-library-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 40Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: immich-external-library-ssd
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: immich-external-library-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
 apiVersion: v1
 kind: PersistentVolume
 metadata:

@@ -23,19 +23,22 @@ tasks:
         6. Removes duplicate default/longhorn HelmRelease if present
         7. Creates prometheus + alertmanager PVCs manually (StatefulSet quirk)
         8. Force-reconciles all app HelmReleases
+        9. Clears HelmReleases left stalled by the volume-attach race
 
       After this task: all pods should start within ~5 min.
 
-      NOTE: Only PVCs in the "media" recurring-job-group are backed up —
-      currently jellyfin/prowlarr/radarr/sonarr configs plus immich-postgres
-      (the group name predates Immich; it just means "worth Longhorn-
-      backing-up", not literally media-only). Cache volumes and ALL
-      observability volumes (prometheus, loki, grafana, alertmanager,
-      netdata) start empty — history is deliberately not backed up. Immich's
-      photo files themselves are NOT covered here either — they're not a
-      Longhorn volume at all (NFS-mounted from the R730xd SAS pool
-      directly), so R730xd hardware survival is what protects them, not
-      this restore flow.
+      NOTE: Only PVCs in the "media" recurring-job-group are backed up (the
+      group name predates Immich; it just means "worth Longhorn-backing-up",
+      not literally media-only). Every one of them is restored here — keep
+      those two lists identical, or DR silently discards data that was
+      backed up every night. Cache volumes and ALL observability volumes
+      (prometheus, loki, grafana, alertmanager, netdata) start empty —
+      history is deliberately not backed up.
+
+      Immich's photos ARE covered: immich-library-ssd is the UPLOAD_LOCATION
+      and a plain Longhorn PVC, not an NFS mount. An earlier version of this
+      note claimed otherwise and the restore list matched the claim, so
+      every DR lost the whole photo library. Fixed 2026-08-29.
 
       After pods are up, run: task longhorn:post-restore-jellyfin
       to re-trigger Jellyfin metadata+image downloads (~10 min).
@@ -50,6 +53,7 @@ tasks:
       - task: fix-duplicate-longhorn
       - task: create-statefulset-pvcs
       - task: reconcile-apps
+      - task: clear-stalled-helmreleases
       - echo ""
       - echo "✓ Longhorn restore complete. Watch pods start:"
       - echo "  kubectl get pods -A --watch"
@@ -105,6 +109,43 @@ tasks:
         done
     silent: true
 
+  clear-stalled-helmreleases:
+    internal: true
+    desc: Reset HelmReleases that failed while volumes were still attaching
+    summary: |
+      bootstrap:apps reconciles every app before the volumes exist, so Helm
+      times out and the HelmRelease keeps a permanent "Helm upgrade failed"
+      status even after the pods come up healthy. A plain `flux reconcile`
+      re-runs against the same stalled state and changes nothing; --reset
+      clears the failure counter first. Without this the operator is left
+      staring at a wall of False HelmReleases over a working cluster.
+
+      Waits for the pods to settle first. A large volume (the 43 GiB Immich
+      external library) can take ~12 min to pull down from S3, and resetting
+      before its pod exists just re-stalls the same HelmRelease.
+    cmds:
+      - |
+        echo ""
+        echo "→ Waiting for pods to settle before clearing HelmReleases..."
+        for i in $(seq 1 40); do
+          BUSY=$(kubectl get pods -A --no-headers 2>/dev/null \
+                 | grep -c "ContainerCreating\|Init:\|PodInitializing" || true)
+          [ "$BUSY" -eq 0 ] && break
+          [ $((i % 4)) -eq 0 ] && echo "  [$((i / 2)) min] $BUSY pod(s) still starting"
+          sleep 30
+        done
+
+        echo "→ Clearing HelmReleases stalled by the volume-attach race..."
+        stalled=$(kubectl get helmreleases -A --no-headers | grep -v True | awk '{print $2":"$1}')
+        if [ -z "$stalled" ]; then echo "  ✓ None stalled"; exit 0; fi
+        for hr in $stalled; do
+          flux reconcile helmrelease "${hr%%:*}" -n "${hr##*:}" --reset --timeout=180s >/dev/null 2>&1 &
+        done
+        wait
+        left=$(kubectl get helmreleases -A --no-headers | grep -v True | wc -l | tr -d ' ')
+        echo "  ✓ Cleared; $left still not Ready (expect only GPU-bound apps on GPU-less hardware)"
+    silent: true
+
   restore-all-volumes:
     desc: Create all restore Volume CRDs in longhorn-system
     cmds:
@@ -120,8 +161,23 @@ tasks:
         vars: { NAME: immich-postgres-restored, PVC_NAME: immich-postgres }
       - task: restore-volume
         vars: { NAME: n8n-restored, PVC_NAME: n8n }
-      # jellyseerr/qbittorrent dropped from backup 2026-07-21 — session
-      # state/easily-reconfigured settings, not worth the restore weight.
+      # Restored again since 2026-08-29. The nightly `media` job does back
+      # both up (2 GiB / 5 GiB confirmed in Garage), so the old "dropped
+      # 2026-07-21" note was stale: pvs.yaml shipped static PVs pointing at
+      # Longhorn volumes nothing ever created, and both pods hung in
+      # ContainerCreating on every from-scratch restore.
+      - task: restore-volume
+        vars: { NAME: jellyseerr-restored }
+      - task: restore-volume
+        vars: { NAME: qbittorrent-restored }
+      # The Immich libraries carry the actual photos. Both are labelled for
+      # the nightly `media` job and were present in Garage (21 GiB / 43 GiB)
+      # while the restore ignored them, so a real DR silently lost every
+      # photo and immich-server crashlooped on the empty /data tree.
+      - task: restore-volume
+        vars: { NAME: immich-library-restored, PVC_NAME: immich-library-ssd }
+      - task: restore-volume
+        vars: { NAME: immich-external-library-restored, PVC_NAME: immich-external-library-ssd }
       # Observability (loki/prometheus/grafana) is no longer backed up —
       # those PVCs are provisioned fresh (see create-statefulset-pvcs).
 
@@ -247,37 +303,41 @@ tasks:
     silent: true
 
   unbind-premature-dynamic-pvcs:
-    desc: Delete immich-postgres/n8n PVCs if Flux already bound them to a fresh dynamic volume
+    desc: Unbind any PVC that Flux bound to a fresh empty volume before the restore ran
     summary: |
-      task bootstrap:apps (Phase 3) reconciles ALL Kustomizations, including
-      immich-postgres and n8n — both use a plain dynamically-provisioned PVC
-      (no pinned volumeName), unlike jellyfin/prowlarr/radarr/sonarr which
-      bind via a static PV+claimRef and are safe regardless of order. If
-      those two PVCs get created before this restore runs, Kubernetes
-      dynamic-provisions them a fresh empty volume immediately, "winning"
-      the race against the restored volume this task is about to create.
-      Deleting the PVC (and its pod) here lets apply-pvs's claimRef bind it
-      to the correct restored volume once reconcile-apps recreates it.
-      Discovered during the 2026-08-03 DR drill (had to fix by hand twice).
+      bootstrap:apps reconciles every Kustomization before this restore runs.
+      A PVC with no pinned volumeName gets dynamic-provisioned an empty volume
+      immediately, "winning" the race against the restored one — the PVC then
+      reports Bound and looks healthy while the restored data sits detached
+      and unused. That is how the entire Immich photo library was silently
+      discarded on every DR before 2026-08-29.
+
+      The list of PVCs to check is derived from pvs.yaml's claimRefs, so it
+      cannot drift from the PVs it is protecting. Whatever pvs.yaml claims,
+      this guards. Deleting the PVC (and any pod holding it) lets apply-pvs
+      bind it to the right volume when reconcile-apps recreates it.
     cmds:
       - |
-        echo "→ Checking for immich-postgres/n8n PVCs bound ahead of restore..."
-        for item in "immich-postgres:immich-postgres" "n8n:n8n"; do
-          PVC=${item%%:*}
-          APP=${item##*:}
-          VOL=$(kubectl get pvc "$PVC" -n default -o jsonpath='{.spec.volumeName}' 2>/dev/null || true)
-          if [ -z "$VOL" ]; then
-            echo "  ✓ $PVC: no PVC yet, nothing to unbind"
-            continue
-          fi
-          case "$VOL" in
-            *-restored-pv) echo "  ✓ $PVC: already bound to restored volume ($VOL)"; continue ;;
-          esac
-          echo "  ! $PVC: bound to fresh volume $VOL — deleting pod+PVC so it can rebind"
-          kubectl delete pod -n default -l app.kubernetes.io/name="$APP" --ignore-not-found
-          kubectl delete pvc "$PVC" -n default --wait=true
-          echo "  ✓ $PVC: deleted, will rebind to restored volume via reconcile-apps"
-        done
+        echo "→ Checking for PVCs bound ahead of the restore..."
+        yq -r 'select(.kind == "PersistentVolume")
+               | [.metadata.name, .spec.claimRef.namespace, .spec.claimRef.name]
+               | @tsv' kubernetes/apps/storage/restore-pvs/pvs.yaml \
+        | while IFS=$'\t' read -r PV NS PVC; do
+            VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null || true)
+            if [ -z "$VOL" ]; then
+              echo "  ✓ $PVC: not created yet, nothing to unbind"
+            elif [ "$VOL" = "$PV" ]; then
+              echo "  ✓ $PVC: already bound to $PV"
+            else
+              echo "  ! $PVC: bound to $VOL, expected $PV — unbinding"
+              for POD in $(kubectl describe pvc "$PVC" -n "$NS" 2>/dev/null \
+                           | awk '/^Used By:/{print $3} /^ +[a-z0-9-]+$/{print $1}'); do
+                kubectl delete pod "$POD" -n "$NS" --ignore-not-found >/dev/null 2>&1 || true
+              done
+              kubectl delete pvc "$PVC" -n "$NS" --wait=true >/dev/null 2>&1 || true
+              echo "  ✓ $PVC: unbound, reconcile-apps will rebind it to $PV"
+            fi
+          done
     silent: true
 
   apply-pvs:
