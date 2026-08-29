@@ -14,8 +14,10 @@ for the pve side of this alignment.
 
 | Script | Cron (UTC) | What it does |
 |---|---|---|
-| `backup-vps-extras.sh` | 23:50 | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), Homepage config (`kubeconfig.yaml`/`kube.config` excluded), Portainer state. 7-day retention. |
-| `backup-push-r730xd.sh` | 00:00 | Off-site sync to R730xd (`pve`, `10.57.57.250`): **pushes** `/srv/backups/` straight to `/media/backups/oracle-vps/srv-backups/` on pve over plain SSH rsync — lands ~03:00 EEST. Deliberately excludes this VPS's own local Garage instance — see below. |
+| `nightly-backup.sh` | 23:45 | Runs the three below in order and pings once. Stops at the first failure — the push has nothing to send if a producer died. |
+| `backup-joplin.sh` | by the wrapper |  Joplin DB dump into `/srv/backups/`. |
+| `backup-vps-extras.sh` | by the wrapper | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), Homepage config (`kubeconfig.yaml`/`kube.config` excluded), Portainer state. 7-day retention. |
+| `backup-push-r730xd.sh` | by the wrapper | Off-site sync to R730xd (`pve`, `10.57.57.250`): **pushes** `/srv/backups/` straight to `/media/backups/oracle-vps/srv-backups/` on pve over plain SSH rsync — lands ~03:00 EEST. Deliberately excludes this VPS's own local Garage instance — see below. |
 | `restore-drill.sh` | monthly, 1st @ 04:00 | Proves the latest Authentik/Joplin dumps actually restore — imports each into a throwaway `--rm` postgres container, checks the schema has tables, tears down. Never touches live DBs. See "Restore drill" below. |
 
 Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via the
@@ -69,10 +71,10 @@ R730xd's own weekly Synology push and nightly Oracle restic push — see
 All UTC. K8s cluster nodes also run UTC; pve/R730xd runs EEST (UTC+3) —
 add 3h for pve-side local times.
 
-- **23:40 / 23:45** — Authentik / Joplin pg_dump → `/srv/backups/` (7-day retention).
-- **23:50** — `backup-vps-extras.sh` → `/srv/backups/` (see table above).
+- **23:40** — Authentik pg_dump → `/srv/backups/` (7-day retention, `authentik_setup` role).
+- **23:45** — `nightly-backup.sh`: Joplin dump, extras tar, then the push to
+  R730xd (`/media/backups/oracle-vps/`) — lands ~03:00 EEST.
 - **23:50** — Longhorn (K8s cluster) backs up media/ARR config volumes to Garage S3 on R730xd (retain 3).
-- **00:00** — this role: push `/srv/backups` + Garage snapshot to R730xd (`/media/backups/oracle-vps/`).
 
 From there, R730xd's own weekly push relays a copy on to Synology
 (cold storage, fast local-ish recovery), and — independently, nightly —

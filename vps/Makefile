@@ -132,7 +132,7 @@ db-backups-setup:
 	ansible-playbook playbooks/site.yml --tags backup
 
 backup-sync-now:
-	/usr/local/bin/backup-vps-extras.sh && /usr/local/bin/backup-push-r730xd.sh
+	/usr/local/bin/nightly-backup.sh
 
 restore:
 	/usr/local/bin/restore-db.sh all
