@@ -245,42 +245,6 @@ never ran — despite being documented here.
 is **not** in `config.xml.gz`. A config restore brings back the cron entry
 but not the script it calls.
 
-### UPS-triggered shutdown
-
-The UPS (CyberPower VP700ELCD) is on **pve's own USB**, monitored by **NUT**.
-`upsmon` shuts this host down locally on low battery — no second machine, no
-SSH hop, no forced-command key.
-
-```bash
-upsc cyberpower                 # full status
-systemctl status nut-monitor    # the thing that actually pulls the trigger
-```
-
-Config: `/etc/nut/ups.conf` (driver), `/etc/nut/upsmon.conf` (MONITOR +
-`SHUTDOWNCMD`), `/etc/nut/upsd.users` (generated password). Shutdown fires on
-`LB`, which this UPS reports at `battery.runtime.low = 300` — five minutes of
-runtime left, against a measured total of ~12 minutes at 35% load.
-
-NUT is used instead of PowerPanel (`powerpanel` is installed but
-**masked/disabled** — leave it that way, the two fight over the same device)
-because of a USB controller quirk specific to this chassis — do not
-"simplify" this choice away without reading
-[known-issues.md](known-issues.md#why-nut-not-powerpanel-for-the-ups) first.
-
-Snapshots of both config files are in [`etc/nut/`](etc/nut/). `upsd.users` is
-**not** here — it holds a generated password. Reissue it on a rebuild and put
-the same string in `upsmon.conf`'s `MONITOR` line, or `upsmon` logs
-`ERR ACCESS-DENIED` and silently never fires:
-
-```bash
-pw=$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)
-printf '[upsmon]\n    password = %s\n    upsmon master\n' "$pw" > /etc/nut/upsd.users
-sed -i "s/REDACTED-SEE-upsd.users/$pw/" /etc/nut/upsmon.conf
-chown root:nut /etc/nut/upsd.users /etc/nut/upsmon.conf
-chmod 640 /etc/nut/upsd.users /etc/nut/upsmon.conf
-systemctl restart nut-server nut-monitor    # restart, not reload - upsd caches the users file
-```
-
 ### VPS → pve
 
 `authorized_keys` line on pve (restricted):
@@ -390,6 +354,42 @@ Recover:
 
 ⚠️ Pruning parses the date **from the snapshot name**, never `find -mtime`.
 Snapshot mtime is meaningless here.
+
+## UPS-triggered shutdown
+
+The UPS (CyberPower VP700ELCD) is on **pve's own USB**, monitored by **NUT**.
+`upsmon` shuts this host down locally on low battery — no second machine, no
+SSH hop, no forced-command key.
+
+```bash
+upsc cyberpower                 # full status
+systemctl status nut-monitor    # the thing that actually pulls the trigger
+```
+
+Config: `/etc/nut/ups.conf` (driver), `/etc/nut/upsmon.conf` (MONITOR +
+`SHUTDOWNCMD`), `/etc/nut/upsd.users` (generated password). Shutdown fires on
+`LB`, which this UPS reports at `battery.runtime.low = 300` — five minutes of
+runtime left, against a measured total of ~12 minutes at 35% load.
+
+NUT is used instead of PowerPanel (`powerpanel` is installed but
+**masked/disabled** — leave it that way, the two fight over the same device)
+because of a USB controller quirk specific to this chassis — do not
+"simplify" this choice away without reading
+[known-issues.md](known-issues.md#why-nut-not-powerpanel-for-the-ups) first.
+
+Snapshots of both config files are in [`etc/nut/`](etc/nut/). `upsd.users` is
+**not** here — it holds a generated password. Reissue it on a rebuild and put
+the same string in `upsmon.conf`'s `MONITOR` line, or `upsmon` logs
+`ERR ACCESS-DENIED` and silently never fires:
+
+```bash
+pw=$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)
+printf '[upsmon]\n    password = %s\n    upsmon master\n' "$pw" > /etc/nut/upsd.users
+sed -i "s/REDACTED-SEE-upsd.users/$pw/" /etc/nut/upsmon.conf
+chown root:nut /etc/nut/upsd.users /etc/nut/upsmon.conf
+chmod 640 /etc/nut/upsd.users /etc/nut/upsmon.conf
+systemctl restart nut-server nut-monitor    # restart, not reload - upsd caches the users file
+```
 
 ## Site-alive heartbeat
 
