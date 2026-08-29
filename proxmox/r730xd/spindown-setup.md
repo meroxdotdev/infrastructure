@@ -31,8 +31,8 @@ it — including the SSDs carrying the k8s control-plane VM. `zil_commit`
 stalls, so etcd's fsync stalls with it.
 
 Two things have changed since that was first written, and both cut the same
-way. `rpool` is a 2-disk mirror since 2026-08-27, not a 4-disk RAID10
-([rpool-shrink.md](rpool-shrink.md)) — half the spindles absorbing the stall.
+way. `rpool` is a 2-disk mirror since 2026-08-27, not a 4-disk RAID10 — half the
+spindles absorbing the stall.
 And the cluster has been single-node since 2026-08-17, so there is no quorum
 to lose: etcd gets slow, it no longer flaps.
 

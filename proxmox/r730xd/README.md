@@ -7,8 +7,6 @@ restic push to Oracle.
 
 Related: [REINSTALL.md](REINSTALL.md) (rebuild this host from bare metal) ·
 [spindown-setup.md](spindown-setup.md) (SAS spin-down rebuild runbook) ·
-[rpool-shrink.md](rpool-shrink.md) (drop rpool to a 2-disk mirror, with
-[`rpool-shrink-preflight.sh`](rpool-shrink-preflight.sh)) ·
 [known-issues.md](known-issues.md) (forensic record — UPS, fan noise) ·
 [DR.md](../../DR.md) (total-loss recovery) ·
 [vps_backup role](../../vps/roles/vps_backup/README.md) (VPS-side detail)
@@ -86,124 +84,6 @@ ollama pull qwen3:4b-instruct
 Nothing on this VM needs backing up — the model is a re-fetchable cache,
 not unique data, and the OS is fully reproducible from the steps above.
 
-## Kali VM
-
-Security-testing box for scanning and attacking this homelab from the
-inside. Deliberately not a Talos node and not in any backup job — it holds
-no unique data and is rebuilt from the steps below.
-
-- **VMID 106**, name `kali`, IP `10.57.57.120` (static, outside the pfSense
-  DHCP pool `.202-.254`).
-- 6 vCPU, 8GB RAM hard-capped (`balloon: 0`), 80GB thin zvol on `local-zfs`
-  (~10GB actually allocated). `onboot: 0` — it stays off unless a test is
-  running.
-- Kali Linux 2026.2, official QEMU base image (`kali-linux-2026.2-qemu-amd64.7z`),
-  full XFCE desktop + `kali-linux-default` toolset. Desktop is reachable
-  through the Proxmox noVNC console.
-- User `kali`, SSH key-only (`PermitRootLogin no`,
-  `PasswordAuthentication no` in `/etc/ssh/sshd_config.d/10-hardening.conf`),
-  root password locked. Keys: `/root/.ssh/kali-vm-key` on pve, plus the
-  macbook key. The account password is left at the image default `kali:kali`
-  — since password auth is off over SSH it only reaches the lightdm login and
-  `sudo`, at the console, on a VM that is normally powered off.
-- `firewall=0` on `net0` — a scanner behind a filtered NIC measures the
-  filter, not the target.
-
-The image ships with SSH disabled and no network config, so it is
-configured offline via `qemu-nbd` **before** the first boot rather than
-through the console afterwards — the VM comes up already on its static IP
-with SSH reachable, no console round-trip needed.
-
-**Recreating this VM** (host loss, or starting over):
-
-```bash
-# on pve, as root
-apt-get install -y 7zip
-cd /media/isos/import/kali
-curl -sSLO https://cdimage.kali.org/kali-2026.2/kali-linux-2026.2-qemu-amd64.7z
-curl -sL https://kali.download/base-images/kali-2026.2/SHA256SUMS | sha256sum -c --ignore-missing
-7z x kali-linux-2026.2-qemu-amd64.7z
-
-# configure the image offline — single ext4 partition, MBR, SeaBIOS boot
-modprobe nbd max_part=16
-qemu-nbd --connect=/dev/nbd0 kali-linux-2026.2-qemu-amd64.qcow2
-mkdir -p /mnt/kali && mount /dev/nbd0p1 /mnt/kali
-
-ssh-keygen -t ed25519 -f /root/.ssh/kali-vm-key -N "" -C "root-to-kali-vm"
-echo kali > /mnt/kali/etc/hostname
-sed -i 's/^127.0.1.1.*/127.0.1.1\tkali/' /mnt/kali/etc/hosts
-
-# static IP: NetworkManager keyfile, no interface-name binding so it
-# applies whatever the NIC ends up being called
-cat > /mnt/kali/etc/NetworkManager/system-connections/lan.nmconnection <<'N'
-[connection]
-id=lan
-type=ethernet
-autoconnect=true
-autoconnect-priority=100
-
-[ipv4]
-method=manual
-address1=10.57.57.120/24,10.57.57.1
-dns=10.57.57.1;
-may-fail=false
-
-[ipv6]
-method=disabled
-N
-chmod 600 /mnt/kali/etc/NetworkManager/system-connections/lan.nmconnection
-
-ln -sf /lib/systemd/system/ssh.service \
-  /mnt/kali/etc/systemd/system/multi-user.target.wants/ssh.service
-mkdir -p /mnt/kali/etc/ssh/sshd_config.d
-printf 'PermitRootLogin no\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nPubkeyAuthentication yes\n' \
-  > /mnt/kali/etc/ssh/sshd_config.d/10-hardening.conf
-
-mkdir -p /mnt/kali/home/kali/.ssh
-cat /root/.ssh/kali-vm-key.pub > /mnt/kali/home/kali/.ssh/authorized_keys
-# append the macbook pubkey here as well
-chmod 700 /mnt/kali/home/kali/.ssh
-chmod 600 /mnt/kali/home/kali/.ssh/authorized_keys
-chroot /mnt/kali chown -R kali:kali /home/kali/.ssh
-
-chroot /mnt/kali passwd -l root   # kali's own password stays at the image default
-
-umount /mnt/kali && qemu-nbd --disconnect /dev/nbd0
-
-# create and import
-qm create 106 --name kali --memory 8192 --balloon 0 --cores 6 --cpu host \
-  --net0 virtio,bridge=vmbr0,firewall=0 --scsihw virtio-scsi-single \
-  --ostype l26 --agent enabled=1 --vga std,memory=32 --onboot 0
-qm disk import 106 kali-linux-2026.2-qemu-amd64.qcow2 local-zfs --format raw
-qm set 106 --scsi0 local-zfs:vm-106-disk-0,iothread=1,discard=on,ssd=1
-qm set 106 --boot order=scsi0
-qm start 106
-
-# then, once up
-ssh -i /root/.ssh/kali-vm-key kali@10.57.57.120
-sudo apt-get update && sudo apt-get -y full-upgrade
-qm snapshot 106 clean-install   # revert point, from pve
-```
-
-The image is 80GB virtual with the ext4 partition already spanning the
-whole disk, so there is no partition or filesystem resize step.
-
-### Testing against this homelab
-
-The `clean-install` snapshot is the revert point — roll back to it rather
-than untangling whatever a tool left behind. Everything worth knowing about
-a scan is on the target side, so run the K8s/pve dashboards next to it.
-
-Things a scan will legitimately trip, and which are not findings:
-`qbittorrent` at `.102` and the Portainer agent at `.103` are pinned IPs,
-`.249`/`.250` are the pve host. Grafana/Loki will show the scan as a traffic
-spike; AlertManager may fire. Note the source IP `10.57.57.120` when
-filtering it back out.
-
-Known gaps already recorded in `SECURITY-AUDIT.md` — iDRAC exposure (C1)
-and OPT1 segmentation (C2) — are open by decision, not by oversight, so
-rediscovering them is expected.
-
 ## Nightly schedule
 
 All jobs touching the `media` pool run in one compact window, so scheduled
@@ -260,9 +140,8 @@ push and went out the following night instead.
 `rpool`: ZFS mirror, 2× 960GB Intel SATA SSD (backplane slots 0-1). Boot
 pool, every VM/LXC disk, `rpool/garage-meta`, `rpool/jellyfin-public`. 888G,
 51% full (453G allocated, 2026-08-28). Was a 4-disk RAID10 until 2026-08-27,
-when `mirror-1` was evacuated online and its two SSDs pulled for the OptiPlex
-nodes — what that cost, and how to do it again, in
-[rpool-shrink.md](rpool-shrink.md).
+when `mirror-1` was evacuated online and its two SSDs were pulled for the
+OptiPlex nodes.
 
 `media` pool: 2× RAIDZ2-6 (12× 600GB SAS), spin-down via the stateless
 enforcer script (see [spindown-setup.md](spindown-setup.md)).
