@@ -111,7 +111,7 @@ disks once, together.
 | 03:03 | etcd snapshot | pve |
 | 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve |
 | 03:10 | restic push → Oracle | pve |
-| 03:20 | SAS health check (SMART/defects/zpool counters, mails on anomaly only) | pve |
+| 03:20 | SAS health check (SMART/defects/zpool counters) | pve |
 | 03:25 | spin-down drift check | pve |
 | 03:30 | git drift check — does the host still match the repo? | pve |
 | weekly | Relay → Synology (cold storage) | pve |
@@ -388,6 +388,22 @@ chown root:nut /etc/nut/upsd.users /etc/nut/upsmon.conf
 chmod 640 /etc/nut/upsd.users /etc/nut/upsmon.conf
 systemctl restart nut-server nut-monitor    # restart, not reload - upsd caches the users file
 ```
+
+## Alerting
+
+Everything reports to **healthchecks.io**, nothing to local mail.
+
+`mail root` is a black hole on this host: no `/etc/aliases`, no `relayhost`,
+and a test message on 2026-08-29 vanished without reaching a queue or a log.
+The SAS health check and the spin-down drift check had used it since they
+were written, so neither had ever reached a human. Both moved on 2026-08-29.
+
+Proxmox's own jobs use a different, working path (`/etc/pve/notifications.cfg`
+→ an SMTP relay plus a ProxMobo webhook). That stays as it is — it is PVE's
+internal mechanism, not something the scripts should reach into.
+
+healthchecks.io is also the only one of the three that reports a check which
+stops running at all, which is the failure mode that matters most here.
 
 ## Site-alive heartbeat
 

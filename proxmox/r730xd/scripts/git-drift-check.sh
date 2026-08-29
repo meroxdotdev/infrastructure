@@ -7,18 +7,22 @@
 # was fixed in git and the host kept running the old one for hours, and the
 # weekly Synology push still pointed at a directory that had been deleted.
 #
-# Silent unless something differs. Mails root on drift, like sas-health-check.
-# Fetches a tarball rather than cloning — no git package on the hypervisor.
+# Reports through healthchecks.io, not `mail root`. Local mail is a black hole
+# on this host: no /etc/aliases, no relayhost, and a test message on
+# 2026-08-29 vanished without reaching a queue or a log. healthchecks.io also
+# gives what mail cannot — it alerts when the check stops running at all.
+# Fetches a tarball rather than cloning: no git package on the hypervisor.
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 set -uo pipefail
 
 TARBALL="https://github.com/meroxdotdev/infrastructure/archive/refs/heads/main.tar.gz"
+HC_URL="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 if ! curl -fsSL --max-time 60 "$TARBALL" | tar xz -C "$TMP" --strip-components=1 2>/dev/null; then
   echo "$(date '+%F %T') FETCH-FAILED: could not download the repo"
-  echo "git-drift-check could not fetch the repo from GitHub." | mail -s "Drift check failed ($(hostname))" root
+  curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "could not fetch the repo" "$HC_URL/fail" || true
   exit 1
 fi
 G="$TMP/proxmox/r730xd"
@@ -69,8 +73,8 @@ check "$G/etc/nut/ups.conf"       /etc/nut/ups.conf       "/etc/nut/ups.conf"
 # --- report ----------------------------------------------------------------
 if [ -n "$DRIFT" ]; then
   echo "$(date '+%F %T') DRIFT:$DRIFT"
-  printf 'Host and git disagree:\n%b\n\nHost is authoritative for what runs.\nEither apply git to the host, or commit the host'\''s version.\n' "$DRIFT" \
-    | mail -s "Config drift ($(hostname))" root
+  curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "$(printf 'host and git disagree:%b' "$DRIFT")" "$HC_URL/fail" || true
 else
   echo "$(date '+%F %T') ok (host matches git)"
+  curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
 fi
