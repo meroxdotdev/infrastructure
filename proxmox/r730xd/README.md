@@ -112,9 +112,7 @@ disks once, together.
 | 03:03 | etcd snapshot | pve |
 | 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve |
 | 03:10 | restic push → Oracle | pve |
-| 03:20 | SAS health check (SMART/defects/zpool counters) | pve |
-| 03:25 | spin-down drift check | pve |
-| 03:30 | git drift check — does the host still match the repo? | pve |
+| 03:20 | nightly checks — disk health, spin-down, git drift | pve |
 | weekly | Relay → Synology (cold storage) | pve |
 | 03:40 1st/mo | `media` scrub | pve |
 | 05:00 1st/mo | restic restore drill | pve |
@@ -393,6 +391,12 @@ systemctl restart nut-server nut-monitor    # restart, not reload - upsd caches 
 ## Alerting
 
 Everything reports to **healthchecks.io**, nothing to local mail.
+
+The three host checks share one healthcheck, not three. They run in sequence
+from `nightly-checks.sh`, are silent unless something is wrong, and are all
+investigated the same way — three separate checks would be three places to
+look for one answer. Each sub-check just exits non-zero; the wrapper names
+whichever failed.
 
 `mail root` is a black hole on this host: no `/etc/aliases`, no `relayhost`,
 and a test message on 2026-08-29 vanished without reaching a queue or a log.

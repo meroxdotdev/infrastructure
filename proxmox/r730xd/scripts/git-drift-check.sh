@@ -7,22 +7,19 @@
 # was fixed in git and the host kept running the old one for hours, and the
 # weekly Synology push still pointed at a directory that had been deleted.
 #
-# Reports through healthchecks.io, not `mail root`. Local mail is a black hole
-# on this host: no /etc/aliases, no relayhost, and a test message on
-# 2026-08-29 vanished without reaching a queue or a log. healthchecks.io also
-# gives what mail cannot — it alerts when the check stops running at all.
+# Prints to stdout and exits non-zero on drift. It does not ping anything —
+# nightly-checks.sh runs this alongside the other two host checks and reports
+# once, because all three are investigated the same way.
 # Fetches a tarball rather than cloning: no git package on the hypervisor.
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 set -uo pipefail
 
 TARBALL="https://github.com/meroxdotdev/infrastructure/archive/refs/heads/main.tar.gz"
-HC_URL="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 if ! curl -fsSL --max-time 60 "$TARBALL" | tar xz -C "$TMP" --strip-components=1 2>/dev/null; then
   echo "$(date '+%F %T') FETCH-FAILED: could not download the repo"
-  curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "could not fetch the repo" "$HC_URL/fail" || true
   exit 1
 fi
 G="$TMP/proxmox/r730xd"
@@ -76,8 +73,7 @@ check "$G/etc/nut/ups.conf"       /etc/nut/ups.conf       "/etc/nut/ups.conf"
 # --- report ----------------------------------------------------------------
 if [ -n "$DRIFT" ]; then
   printf '%s DRIFT:%b\n' "$(date '+%F %T')" "$DRIFT"
-  curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "$(printf 'host and git disagree:%b' "$DRIFT")" "$HC_URL/fail" || true
+  exit 1
 else
   echo "$(date '+%F %T') ok (host matches git)"
-  curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
 fi

@@ -27,9 +27,7 @@
 3 3 * * *   /root/scripts/etcd-snapshot.sh >> /var/log/etcd-snapshot.log 2>&1
 5 3 * * *   /root/scripts/zfs-snapshot-backups.sh >> /var/log/zfs-snapshot.log 2>&1
 10 3 * * *  /root/scripts/restic-push-oracle.sh >> /var/log/restic-push.log 2>&1
-20 3 * * *  /root/scripts/sas-health-check.sh >> /var/log/sas-health.log 2>&1
-25 3 * * *  /root/scripts/spindown-drift-check.sh >> /var/log/spindown-drift.log 2>&1
-30 3 * * *  /root/scripts/git-drift-check.sh >> /var/log/git-drift.log 2>&1
+20 3 * * *  /root/scripts/nightly-checks.sh >> /var/log/nightly-checks.log 2>&1
 
 # --- monthly ---
 0 5 1 * *   /root/scripts/restic-restore-drill.sh >> /var/log/restic-restore-drill.log 2>&1

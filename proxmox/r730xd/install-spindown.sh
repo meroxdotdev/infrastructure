@@ -272,7 +272,6 @@ step "Nightly health check"
 cat > /root/scripts/sas-health-check.sh <<'SH'
 #!/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-HC_SAS="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 # SMART health for disks smartd no longer watches. Sleeping disks are skipped
 # rather than woken - they get checked on a night they happen to be awake - and
 # "no data returned" is not treated as a fault.
@@ -289,15 +288,11 @@ while read -r d sg; do
   [ "${defects:-0}" -gt 0 ] && ALERT="$ALERT\n$d: grown defects=$defects"
   [ "${uncorr:-0}" -gt 0 ] && ALERT="$ALERT\n$d: uncorrected errors=$uncorr"
 done < <(/root/scripts/sas-disks.sh)
-# healthchecks.io, not `mail root`: local mail is a black hole on this host
-# (no /etc/aliases, no relayhost — a test message on 2026-08-29 vanished
-# without reaching a queue or a log), so this alert went nowhere for months.
-if [ -n "$ALERT" ]; then
-  curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "disk health:$ALERT" "$HC_SAS/fail" || true
-else
-  curl -fsS -m 10 --retry 3 -o /dev/null "$HC_SAS" || true
-fi
 echo "$(date '+%F %T') checked $((total-skipped))/$total (${skipped} asleep), alert='${ALERT:-none}'"
+# Reporting belongs to nightly-checks.sh, which runs this and the other two
+# host checks and pings once. Exit code is the whole interface.
+[ -n "$ALERT" ] && exit 1
+exit 0
 SH
 chmod +x /root/scripts/sas-health-check.sh
 say "SMART health, grown defects, uncorrected errors"
@@ -306,7 +301,6 @@ step "Nightly drift check"
 cat > /root/scripts/spindown-drift-check.sh <<'SH'
 #!/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-HC_SPIN="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 # Outcome-based: rather than checking that each known waker is still silenced,
 # ask whether the disks actually slept. That catches wakers nobody has thought
 # of, and cannot rot the way a checklist does.
@@ -343,10 +337,9 @@ sd=$(journalctl -u smartmontools -b --no-pager 2>/dev/null | grep -c "0 SCSI/SAS
 [ "${sd:-0}" -eq 0 ] && ALERT="$ALERT\nsmartd is watching the spinning disks again - it will keep waking them."
 systemctl is-active --quiet sas-spindown.timer || ALERT="$ALERT\nsas-spindown.timer is not active."
 if [ -n "$ALERT" ]; then
-  curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "spin-down drift:$ALERT" "$HC_SPIN/fail" || true
-  echo "$(date '+%F %T') DRIFT:$ALERT"
+  echo -e "$(date '+%F %T') DRIFT:$ALERT"
+  exit 1
 else
-  curl -fsS -m 10 --retry 3 -o /dev/null "$HC_SPIN" || true
   if [ "$pct" -lt 0 ]; then
     echo "$(date '+%F %T') ok (only ${n} samples in 24h - too few to judge yet)"
   else
