@@ -11,7 +11,11 @@ trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" 
 # until someone noticed — the same drift that kept the Immich library out of
 # the DR restore for months. Whatever lands under /media/backups is covered.
 restic backup /media/backups /media/photos /root --tag nightly
-restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+# --group-by host, not the default host+paths. Retention is per group, so
+# changing the backup path set would otherwise strand every older snapshot in
+# a group nothing new ever enters — pinned forever, never pruned. Grouping by
+# host alone lets the policy span a path change.
+restic forget --group-by host --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 restic check
 
 [ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true

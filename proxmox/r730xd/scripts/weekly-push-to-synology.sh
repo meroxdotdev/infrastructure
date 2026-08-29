@@ -1,5 +1,13 @@
 #!/bin/bash
 set -e
+
+# Until 2026-08-29 this was the only leg with no healthcheck, so a failure was
+# invisible until someone thought to read the log. It also ran under `set -e`
+# over a hardcoded category list, so one missing source directory aborted the
+# push and every category after it was silently skipped.
+HC_URL="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
+trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" || true' ERR
+
 SSH_OPTS="ssh -i /root/.ssh/pve-to-synology -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 DEST_HOST="admin@10.57.57.201"
 DEST_BASE="/volume1/NetBackup"
@@ -50,12 +58,14 @@ REMOTE_EOF
 {
   echo "=== weekly push start $(date) ==="
   sync_category photos /media/photos/
-  sync_category vm-backups /media/backups/dump/
-  sync_category pfsense /media/backups/pfsense/
-  sync_category longhorn-garage /media/backups/longhorn-garage/
-  sync_category immich-postgres /media/backups/immich-postgres/
-  sync_category oracle-vps /media/backups/oracle-vps/
-  sync_category tools /media/backups/tools/
-  sync_category nextcloud /media/backups/nextcloud/
+  # Every directory under /media/backups, derived rather than listed — a new
+  # backup category is covered automatically instead of being forgotten. The
+  # old hardcoded list had never included etcd/, and still named dump/ after
+  # that directory was removed.
+  for d in /media/backups/*/; do
+    sync_category "$(basename "$d")" "$d"
+  done
   echo "=== weekly push done $(date) ==="
 } >> "$LOG" 2>&1
+
+[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
