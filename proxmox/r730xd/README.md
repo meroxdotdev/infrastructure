@@ -18,6 +18,7 @@ running copy, these are the reviewable ones:
 |---|---|
 | [`scripts/`](scripts/) | cron + forced-command scripts |
 | [`etc/crontab`](etc/crontab) | the schedule |
+| [`reinstall.sh`](reinstall.sh) | rebuilds this host after a Proxmox install — packages, storage, exports, ZFS props, cron, spin-down, borg receiver |
 | [`etc/exports`](etc/exports) | NFS, per-host ACLs |
 | [`etc/storage.cfg`](etc/storage.cfg) | PVE storage |
 | [`etc/network-interfaces`](etc/network-interfaces) | bridges |
