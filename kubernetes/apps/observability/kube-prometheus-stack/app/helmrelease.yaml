@@ -36,6 +36,12 @@ spec:
         enabled: true
         forceConflicts: true
     cleanPrometheusOperatorObjectNames: true
+    defaultRules:
+      disabled:
+        # Structurally unable to be anything but 0% or 100%, so it pages on
+        # every etcd restart. Replaced by EtcdFailedGRPCRequests below, scoped
+        # to unary calls - the reasoning is there.
+        etcdHighNumberOfFailedGRPCRequests: true
     alertmanager:
       route:
         main:
@@ -174,6 +180,34 @@ spec:
                 annotations:
                   summary: "etcd: {{ $value | printf \"%.0f\" }} fsyncs over 1s in the last hour - check the H730P (SAS spin-down wakes stall the shared controller)."
                 expr: sum(increase(etcd_disk_wal_fsync_duration_seconds_count[1h])) - sum(increase(etcd_disk_wal_fsync_duration_seconds_bucket{le="1.024"}[1h])) > 50
+                for: 10m
+                labels:
+                  severity: warning
+              # Replaces the bundled etcdHighNumberOfFailedGRPCRequests, which
+              # is disabled in defaultRules above because it cannot report
+              # anything but 0% or 100%.
+              #
+              # It divides failed calls by all calls per grpc_method, streaming
+              # methods included. LeaseKeepAlive and Watch are bidi_stream: a
+              # healthy stream never terminates, so it never increments OK, and
+              # the counter only moves when a stream is torn down - as
+              # Unavailable. Measured here: LeaseKeepAlive OK=0, Unavailable=15.
+              # Every etcd restart therefore pages at exactly 100%.
+              #
+              # grpc_type="unary" is the upstream etcd mixin's own fix. Real
+              # unary traffic on this cluster: 1,316,657 OK against 91 failures,
+              # 0.0069% - which is what the alert was meant to watch.
+              - alert: EtcdFailedGRPCRequests
+                annotations:
+                  summary: "etcd: {{ $value | printf \"%.1f\" }}% of unary {{ $labels.grpc_method }} calls failing."
+                expr: |
+                  100 * sum without (grpc_type, grpc_code) (
+                    rate(grpc_server_handled_total{job=~".*etcd.*", grpc_type="unary", grpc_code=~"Unknown|FailedPrecondition|ResourceExhausted|Internal|Unavailable|DataLoss|DeadlineExceeded"}[5m])
+                  )
+                    /
+                  sum without (grpc_type, grpc_code) (
+                    rate(grpc_server_handled_total{job=~".*etcd.*", grpc_type="unary"}[5m])
+                  ) > 1
                 for: 10m
                 labels:
                   severity: warning
