@@ -39,6 +39,20 @@ The PVC is outside the backup set. Rebuild in a few minutes:
 | Indexers | added by Prowlarr, as a second app there |
 | Media management | rename on, hardlinks on |
 
+### qBittorrent settings this depends on
+
+Global, in qBittorrent's own config (PVC, not git). Both were wrong on the
+first download and sent a public film to the SAS array:
+
+| Setting | Value | Why |
+|---|---|---|
+| `use_category_paths_in_manual_mode` | **true** | Without it qBittorrent ignores a category's save path entirely and uses the global default. The `public` category's path is the only thing keeping these downloads off the SAS array |
+| `temp_path_enabled` | **false** | The temp path is global and lived on the SAS array, so an in-progress public download wrote there and only moved to SSD on completion. There is no per-category incomplete path in this version — the WebAPI accepts `downloadPath` on `editCategory` and silently ignores it |
+
+Category `public` → save path `/public/downloads`. The other categories have an
+empty save path, so they still fall back to the global default and nothing about
+the personal stack changed.
+
 Size limits per quality matter more than usual: the pool has a 400 G quota
 shared with nothing else, and ~50 titles at 6-8 GB is what it was sized for.
 
