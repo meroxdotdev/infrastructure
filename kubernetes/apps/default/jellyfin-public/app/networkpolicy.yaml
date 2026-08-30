@@ -47,3 +47,32 @@ spec:
               protocol: TCP
             - port: "80"
               protocol: TCP
+---
+# Exception to ../../network-policy.yaml's default-deny, which defines ingress
+# for the namespace and so blocks pod-to-pod by default.
+#
+# radarr-public tells this instance to scan the folder it just imported into.
+# Without it the library only updates on the scheduled task, because real-time
+# monitoring cannot work here: /media is NFS, and the writes happen on the
+# server from another pod, so inotify never fires.
+#
+# Deliberately narrow. Both are low-trust media apps, the same trust boundary
+# the jellyseerr -> radarr and radarr -> qbittorrent exceptions already cross,
+# and this is one port in one direction. The egress policy above is what keeps
+# the internet-facing instance contained, and it is untouched.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: jellyfin-public-ingress
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: jellyfin-public
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: radarr-public
+      toPorts:
+        - ports:
+            - port: "8096"
+              protocol: TCP
