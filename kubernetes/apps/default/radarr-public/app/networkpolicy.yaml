@@ -1,7 +1,9 @@
 ---
 # yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
-# Exception to ../../network-policy.yaml's default-deny: Jellyseerr submits
-# requests to Radarr's API.
+# Exception to ../../network-policy.yaml's default-deny. Two senders:
+# Jellyseerr submits requests to the API, and Prowlarr pushes indexer
+# definitions in. The other direction — radarr-public reaching Prowlarr and
+# qBittorrent — is allowed in those apps' own policies.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -14,6 +16,8 @@ spec:
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: jellyseerr
+        - matchLabels:
+            app.kubernetes.io/name: prowlarr
       toPorts:
         - ports:
             - port: "80"

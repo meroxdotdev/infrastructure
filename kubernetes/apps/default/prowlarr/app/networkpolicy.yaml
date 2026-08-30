@@ -20,6 +20,8 @@ spec:
             app.kubernetes.io/name: radarr
         - matchLabels:
             app.kubernetes.io/name: sonarr
+        - matchLabels:
+            app.kubernetes.io/name: radarr-public
       toPorts:
         - ports:
             - port: "80"
