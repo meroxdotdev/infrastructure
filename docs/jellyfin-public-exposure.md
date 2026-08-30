@@ -195,7 +195,7 @@ Steps 1-2 are in the **borrowed tenancy's** console, not vps01's.
 | 2 | OCI → VCN → Security List | Ingress `TCP 443` from `0.0.0.0/0`. Only 443 — see below | done |
 | 3 | Cloudflare DNS | `A` · `studio` · `<edge-ip>` · **grey cloud** ← the cutover | done |
 | 4 | Jellyfin admin | Accounts, bitrate caps, Quick Connect off | done |
-| 5 | OCI → VCN → Security List | Replace ingress `TCP 22` `0.0.0.0/0` with the home address. Tailscale is outbound and unaffected | |
+| 5 | OCI → VCN → Security List | Replace ingress `TCP 22` `0.0.0.0/0` with the home address. Tailscale is outbound and unaffected | done |
 | 6 | Jellyfin admin → General | Disclaimer + Custom CSS from `kubernetes/apps/default/jellyfin-public/branding/` | |
 | 7 | vps01, a day later | Retire the old path, below | |
 
