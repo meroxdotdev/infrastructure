@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radarr-public
+  namespace: default
+  # Not in the Longhorn backup group, matching the rest of the public stack.
+  # What is lost on a total failure is the indexer/profile setup and the movie
+  # list - both rebuildable in minutes from README.md, and the films themselves
+  # sit on the SSD pool untouched, so a fresh instance re-imports them.
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radarr-public-cache
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi

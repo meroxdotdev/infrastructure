@@ -1,0 +1,23 @@
+---
+groups:
+  - name: radarr-public
+    rules:
+      - alert: RadarrPublicDatabaseIsLocked
+        expr: |
+          sum by (app) (count_over_time({app=~"radarr-public"} |~ "(?i)database is locked"[5m])) > 0
+        for: 5m
+        annotations:
+          summary: >-
+            {{ $labels.app }} is experiencing database issues
+        labels:
+          severity: critical
+
+      - alert: RadarrPublicDatabaseIsMalformed
+        expr: |
+          sum by (app) (count_over_time({app=~"radarr-public"} |~ "(?i)database disk image is malformed"[5m])) > 0
+        for: 5m
+        annotations:
+          summary: >-
+            {{ $labels.app }} is experiencing database issues
+        labels:
+          severity: critical

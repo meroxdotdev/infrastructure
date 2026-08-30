@@ -147,5 +147,16 @@ spec:
         globalMounts:
           - path: /media/Downloads/qbittorrent
             subPath: Downloads/qbittorrent
+      # Public library on the SSD pool, for the `public` category only. Same
+      # mount path as radarr-public uses, so an import is a hardlink rather
+      # than a copy and no remote path mapping is needed. Keeping it off the
+      # SAS array also means fetching for the public library never spins those
+      # twelve disks up.
+      media-public:
+        type: nfs
+        server: ${NFS_SERVER}
+        path: /public/library
+        globalMounts:
+          - path: /public
       tmp:
         type: emptyDir

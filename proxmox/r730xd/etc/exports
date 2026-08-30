@@ -13,7 +13,17 @@
 
 
 # Public Jellyfin library, on the SSD pool so streaming to friends never wakes
-# the SAS array. Read-only: the instance behind it is the only thing reachable
-# from the internet and has no reason to write. Quota caps it at 400G so it
-# cannot crowd out the VM disks that share rpool.
-/public/library                 10.57.57.80(ro,sync,no_subtree_check,no_root_squash) 10.57.57.82(ro,sync,no_subtree_check,no_root_squash) 10.57.57.84(ro,sync,no_subtree_check,no_root_squash)
+# the SAS array. Quota caps it at 400G so it cannot crowd out the VM disks that
+# share rpool.
+#
+# Was ro until 2026-08-30, when radarr-public started writing the library
+# directly. jellyfin-public still mounts it `readOnly: true`, which the kubelet
+# enforces on the pod; writing would need CAP_SYS_ADMIN to remount, and the pod
+# drops ALL capabilities. So the internet-facing instance is still read-only —
+# by pod spec rather than by export, since both land on the same node and NFS
+# options are per client, not per pod.
+#
+# Layout inside: Movies/ is what Jellyfin scans, downloads/ is qbittorrent's
+# save path for the public category. Same filesystem on purpose, so radarr
+# imports by hardlink and a seeding torrent costs no second copy.
+/public/library                 10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)

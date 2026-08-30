@@ -26,6 +26,7 @@ resources:
   - ./prowlarr/ks.yaml
   - ./qbittorrent/ks.yaml
   - ./radarr/ks.yaml
+  - ./radarr-public/ks.yaml
   - ./sonarr/ks.yaml
   # Photos
   - ./immich/ks.yaml
