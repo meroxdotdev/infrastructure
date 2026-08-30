@@ -101,6 +101,19 @@ case "$STATUS" in
     running/*)       warn "traefik container running, health $STATUS" ;;
     *)               fail "traefik container not running (${STATUS:-absent})" ;;
 esac
+# The tunnel's one real failure mode. A direct path adds microseconds of crypto
+# to the same physical route; a DERP relay adds hops, shares capacity with
+# strangers, and is what actually degrades a stream. Tailscale falls back to it
+# silently when NAT traversal breaks - a router reboot is enough.
+PATHINFO=$(edge "tailscale ping --c 3 100.99.34.94" 2>/dev/null | tail -1)
+if grep -q "DERP" <<<"$PATHINFO"; then
+    fail "backend path is relayed through DERP, not direct: $PATHINFO"
+elif grep -q "^pong" <<<"$PATHINFO"; then
+    ok "backend path is direct (${PATHINFO##*in })"
+else
+    warn "could not determine the tailnet path to the backend"
+fi
+
 BACKEND_IP=$(sed -n 's/^jellyfin_backend_ip: *"\(.*\)".*/\1/p' "$VARS_FILE")
 BACKEND_PORT=$(sed -n 's/^jellyfin_backend_port: *\(.*\)/\1/p' "$VARS_FILE")
 if edge "curl -sf -m 8 http://${BACKEND_IP}:${BACKEND_PORT}/health" &>/dev/null; then

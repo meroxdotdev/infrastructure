@@ -79,6 +79,41 @@ uses docker's `DOCKER-USER`; the edge has none, so `edge_base` builds
 `EDGE-INPUT`. That removes the DNAT traps documented in `geoblock_ro` — here a
 rule against port 443 matches port 443.
 
+## Why the backend leg stays on the tunnel
+
+Recurring question: would the edge reach home faster over the plain internet
+than through WireGuard? Measured 2026-08-30, edge to backend, 184 MB in ten
+parallel streams: **141 Mbps sustained over 11 s**, with `tailscaled` at
+70-110% CPU on a 2-core box throughout.
+
+So the tunnel is not free, and 141 Mbps is most likely its ceiling rather than
+the uplink's — userspace WireGuard, one end an Ampere A1 core, the other
+pfSense on an N100. Going direct would genuinely raise it.
+
+It still stays, because demand cannot exceed **90 Mbps**: two accounts, three
+sessions each, capped at 15 Mbps. The tunnel carries 1.6x the maximum the
+account policy permits. That is headroom, not abundance — **raise the per-user
+caps or add accounts and this becomes the binding constraint**, at which point
+re-measure before assuming it still holds.
+
+Latency does not change either, which is the part that gets assumed. The path
+is already direct — `via 92.84.33.233:41641 in 20ms`, no DERP — over exactly
+the route a plain TCP connection would take. WireGuard adds microseconds of
+crypto, not milliseconds of routing.
+
+What going direct would cost: an inbound port at home, ending the property the
+whole design rests on; a plaintext `http://` backend across the public internet
+carrying media, session tokens and the api_key Jellyfin puts in query strings,
+so a second certificate and renewal path would be needed to fix it; and a
+source-restricted firewall rule keyed to an **ephemeral** Oracle address, which
+would break silently the first time it changes. In exchange for throughput the
+account caps forbid using.
+
+The tunnel's one genuine risk is a **DERP fallback**: if NAT traversal breaks,
+Tailscale relays through a shared server and quality drops hard, silently.
+`scripts/edge-verify.sh` fails on that rather than leaving it to be discovered
+by someone complaining that playback stutters.
+
 ## Congestion control
 
 A stream now crosses two TCP connections, and they are tuned separately:
