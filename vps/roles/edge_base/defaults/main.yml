@@ -1,0 +1,43 @@
+---
+# Prepares the host to be the public TLS edge: tailnet route to the backend,
+# plus the chain the filtering roles write into. Serving is edge_proxy's job.
+
+# Jumped to from INPUT position 1 — ahead of the conntrack ACCEPT, so a
+# fail2ban ban or an egress cut kills live streams, not just new connections.
+# geoblock_ro, egress_guard and fail2ban insert their DROPs at position 1 of
+# this chain; the ACCEPT below is appended so it always stays behind them.
+edge_firewall_chain: "EDGE-INPUT"
+
+# 443 only. Traefik does not listen on 80 either: certificates come from
+# DNS-01, so :80 would serve nothing but a 308 for someone typing the host
+# without a scheme — and it would be the one public listener not behind the
+# geoblock set, which matches on --dport 443.
+edge_firewall_public_ports: [443]
+
+# Tailscale: adjusted with `tailscale set`, never `tailscale up` — ansible
+# reaches this host over the tailnet and `up` would drop its own session.
+# accept-routes is what makes pfSense's 10.57.57.0/24 usable; without it the
+# route is received and ignored.
+edge_tailscale_accept_routes: true
+edge_tailscale_hostname: "{{ inventory_hostname }}"
+
+# Congestion control for the viewer-facing leg.
+#
+# Two TCP connections carry a stream now: viewer to Traefik here, and Traefik
+# to the Jellyfin pod over the tailnet. The Talos sysctl sets BBR on the pod
+# side only, so without this the leg that actually decides whether playback
+# stalls runs whatever the image defaults to — cubic.
+#
+# The repo's own measurement (talos/patches/global/machine-sysctls.yaml): on
+# the 165 ms Phoenix path CUBIC capped at 30 Mbps where BBR reached 103. At
+# ~30 ms from Frankfurt the gap on a clean link is much smaller, but the
+# viewers this serves are on Romanian mobile networks, and loss is exactly
+# where CUBIC collapses its window and BBR does not.
+#
+# No fq qdisc needed — TCP has had internal pacing since 4.13, and fq_codel is
+# already the default here and better against bufferbloat.
+edge_tcp_congestion_control: "bbr"
+
+# Owned by edge_proxy; repeated here because the tuning handler restarts that
+# compose project when the congestion control algorithm changes. Keep in step.
+edge_proxy_dir: /srv/docker/edge/traefik

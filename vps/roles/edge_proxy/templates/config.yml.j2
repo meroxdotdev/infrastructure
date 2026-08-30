@@ -1,0 +1,73 @@
+# {{ ansible_managed }}
+http:
+  routers:
+    # The only router on this host. Everything private lives on vps01 behind
+    # the tunnel and is unreachable here not by policy but because no router
+    # for those hostnames exists on this machine.
+    #
+    # RO filtering is NOT here — it is an ipset rule in EDGE-INPUT, before the
+    # TLS handshake. See vps/roles/geoblock_ro/README.md.
+    jellyfin:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ jellyfin_domain }}`)"
+      middlewares:
+        - default-headers
+      tls:
+        certResolver: cloudflare
+      service: jellyfin
+
+    # Same backend, login endpoint only, with a rate limit.
+    # Higher `priority` so it wins over the Host rule above.
+    jellyfin-auth:
+      entryPoints:
+        - "https"
+      rule: "Host(`{{ jellyfin_domain }}`) && PathPrefix(`/Users/AuthenticateByName`)"
+      priority: 100
+      middlewares:
+        - jellyfin-login-ratelimit
+        - default-headers
+      # TLS on, but no certResolver: the router above already requests the
+      # certificate for this hostname, and Traefik's certificate store is
+      # global. Two routers on one host both asking ACME race each other into
+      # "81058: An identical record already exists" on the _acme-challenge TXT
+      # record, and neither gets a certificate.
+      tls: {}
+      service: jellyfin
+
+  services:
+    jellyfin:
+      loadBalancer:
+        # Dedicated K8s LB (jellyfin-external), not the internal gateway.
+        # Over Tailscale; pfSense is the subnet router.
+        servers:
+          - url: "http://{{ jellyfin_backend_ip }}:{{ jellyfin_backend_port }}"
+        passHostHeader: true
+
+  middlewares:
+    # 5 attempts per minute per source IP. `sourceCriterion` is deliberately
+    # omitted: Traefik then defaults to the request's remote address, which is
+    # exactly what is wanted here. There is nothing in front of this host, so
+    # X-Forwarded-For would be attacker-controlled.
+    #
+    # Do not write `ipStrategy: {}` to express the default — Traefik rejects it
+    # with "ipStrategy cannot be a standalone element", and a file-provider
+    # parse error takes down every middleware in this file.
+    jellyfin-login-ratelimit:
+      rateLimit:
+        average: 5
+        period: 1m
+        burst: 3
+
+    default-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 15552000
+        customFrameOptionsValue: SAMEORIGIN
+        customRequestHeaders:
+          X-Forwarded-Proto: https

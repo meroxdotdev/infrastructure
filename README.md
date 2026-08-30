@@ -20,6 +20,7 @@ Read this first if it has been a while.
 | **Storage** | ZFS. `media` is twelve SAS disks in two raidz2 vdevs, holds bulk and spins down when idle; `rpool` is a mirrored SSD pair holding anything an application touches during the day. |
 | **Backup** | Every source writes into `/media/backups/` on pve. From there restic pushes it to Oracle nightly, and a weekly rsync relays a plain-file copy to the Synology. Only what git cannot rebuild is backed up. |
 | **Off-site** | An Oracle Cloud VPS runs what should outlive the house: Authentik SSO, Traefik, Pi-hole, Joplin, Guacamole, Homepage. It depends on nothing at home, pushes its own state to pve nightly, and is rebuilt with `cd vps && make dr-full`. Tailscale is what joins the two sites. |
+| **Public edge** | A second, stateless Oracle instance in Frankfurt (`edge-fra`) terminates TLS for the public Jellyfin only — 30 ms to viewers instead of 165 ms from Phoenix. Borrowed tenancy, no state, `cd vps && make edge-setup`. [Design](docs/jellyfin-public-exposure.md). |
 | **Recovery** | [`docs/dr-quickstart.md`](docs/dr-quickstart.md) — eight `task` commands, drilled on separate hardware. `age.key` and the restic password cannot be recreated; everything else can. |
 
 Every scheduled job reports to healthchecks.io, so silence is the alarm.
@@ -39,6 +40,12 @@ if they have drifted apart.
 | Homepage | homepage.cloud.merox.dev _(Tailscale)_ · inside.merox.dev _(public, curated)_ | Dashboards |
 | Joplin Server | joplin.cloud.merox.dev | Notes sync (PostgreSQL) |
 | Guacamole | rmt.merox.dev | Remote desktop gateway (Authentik SSO) |
+
+### Public edge — Oracle Cloud Frankfurt (`vps/` → `make edge-setup`)
+
+| Service | URL | Purpose |
+|---|---|---|
+| Traefik (edge) | studio.merox.dev | The only public listener: TLS for the public Jellyfin, geoblocked in kernel |
 
 ### Kubernetes — on-premise (`kubernetes/` → Flux GitOps)
 
@@ -85,7 +92,8 @@ off the VPS.
 |---|---|---|
 | Dell R730xd — `pve`, `10.57.57.250` | Proxmox host and backup hub: the K8s control-plane VM, the Garage S3 LXC, NFS for the SAS pool, and every backup leg. [Runbook](proxmox/r730xd/README.md) · [Reinstall](proxmox/r730xd/REINSTALL.md) | Xeon E5-2630 v4 (10C/20T), 251GB DDR4, Quadro P2200 |
 | XCY X44 — `fw`, `10.57.57.1` | pfSense: gateway, DHCP, Tailscale subnet router. [Reinstall](pfsense/REINSTALL.md) | N100, 8GB |
-| Oracle Cloud ARM VPS | Off-site services | 4 vCPU ARM, 24GB, 200GB |
+| Oracle Cloud ARM VPS — `vps01`, us-phoenix-1 | Off-site services | 4 vCPU ARM, 24GB, 200GB |
+| Oracle Cloud ARM VPS — `edge-fra`, eu-frankfurt-1 | Public TLS edge, borrowed tenancy | 2 vCPU ARM, 12GB, 45GB |
 | Synology DS223+ — `10.57.57.201` | Cold storage only, weekly versioned push from pve | 2x2TB RAID1 |
 | Beelink GTi13 Ultra | DR drill target, otherwise off | i9-13900HK, 64GB DDR5, 2x1TB NVMe |
 | Dell OptiPlex 3050 ×2 | Retained, powered off | i5-6500T, 32GB, 128GB NVMe |
@@ -113,7 +121,7 @@ dr-full`, any time.
 |---|---|---|
 | Cloudflare | DNS, Tunnel, Pages | Free |
 | Tailscale | Management VPN mesh | Free |
-| Oracle Cloud | Primary VPS | Free tier |
+| Oracle Cloud | Primary VPS, plus a borrowed tenancy for the Frankfurt edge | Free tier |
 | Hetzner | Fallback VPS, provisioned on demand via `make dr-full` | ~€7.85/mo, only if needed |
 | GitHub | Repos, Actions, Renovate | Free |
 | Let's Encrypt | HTTPS certificates | Free |

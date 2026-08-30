@@ -1,0 +1,31 @@
+---
+- name: Check whether traefik is already deployed
+  # Decides whether the restart handler below has anything to act on. On a
+  # first run edge_proxy has not created the compose project yet, and the
+  # restart is not needed either: the listener is created after this task and
+  # picks up the new default on its own.
+  ansible.builtin.stat:
+    path: "{{ edge_proxy_dir }}/docker-compose.yml"
+  register: edge_traefik_compose
+
+- name: Load the BBR module at boot
+  ansible.builtin.copy:
+    content: "tcp_bbr\n"
+    dest: /etc/modules-load.d/tcp-bbr.conf
+    mode: "0644"
+
+- name: Load the BBR module now
+  # Before the sysctl: setting an algorithm the kernel has not loaded fails,
+  # and on this image tcp_bbr ships as a module rather than built in.
+  community.general.modprobe:
+    name: tcp_bbr
+    state: present
+
+- name: Set the congestion control algorithm
+  ansible.posix.sysctl:
+    name: net.ipv4.tcp_congestion_control
+    value: "{{ edge_tcp_congestion_control }}"
+    sysctl_file: /etc/sysctl.d/99-edge-tuning.conf
+    sysctl_set: true
+    reload: true
+  notify: Restart traefik after a tuning change

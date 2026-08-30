@@ -1,4 +1,5 @@
 .PHONY: help install ping setup update check facts lint \
+        edge-setup edge-check edge-ping edge-verify \
         docker-setup docker-test \
         traefik-setup traefik-test \
         guacamole-setup guacamole-test \
@@ -32,6 +33,12 @@ help:
 	@echo "  ping               Test connectivity to server"
 	@echo "  update             OS package updates only"
 	@echo "  health-check       Post-deploy verification"
+	@echo ""
+	@echo "Public edge (edge-fra, Frankfurt):"
+	@echo "  edge-setup         Deploy the public TLS edge for Jellyfin"
+	@echo "  edge-check         Dry-run the edge deploy"
+	@echo "  edge-ping          Test connectivity over the tailnet"
+	@echo "  edge-verify        Firewall, geoblock, certificate and backend checks"
 	@echo ""
 	@echo "Individual services:"
 	@echo "  traefik-setup      guacamole-setup"
@@ -91,6 +98,19 @@ docker-setup:
 
 docker-test:
 	ansible vps_servers -m shell -a "docker ps && docker compose version"
+
+# --- Public edge (edge-fra) ---
+edge-setup:
+	ansible-playbook playbooks/edge.yml
+
+edge-check:
+	ansible-playbook playbooks/edge.yml --check --diff
+
+edge-ping:
+	ansible edge_servers -m ping
+
+edge-verify:
+	@bash ../scripts/edge-verify.sh
 
 traefik-setup:
 	ansible-playbook playbooks/traefik-setup.yml

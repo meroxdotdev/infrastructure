@@ -1,0 +1,3 @@
+---
+# Same reasoning as traefik_setup: docker_setup runs once from the playbook.
+dependencies: []

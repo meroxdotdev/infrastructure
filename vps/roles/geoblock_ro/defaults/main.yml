@@ -32,12 +32,18 @@ geoblock_ripestat_url: "https://stat.ripe.net/data/announced-prefixes/data.json"
 geoblock_set_name: "geoblock_allow"
 geoblock_data_dir: "/var/lib/geoblock"
 
-# The rule matches the FORWARDED destination: the Traefik container address and
-# its container-side port, not the published host port. Docker DNATs in nat
-# PREROUTING, so by the time a packet reaches FORWARD the port is already
-# translated and a rule written against the host port matches nothing.
+# Where the DROP goes. Two hosts, two answers:
+#   vps01     DOCKER-USER + container address/port. Docker DNATs in nat
+#             PREROUTING, so FORWARD already sees the container port and a rule
+#             against the host port matches nothing. See "three attempts" below.
+#   edge-fra  EDGE-INPUT + host port. network_mode: host, nothing translated,
+#             no destination address needed.
+geoblock_chain: "DOCKER-USER"
 geoblock_target_ip: "172.25.10.2"
 geoblock_target_port: 8443
+
+# The unit that creates the chain — the refresh must not run before it exists.
+geoblock_chain_unit: "docker.service"
 
 geoblock_min_prefixes: 100
 

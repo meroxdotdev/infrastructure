@@ -1,0 +1,37 @@
+#!/bin/sh
+# {{ ansible_managed }}
+# Creates the chain public traffic passes through, and accepts the public ports.
+# Applied by ansible and again at boot by edge-firewall.service.
+#
+# NOT in /etc/iptables/rules.v4 on purpose: `netfilter-persistent save` would
+# capture the ipset-matching rules the other roles insert here, and at boot
+# iptables-restore runs before the sets exist — the restore fails and the host
+# comes up with no firewall at all.
+set -eu
+
+CHAIN="{{ edge_firewall_chain }}"
+PORTS="{{ edge_firewall_public_ports | join(',') }}"
+
+# -N fails if the chain is already there, which is the normal case.
+iptables -N "$CHAIN" 2>/dev/null || true
+
+# Position 1: ahead of the conntrack ACCEPT, so a ban or an egress cut hits
+# live connections too. Unmatched traffic RETURNs and carries on down INPUT.
+iptables -C INPUT -j "$CHAIN" 2>/dev/null || iptables -I INPUT 1 -j "$CHAIN"
+
+# Remove ACCEPTs left behind by an earlier port list. Only ACCEPTs: the DROPs
+# belong to geoblock/fail2ban/egress-guard, and flushing the chain would open
+# the service until their next timer run.
+ACCEPT_RULE="-A $CHAIN -p tcp -m multiport --dports $PORTS -j ACCEPT"
+iptables -S "$CHAIN" 2>/dev/null | grep -- '-j ACCEPT$' | while IFS= read -r rule; do
+    [ "$rule" = "$ACCEPT_RULE" ] && continue
+    # shellcheck disable=SC2086
+    iptables -D $(echo "$rule" | sed "s/^-A //") 2>/dev/null || true
+    echo "edge-firewall: removed stale rule:$(echo "$rule" | sed "s/^-A $CHAIN//")"
+done
+
+# Appended, so the DROPs inserted at position 1 always sit in front of it.
+iptables -C "$CHAIN" -p tcp -m multiport --dports "$PORTS" -j ACCEPT 2>/dev/null \
+    || iptables -A "$CHAIN" -p tcp -m multiport --dports "$PORTS" -j ACCEPT
+
+echo "edge-firewall: $CHAIN accepts tcp/$PORTS, entered from INPUT position 1"

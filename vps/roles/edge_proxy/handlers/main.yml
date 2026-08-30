@@ -1,0 +1,6 @@
+---
+- name: Restart edge traefik
+  when: not ansible_check_mode
+  community.docker.docker_compose_v2:
+    project_src: "{{ edge_proxy_dir }}"
+    state: restarted

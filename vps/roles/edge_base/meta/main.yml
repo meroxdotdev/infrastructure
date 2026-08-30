@@ -1,0 +1,4 @@
+---
+# Deliberately empty, as in traefik_setup: docker_setup runs once from the
+# playbook, and declaring it as a dependency re-runs it per consuming role.
+dependencies: []

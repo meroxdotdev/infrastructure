@@ -1,44 +1,43 @@
 # Jellyfin — public exposure
 
-Serving `studio.merox.dev` to family and close friends over the internet, from
-the existing Oracle VPS, at zero extra cost, without publishing the home IP.
+`studio.merox.dev` served to family and friends without publishing the home IP.
+What faces the internet is a **second, dedicated Jellyfin** with a curated 1080p
+library on SSD. The personal instance (4K, SAS) is never reachable from outside.
 
-What faces the internet is a **second, dedicated Jellyfin** with its own
-curated 1080p library on SSD. The personal instance keeps the full 4K library
-on the SAS array and is never reachable from outside.
+**Status:** live on `edge-fra` since 2026-08-30. DNS, certificate, geoblock,
+fail2ban and the egress guard all verified end to end with
+`bash scripts/edge-verify.sh` (18 checks). Only `vps01`'s old public path is
+still to be retired — see below.
 
-**Status:** built and verified end to end. The Oracle ingress rule for 443 is
-currently removed, so nothing is publicly reachable until it's put back
-(manual steps below). Jellyfin account settings (Phase 4) are the one part
-still pending — do those before reopening the port.
-
-Measurements, rejected alternatives and the build log lived in
-`jellyfin-public-exposure-log.md`, removed 2026-08-29 once the build was
-done. Git still has it: `git show 9385285:docs/jellyfin-public-exposure-log.md`.
-
----
+Build log: `git show 9385285:docs/jellyfin-public-exposure-log.md`.
 
 ## Architecture
 
 ```
 Viewers ──▶ studio.merox.dev (grey-cloud A record, no CDN)
                  │
-          <vps-public-ip> : 443        Oracle VPS, us-phoenix-1
+          <edge-ip>:443                edge-fra, OCI eu-frankfurt-1
           ipset DROP: non-RO ISPs      kernel, before TLS
           fail2ban ban set             kernel, before TLS
-          Traefik entrypoint `public`  ONLY the jellyfin router
-                 │  Tailscale (WireGuard)
+          Traefik, network_mode: host  only the jellyfin router exists
+                 │  Tailscale, 21 ms direct
                  ▼
-          pfSense subnet router ──▶ 10.57.57.108:8096
-                                    jellyfin-public
-                                      /media (ro) = rpool/jellyfin-public  SSD
+          pfSense subnet router ──▶ 10.57.57.108:8096   jellyfin-public
+                                    /media (ro) = rpool/jellyfin-public  SSD
 
-LAN / Tailscale ──▶ media.merox.dev ──▶ 10.57.57.107  personal, untouched
-                                          /media (ro) = media/library  SAS, 4K
+LAN / Tailscale ──▶ media.merox.dev ──▶ 10.57.57.107   personal, untouched
 ```
 
-The home network gains **no new inbound ports**. The only public listener is
-the VPS.
+No new inbound ports at home. The edge is the only public listener.
+
+## Why Frankfurt
+
+`vps01` (us-phoenix-1) served this until 2026-08-30 at **165 ms** to RO viewers.
+`edge-fra` is ~30 ms from them, 21 ms from the house, direct path, no DERP.
+
+`VM.Standard.A1.Flex`, 2 OCPU / 12 GB, arm64, **borrowed Always Free tenancy**.
+Hence: no state, no DB, no tunnel, no backup set. Losing it costs one DNS
+record. Everything that must outlive the house stays on `vps01`.
 
 ## Two instances, on purpose
 
@@ -50,154 +49,204 @@ the VPS.
 | GPU | Quadro P2200 | time-sliced share of the same card |
 | Longhorn backup | yes | no, fully reconstructible |
 
-A remote code execution in the public instance reaches a container with a
-read-only view of re-encoded films and nothing else — it can't see the
-personal library, the *arr stack, or the watch history. Friends can't watch
-4K because there's no 4K on that filesystem — a fact about storage, not a
-policy someone can misconfigure. Streaming to friends never wakes the SAS
-array either: the SSD path costs ~1.5 W vs ~60-80 W for the twelve SAS
-drives.
+RCE in the public instance reaches a read-only view of re-encoded films and
+nothing else — not the personal library, the *arr stack or the watch history.
+No 4K exists on that filesystem, so it cannot be misconfigured into existence.
+Streaming never wakes the SAS array: SSD ~1.5 W vs ~60-80 W for twelve drives.
 
-Content is *derived*: films are re-encoded once from the main library to
-H.264 1080p (~6-8 GB each), so ~50 titles fit the 400 GB quota.
+Content is derived: re-encoded once to H.264 1080p (~6-8 GB), ~50 titles in the
+400 GB quota.
 
-Hardware acceleration is **not** automatic once the GPU is attached —
-`HardwareAccelerationType` defaults to `none` and must be set to `nvenc` in
-`/config/config/encoding.xml`, then restarted. That's PVC state, not git,
-and this instance is deliberately outside the backup set, so it must be set
-again after any PVC recreation or every stream falls back to software and
-takes the node with it (single-node cluster — nowhere for the control plane
-to move if a transcode takes the machine).
+**NVENC is not automatic.** `HardwareAccelerationType` defaults to `none`; set
+it to `nvenc` in `/config/config/encoding.xml` and restart. PVC state, outside
+the backup set — re-do it after any PVC recreation or every stream falls back
+to software and takes the single-node control plane with it.
 
-## Jellyfin settings (PENDING)
+## How the edge is built
 
-**Known Proxies** (Admin → Networking) — add to the existing `10.57.57.101`:
+`cd vps && make edge-setup`
 
-```
-10.57.57.101, 10.57.57.80, 100.72.22.38
-```
-
-`10.57.57.80` is the node (Cilium SNATs with `externalTrafficPolicy:
-Cluster`); `100.72.22.38` is the VPS tailnet address if the source survives.
-Without correct Known Proxies, `100.64.0.0/10` being a trusted LAN Network
-means every public viewer is treated as local — no remote bitrate limit and
-no remote restrictions.
-
-> `externalTrafficPolicy` is deliberately `Cluster`, not `Local` — Cilium's
-> L2 announcements are incompatible with `Local` on this topology. **When
-> returning to 3 nodes, add the other node IPs to Known Proxies too** —
-> that's the only part of this design that depends on node count.
-
-Per public account:
-
-| Setting | Value |
+| Role | Owns |
 |---|---|
-| Remote streaming bitrate limit | 8-12 Mbps |
-| Max simultaneous user sessions | 2 |
-| Allow media downloads | off |
-| Manage the server | off |
-| Hide from login screen | on — the login page lists users by default |
+| [`edge_base`](../vps/roles/edge_base/README.md) | `--accept-routes`, the `EDGE-INPUT` chain |
+| [`edge_proxy`](../vps/roles/edge_proxy/README.md) | Traefik, host network, one router |
+| [`geoblock_ro`](../vps/roles/geoblock_ro/README.md) | RO consumer-ISP allow set, dropped before TLS |
+| [`egress_guard`](../vps/roles/egress_guard/README.md) | hourly cap on the borrowed 10 TB allowance |
+| `security_hardening` | SSH, fail2ban jail on failed logins |
 
-Server-wide: **Quick Connect off**, admin account hidden and used only from
-the LAN, session inactivity timeout on. Jellyfin has no native 2FA. One
-account per person, not a shared one — on a shared account "Continue
-Watching" collides between viewers and access can't be revoked individually.
+Same filtering roles as `vps01`, differing by one variable: the chain. `vps01`
+uses docker's `DOCKER-USER`; the edge has none, so `edge_base` builds
+`EDGE-INPUT`. That removes the DNAT traps documented in `geoblock_ro` — here a
+rule against port 443 matches port 443.
 
-Jellyfin is on `10.11.11`, current stable. `10.11.7` fixed an
-unauthenticated RCE (CVE-2026-35033) and a CVSS 9.9 path traversal
-(CVE-2026-35031) — don't fall more than one patch behind.
+## Congestion control
 
-State lives in the PVC, not git — record changes in
-[jellyfin-post-restore.md](jellyfin-post-restore.md).
+A stream now crosses two TCP connections, and they are tuned separately:
 
-**Why not Authentik in front:** forward auth breaks native clients (Android
-TV, Swiftfin, Kodi, Roku) — they can't complete a browser login flow. Open
-upstream request: [jellyfin#16956](https://github.com/jellyfin/jellyfin/issues/16956).
+```
+viewer ──TCP──▶ Traefik on edge-fra ──TCP──▶ jellyfin-public pod
+                bbr, edge_base               bbr, Talos sysctl
+```
+
+The Talos sysctl only ever governed the second leg. The first one — the leg
+that decides whether playback stalls — ran on the image default, cubic, until
+2026-08-30. The measurement behind choosing BBR is in
+`talos/patches/global/machine-sysctls.yaml`: 30 Mbps on cubic against 103 on
+BBR over the same tunnel at 165 ms. At Frankfurt's ~30 ms the gap on a clean
+link is far smaller, but these viewers are on Romanian mobile networks, and
+loss is where cubic collapses its window and BBR does not.
+
+**A sysctl alone does not apply it.** Accepted sockets inherit the algorithm
+from the listening socket, so Traefik keeps serving new connections with
+whatever was default when its listener was created. `edge_base` restarts
+Traefik when the value changes; after any manual sysctl change, restart it by
+hand. Verify against live connections, never against the sysctl:
+
+```sh
+ssh edge-fra 'ss -tin state established "( sport = :443 )" | grep -oE "bbr|cubic" | sort | uniq -c'
+```
+
+Not done: HTTP/3. It would help most on exactly these lossy mobile links, but
+it needs UDP 443 through OCI, `EDGE-INPUT` and a second geoblock rule, and the
+native clients (Android TV, Swiftfin, Kodi) do not speak it — only the web
+client would benefit.
+
+## Jellyfin settings
+
+**Known Proxies needs no edge-specific entry, and this was measured, not
+assumed.** `10.57.57.80` + `10.0.0.0/8` is enough: Cilium SNATs to the node with
+`externalTrafficPolicy: Cluster`, so the tailnet address never appears as a
+client. Verified 2026-08-30 with a deliberate failed login through the edge:
+
+```
+Authentication request for "__nonexistent__" has been denied (IP: "92.84.33.233")
+RemoteClientBitrateLimit: 15000000, RemoteIP: "92.84.33.233", IsInLocalNetwork: False
+```
+
+The real viewer address arrives intact and `IsInLocalNetwork: False` means the
+remote restrictions apply. `LocalNetworkSubnets` is empty, so the tailnet is not
+treated as LAN either. Re-run that check after anything that changes the path.
+
+> `Cluster` not `Local` — Cilium L2 announcements are incompatible with `Local`
+> on this topology. **Back at 3 nodes, add the other node IPs to Known Proxies.**
+
+Configured, read from the running instance 2026-08-30:
+
+| Account | Remote bitrate | Max sessions | Hidden from login |
+|---|---|---|---|
+| `admin` | unlimited | unlimited | yes |
+| `prieteni` | 15 Mbps | 3 | yes |
+| `familie` | 15 Mbps | 3 | yes |
+
+Server-wide: Quick Connect off, session inactivity timeout 30 min, NVENC on.
+No native 2FA. One account per person — shared accounts collide in Continue
+Watching and cannot be revoked individually.
+
+On `10.11.11`. `10.11.7` fixed an unauthenticated RCE (CVE-2026-35033) and a
+9.9 path traversal (CVE-2026-35031) — never more than one patch behind.
+
+PVC state, not git: record changes in [jellyfin-post-restore.md](jellyfin-post-restore.md).
+
+**No Authentik in front:** forward auth breaks native clients (Android TV,
+Swiftfin, Kodi, Roku). [jellyfin#16956](https://github.com/jellyfin/jellyfin/issues/16956).
 
 ## Manual steps
 
-Nothing below is in git.
+Steps 1-2 are in the **borrowed tenancy's** console, not vps01's.
 
-| # | Where | What |
-|---|---|---|
-| 1 | Cloudflare Zero Trust → Tunnels → VPS tunnel | `inside.merox.dev`: service `https://localhost:443` → `https://172.25.10.2:443` |
-| 2 | VPS | `git pull && ansible-playbook playbooks/site.yml --tags traefik,geoblock` |
-| 3 | Cloudflare DNS | `A` · `media` · `<vps-public-ip>` · **grey cloud** |
-| 4 | Oracle → VCN → Security List | ingress `TCP 443` from `0.0.0.0/0` |
-| 5 | Jellyfin admin | Known Proxies, accounts, bitrate caps, Quick Connect off (table above) |
-| 6 | Jellyfin admin → General | Login disclaimer and Custom CSS, pasted from `kubernetes/apps/default/jellyfin-public/branding/` |
+| # | Where | What | |
+|---|---|---|---|
+| 1 | Tailscale | `tag:edge-proxy` on the node — one grant, `10.57.57.108:8096` only | done |
+| 2 | OCI → VCN → Security List | Ingress `TCP 443` from `0.0.0.0/0`. Only 443 — see below | done |
+| 3 | Cloudflare DNS | `A` · `studio` · `<edge-ip>` · **grey cloud** ← the cutover | done |
+| 4 | Jellyfin admin | Accounts, bitrate caps, Quick Connect off | done |
+| 5 | OCI → VCN → Security List | Replace ingress `TCP 22` `0.0.0.0/0` with the home address. Tailscale is outbound and unaffected | |
+| 6 | Jellyfin admin → General | Disclaimer + Custom CSS from `kubernetes/apps/default/jellyfin-public/branding/` | |
+| 7 | vps01, a day later | Retire the old path, below | |
 
-**Order matters, and step 1 must come first.** Traefik already listens on
-`172.25.10.2:443`, so repointing the tunnel there works immediately and is
-verifiable before anything else changes. Only then does step 2 remap the
-host port — doing it the other way round drops `inside.merox.dev` for the
-duration. Opening the NSG before step 2 would leave a window where whatever
-answers on host `:443` is reachable directly on the public IP. With this
-order there is **no downtime** at any point.
+**Tag the node before opening 443.** Untagged it falls under `autogroup:member`
+in the tailnet ACL, which grants `dst: *` — an internet-facing box with full
+reach into the house. Tagged, it reaches one address and one port; pve's SSH,
+pfSense, the k8s gateway and the personal Jellyfin on `.107` are all refused.
 
-Cloudflare WAF, rate limiting and bot protection do **not** apply to a
-grey-cloud record — they only run on proxied traffic. All filtering for
-`media.merox.dev` happens on the VPS: ipset for geography, Traefik for rate
-limiting.
+**Port 80 is deliberately absent**, in OCI and in Traefik. Certificates come
+from DNS-01, so it plays no part in issuance; it would serve only a 308 for
+someone typing the host without a scheme, and it would be the one public
+listener not behind the geoblock set, which matches on `--dport 443`. The cost
+is that `http://studio.merox.dev` fails at connect instead of redirecting —
+hand out the full `https://` URL.
 
-The disclaimer and custom CSS live in
-`kubernetes/apps/default/jellyfin-public/branding/`. Jellyfin keeps both in
-the config PVC (outside the backup set), so those files are the source and
-the dashboard is only where they get pasted — they travel with the NVENC
-setting, so anything that recreates the PVC loses all three. The disclaimer
-renders as sanitised markdown (blank lines between paragraphs) and is in
-Romanian, since that's the audience.
+**The public address is ephemeral and stays that way.** The tenancy has no quota
+for reserved public IPs — the console offers only "No public IP" and "Ephemeral
+public IP" — so the operational rule is: reboot from the OS (keeps the address,
+verified 2026-08-30), never Stop/Start from the OCI console (releases it). If it
+does change, it costs one DNS record and one line in `~/.ssh/config`; nothing in
+this repo hardcodes it.
+
+Grey cloud means no Cloudflare WAF, rate limiting or bot protection — all
+filtering is on the edge: ipset for geography, Traefik for rate limiting.
+
+Disclaimer and CSS live in `kubernetes/apps/default/jellyfin-public/branding/`;
+Jellyfin keeps them in the config PVC, so they travel with the NVENC setting
+and anything that recreates the PVC loses all three.
+
+## Retiring the old path on vps01
+
+Not part of the cutover — DNS TTL means both serve for a while. After a day:
+
+1. OCI (original tenancy) → delete the `443` ingress rule.
+2. Drop the `jellyfin` / `jellyfin-auth` routers from
+   `vps/roles/traefik_setup/templates/config.yml.j2`.
+3. Republish `443` to the `https` entrypoint in `docker-compose.yml.j2` — the
+   bridge detour only existed to free the host port.
+4. `geoblock_enabled`, `egress_guard_enabled`, `fail2ban_jellyfin_enabled` →
+   `false` in `vps_servers/vars.yml`.
+5. `make setup`.
+
+vps01 is then back to what its README claims: no open inbound ports.
 
 ## Verification
 
 ```bash
-# private services must NOT answer on the public IP
-curl -skI https://<vps-public-ip> -H "Host: sso.merox.dev" | head -1   # 404
-curl -skI https://<vps-public-ip> -H "Host: rmt.merox.dev"  | head -1   # 404
-
-# private services still work through the tunnel
-curl -sI https://sso.merox.dev | head -1                                # 200/302
-
-# Jellyfin answers publicly, and the record is grey
-curl -sI https://media.merox.dev | head -1                              # 200/302
-dig +short media.merox.dev @1.1.1.1                                     # <vps-public-ip>
-
-# geoblock is live
-ipset list geoblock_allow | grep -c '^[0-9]'                            # >1000
-iptables -L DOCKER-USER -n --line-numbers | head
+bash scripts/edge-verify.sh
 ```
 
-The first test is the one that matters — a `200` means a router is still
-bound to `public`; check `entryPoints` in `config.yml.j2`.
+Firewall chain and ordering, geoblock set, fail2ban jail, both timers, Traefik
+health, backend over the tailnet, DNS, cert issuer, and the one that matters:
+`sso.merox.dev` / `rmt.merox.dev` / `traefik.cloud.merox.dev` must return **404**
+on the edge's public address. A `200` means a router is bound that should not
+exist — check `edge_proxy/templates/config.yml.j2`.
 
-Then by hand: access from Romanian mobile data works; access through a
-non-RO VPN dies at the TCP level (dropped in kernel, not a 403); six bad
-logins return 429; a transcoding stream plays; and `media.merox.dev` from
-the LAN still resolves to `10.57.57.101` at full bitrate.
+Before the OCI rule exists the external section is skipped, not failed.
+
+By hand: RO mobile data works; non-RO VPN dies at TCP level (kernel drop, not
+403); six bad logins return 429; a transcode plays; `media.merox.dev` on the LAN
+still resolves to `10.57.57.101` at full bitrate.
 
 ## Rollback
 
 | Step | Undo |
 |---|---|
-| NSG | delete the `443` rule — exposure stops instantly |
-| DNS | delete the A record |
-| Traefik | `git revert` + `make setup`, tunnel back to `:443` |
-| Geoblock | `geoblock_enabled: false` + `make setup` |
-| BBR | remove the sysctl line, re-apply, rollout restart |
+| DNS | point `studio` back at vps01 — it still serves this name |
+| OCI | delete the `443` ingress rule |
+| Traefik | `git revert` + `make edge-setup` |
+| Geoblock | `geoblock_enabled: false` + `make edge-setup` |
+| The whole edge | terminate the instance; nothing on it is unique |
 
 ## Accepted risks
 
 | Risk | Mitigation |
 |---|---|
-| 165 ms to viewers — slower start and seek | inherent to us-phoenix-1; an EU edge is the only fix |
-| UHD remuxes exceed 103 Mbps | cap remote bitrate per user; transcode instead of direct play |
-| Geo-IP is inexact — roaming and VPNs misfire | `geoblock_extra_allow`, or invite them to the tailnet |
-| An unauthenticated Jellyfin CVE | Renovate tracks the digest; stay current; egress policy limits the blast radius |
-| Oracle changes the free tier again | already halved once in 2026; a paid EU edge is ~€22/year |
-| No detection: nothing logged or alerted | access log, fail2ban, optional healthchecks ping — see build log |
-| Egress overage billed on the PAYG tenancy | `egress_guard` cuts the public port hourly at the vaulted threshold, comfortably under the 10 TB allowance — a bill is not reachable |
-| Provider AUP on copyrighted material | applies to every host; a private, authenticated, geoblocked instance is not a discoverable target |
+| Borrowed tenancy can vanish without notice | No state on it; recovery is one DNS record |
+| Ephemeral public IP, no reserved-IP quota | Survives OS reboots; only a console Stop/Start releases it |
+| UHD remuxes exceed 103 Mbps | cap remote bitrate; transcode instead of direct play |
+| Geo-IP misfires on roaming and VPNs | `geoblock_extra_allow`, or invite them to the tailnet |
+| Unauthenticated Jellyfin CVE | Renovate tracks the digest; egress policy limits blast radius |
+| The account owner's 10 TB allowance | `egress_guard` cuts the port hourly at the vaulted threshold |
+| Nothing alerted | access log, fail2ban, optional healthchecks ping |
+| Two public origins until vps01 is retired | same backend; removed in the step above |
+| Provider AUP on copyrighted material | private, authenticated, geoblocked — not a discoverable target |
 
-Separate from any terms: sharing a library outside the household is a legal
-exposure distinct from any provider clause. Named accounts and a small
-circle reduce the surface; they do not remove it.
+Sharing a library outside the household is a legal exposure separate from any
+provider clause, and on a borrowed account it is someone else's name on the
+terms. Say so to them.

@@ -4,9 +4,13 @@ Restricts Traefik's public entrypoint to prefixes announced by Romanian
 consumer ISPs, plus anything in `geoblock_extra_allow`. Everything else is
 dropped in the kernel, before the TLS handshake.
 
-It exists because `media.merox.dev` is the only thing served directly on the
-VPS public address — see
+It exists because `studio.merox.dev` is the only thing served directly on a
+public address — see
 [`docs/jellyfin-public-exposure.md`](../../../docs/jellyfin-public-exposure.md).
+
+The role runs on both hosts that have ever served it. What differs is one
+variable: `geoblock_chain`, plus whether the rule carries a destination address.
+See the role defaults for the two answers and why they differ.
 
 ## Allow by operator, not by country
 
@@ -52,16 +56,21 @@ authentication, keeping Jellyfin patched, the egress cap in
 |---|---|
 | `/usr/local/sbin/geoblock-refresh.sh` | fetches prefixes, rebuilds the set, re-applies the rule |
 | `geoblock.timer` | daily, `RandomizedDelaySec=1h` |
-| `geoblock.service` | runs at every boot |
-| `DOCKER-USER` | the chain forwarded traffic to containers traverses |
+| `geoblock.service` | runs at every boot, ordered after `geoblock_chain_unit` |
+| `geoblock_chain` | `DOCKER-USER` on vps01, `EDGE-INPUT` on edge-fra |
 
-Re-applied at boot because **`DOCKER-USER` is flushed when docker or the machine
-restarts**. UFW is irrelevant here — docker publishes ports through its own
-chains and bypasses it (and UFW is not even installed on this host).
+Re-applied at boot because **the chain is flushed when its owner or the machine
+restarts** — docker for `DOCKER-USER`, a reboot for `EDGE-INPUT`, which is why
+`geoblock.service` is ordered after whichever unit creates it. UFW is irrelevant
+on both: it is not installed on either host, and on vps01 docker publishes ports
+through its own chains and bypasses it anyway.
 
-### The rule took three attempts
+### On vps01, the rule took three attempts
 
 Worth writing down, because two of them looked correct and silently were not.
+None of it applies to edge-fra, where Traefik binds the host port directly and
+the rule is simply `--dport 443` — it is kept because it is the reason
+`geoblock_target_ip` is a variable rather than a constant.
 
 `--dport 443` matched nothing. Docker DNATs in `nat PREROUTING`, so by the time
 a packet reaches `FORWARD` its destination port is already the container port.
@@ -87,12 +96,17 @@ traffic being forwarded to the public entrypoint.
 ## Operations
 
 ```sh
-ipset list geoblock_allow | grep -c '^[0-9]'   # prefix count (~614)
+ipset list geoblock_allow | grep -c '^[0-9]'   # prefix count (~615)
 ipset test geoblock_allow <address>            # would this address get in?
-iptables -L DOCKER-USER -n -v --line-numbers   # rule present, and its counters
+iptables -L DOCKER-USER -n -v --line-numbers   # vps01: rule present, + counters
+iptables -L EDGE-INPUT  -n -v --line-numbers   # edge-fra: same
 systemctl list-timers geoblock.timer           # next refresh
 /usr/local/sbin/geoblock-refresh.sh            # force a refresh now
 ```
+
+On edge-fra the set also holds `127.0.0.0/8`: the rule is in `INPUT` there, so
+it sees the host talking to itself, and a country list has no business filtering
+loopback. Without it every local check looks like an outage.
 
 Someone travelling abroad: add their address to `geoblock_extra_allow`, or
 invite them to the tailnet — `100.64.0.0/10` is already allowed.

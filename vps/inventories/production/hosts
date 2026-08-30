@@ -21,3 +21,19 @@ garage-r730xd ansible_host=10.57.57.61
 [r730xd_garage:vars]
 ansible_python_interpreter=/usr/bin/python3
 ansible_user=root
+
+[edge_servers]
+# Oracle Cloud eu-frankfurt-1, VM.Standard.A1.Flex (2 OCPU / 12 GB, arm64),
+# Ubuntu 24.04. A separate Oracle tenancy from vps01 — Always Free, and
+# borrowed: its allowances belong to someone else, and it can go away.
+#
+# It serves exactly one thing, studio.merox.dev, and holds no state worth
+# backing up. See docs/jellyfin-public-exposure.md.
+#
+# Unlike vps01 this one is deployed over the tailnet rather than from the box
+# itself: OCI blocks inbound SSH from arbitrary addresses, but Tailscale is
+# outbound and unaffected, so ansible_connection stays ssh.
+edge-fra ansible_host=100.99.62.31 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/oci_frankfurt
+
+[edge_servers:vars]
+ansible_python_interpreter=/usr/bin/python3

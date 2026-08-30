@@ -1,0 +1,65 @@
+---
+# edge-fra — the public TLS edge in Frankfurt.
+#
+# Exists for latency: vps01 in us-phoenix-1 measured ~165 ms to RO viewers,
+# this is ~30 ms from them and 21 ms from the house.
+#
+# Holds no state, no database, no tunnel, no backup set. Losing it costs one
+# DNS record, and nothing here should ever grow past that.
+
+timezone: "Europe/Bucharest"
+enable_ntp: true
+
+# Not installed, and must not be: the firewall here is the Oracle base ruleset
+# plus edge_base's EDGE-INPUT chain, and a second tool writing the same table
+# is how rules end up in an order nobody intended.
+enable_ufw: false
+allowed_ssh_port: 22
+
+system_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - net-tools
+  - unattended-upgrades
+
+# --- what it serves ---------------------------------------------------------
+# The dedicated public Jellyfin instance (10.57.57.108), not the personal one
+# on .107. Reached over the tailnet; pfSense is the subnet router.
+# See docs/jellyfin-public-exposure.md.
+jellyfin_domain: "studio.merox.dev"
+jellyfin_backend_ip: "10.57.57.108"
+jellyfin_backend_port: 8096
+
+# --- firewall ---------------------------------------------------------------
+# network_mode: host, so every rule matches the real host port and needs no
+# destination address. edge-firewall.service restores the chain after a reboot.
+geoblock_chain: "EDGE-INPUT"
+geoblock_chain_unit: "edge-firewall.service"
+geoblock_target_ip: ""
+geoblock_target_port: 443
+
+# In INPUT the rule also sees the host talking to itself, which the
+# DOCKER-USER version never did. Without 127.0.0.0/8 in the set, a local
+# `curl https://127.0.0.1` is dropped in the kernel and looks like an outage.
+geoblock_extra_allow:
+  - "100.64.0.0/10"     # own tailnet
+  - "127.0.0.0/8"       # this host
+
+fail2ban_chain: "EDGE-INPUT"
+fail2ban_target_ip: ""
+fail2ban_target_port: 443
+
+# Always Free, so an overage throttles rather than bills — but the 10 TB/month
+# belongs to whoever lent the account.
+egress_guard_chain: "EDGE-INPUT"
+egress_guard_chain_unit: "edge-firewall.service"
+egress_guard_target_ip: ""
+egress_guard_target_port: 443
+egress_guard_interface: "enp0s6"
+
+# --- secrets ----------------------------------------------------------------
+# Same vault as vps01 — group_vars/all/vault.yml applies to every group.
+fail2ban_notify_url: "{{ vault_fail2ban_notify_url }}"

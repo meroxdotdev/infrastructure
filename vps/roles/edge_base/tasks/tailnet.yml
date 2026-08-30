@@ -1,0 +1,49 @@
+---
+# Ansible reaches this host over Tailscale. `tailscale up` would need an auth
+# key on the box and could drop the session running the playbook; `tailscale
+# set` adjusts a live session in place.
+
+- name: Check the Tailscale daemon state
+  ansible.builtin.command: tailscale status --json
+  register: edge_ts_status
+  changed_when: false
+  failed_when: false
+
+- name: Require a logged-in tailnet node
+  ansible.builtin.assert:
+    that:
+      - edge_ts_status.rc == 0
+      - (edge_ts_status.stdout | from_json).BackendState == 'Running'
+    fail_msg: >-
+      Tailscale is not running on {{ inventory_hostname }}. Log the node in by
+      hand first (`sudo tailscale up`) — this role only adjusts an existing
+      session, deliberately, so that a playbook run can never invalidate one.
+
+- name: Read the current Tailscale preferences
+  ansible.builtin.command: tailscale debug prefs
+  register: edge_ts_prefs
+  changed_when: false
+
+- name: Accept subnet routes and pin the node name
+  # RouteAll is accept-routes. Without it pfSense's 10.57.57.0/24 is received
+  # and ignored, and the backend just times out with no error anywhere.
+  ansible.builtin.command: >-
+    tailscale set
+    --accept-routes={{ edge_tailscale_accept_routes | bool | lower }}
+    --hostname={{ edge_tailscale_hostname }}
+  when: >-
+    (edge_ts_prefs.stdout | from_json).RouteAll != edge_tailscale_accept_routes
+    or (edge_ts_prefs.stdout | from_json).Hostname != edge_tailscale_hostname
+  changed_when: true
+
+- name: Verify the Jellyfin backend answers over the tailnet
+  # Checked here, not in edge_proxy, so a broken route is reported before
+  # Traefik goes in front of it and starts serving 502s.
+  ansible.builtin.uri:
+    url: "http://{{ jellyfin_backend_ip }}:{{ jellyfin_backend_port }}/health"
+    return_content: true
+    timeout: 10
+  register: edge_backend_health
+  retries: 3
+  delay: 5
+  until: edge_backend_health is succeeded

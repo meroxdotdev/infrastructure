@@ -1,15 +1,21 @@
-# vps/ — Oracle Cloud VPS (Ansible + Terraform)
+# vps/ — Oracle Cloud (Ansible + Terraform)
 
-Ansible roles + Terraform for the Docker stack on the Oracle Cloud Free Tier VPS.
-Part of the [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure)
-repo — full rebuild guide in [DEPLOY.md](../DEPLOY.md), service index in the
+Ansible roles + Terraform for two Oracle hosts. Part of the
+[meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure)
+repo — rebuild guide in [DEPLOY.md](../DEPLOY.md), service index in the
 [main README](../README.md).
 
-Two deployment modes:
+| Host | Playbook | What it is |
+|---|---|---|
+| `vps01`, us-phoenix-1 | `site.yml` → `make setup` | The off-site stack. Everything behind the Cloudflare tunnel, no open inbound ports |
+| `edge-fra`, eu-frankfurt-1 | `edge.yml` → `make edge-setup` | Public TLS edge for Jellyfin only. Stateless, borrowed tenancy, [design](../docs/jellyfin-public-exposure.md) |
 
-- **Production (Oracle Cloud):** Ansible runs *on the server itself*
-  (`ansible_connection=local` in the inventory — OCI blocks inbound SSH from
-  arbitrary IPs).
+Three deployment modes:
+
+- **vps01 (production):** Ansible runs *on the server itself*
+  (`ansible_connection=local` — OCI blocks inbound SSH from arbitrary IPs).
+- **edge-fra:** over SSH from any machine on the tailnet. Tailscale is
+  outbound, so OCI's inbound rules do not apply.
 - **DR (Hetzner fallback):** `make dr-full` from any machine — Terraform
   provisions the server, then Ansible deploys over SSH. ~15 min.
 
@@ -61,6 +67,15 @@ make dr-restore         # DR: restore all data from NAS (non-interactive)
 
 make <service>-setup    # individual service, e.g. make authentik-setup
 make help               # everything else
+```
+
+edge-fra:
+
+```bash
+make edge-ping          # verify connectivity over the tailnet
+make edge-setup         # full deploy (~6 min, idempotent)
+make edge-check         # dry-run
+make edge-verify        # firewall, geoblock, cert, backend, isolation checks
 ```
 
 ## Disaster recovery

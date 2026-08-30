@@ -33,5 +33,5 @@ backend   = auto
 maxretry  = {{ fail2ban_jellyfin_maxretry }}
 findtime  = {{ fail2ban_jellyfin_findtime }}
 bantime   = {{ fail2ban_jellyfin_bantime }}
-action    = dockeruser
+action    = proxyban
 {% endif %}

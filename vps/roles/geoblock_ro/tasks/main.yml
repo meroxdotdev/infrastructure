@@ -76,9 +76,12 @@
 # nothing instead of deleting it.
 - name: Remove the DROP rule when disabled
   ansible.builtin.iptables:
-    chain: DOCKER-USER
+    chain: "{{ geoblock_chain }}"
     protocol: tcp
-    destination: "{{ geoblock_target_ip }}"
+    # `or omit` and not `default(omit)`: geoblock_target_ip is *defined* and
+    # empty on a host-network edge, which default() would happily pass through
+    # as an empty -d and match nothing.
+    destination: "{{ geoblock_target_ip or omit }}"
     destination_port: "{{ geoblock_target_port }}"
     match_set: "!{{ geoblock_set_name }}"
     match_set_flags: src

@@ -1,0 +1,12 @@
+---
+- name: Join the tailnet to the backend
+  ansible.builtin.import_tasks: tailnet.yml
+  tags: ['edge', 'tailscale']
+
+- name: Build the public firewall chain
+  ansible.builtin.import_tasks: firewall.yml
+  tags: ['edge', 'firewall']
+
+- name: Tune the viewer-facing network path
+  ansible.builtin.import_tasks: tuning.yml
+  tags: ['edge', 'tuning']

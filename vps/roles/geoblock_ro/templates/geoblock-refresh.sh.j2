@@ -1,15 +1,15 @@
 #!/bin/sh
 # {{ ansible_managed }}
-# Rebuilds the allow-list ipset and (re)applies the DOCKER-USER rule.
-# Run daily by geoblock.timer and at every boot by geoblock.service -
-# DOCKER-USER is flushed whenever docker or the machine restarts.
+# Rebuilds the allow-list ipset and (re)applies the DROP rule.
+# Run daily by geoblock.timer and at every boot by geoblock.service - the chain
+# the rule lives in is flushed whenever its owner or the machine restarts.
 set -eu
 
 SET="{{ geoblock_set_name }}"
 TMP="${SET}_tmp"
 DIR="{{ geoblock_data_dir }}"
-TARGET_IP="{{ geoblock_target_ip }}"
-TARGET_PORT="{{ geoblock_target_port }}"
+CHAIN="{{ geoblock_chain }}"
+TARGET="{{ geoblock_target_ip + ':' if geoblock_target_ip else 'tcp/' }}{{ geoblock_target_port }}"
 MIN="{{ geoblock_min_prefixes }}"
 
 mkdir -p "$DIR"
@@ -62,11 +62,13 @@ ipset create "$SET" hash:net family inet maxelem 262144 -exist
 ipset swap "$TMP" "$SET"
 ipset destroy "$TMP"
 
-# 5. Rule goes in DOCKER-USER - the chain forwarded traffic to containers
-#    traverses. UFW never sees this traffic.
+# 5. Apply the rule. The chain, and whether the destination address is part of
+#    the match, come from geoblock_chain / geoblock_target_ip - see the role
+#    defaults for why the two hosts differ.
 #
-#    Match the forwarded destination explicitly: the Traefik container address
-#    and its container-side port. Two earlier attempts were wrong.
+#    On DOCKER-USER the forwarded destination must be matched explicitly: the
+#    Traefik container address and its container-side port. Two earlier attempts
+#    there were wrong.
 #
 #    "--dport 443" matched nothing, because docker DNATs in nat PREROUTING and
 #    FORWARD already sees the container port.
@@ -74,10 +76,15 @@ ipset destroy "$TMP"
 #    "--ctorigdstport 443" was worse: it also matched connections a container
 #    *initiates* towards an external port 443, dropping the replies to every
 #    outbound HTTPS request the containers made.
-if ! iptables -C DOCKER-USER -p tcp -d "$TARGET_IP" --dport "$TARGET_PORT" \
-        -m set ! --match-set "$SET" src -j DROP 2>/dev/null; then
-    iptables -I DOCKER-USER 1 -p tcp -d "$TARGET_IP" --dport "$TARGET_PORT" \
-        -m set ! --match-set "$SET" src -j DROP
+#
+#    Built once and reused unquoted in -C and -I, so the existence check can
+#    never drift from the rule it checks for.
+RULE="-p tcp{% if geoblock_target_ip %} -d {{ geoblock_target_ip }}{% endif %} --dport {{ geoblock_target_port }} -m set ! --match-set $SET src -j DROP"
+
+# shellcheck disable=SC2086  # deliberate word splitting: RULE is an argv list
+if ! iptables -C "$CHAIN" $RULE 2>/dev/null; then
+    # shellcheck disable=SC2086
+    iptables -I "$CHAIN" 1 $RULE
 fi
 
-echo "geoblock: $COUNT prefixes allowed, DROP on $TARGET_IP:$TARGET_PORT from elsewhere"
+echo "geoblock: $COUNT prefixes allowed, $CHAIN drops $TARGET from elsewhere"

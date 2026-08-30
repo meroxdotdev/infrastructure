@@ -21,9 +21,16 @@
     state: present
   tags: ['docker', 'setup']
 
+# edge-fra is arm64. A hardcoded arch=amd64 fetches an index with no
+# installable packages, and docker-ce then fails with an unrelated-looking error.
+- name: Read the dpkg architecture
+  ansible.builtin.command: dpkg --print-architecture
+  register: dpkg_architecture
+  changed_when: false
+
 - name: Add Docker Repository
   ansible.builtin.apt_repository:
-    repo: deb [arch=amd64] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
+    repo: deb [arch={{ dpkg_architecture.stdout }}] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
     state: present
     filename: docker
     update_cache: yes

@@ -5,8 +5,8 @@
 set -eu
 
 IFACE="{{ egress_guard_interface }}"
-TARGET_IP="{{ egress_guard_target_ip }}"
-TARGET_PORT="{{ egress_guard_target_port }}"
+CHAIN="{{ egress_guard_chain }}"
+TARGET="{{ egress_guard_target_ip + ':' if egress_guard_target_ip else 'tcp/' }}{{ egress_guard_target_port }}"
 WARN_TB="{{ egress_guard_warn_tb }}"
 CUT_TB="{{ egress_guard_cut_tb }}"
 STATE="{{ egress_guard_state_dir }}"
@@ -27,24 +27,27 @@ esac
 
 TB=$(awk -v b="$TX" 'BEGIN{printf "%.3f", b/1000000000000}')
 
-# Identical argument order in -C and -I, otherwise the check never matches.
+# Identical argument order in -C, -I and -D, otherwise the check never matches.
 #
-# Matches the forwarded destination - the Traefik container and its
-# container-side port. Not the published host port: docker DNATs in nat
+# On DOCKER-USER this matches the forwarded destination - the Traefik container
+# and its container-side port. Not the published host port: docker DNATs in nat
 # PREROUTING, so FORWARD already sees the translated port. And not
 # --ctorigdstport either, which would also match connections containers
-# initiate to an external port 443 and drop their replies.
-RULE="-p tcp -d $TARGET_IP --dport $TARGET_PORT -j DROP -m comment --comment egress-guard"
+# initiate to an external port 443 and drop their replies. On a host-network
+# edge none of that applies and the destination address drops out of the rule.
+RULE="-p tcp{% if egress_guard_target_ip %} -d {{ egress_guard_target_ip }}{% endif %} --dport {{ egress_guard_target_port }} -j DROP -m comment --comment egress-guard"
 
-is_blocked() { iptables -C DOCKER-USER $RULE 2>/dev/null; }
+# shellcheck disable=SC2086  # deliberate word splitting: RULE is an argv list
+is_blocked() { iptables -C "$CHAIN" $RULE 2>/dev/null; }
 
 over_cut=$(awk -v t="$TB" -v c="$CUT_TB" 'BEGIN{print (t>=c)?1:0}')
 over_warn=$(awk -v t="$TB" -v w="$WARN_TB" 'BEGIN{print (t>=w)?1:0}')
 
 if [ "$over_cut" -eq 1 ]; then
     if ! is_blocked; then
-        iptables -I DOCKER-USER 1 $RULE
-        echo "egress-guard: ${TB} TB this month >= ${CUT_TB} TB - BLOCKED $TARGET_IP:$TARGET_PORT" >&2
+        # shellcheck disable=SC2086
+        iptables -I "$CHAIN" 1 $RULE
+        echo "egress-guard: ${TB} TB this month >= ${CUT_TB} TB - BLOCKED $TARGET in $CHAIN" >&2
         date -u +%FT%TZ > "$STATE/blocked-since"
     fi
     exit 0
@@ -52,9 +55,10 @@ fi
 
 # Below the cut: make sure a rule from a previous month is gone.
 if is_blocked; then
-    iptables -D DOCKER-USER $RULE
+    # shellcheck disable=SC2086
+    iptables -D "$CHAIN" $RULE
     rm -f "$STATE/blocked-since"
-    echo "egress-guard: ${TB} TB - below ${CUT_TB} TB, unblocked $TARGET_IP:$TARGET_PORT" >&2
+    echo "egress-guard: ${TB} TB - below ${CUT_TB} TB, unblocked $TARGET in $CHAIN" >&2
 fi
 
 if [ "$over_warn" -eq 1 ]; then

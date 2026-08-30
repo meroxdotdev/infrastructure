@@ -1,0 +1,29 @@
+# {{ ansible_managed }}
+# Bans in the chain the public traffic traverses, not INPUT: a stock ban on
+# vps01 would silently do nothing, since docker never traverses INPUT.
+# fail2ban_chain / fail2ban_target_ip carry the per-host difference.
+#
+# An ipset holds the addresses, so a ban is a set membership change rather than
+# one iptables rule each.
+{% set rule = "-p tcp" ~ (" -d " ~ fail2ban_target_ip if fail2ban_target_ip else "") ~ " --dport <target_port> -m set --match-set <ipmset> src -j DROP" %}
+[Definition]
+actionstart = ipset create <ipmset> hash:ip timeout <bantime> -exist
+              iptables -I {{ fail2ban_chain }} 1 {{ rule }}
+
+actionstop  = iptables -D {{ fail2ban_chain }} {{ rule }}
+              ipset flush <ipmset>
+              ipset destroy <ipmset>
+
+actioncheck = iptables -C {{ fail2ban_chain }} {{ rule }}
+
+actionban   = ipset add <ipmset> <ip> timeout <bantime> -exist
+{% if fail2ban_notify_url %}
+              curl -fsS -m 10 --retry 2 --data-raw "fail2ban: banned <ip> for repeated Jellyfin login failures" "{{ fail2ban_notify_url }}/fail" || true
+{% endif %}
+
+actionunban = ipset del <ipmset> <ip> -exist
+
+[Init]
+ipmset = f2b-jellyfin
+target_port = {{ fail2ban_target_port }}
+bantime = {{ fail2ban_jellyfin_bantime }}

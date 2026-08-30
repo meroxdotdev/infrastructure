@@ -1,0 +1,13 @@
+---
+# Traefik on the edge: one entrypoint, one router, one backend. Anything else
+# needing a reverse proxy belongs on vps01 behind the Cloudflare tunnel.
+edge_proxy_dir: /srv/docker/edge/traefik
+edge_proxy_image: "traefik:latest"
+
+# network_mode: host means every listener is a host listener, so ping is pinned
+# to loopback rather than left on 0.0.0.0.
+edge_proxy_ping_address: "127.0.0.1:8082"
+
+# Also defined in security_hardening, which runs first and must create the file
+# before fail2ban starts. Keep the two in step.
+traefik_log_dir: /var/log/traefik

@@ -26,8 +26,8 @@
 
 - name: Install fail2ban and ipset
   apt:
-    # ipset is needed by the dockeruser ban action, which keeps banned
-    # addresses in a set rather than one iptables rule each.
+    # ipset is needed by the proxyban action, which keeps banned addresses in
+    # a set rather than one iptables rule each.
     name: [fail2ban, ipset]
     state: present
     update_cache: yes
@@ -59,10 +59,33 @@
   when: fail2ban_jellyfin_enabled
   notify: Restart fail2ban
 
-- name: Deploy fail2ban action that bans in DOCKER-USER
+# Renamed from `dockeruser` now that the chain is a variable. Stop the jail
+# first: actionstop is the only thing that removes the old iptables rule and
+# destroys the f2b-jellyfin ipset. Delete the file first and both are orphaned,
+# and the new actionstart adds a duplicate rule beside them.
+- name: Check for the retired dockeruser ban action
+  ansible.builtin.stat:
+    path: /etc/fail2ban/action.d/dockeruser.conf
+  register: f2b_old_action
+
+- name: Stop the jail so the retired action tears its own rule down
+  ansible.builtin.command: fail2ban-client stop jellyfin-auth
+  register: f2b_stop_jail
+  changed_when: f2b_stop_jail.rc == 0
+  failed_when: false
+  when: f2b_old_action.stat.exists
+
+- name: Remove the retired dockeruser ban action
+  ansible.builtin.file:
+    path: /etc/fail2ban/action.d/dockeruser.conf
+    state: absent
+  when: f2b_old_action.stat.exists
+  notify: Restart fail2ban
+
+- name: Deploy the fail2ban ban action
   ansible.builtin.template:
-    src: action-dockeruser.conf.j2
-    dest: /etc/fail2ban/action.d/dockeruser.conf
+    src: action-proxyban.conf.j2
+    dest: /etc/fail2ban/action.d/proxyban.conf
     mode: "0644"
   when: fail2ban_jellyfin_enabled
   notify: Restart fail2ban

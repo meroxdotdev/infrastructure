@@ -1,0 +1,53 @@
+---
+# The public TLS edge in Frankfurt. Separate from site.yml: different tenancy,
+# different architecture, different blast radius, and nothing on it depends on
+# vps01.
+#
+# Two plays for the same reason site.yml has them: docker_setup and
+# security_hardening queue a Docker daemon restart, and flushing that handler
+# after edge_proxy created its container can wipe it.
+
+- name: Public edge - base OS, tailnet, firewall chain
+  hosts: edge_servers
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: initial_setup
+      tags: ['initial_setup', 'infra']
+
+    - role: docker_setup
+      tags: ['docker', 'infra']
+
+    # Before security_hardening: fail2ban's ban action writes into EDGE-INPUT
+    # at start, and the chain has to exist by then.
+    - role: edge_base
+      tags: ['edge', 'infra']
+
+    - role: security_hardening
+      tags: ['security', 'infra']
+
+- name: Public edge - filtering and the proxy itself
+  hosts: edge_servers
+  become: true
+
+  roles:
+    # Before edge_proxy: the public port must never exist for a second without
+    # the country filter in front of it.
+    - role: geoblock_ro
+      tags: ['geoblock', 'firewall', 'services']
+
+    # The 10 TB/month allowance is the account owner's. In place before the
+    # port opens, same as vps01.
+    - role: egress_guard
+      tags: ['egress', 'firewall', 'services']
+
+    - role: edge_proxy
+      tags: ['traefik', 'proxy', 'services']
+
+  post_tasks:
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg:
+          - "edge-fra deployed - https://{{ jellyfin_domain }}"
+          - "Point the DNS A record at the instance public IP, grey cloud."

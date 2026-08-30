@@ -1,0 +1,21 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Apply edge firewall
+  ansible.builtin.command: /usr/local/sbin/edge-firewall.sh
+  changed_when: true
+
+# Accepted sockets inherit the congestion control algorithm from the listening
+# socket, not from the current netns default. Traefik's listener is created
+# once at container start, so a sysctl change alone leaves every new connection
+# on the old algorithm — set correctly and completely inert. Only a restart of
+# the process that owns the listener actually applies it.
+- name: Restart traefik after a tuning change
+  when:
+    - not ansible_check_mode
+    - edge_traefik_compose.stat.exists | default(false)
+  community.docker.docker_compose_v2:
+    project_src: "{{ edge_proxy_dir }}"
+    state: restarted

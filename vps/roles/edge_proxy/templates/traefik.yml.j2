@@ -1,0 +1,57 @@
+# {{ ansible_managed }}
+#
+# One public listener, one router. No api/dashboard, and no docker provider —
+# so the daemon socket is never mounted into an internet-facing container.
+# /config, which ansible owns, is the only configuration source.
+
+entryPoints:
+  # No :80. It would serve nothing but a 308, and it would be the one listener
+  # not covered by the geoblock set. http:// to this host fails at connect.
+  https:
+    address: ":443"
+  # Loopback, because network_mode: host makes every listener a host listener.
+  ping:
+    address: "{{ edge_proxy_ping_address }}"
+
+ping:
+  entryPoint: ping
+
+# Access log. Two reasons: nothing else records who reached this host, and
+# fail2ban needs a file to read failed logins from.
+#
+# Only 4xx/5xx are kept. Successful playback would otherwise write a line per
+# HLS segment and drown the signal.
+#
+# Jellyfin sometimes carries an api_key in the query string, and RequestPath
+# includes it. The file is therefore root-only and rotated; do not relax those
+# permissions or ship it somewhere less protected.
+accessLog:
+  filePath: /var/log/traefik/access.log
+  format: json
+  bufferingSize: 50
+  filters:
+    statusCodes:
+      - "400-499"
+      - "500-599"
+  fields:
+    headers:
+      defaultMode: drop
+      names:
+        User-Agent: keep
+
+providers:
+  file:
+    directory: /config
+    watch: true
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: {{ cloudflare_email }}
+      storage: acme.json
+      caServer: https://acme-v02.api.letsencrypt.org/directory
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1:53"
+          - "1.0.0.1:53"

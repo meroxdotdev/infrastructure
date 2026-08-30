@@ -1,0 +1,72 @@
+---
+- name: Create the Traefik directory structure
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ edge_proxy_dir }}"
+    - "{{ edge_proxy_dir }}/data"
+    - "{{ edge_proxy_dir }}/config"
+
+- name: Install logrotate
+  # Not present on the minimal Oracle Ubuntu image. Without it the logrotate
+  # config below is an inert file and the access log grows unbounded.
+  ansible.builtin.apt:
+    name: logrotate
+    state: present
+    update_cache: true
+
+- name: Create the Traefik access log directory
+  ansible.builtin.file:
+    path: "{{ traefik_log_dir }}"
+    state: directory
+    mode: "0750"
+
+- name: Deploy logrotate config for the access log
+  ansible.builtin.template:
+    src: logrotate-traefik.j2
+    dest: /etc/logrotate.d/traefik
+    mode: "0644"
+
+- name: Deploy traefik.yml static configuration
+  ansible.builtin.template:
+    src: traefik.yml.j2
+    dest: "{{ edge_proxy_dir }}/data/traefik.yml"
+    mode: "0644"
+  notify: Restart edge traefik
+
+- name: Deploy the dynamic configuration
+  ansible.builtin.template:
+    src: config.yml.j2
+    dest: "{{ edge_proxy_dir }}/config/config.yml"
+    mode: "0644"
+  notify: Restart edge traefik
+
+- name: Create the Cloudflare API token file
+  ansible.builtin.copy:
+    content: "{{ cloudflare_api_token }}"
+    dest: "{{ edge_proxy_dir }}/cf_api_token.txt"
+    mode: "0600"
+  no_log: true
+  notify: Restart edge traefik
+
+- name: Create acme.json with the permissions Traefik insists on
+  ansible.builtin.file:
+    path: "{{ edge_proxy_dir }}/data/acme.json"
+    state: touch
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Deploy the Traefik compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ edge_proxy_dir }}/docker-compose.yml"
+    mode: "0644"
+  notify: Restart edge traefik
+
+- name: Start Traefik
+  community.docker.docker_compose_v2:
+    project_src: "{{ edge_proxy_dir }}"
+    state: present

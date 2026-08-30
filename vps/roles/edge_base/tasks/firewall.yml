@@ -1,0 +1,25 @@
+---
+- name: Deploy the edge firewall script
+  ansible.builtin.template:
+    src: edge-firewall.sh.j2
+    dest: /usr/local/sbin/edge-firewall.sh
+    mode: "0755"
+  notify: Apply edge firewall
+
+- name: Deploy the edge firewall unit
+  ansible.builtin.template:
+    src: edge-firewall.service.j2
+    dest: /etc/systemd/system/edge-firewall.service
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Flush handlers so the chain exists before anything writes into it
+  # geoblock_ro, egress_guard and fail2ban insert into it and fail if it is
+  # missing, so the handlers cannot wait for the end of the play.
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable the edge firewall at boot
+  ansible.builtin.systemd:
+    name: edge-firewall.service
+    enabled: true
+    state: started

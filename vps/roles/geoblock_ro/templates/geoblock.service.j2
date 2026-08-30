@@ -1,9 +1,9 @@
 # {{ ansible_managed }}
 [Unit]
-Description=Rebuild the geoblock ipset and DOCKER-USER rule
-After=network-online.target docker.service
+Description=Rebuild the geoblock ipset and its firewall rule
+After=network-online.target {{ geoblock_chain_unit }}
 Wants=network-online.target
-Requires=docker.service
+Requires={{ geoblock_chain_unit }}
 
 [Service]
 Type=oneshot

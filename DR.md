@@ -29,6 +29,11 @@ prod.
 `jellyfin`, `jellyfin-public` and `nvidia-device-plugin` stay down by
 design — see step 8 of the quickstart.
 
+**Not part of DR at all:** `edge-fra`, the public TLS edge in Frankfurt. It is
+stateless by design and in no backup set — `cd vps && make edge-setup` rebuilds
+it in ~6 min, and until it exists `studio.merox.dev` simply points back at
+vps01. See [docs/jellyfin-public-exposure.md](docs/jellyfin-public-exposure.md).
+
 ---
 
 ## Why the restore looks the way it does
