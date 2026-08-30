@@ -272,3 +272,52 @@ spec:
     volumeHandle: qbittorrent-restored
   persistentVolumeReclaimPolicy: Retain
   storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jellyfin-public-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: jellyfin-public
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: jellyfin-public-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: radarr-public-restored-pv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: radarr-public
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: radarr-public-restored
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn

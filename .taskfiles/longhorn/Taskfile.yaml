@@ -178,6 +178,16 @@ tasks:
         vars: { NAME: immich-library-restored, PVC_NAME: immich-library-ssd }
       - task: restore-volume
         vars: { NAME: immich-external-library-restored, PVC_NAME: immich-external-library-ssd }
+      # The public stack, backed up since 2026-08-30. Both PVCs are
+      # dynamically provisioned, so the backup is found by pvcName rather than
+      # by volume-name prefix — hence PVC_NAME, same as immich-postgres/n8n.
+      # jellyfin-public carries the NVENC setting, which fails silently when
+      # lost; radarr-public carries the movie list, which is what makes a
+      # rebuild a re-download instead of guesswork.
+      - task: restore-volume
+        vars: { NAME: jellyfin-public-restored, PVC_NAME: jellyfin-public }
+      - task: restore-volume
+        vars: { NAME: radarr-public-restored, PVC_NAME: radarr-public }
       # Observability (loki/prometheus/grafana) is no longer backed up —
       # those PVCs are provisioned fresh (see create-statefulset-pvcs).
 
@@ -282,7 +292,7 @@ tasks:
     cmds:
       - |
         echo "→ Waiting for restore volume replicas to initialize..."
-        VOLUMES="jellyfin-restored prowlarr-restored radarr-restored sonarr-restored immich-postgres-restored n8n-restored"
+        VOLUMES="jellyfin-restored prowlarr-restored radarr-restored sonarr-restored immich-postgres-restored n8n-restored jellyfin-public-restored radarr-public-restored"
         for i in $(seq 1 12); do
           ALL_READY=true
           for VOL in $VOLUMES; do
@@ -365,7 +375,7 @@ tasks:
     cmds:
       - |
         echo "→ Fixing PVC field ownership to prevent Flux SSA volumeName conflicts..."
-        for pvc_item in "default:jellyfin" "default:prowlarr" "default:radarr" "default:sonarr" "default:immich-postgres" "default:n8n"; do
+        for pvc_item in "default:jellyfin" "default:prowlarr" "default:radarr" "default:sonarr" "default:immich-postgres" "default:n8n" "default:jellyfin-public" "default:radarr-public"; do
           NS=${pvc_item%%:*}
           PVC=${pvc_item##*:}
           VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null)
@@ -499,13 +509,13 @@ tasks:
         sleep 5
 
         echo "→ Reconciling app Kustomizations (creates cache PVCs + HelmReleases)..."
-        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich n8n; do
+        for app in jellyfin jellyfin-public jellyseerr prowlarr qbittorrent radarr radarr-public sonarr immich n8n; do
           flux reconcile kustomization $app -n default 2>/dev/null &
         done
         wait
 
         echo "→ Reconciling media stack HelmReleases..."
-        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich-postgres immich n8n; do
+        for app in jellyfin jellyfin-public jellyseerr prowlarr qbittorrent radarr radarr-public sonarr immich-postgres immich n8n; do
           flux reconcile helmrelease $app -n default 2>/dev/null &
         done
         wait
