@@ -46,6 +46,34 @@ nodes:
         mtu: 1500
         vip:
           ip: "10.57.57.88"
+  - hostname: "kubernetes-worker-1"
+    ipAddress: "10.57.57.81"
+    installDisk: "/dev/sda"
+    controlPlane: false
+    machineSpec:
+      secureboot: false
+    # Iris Xe passthrough for Jellyfin QuickSync (i915 + intel-ucode), plus the
+    # two extensions Longhorn needs on the host: iscsi-tools for iscsiadm and
+    # util-linux-tools. Without them longhorn-manager crashloops on this node
+    # and no Longhorn volume can attach here. Same set the control plane runs —
+    # diff against `talosctl get extensions` there before changing it.
+    # Regenerate with the POST in docs/operations.md.
+    talosImageURL: factory.talos.dev/installer/249d9135de54962744e917cfe654117000cba369f9152fbab9d055a00aa3664f
+    nodeLabels:
+      # Consumed by intel-device-plugin-operator, which exposes
+      # gpu.intel.com/i915. Set ahead of the operator being restored from
+      # 6bb0f3d^ — a label with no consumer is inert.
+      intel.feature.node.kubernetes.io/gpu: "true"
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:00:57:81"
+        dhcp: false
+        addresses:
+          - "10.57.57.81/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "10.57.57.1"
+        mtu: 1500
   # --- SINGLE-NODE since 2026-08-17 ------------------------------------------
   # Nodes 2 and 3 were removed from etcd and Kubernetes and their VMs deleted.
   # See talos/SINGLE-NODE.md; uncomment both blocks to roll back to three.

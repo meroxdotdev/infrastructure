@@ -53,16 +53,210 @@ make dr-full            # provision fallback VPS + cloud-init deploys everything
 
 ## Maintenance
 
-### Adding a node
+### Adding a worker node
+
+Adds compute without touching etcd. The control-plane count stays odd — one
+today, deliberately ([../talos/SINGLE-NODE.md](../talos/SINGLE-NODE.md)) — so a
+second physical host joins as a worker, not as a second control plane. Two
+control planes are strictly worse than one: they cannot form a quorum.
+
+Worked example below: `kubernetes-worker-1`, VM 810 on `px-0` (10.57.57.254),
+node address 10.57.57.81.
+
+**Check the version skew first.** A new node is built from `talos/talenv.yaml`,
+so if that file is ahead of the running control plane the worker boots with a
+kubelet newer than the API server — unsupported, and it will not stay healthy.
 
 ```bash
-# Keep an odd number of control-plane nodes (1, 3, 5) for quorum
-talosctl get disks -n <new-node-ip> --insecure    # find the install disk
-talosctl get links -n <new-node-ip> --insecure    # find the MAC address
-# Add entry to talos/talconfig.yaml with disk + MAC
+kubectl get nodes -o wide                      # VERSION column
+yq '.kubernetesVersion' talos/talenv.yaml       # what a new node would get
+```
+
+If talenv is ahead, upgrade the control plane first: `task
+talos:upgrade-node IP=10.57.57.80` then `task talos:upgrade-k8s`.
+
+**1. Fetch the ISO** onto the target host, once. This is the schematic the
+plain (non-GPU) nodes used — no extensions:
+
+```bash
+ssh root@10.57.57.254 'cd /local_data/template/iso && curl -Lo talos-v1.13.9-metal-amd64.iso \
+  https://factory.talos.dev/image/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510/v1.13.9/metal-amd64.iso'
+```
+
+Name it with the version. The directory already holds ISOs from earlier
+rebuilds, including an undated `metal-amd64.iso` — booting the wrong one
+installs the wrong Talos and the mistake only shows up as a skew error later.
+
+**2. Create the VM.** Terraform is not involved — `talos/terraform/` provisions
+DR VMs only, and this node is permanent.
+
+```bash
+ssh root@10.57.57.254 'qm create 810 --name kubernetes-worker-1 --tags k8s \
+  --cores 8 --sockets 1 --cpu host --memory 32768 --numa 0 \
+  --ostype l26 --bios ovmf --machine q35 --scsihw virtio-scsi-single --onboot 1 \
+  --boot "order=scsi0;ide2" \
+  --net0 "virtio=BC:24:11:00:57:81,bridge=vmbr0,firewall=1" \
+  --scsi0 "cluster-storage:250,format=raw,iothread=1,ssd=1" \
+  --efidisk0 "cluster-storage:1,efitype=4m" \
+  --ide2 "local-data:iso/talos-v1.13.9-metal-amd64.iso,media=cdrom"'
+```
+
+The MAC is not cosmetic. `networkInterfaces[].deviceSelector.hardwareAddr` in
+`talconfig.yaml` selects the NIC by MAC, so a VM whose MAC disagrees with the
+file boots with no address and no way in. Pick the MAC here, then paste the
+same one into git.
+
+Boot order is disk-then-ISO on purpose: the empty disk falls through to the
+ISO for the install, and every boot afterwards comes off the disk. Detach the
+ISO once the node is up.
+
+**3. Boot it** and wait ~60s for maintenance mode. It takes a DHCP lease first:
+
+```bash
+ssh root@10.57.57.254 'qm start 810'
+nmap -Pn -n -p 50000 --open 10.57.57.0/24      # find the maintenance-mode node
+```
+
+**4. Declare it in git.** Add the node to `talos/talconfig.yaml`. Put any node
+labels in the node's own `nodeLabels:`, the way `kubernetes-controlplane-1`
+does — do **not** uncomment the `worker:` patches block at the bottom of the
+file. The only thing it carries is `longhorn: "true"`, which nothing reads:
+`longhorn-manager` is a DaemonSet with no `nodeSelector` and
+`system-managed-components-node-selector` is empty, so every node is a Longhorn
+node whether it has the label or not.
+
+```yaml
+  - hostname: "kubernetes-worker-1"
+    ipAddress: "10.57.57.81"
+    installDisk: "/dev/sda"
+    controlPlane: false
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:00:57:81"
+        dhcp: false
+        addresses:
+          - "10.57.57.81/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "10.57.57.1"
+        mtu: 1500
+```
+
+No `vip:` block — the VIP (10.57.57.88) belongs to control-plane nodes only.
+
+**5. Apply the config.** The first apply must be `--insecure` against the DHCP
+address. `task talos:apply-node` does not work yet: its preconditions read a
+machineconfig the node does not have.
+
+```bash
 task talos:generate-config
-task talos:apply-node IP=<new-node-ip>
-kubectl get nodes --watch
+talosctl apply-config --insecure -n <dhcp-ip> \
+  -f talos/clusterconfig/kubernetes-kubernetes-worker-1.yaml
+```
+
+The node installs, reboots onto 10.57.57.81 and joins by itself — workers are
+never bootstrapped, only control planes are. From here on the normal task
+works: `task talos:apply-node IP=10.57.57.81`.
+
+```bash
+kubectl get nodes -w
+```
+
+**6. Decide its storage role.** Longhorn picks up any node carrying the
+`longhorn: "true"` label as a scheduling target. Whether a given node should
+hold replicas is a separate decision from whether it runs pods — read the
+comments in
+[../kubernetes/apps/storage/longhorn/app/helmrelease.yaml](../kubernetes/apps/storage/longhorn/app/helmrelease.yaml)
+for why `defaultReplicaCount` is 1 before changing it. To keep a node
+compute-only:
+
+```bash
+kubectl -n longhorn-system patch nodes.longhorn.io kubernetes-worker-1 \
+  --type=merge -p '{"spec":{"allowScheduling":false}}'
+```
+
+#### Variant: a worker that transcodes
+
+For a node that has to run Jellyfin, three things change.
+
+**A different schematic.** The plain image above has no extensions. Build the
+list by diffing against what the control plane already runs, not by thinking
+about the GPU alone:
+
+```bash
+talosctl -n 10.57.57.80 get extensions
+```
+
+The GPU needs `siderolabs/i915` and `siderolabs/intel-ucode`. **Longhorn needs
+`siderolabs/iscsi-tools` and `siderolabs/util-linux-tools` on every node** —
+without `iscsiadm`, `longhorn-manager` crashloops with `failed to check
+environment` and no volume can ever attach there. That failure appears minutes
+after the node looks `Ready`, so it is easy to build the image without them.
+
+```bash
+cat > /tmp/schematic.yaml <<'EOF'
+customization:
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/i915
+      - siderolabs/intel-ucode
+      - siderolabs/iscsi-tools
+      - siderolabs/util-linux-tools
+EOF
+curl -X POST --data-binary @/tmp/schematic.yaml https://factory.talos.dev/schematics
+```
+
+The request is idempotent — the same extension list always returns the same id.
+For this set it is
+`249d9135de54962744e917cfe654117000cba369f9152fbab9d055a00aa3664f`, which is
+what `kubernetes-worker-1` runs. Use it for both the ISO URL and
+`talosImageURL`, in place of the plain schematic above.
+
+Getting this wrong is recoverable without rebuilding the node: fix
+`talosImageURL`, then `task talos:generate-config`, `task talos:apply-node`,
+`task talos:upgrade-node IP=… DRAIN=false`. The node reboots onto the new
+extension set in about a minute.
+
+**The GPU on the VM.** On `px-0` the iGPU is alone in IOMMU group 0 and already
+bound to `vfio-pci`, left over from when that host ran the Intel setup — so
+nothing has to be prepared on the host:
+
+```bash
+ssh root@10.57.57.254 'qm set 810 --hostpci0 0000:00:02.0'
+```
+
+**The node label.** Uncomment `intel.feature.node.kubernetes.io/gpu` in
+[../talos/patches/global/machine-longhorn-labels.yaml](../talos/patches/global/machine-longhorn-labels.yaml).
+The Kubernetes side — `intel-device-plugin-operator`, which exposes
+`gpu.intel.com/i915` — was deleted in `6bb0f3d` when px-0 was decommissioned,
+not suspended as `docs/gpu-transcoding.md` still claims. Recover it from git
+rather than rewriting it:
+
+```bash
+git show 6bb0f3d^:kubernetes/apps/kube-system/intel-device-plugin-operator/ks.yaml
+```
+
+#### NFS: the export ACL is per host
+
+`/etc/exports` on pve lists client IPs one by one, not the subnet — see the
+comment at the top of
+[../proxmox/r730xd/etc/exports](../proxmox/r730xd/etc/exports). A new node is
+not on that list, so every inline NFS mount (Jellyfin, jellyfin-public,
+qbittorrent, radarr-public) fails to mount on it with a permission error that
+looks nothing like an ACL problem. Add the node's address to each export line
+and `exportfs -ra`, in the repo copy and on the host both.
+
+### Removing a worker node
+
+```bash
+kubectl drain kubernetes-worker-1 --ignore-daemonsets --delete-emptydir-data
+kubectl delete node kubernetes-worker-1
+talosctl reset -n 10.57.57.81 --graceful=false --reboot
+# then delete the node block from talconfig.yaml, and the VM
+ssh root@10.57.57.254 'qm stop 810 && qm destroy 810'
 ```
 
 ### Automatic updates (Renovate)

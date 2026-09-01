@@ -4,12 +4,14 @@
 # tree. Narrowed 2026-08-11 to the hosts that actually mount, verified
 # against live nfsd peers first.
 #
-#   10.57.57.80/82/84  Talos nodes (all pod mounts originate here)
+#   10.57.57.80        kubernetes-controlplane-1 (pve)
+#   10.57.57.81        kubernetes-worker-1 (px-0) — added 2026-09-01
+#   10.57.57.82/84     retired control planes, kept for a 3-node rollback
 #
 # Adding a client means adding its IP here, not widening back to /24.
-/media/library                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
-/media/backups                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
-/media/backups/longhorn-garage  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
+/media/library                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.81(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
+/media/backups                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.81(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
+/media/backups/longhorn-garage  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.81(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
 
 
 # Public Jellyfin library, on the SSD pool so streaming to friends never wakes
@@ -26,4 +28,4 @@
 # Layout inside: Movies/ is what Jellyfin scans, downloads/ is qbittorrent's
 # save path for the public category. Same filesystem on purpose, so radarr
 # imports by hardlink and a seeding torrent costs no second copy.
-/public/library                 10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
+/public/library                 10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.81(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
