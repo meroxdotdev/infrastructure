@@ -1,0 +1,14 @@
+# Passwords are redacted — this repo is public. The real values are in
+# /etc/nut/upsd.users on this host. They guard read-only UPS status on the
+# LAN and nothing else; if lost, generate new ones and write them here and in
+# the matching upsmon.conf. Nothing needs to be restored from a backup.
+#
+# upsmon   local monitor on pve, runs the driver and shuts this host down
+# upsslave px-0, network client, shuts itself down — added 2026-09-01
+[upsmon]
+    password = REDACTED
+    upsmon master
+
+[upsslave]
+    password = REDACTED
+    upsmon slave

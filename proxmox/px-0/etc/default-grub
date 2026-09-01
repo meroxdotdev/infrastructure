@@ -1,0 +1,2 @@
+GRUB_CMDLINE_LINUX_DEFAULT="intel_iommu=on iommu=pt module_blacklist=i915,snd_hda_intel,snd_hda_codec_hdmi,snd_sof_pci_intel_tg1"
+GRUB_CMDLINE_LINUX=""

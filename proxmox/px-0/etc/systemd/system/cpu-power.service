@@ -1,0 +1,28 @@
+# The Proxmox kernel is built with CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y
+# (Debian stock defaults to powersave), so every boot comes up on the
+# performance governor with EPP pinned to performance. Nothing on this host
+# was setting that — it is the compiled-in default. cpufreq attributes are
+# sysfs, i.e. kernel state in RAM, so a write is lost on reboot and there is
+# no config file to put it in. Hence this unit.
+#
+# Measured on 2026-09-01: package idle 2.08 W -> 0.83 W.
+#
+# intel_pstate runs in active mode here, so `powersave` is not a low-frequency
+# governor — the CPU still reaches full turbo under load. It hands the ramping
+# decision to the hardware (HWP) instead of pinning the floor high.
+[Unit]
+Description=CPU power policy (powersave governor, balance_power EPP)
+After=multi-user.target
+ConditionPathExists=/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Order matters. While the governor is `performance`, intel_pstate pins the
+# energy preference to `performance` and silently discards writes to it, so
+# setting EPP first does nothing at all.
+ExecStart=/bin/sh -c 'echo powersave | tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor >/dev/null'
+ExecStart=/bin/sh -c 'echo balance_power | tee /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference >/dev/null'
+
+[Install]
+WantedBy=multi-user.target

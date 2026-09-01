@@ -59,8 +59,8 @@ if ! diff -q \
 fi
 
 # --- plain /etc files ------------------------------------------------------
-# Skipped deliberately: authorized_keys and nut/upsmon.conf carry redacted
-# secrets in git, so they can never match.
+# Skipped deliberately: authorized_keys, nut/upsmon.conf and nut/upsd.users
+# carry redacted secrets in git, so they can never match.
 check() {
   [ -f "$1" ] && [ -f "$2" ] || return 0
   diff -q "$1" "$2" >/dev/null 2>&1 || DRIFT="$DRIFT\n  differs: $3"
@@ -69,6 +69,8 @@ check "$G/etc/exports"            /etc/exports            "/etc/exports"
 check "$G/etc/storage.cfg"        /etc/pve/storage.cfg    "/etc/pve/storage.cfg"
 check "$G/etc/network-interfaces" /etc/network/interfaces "/etc/network/interfaces"
 check "$G/etc/nut/ups.conf"       /etc/nut/ups.conf       "/etc/nut/ups.conf"
+check "$G/etc/nut/nut.conf"       /etc/nut/nut.conf       "/etc/nut/nut.conf"
+check "$G/etc/nut/upsd.conf"      /etc/nut/upsd.conf      "/etc/nut/upsd.conf"
 
 # --- report ----------------------------------------------------------------
 if [ -n "$DRIFT" ]; then

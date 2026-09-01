@@ -1,6 +1,6 @@
 # merox.dev Infrastructure
 
-Single-node Talos Kubernetes cluster on Proxmox, plus an Oracle Cloud VPS for
+Talos Kubernetes cluster on two Proxmox hosts, plus an Oracle Cloud VPS for
 off-site services. Everything is declarative and GitOps-managed: `git push`
 deploys, updates or rebuilds any part.
 
@@ -16,7 +16,7 @@ Read this first if it has been a while.
 | | |
 |---|---|
 | **Network** | pfSense routes and hands out addresses. Tailscale is the only way in from outside and nothing is port-forwarded; what is public reaches the internet through an outbound-only Cloudflare tunnel. |
-| **Compute** | One Proxmox host (`pve`) runs a single-node Talos Kubernetes cluster in VM 800. Flux reconciles it from this repo, so a push is the deploy — there is no other way to change it. |
+| **Compute** | Two Proxmox hosts, standalone rather than clustered. `pve` runs the Talos control plane (VM 800) and holds every stateful thing; `px-0` runs a worker (VM 810) for compute, with its iGPU passed through. Flux reconciles the cluster from this repo, so a push is the deploy — there is no other way to change it. |
 | **Storage** | ZFS. `media` is twelve SAS disks in two raidz2 vdevs, holds bulk and spins down when idle; `rpool` is a mirrored SSD pair holding anything an application touches during the day. |
 | **Backup** | Every source writes into `/media/backups/` on pve. From there restic pushes it to Oracle nightly, and a weekly rsync relays a plain-file copy to the Synology. Only what git cannot rebuild is backed up. |
 | **Off-site** | An Oracle Cloud VPS runs what should outlive the house: Authentik SSO, Traefik, Pi-hole, Joplin, Guacamole, Homepage. It depends on nothing at home, pushes its own state to pve nightly, and is rebuilt with `cd vps && make dr-full`. Tailscale is what joins the two sites. |
@@ -95,7 +95,7 @@ off the VPS.
 | Oracle Cloud ARM VPS — `vps01`, us-phoenix-1 | Off-site services | 4 vCPU ARM, 24GB, 200GB |
 | Oracle Cloud ARM VPS — `edge-fra`, eu-frankfurt-1 | Public TLS edge, borrowed tenancy | 2 vCPU ARM, 12GB, 45GB |
 | Synology DS223+ — `10.57.57.201` | Cold storage only, weekly versioned push from pve | 2x2TB RAID1 |
-| Beelink GTi13 Ultra | DR drill target, otherwise off | i9-13900HK, 64GB DDR5, 2x1TB NVMe |
+| Beelink GTi13 Ultra — `px-0`, `10.57.57.254` | Second Proxmox host: the Kubernetes worker (VM 810, Iris Xe passed through) and Proxmox Datacenter Manager. Also the DR drill target. [Runbook](proxmox/px-0/README.md) | i9-13900HK, 64GB DDR5, 2x1TB NVMe (QLC) |
 | Dell OptiPlex 3050 ×2 | Retained, powered off | i5-6500T, 32GB, 128GB NVMe |
 
 ## Where to go
