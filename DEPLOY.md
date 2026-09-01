@@ -81,10 +81,10 @@ From a node in maintenance mode: `talosctl get disks -n <ip> --insecure` and
 Then follow [`docs/dr-quickstart.md`](docs/dr-quickstart.md) from step 2 —
 `dr:create-vms` through `dr:restore-prod`. Same eight commands.
 
-**No Nvidia GPU on the new hardware?** Remove `nvidia.com/gpu` and
-`runtimeClassName: nvidia` from the Jellyfin HelmRelease and suspend
-`nvidia-device-plugin`. [`docs/gpu-transcoding.md`](docs/gpu-transcoding.md)
-has the Intel QSV path, kept suspended in git for exactly this.
+**No Intel iGPU on the new hardware?** Remove the `gpu.intel.com/i915`
+request from both Jellyfin HelmReleases and suspend
+`intel-device-plugin-operator`. Jellyfin then transcodes in software.
+[`docs/gpu-transcoding.md`](docs/gpu-transcoding.md) has the detail.
 
 ## Verify
 

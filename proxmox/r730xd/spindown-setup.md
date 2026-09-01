@@ -33,7 +33,7 @@ stalls, so etcd's fsync stalls with it.
 Two things have changed since that was first written, and both cut the same
 way. `rpool` is a 2-disk mirror since 2026-08-27, not a 4-disk RAID10 — half the
 spindles absorbing the stall.
-And the cluster has been single-node since 2026-08-17, so there is no quorum
+And the cluster has had a single etcd member since 2026-08-17, so there is no quorum
 to lose: etcd gets slow, it no longer flaps.
 
 Measured 2026-08-16, with the old per-disk enforcer: 24 parks in one hour of

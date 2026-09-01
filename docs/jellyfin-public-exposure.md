@@ -46,7 +46,7 @@ record. Everything that must outlive the house stays on `vps01`.
 | Library | 1.11 TB, 4K, SAS array | curated 1080p, SSD |
 | Reachable from internet | no | yes |
 | Accounts, watch history | yours | two shared accounts |
-| GPU | Quadro P2200 | time-sliced share of the same card |
+| GPU | Intel Iris Xe on px-0 | a share of the same iGPU |
 | Longhorn backup | yes | no, fully reconstructible |
 
 RCE in the public instance reaches a read-only view of re-encoded films and
@@ -57,10 +57,11 @@ Streaming never wakes the SAS array: SSD ~1.5 W vs ~60-80 W for twelve drives.
 Content is derived: re-encoded once to H.264 1080p (~6-8 GB), ~50 titles in the
 400 GB quota.
 
-**NVENC is not automatic.** `HardwareAccelerationType` defaults to `none`; set
-it to `nvenc` in `/config/config/encoding.xml` and restart. PVC state, outside
-the backup set — re-do it after any PVC recreation or every stream falls back
-to software and takes the single-node control plane with it.
+**Hardware transcoding is not automatic.** `HardwareAccelerationType` defaults
+to `none`; set it to `qsv` with `QsvDevice = /dev/dri/renderD128` in
+`/config/config/encoding.xml` and restart. PVC state, outside the backup set —
+re-do it after any PVC recreation or every stream falls back to software and
+saturates the node.
 
 ## How the edge is built
 
@@ -173,7 +174,7 @@ Configured, read from the running instance 2026-08-30:
 | `prieteni` | 15 Mbps | 3 | yes |
 | `familie` | 15 Mbps | 3 | yes |
 
-Server-wide: Quick Connect off, session inactivity timeout 30 min, NVENC on.
+Server-wide: Quick Connect off, session inactivity timeout 30 min, QuickSync on.
 No native 2FA. One account per person — shared accounts collide in Continue
 Watching and cannot be revoked individually.
 
@@ -222,8 +223,8 @@ Grey cloud means no Cloudflare WAF, rate limiting or bot protection — all
 filtering is on the edge: ipset for geography, Traefik for rate limiting.
 
 Disclaimer and CSS live in `kubernetes/apps/default/jellyfin-public/branding/`;
-Jellyfin keeps them in the config PVC, so they travel with the NVENC setting
-and anything that recreates the PVC loses all three.
+Jellyfin keeps them in the config PVC, so they travel with the transcoder
+setting and anything that recreates the PVC loses all three.
 
 ## Retiring the old path on vps01
 

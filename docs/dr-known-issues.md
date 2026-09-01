@@ -44,9 +44,10 @@ Two items, neither of which affects a drill.
 | First **cold** boot of a Terraform-made DR node lands in maintenance mode instead of the installed system | `main.tf` sets `boot_order = ["ide2", "scsi0"]` and leaves the ISO attached. Masked in practice because Talos upgrades use `kexec`, and because a DR cluster is destroyed rather than rebooted | Only matters if a DR cluster is kept: `qm set <vmid> --boot order=scsi0` and `--ide2 none,media=cdrom`. The `lifecycle { ignore_changes = [cdrom] }` block means Terraform will not fight it |
 
 **Not a bug:** `talosctl get machinestatus` never leaves `booting` on
-GPU-less hardware. `talconfig.yaml` uses the Nvidia-flavoured Talos image,
-so `ext-nvidia-persistenced` waits forever for `/sys/bus/pci/drivers/nvidia`
-and the stage never advances. Judge the node by `talosctl services` — `etcd`
+GPU-less hardware. `kubernetes-controlplane-1` still uses the Nvidia-flavoured
+Talos image, so `ext-nvidia-persistenced` waits forever for
+`/sys/bus/pci/drivers/nvidia` and the stage never advances. It goes away when
+the Quadro and its extensions are retired — see docs/gpu-transcoding.md. Judge the node by `talosctl services` — `etcd`
 and `kubelet` at `Running/OK` is the real signal.
 
 Note: `dr-verify.sh --phase all` runs VPS checks with local `docker ps` —

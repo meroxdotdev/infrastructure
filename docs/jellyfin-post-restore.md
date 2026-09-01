@@ -57,23 +57,25 @@ matrix and host-level GPU passthrough config live in
 [gpu-transcoding.md](./gpu-transcoding.md) — this section is only the
 checklist of values to verify after a restore.
 
-### Hardware Acceleration (current — Nvidia NVENC/NVDEC)
+### Hardware Acceleration (current — Intel QuickSync)
 
 | Setting                            | Value                      |
 | ---------------------------------- | -------------------------- |
-| Hardware acceleration              | **Nvidia NVENC**           |
+| Hardware acceleration              | **Intel QuickSync (QSV)**  |
+| QSV device                         | `/dev/dri/renderD128`      |
 | Hardware encoding                  | ✅ enabled                 |
-| Intel Low-Power H.264/HEVC encoder | n/a (Intel-only, disabled) |
+| Intel Low-Power H.264/HEVC encoder | ✅ enabled                 |
 
-Codec support (decode/encode, Pascal-specific AV1 gap) is documented once in
-[gpu-transcoding.md](./gpu-transcoding.md#jellyfin-encodingxml) — not
-repeated here.
+Codec support is documented once in
+[gpu-transcoding.md](./gpu-transcoding.md#jellyfin-encodingxml) — not repeated
+here. Ask the hardware rather than trusting a list:
+`vainfo --display drm --device /dev/dri/renderD128` from inside the pod.
 
 ### Tonemapping
 
 | Setting                           | Value                            |
 | --------------------------------- | -------------------------------- |
-| VPP Tonemapping (HDR→SDR)         | ❌ disabled — Intel-only feature |
+| VPP Tonemapping (HDR→SDR)         | ✅ enabled — Intel-accelerated   |
 | Tonemapping (generic OpenCL/CUDA) | ✅ enabled                       |
 | Algorithm                         | bt2390                           |
 
@@ -162,8 +164,8 @@ These do **not** need manual intervention after restore:
 
 | What                                                                 | Where configured                                |
 | -------------------------------------------------------------------- | ----------------------------------------------- |
-| Nvidia GPU device (`nvidia.com/gpu: 1`) + `runtimeClassName: nvidia` | `helmrelease.yaml` → `resources.limits` / `pod` |
-| Video group access (`supplementalGroups: [44]`)                      | `helmrelease.yaml` → `securityContext`          |
+| Intel GPU device (`gpu.intel.com/i915: 1`), which also pins the pod to px-0 | `helmrelease.yaml` → `resources.limits`   |
+| Video group access (`supplementalGroups: [44]`) — inert on Talos, renderD128 is 0666 | `helmrelease.yaml` → `securityContext` |
 | NFS media mount (read-only from R730xd, `NFS_SERVER` var)            | `helmrelease.yaml` → `persistence.media`        |
 | Longhorn PVCs for config + metadata cache                            | `pvc.yaml`                                      |
 | `JELLYFIN_PublishedServerUris` env var                               | `helmrelease.yaml` → `env`                      |
@@ -178,7 +180,7 @@ After a full cluster restore:
 
 - [ ] Verify `network.xml` — LAN Networks includes `100.64.0.0/10`
 - [ ] Verify `network.xml` — Known Proxies has `10.57.57.101`
-- [ ] Verify `encoding.xml` — `HardwareAccelerationType = nvenc`, `AllowAv1Encoding = false`, `AllowHevcEncoding = true`, `EnableSegmentDeletion = true`
+- [ ] Verify `encoding.xml` — `HardwareAccelerationType = qsv`, `QsvDevice = /dev/dri/renderD128`, `AllowAv1Encoding = false` (Raptor Lake decodes AV1 but does not encode it), `AllowHevcEncoding = true`, `EnableSegmentDeletion = true`
 - [ ] Verify Nvidia GPU is present: `kubectl exec -n default <pod> -- nvidia-smi`
 - [ ] Verify NFS media mount: `kubectl exec -n default <pod> -- ls /media/`
 - [ ] Test stream on LAN → should direct play (no transcode)

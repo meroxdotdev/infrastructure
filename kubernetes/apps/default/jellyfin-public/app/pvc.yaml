@@ -6,10 +6,10 @@ metadata:
   namespace: default
   # Backed up since 2026-08-30. It was left out while this instance was two
   # accounts and a path, which was genuinely rebuildable in minutes. It now
-  # also carries the NVENC setting, Known Proxies, the pasted branding and the
-  # API key radarr-public authenticates with - and NVENC in particular fails
-  # silently, falling back to software transcoding that takes the single
-  # control-plane node down with it.
+  # also carries the QuickSync setting, Known Proxies, the pasted branding and
+  # the API key radarr-public authenticates with - and the transcoder setting
+  # in particular fails silently, falling back to software transcoding that
+  # saturates whichever node the pod is on.
   #
   # The films are still not backed up. They are derived data and the chain
   # ends on a 2x2TB Synology; radarr-public's own PVC carries the list, which

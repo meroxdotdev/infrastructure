@@ -1,13 +1,24 @@
-# Single-node Talos cluster
+# Single control plane
 
-The cluster runs one control-plane VM: `kubernetes-controlplane-1` (VM 800,
-`10.57.57.80`, on `pve`/R730xd). It holds the Quadro P2200 passthrough for
-Jellyfin transcoding. This has been the case since 2026-08-17 and is the
-intentional, accepted state — not a degraded or temporary one. Nodes 2 and 3
-were removed because all three VMs ran on the same physical host anyway, so
-the 3-node HA was illusory (one `pve` outage always took down all three) and
-cost 3x the Longhorn replicas and etcd raft overhead for a failure mode
-(single-VM death) that never happened.
+The cluster runs **one** control-plane VM: `kubernetes-controlplane-1` (VM 800,
+`10.57.57.80`, on `pve`/R730xd). Since 2026-09-01 it is joined by
+`kubernetes-worker-1` (VM 810 on `px-0`), so the cluster has two nodes — but
+still one etcd member, and that is the part this page is about.
+
+This has been the case since 2026-08-17 and is the intentional, accepted state
+— not a degraded or temporary one. Nodes 2 and 3 were removed because all three
+VMs ran on the same physical host anyway, so the 3-node HA was illusory (one
+`pve` outage always took down all three) and cost 3x the Longhorn replicas and
+etcd raft overhead for a failure mode (single-VM death) that never happened.
+
+**A second control plane would be worse than one, not better.** Two members
+cannot form a quorum: lose either and the cluster stops. Three would need a
+third fault domain, which does not exist — a third VM on `pve` or `px-0`
+rebuilds exactly the illusion torn down in August.
+
+The Quadro P2200 passthrough is still on this VM but nothing requests it any
+more; Jellyfin transcodes on `px-0`'s iGPU. See
+[../docs/gpu-transcoding.md](../docs/gpu-transcoding.md).
 
 The sizing math and the exact migration steps lived in
 `single-node-migration-log.md`, removed 2026-08-29 once the migration was
@@ -40,9 +51,22 @@ peer to rebuild from) runs at 03:03 via
 Restore: `talosctl bootstrap --recover-from=<snapshot>`, snapshot lives under
 `/media/backups/etcd/` and rides the existing restic push to Oracle.
 
-A Talos/Kubernetes upgrade is now a full outage of a few minutes instead of
-a rolling one — accepted, since a `pve` reboot already took all three old
-nodes down simultaneously anyway.
+A Talos/Kubernetes upgrade of this node is a full outage of a few minutes
+instead of a rolling one — accepted, since a `pve` reboot already took all
+three old nodes down simultaneously anyway.
+
+**It also cannot be drained**, which matters because the upgrade task tries to
+by default. Longhorn's `instance-manager` PDB is `minAvailable: 1` with zero
+allowed disruptions, so with nowhere to move it the eviction never succeeds:
+the drain burns the whole timeout and aborts *before* the reboot, leaving the
+node cordoned and its workloads on the floor. Use `DRAIN=false`:
+
+```bash
+task talos:upgrade-node IP=10.57.57.80 DRAIN=false
+```
+
+The default stays `true` because it is correct for `kubernetes-worker-1`,
+whose pods have somewhere else to go.
 
 ## Rollback to 3 nodes
 

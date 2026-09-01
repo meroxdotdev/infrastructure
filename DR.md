@@ -17,17 +17,24 @@ Previously 2026-08-03 on pve/R730xd.
 
 **px-0 (Beelink)** — the real test. Different physical box, so it answers
 "the R730xd died, can we recover?" and not just "did a recent change break
-the restore?". 62GB RAM comfortably runs the single node at
-`vm_memory_mb = 32768` — enough for every workload except the GPU ones.
+the restore?". 62GB RAM comfortably runs the restored node at
+`vm_memory_mb = 32768`.
+
+⚠ **px-0 stopped being an idle box on 2026-09-01.** It now runs
+`kubernetes-worker-1` (VM 810) and Proxmox Datacenter Manager, so a drill
+there competes with production for RAM and pool space, and the DR VMIDs were
+moved to 820+ so they cannot collide with VM 810. Stop the worker first if
+the box is tight — draining it moves its pods back onto pve.
 
 **pve (R730xd)** — 238GB+ RAM free once prod is stopped, so it can match
 prod exactly (`vm_memory_mb = 49152`). Use it only when px-0 is unavailable,
 and note it cannot test host failure: the DR VMs land on the same box as
 prod.
 
-**What neither host tests:** anything that needs the Quadro P2200. On px-0,
-`jellyfin`, `jellyfin-public` and `nvidia-device-plugin` stay down by
-design — see step 8 of the quickstart.
+**What neither host tests:** hardware transcoding. Both Jellyfin instances
+request `gpu.intel.com/i915`, which only the real `kubernetes-worker-1`
+advertises, so on DR VMs they stay `Pending` by design — see step 8 of the
+quickstart.
 
 **Not part of DR at all:** `edge-fra`, the public TLS edge in Frankfurt. It is
 stateless by design and in no backup set — `cd vps && make edge-setup` rebuilds
@@ -169,7 +176,7 @@ kubectl get helmreleases -A | grep -v "True\|READY"
 ```
 
 **Expected in DR — not failures:**
-- `jellyfin` → Pending: DR VMs have no Nvidia GPU (`nvidia.com/gpu`). Jellyfin runs but hardware transcoding unavailable. Fix: patch Jellyfin HelmRelease to remove the GPU resource request and `runtimeClassName: nvidia`.
+- `jellyfin` and `jellyfin-public` → Pending: DR VMs have no iGPU, so nothing advertises `gpu.intel.com/i915`. Fix: patch both HelmReleases to drop the GPU resource request; they then transcode in software.
 - Prometheus/Loki/Grafana/Netdata start with empty volumes — metrics/logs history is deliberately not backed up. Grafana dashboards come from git (sidecar provisioning).
 
 ---

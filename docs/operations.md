@@ -228,16 +228,11 @@ nothing has to be prepared on the host:
 ssh root@10.57.57.254 'qm set 810 --hostpci0 0000:00:02.0'
 ```
 
-**The node label.** Uncomment `intel.feature.node.kubernetes.io/gpu` in
-[../talos/patches/global/machine-longhorn-labels.yaml](../talos/patches/global/machine-longhorn-labels.yaml).
-The Kubernetes side — `intel-device-plugin-operator`, which exposes
-`gpu.intel.com/i915` — was deleted in `6bb0f3d` when px-0 was decommissioned,
-not suspended as `docs/gpu-transcoding.md` still claims. Recover it from git
-rather than rewriting it:
-
-```bash
-git show 6bb0f3d^:kubernetes/apps/kube-system/intel-device-plugin-operator/ks.yaml
-```
+**The node label.** Set `intel.feature.node.kubernetes.io/gpu: "true"` in the
+node's own `nodeLabels:`. `intel-device-plugin-operator` is already deployed
+(`kubernetes/apps/kube-system/`) and its DaemonSet selects on that label; it
+exposes `gpu.intel.com/i915`, which is what Jellyfin requests. Nothing else is
+needed on the Kubernetes side.
 
 #### NFS: the export ACL is per host
 

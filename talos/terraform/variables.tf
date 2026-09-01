@@ -51,9 +51,9 @@ variable "network_bridge" {
 }
 
 variable "vmid_start" {
-  description = "Starting VMID for DR nodes (prod uses 800-805, DR uses 810+ by default)"
+  description = "Starting VMID for DR nodes (prod uses 800-805 on pve and 810 on px-0, DR uses 820+)"
   type        = number
-  default     = 810
+  default     = 820
 }
 
 variable "vm_cores" {

@@ -181,8 +181,8 @@ tasks:
       # The public stack, backed up since 2026-08-30. Both PVCs are
       # dynamically provisioned, so the backup is found by pvcName rather than
       # by volume-name prefix — hence PVC_NAME, same as immich-postgres/n8n.
-      # jellyfin-public carries the NVENC setting, which fails silently when
-      # lost; radarr-public carries the movie list, which is what makes a
+      # jellyfin-public carries the QuickSync setting, which fails silently
+      # when lost; radarr-public carries the movie list, which is what makes a
       # rebuild a re-download instead of guesswork.
       - task: restore-volume
         vars: { NAME: jellyfin-public-restored, PVC_NAME: jellyfin-public }

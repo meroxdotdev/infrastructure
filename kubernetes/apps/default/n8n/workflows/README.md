@@ -6,7 +6,7 @@ reviewable in git instead of living only inside a Longhorn PVC.
 ⚠️ **These are not applied by Flux.** n8n owns its own state; nothing here is
 reconciled. Editing a file in this directory changes nothing on the cluster —
 it is a snapshot for review, diffing and disaster recovery, in the same spirit
-as [`proxmox/r730xd/etc/`](../../../../proxmox/r730xd/etc/). The running copy
+as [`proxmox/r730xd/etc/`](../../../../../proxmox/r730xd/etc/). The running copy
 is authoritative; re-export after changing anything in the n8n UI.
 
 ## The alert pipeline
