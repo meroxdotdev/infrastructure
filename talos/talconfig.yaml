@@ -24,16 +24,14 @@ nodes:
     installDisk: "/dev/sda"
     nodeLabels:
       node.kubernetes.io/exclude-from-external-load-balancers: ""
-      nvidia.com/gpu: "true"
-      nvidia.com/gpu.present: "true"
     machineSpec:
       secureboot: false
-    # Nvidia LTS (580.x) schematic — Quadro P2200 (Pascal) is unsupported on the
-    # "production" driver branch (595.x dropped Pascal). See docs/gpu-transcoding.md.
-    talosImageURL: factory.talos.dev/installer/914e76a6752e45504176b24f0f6a0a06f993c2dfa4cd314224f822f34730c2dc
+    # intel-ucode for the Xeon, plus the two extensions Longhorn needs on every
+    # node. The Nvidia LTS extensions were dropped 2026-09-01 with the Quadro:
+    # transcoding runs on px-0's iGPU and nothing requested nvidia.com/gpu any
+    # more. See docs/gpu-transcoding.md.
+    talosImageURL: factory.talos.dev/installer/36cd6536eaec8ba802be2d38974108359069cedba8857302f69792b26b87c010
     controlPlane: true
-    patches:
-      - "@./patches/controller/nvidia-kernel-modules.yaml"
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:a7:ba:13"

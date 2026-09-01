@@ -11,9 +11,7 @@ resources:
   - ./coredns/ks.yaml
   # Storage
   - ./csi-driver-nfs/ks.yaml
-  # Hardware. nvidia is on its way out with the Quadro P2200 — nothing requests
-  # nvidia.com/gpu any more; it goes once QuickSync has proven itself.
-  - ./nvidia-device-plugin/ks.yaml
+  # Hardware
   - ./intel-device-plugin-operator/ks.yaml
   # Utilities
   - ./metrics-server/ks.yaml

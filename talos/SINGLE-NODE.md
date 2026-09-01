@@ -16,8 +16,9 @@ cannot form a quorum: lose either and the cluster stops. Three would need a
 third fault domain, which does not exist — a third VM on `pve` or `px-0`
 rebuilds exactly the illusion torn down in August.
 
-The Quadro P2200 passthrough is still on this VM but nothing requests it any
-more; Jellyfin transcodes on `px-0`'s iGPU. See
+The Quadro P2200 was detached from this VM on 2026-09-01 — Jellyfin transcodes
+on `px-0`'s iGPU now, and a VM with `hostpci` cannot be live-migrated. The card
+is still in the chassis, unused. See
 [../docs/gpu-transcoding.md](../docs/gpu-transcoding.md).
 
 The sizing math and the exact migration steps lived in

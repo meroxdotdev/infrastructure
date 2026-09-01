@@ -90,7 +90,7 @@ off the VPS.
 
 | Device | Role | Specs |
 |---|---|---|
-| Dell R730xd — `pve`, `10.57.57.250` | Proxmox host and backup hub: the K8s control-plane VM, the Garage S3 LXC, NFS for the SAS pool, and every backup leg. [Runbook](proxmox/r730xd/README.md) · [Reinstall](proxmox/r730xd/REINSTALL.md) | Xeon E5-2630 v4 (10C/20T), 251GB DDR4, Quadro P2200 (idle since transcoding moved to px-0) |
+| Dell R730xd — `pve`, `10.57.57.250` | Proxmox host and backup hub: the K8s control-plane VM, the Garage S3 LXC, NFS for the SAS pool, and every backup leg. [Runbook](proxmox/r730xd/README.md) · [Reinstall](proxmox/r730xd/REINSTALL.md) | Xeon E5-2630 v4 (10C/20T), 251GB DDR4, Quadro P2200 (in the chassis but unused, 3.86 W idle) |
 | XCY X44 — `fw`, `10.57.57.1` | pfSense: gateway, DHCP, Tailscale subnet router. [Reinstall](pfsense/REINSTALL.md) | N100, 8GB |
 | Oracle Cloud ARM VPS — `vps01`, us-phoenix-1 | Off-site services | 4 vCPU ARM, 24GB, 200GB |
 | Oracle Cloud ARM VPS — `edge-fra`, eu-frankfurt-1 | Public TLS edge, borrowed tenancy | 2 vCPU ARM, 12GB, 45GB |

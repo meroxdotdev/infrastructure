@@ -34,8 +34,12 @@ talos_version = "v1.13.8"
 #
 # To test a 3-node restore instead, uncomment nodes 2/3 in talconfig.yaml
 # and add their MACs/IPs here. Nothing else changes.
-node_macs = ["bc:24:11:a7:ba:13"]
-node_ips  = ["10.57.57.80"]
+# One entry per node in talconfig.yaml, in the same order and with the same
+# MACs — dr:apply-talos-configs aborts if the counts disagree, and Talos
+# selects its NIC by MAC. Since 2026-09-01 that means two: the control plane
+# and kubernetes-worker-1. (must match talconfig.yaml)
+node_macs = ["bc:24:11:a7:ba:13", "bc:24:11:00:57:81"]
+node_ips  = ["10.57.57.80", "10.57.57.81"]
 node_vip  = "10.57.57.88"
 
 # PREREQUISITE: prod cluster VM must be stopped before DR (same IPs/MACs).

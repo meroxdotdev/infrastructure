@@ -21,10 +21,18 @@ the restore?". 62GB RAM comfortably runs the restored node at
 `vm_memory_mb = 32768`.
 
 ⚠ **px-0 stopped being an idle box on 2026-09-01.** It now runs
-`kubernetes-worker-1` (VM 810) and Proxmox Datacenter Manager, so a drill
-there competes with production for RAM and pool space, and the DR VMIDs were
-moved to 820+ so they cannot collide with VM 810. Stop the worker first if
-the box is tight — draining it moves its pods back onto pve.
+`kubernetes-worker-1` (VM 810) and Proxmox Datacenter Manager. Three
+consequences for a drill:
+
+- **VM 810 must be shut down**, not just tolerated. DR reuses production MACs
+  and IPs, and the worker's are among them now — two VMs with
+  `bc:24:11:00:57:81` on the same LAN is not a subtle failure.
+- **DR restores two nodes**, since `talconfig.yaml` declares two.
+  `terraform.tfvars` carries both MACs; `dr:apply-talos-configs` aborts if the
+  counts disagree.
+- **The DR VMIDs moved to 820+** so they cannot collide with VM 810.
+
+The drill therefore takes the whole cluster down, both hosts, not just pve.
 
 **pve (R730xd)** — 238GB+ RAM free once prod is stopped, so it can match
 prod exactly (`vm_memory_mb = 49152`). Use it only when px-0 is unavailable,

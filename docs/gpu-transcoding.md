@@ -5,7 +5,7 @@ Iris Xe passed through to `kubernetes-worker-1`. Both instances — `jellyfin`
 and `jellyfin-public` — use it.
 
 It ran on an Nvidia Quadro P2200 from 2026-07-17 to 2026-09-01. That stack is
-still deployed but is being retired; see the last section.
+gone; see the last section for what remains.
 
 ---
 
@@ -116,15 +116,24 @@ client and confirm Playback Info reports it, and that the pod is on
 kubectl get pods -n default -o wide | grep jellyfin
 ```
 
-## The Nvidia stack, pending retirement
+## The Quadro, after retirement
 
-Still deployed, nothing requests `nvidia.com/gpu` any more: the card itself,
-the `nonfree-kmod-nvidia-lts` + `nvidia-container-toolkit-lts` extensions in
-controlplane-1's schematic (`914e76a675…30c2dc`),
-`talos/patches/controller/nvidia-kernel-modules.yaml` and
-`kubernetes/apps/kube-system/nvidia-device-plugin/`.
+Removed from git on 2026-09-01: the `nonfree-kmod-nvidia-lts` and
+`nvidia-container-toolkit-lts` extensions from controlplane-1's schematic (now
+`36cd6536ea…b87c010`, carrying only intel-ucode + the two Longhorn tools),
+`talos/patches/controller/nvidia-kernel-modules.yaml`, the
+`nvidia.com/gpu` node labels, and `kubernetes/apps/kube-system/nvidia-device-plugin/`.
 
-It stays only until QuickSync has proven itself, then all of it goes in one
-commit and the card comes out of the server. Keeping two GPU stacks configured
-forever as a fallback costs more than the failure mode is worth. Selling the
-card is a decision to take with the R730xd, not separately.
+**The card itself stays in the R730xd**, unused, in case a future project wants
+it. It costs **3.86 W** idle, measured in pstate P8 — about 34 kWh a year. It
+causes no fan ramp: iDRAC cannot see it at all (`PCIe Slot1-4 = Not Readable`),
+which `proxmox/r730xd/known-issues.md` records as never having triggered one.
+
+It was detached from VM 800 (`qm set 800 --delete hostpci0`) rather than left
+attached, because `hostpci` makes a VM ineligible for live migration — and
+migrating the control plane off `pve` is the maintenance path worth keeping
+open.
+
+To use it again: regenerate a schematic with the two LTS extensions, restore
+`nvidia-kernel-modules.yaml` and the device plugin from git history
+(`c167dfc^`), upgrade the node, reattach `hostpci0`.

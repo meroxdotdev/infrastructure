@@ -43,11 +43,10 @@ Two items, neither of which affects a drill.
 | `terraform destroy` fails: `storage 'synology-nas' is not online`, leaving the DR VMs stopped but not deleted | `qmdestroy` walks every configured storage to purge disks. px-0 still carries two NFS storage definitions left over from its old identity — `synology-nas` (NAS is on a power schedule) and `r730xd-backups` (pve stopped exporting to it on 2026-08-26). Both are dead weight there | Remove them once and the failure is gone for good: `ssh root@10.57.57.254 "pvesm remove synology-nas && pvesm remove r730xd-backups"` |
 | First **cold** boot of a Terraform-made DR node lands in maintenance mode instead of the installed system | `main.tf` sets `boot_order = ["ide2", "scsi0"]` and leaves the ISO attached. Masked in practice because Talos upgrades use `kexec`, and because a DR cluster is destroyed rather than rebooted | Only matters if a DR cluster is kept: `qm set <vmid> --boot order=scsi0` and `--ide2 none,media=cdrom`. The `lifecycle { ignore_changes = [cdrom] }` block means Terraform will not fight it |
 
-**Not a bug:** `talosctl get machinestatus` never leaves `booting` on
-GPU-less hardware. `kubernetes-controlplane-1` still uses the Nvidia-flavoured
-Talos image, so `ext-nvidia-persistenced` waits forever for
-`/sys/bus/pci/drivers/nvidia` and the stage never advances. It goes away when
-the Quadro and its extensions are retired — see docs/gpu-transcoding.md. Judge the node by `talosctl services` — `etcd`
+**Fixed 2026-09-01:** `talosctl get machinestatus` used to hang at `booting`
+on GPU-less hardware, because the Talos image carried `ext-nvidia-persistenced`
+waiting forever for `/sys/bus/pci/drivers/nvidia`. The Nvidia extensions are
+gone with the Quadro, so the stage advances normally now. Judge the node by `talosctl services` — `etcd`
 and `kubelet` at `Running/OK` is the real signal.
 
 Note: `dr-verify.sh --phase all` runs VPS checks with local `docker ps` —
