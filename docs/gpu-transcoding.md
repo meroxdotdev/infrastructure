@@ -43,38 +43,29 @@ hand; Jellyfin's node affinity is what reads it.
 
 ## Kubernetes
 
-There is **no Intel device plugin**, deliberately. Both Jellyfin helmreleases
-reach the GPU through a plain hostPath instead:
+- `kubernetes/apps/kube-system/intel-device-plugin-operator/` — operator plus
+  the `GpuDevicePlugin` CR, `sharedDevNum: 99`, exposing `gpu.intel.com/i915`.
+- Both Jellyfin helmreleases request `gpu.intel.com/i915: 1`. Neither sets
+  `runtimeClassName`, and neither needs `supplementalGroups`.
 
-```yaml
-dri:
-  type: hostPath
-  hostPath: /dev/dri
-  hostPathType: DirectoryOrCreate
-  globalMounts:
-    - path: /dev/dri
+**Do not try to replace the plugin with a `/dev/dri` hostPath.** It was tried
+on 2026-09-01 and cannot work: the device node is 0666 and appears correctly
+inside the container, but the container's device cgroup denies `open()` on
+char 226:128, so `vainfo` fails with `Failed to open the given device!`. Only
+a device plugin — or `privileged: true`, which is not acceptable on an
+internet-facing pod — adds the device to the allowlist.
+
+**The consequence is that Jellyfin is pinned to px-0**, since no other node
+advertises the resource. During maintenance on that host, drop the request so
+it can run anywhere on software transcoding:
+
+```bash
+kubectl -n default patch helmrelease jellyfin --type=json \
+  -p '[{"op":"remove","path":"/spec/values/controllers/jellyfin/containers/app/resources/limits/gpu.intel.com~1i915"}]'
 ```
 
-paired with a `preferredDuringSchedulingIgnoredDuringExecution` affinity for
-`intel.feature.node.kubernetes.io/gpu`. Neither sets `runtimeClassName`, and
-neither needs `supplementalGroups` — Talos ships `renderD128` as 0666.
-
-**Why not the device plugin.** `gpu.intel.com/i915: 1` is a hard resource
-request, and only px-0 advertises it, so Jellyfin would sit `Pending` whenever
-that host is down or in maintenance. Playback matters more than transcoding:
-most of it is direct play, which needs no GPU at all. `DirectoryOrCreate` is
-what makes the fallback graceful — on a node with no GPU the mount is an empty
-directory, Jellyfin finds no QSV device and transcodes in software instead of
-refusing to start.
-
-The operator was briefly restored from `6bb0f3d` on 2026-09-01 and then
-dropped again for exactly this reason. Do not reintroduce it without deciding
-what should happen to Jellyfin while px-0 is down.
-
-**One transitional wrinkle:** while the Quadro is still in pve, that node has
-its own `/dev/dri/renderD128` from `nvidia_drm`. A Jellyfin pod landing there
-mounts an Nvidia render node while configured for QSV, and transcodes will
-fail rather than fall back cleanly. It resolves itself when the card leaves.
+Flux puts it back on the next reconcile, so suspend the HelmRelease for the
+duration (`flux suspend hr jellyfin -n default`) and resume when px-0 is back.
 
 ## Jellyfin encoding.xml
 

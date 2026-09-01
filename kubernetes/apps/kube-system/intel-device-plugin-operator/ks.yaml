@@ -1,0 +1,70 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/kustomization-kustomize-v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app intel-device-plugin-operator
+  namespace: &namespace kube-system
+spec:
+  # Exposes gpu.intel.com/i915 on kubernetes-worker-1, whose VM has the
+  # Beelink's Iris Xe passed through. Deleted in 6bb0f3d when px-0 was
+  # decommissioned, restored 2026-09-01 when it came back as the worker.
+  #
+  # Not optional, and not replaceable by a /dev/dri hostPath: the container's
+  # device cgroup denies open() on char 226:128 no matter what the file mode
+  # says. Only a device plugin (or privileged: true) adds it to the allowlist.
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: *app
+      namespace: *namespace
+  interval: 1h
+  path: ./kubernetes/apps/kube-system/intel-device-plugin-operator/app
+  prune: true
+  retryInterval: 2m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: *namespace
+  timeout: 5m
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/kustomization-kustomize-v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app intel-device-plugin-gpu
+  namespace: &namespace kube-system
+spec:
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  dependsOn:
+    - name: intel-device-plugin-operator
+      namespace: *namespace
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: *app
+      namespace: *namespace
+    - apiVersion: deviceplugin.intel.com/v1
+      kind: GpuDevicePlugin
+      name: i915
+  healthCheckExprs:
+    - apiVersion: deviceplugin.intel.com/v1
+      kind: GpuDevicePlugin
+      failed: status.desiredNumberScheduled != status.numberReady
+      current: status.desiredNumberScheduled == status.numberReady
+  interval: 1h
+  path: ./kubernetes/apps/kube-system/intel-device-plugin-operator/gpu
+  prune: true
+  retryInterval: 2m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: *namespace
+  timeout: 5m

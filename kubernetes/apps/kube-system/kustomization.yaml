@@ -11,15 +11,10 @@ resources:
   - ./coredns/ks.yaml
   # Storage
   - ./csi-driver-nfs/ks.yaml
-  # Hardware
-  # No Intel counterpart to this: Jellyfin reaches the Beelink's iGPU through a
-  # plain /dev/dri hostPath rather than a device plugin, so that it can still
-  # schedule (and transcode in software) on a node without a GPU. See its
-  # helmrelease and docs/gpu-transcoding.md.
-  #
-  # nvidia is on its way out with the Quadro P2200 — nothing requests
-  # nvidia.com/gpu any more. Both go once QuickSync has proven itself.
+  # Hardware. nvidia is on its way out with the Quadro P2200 — nothing requests
+  # nvidia.com/gpu any more; it goes once QuickSync has proven itself.
   - ./nvidia-device-plugin/ks.yaml
+  - ./intel-device-plugin-operator/ks.yaml
   # Utilities
   - ./metrics-server/ks.yaml
   - ./reloader/ks.yaml

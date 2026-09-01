@@ -70,25 +70,19 @@ spec:
               requests:
                 cpu: 100m
               limits:
+                # Pins Jellyfin to kubernetes-worker-1 — only px-0 has an
+                # Intel GPU. A /dev/dri hostPath was tried instead so it could
+                # fall back to pve; it cannot work, the container device cgroup
+                # denies open() on char 226:128 regardless of file mode. During
+                # px-0 maintenance, drop this request to let Jellyfin run
+                # anywhere on software transcoding — see docs/gpu-transcoding.md.
+                gpu.intel.com/i915: 1
                 memory: 4Gi
                 # Hard ceiling, kept after the move to px-0. etcd is no longer
                 # on the same node, but the Beelink is a 20-thread mini PC and
                 # a runaway transcode should not take the whole worker.
                 cpu: 4
     defaultPodOptions:
-      # Prefer the node with the iGPU, but do not require it. A hard
-      # gpu.intel.com/i915 request would pin Jellyfin to px-0 and leave it
-      # Pending whenever that host is down or in maintenance. Playback matters
-      # more than transcoding: on pve it falls back to software.
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
-                  - key: intel.feature.node.kubernetes.io/gpu
-                    operator: In
-                    values: ["true"]
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -119,17 +113,6 @@ spec:
             namespace: kube-system
             sectionName: https
     persistence:
-      # The render node itself, instead of a device-plugin resource. Talos
-      # ships /dev/dri/renderD128 as 0666, so no capabilities or supplementary
-      # groups are needed. DirectoryOrCreate is what makes the fallback work:
-      # on a node without a GPU the mount is an empty directory, Jellyfin finds
-      # no QSV device and transcodes in software rather than refusing to start.
-      dri:
-        type: hostPath
-        hostPath: /dev/dri
-        hostPathType: DirectoryOrCreate
-        globalMounts:
-          - path: /dev/dri
       config:
         existingClaim: jellyfin-public
         globalMounts:
