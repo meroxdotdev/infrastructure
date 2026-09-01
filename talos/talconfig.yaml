@@ -19,22 +19,27 @@ cniConfig:
   name: none
 
 nodes:
-  - hostname: "kubernetes-controlplane-1"
+  - hostname: "kubernetes-1"
     ipAddress: "10.57.57.80"
     installDisk: "/dev/sda"
-    nodeLabels:
-      node.kubernetes.io/exclude-from-external-load-balancers: ""
+    controlPlane: true
     machineSpec:
       secureboot: false
-    # intel-ucode for the Xeon, plus the two extensions Longhorn needs on every
-    # node. The Nvidia LTS extensions were dropped 2026-09-01 with the Quadro:
-    # transcoding runs on px-0's iGPU and nothing requested nvidia.com/gpu any
-    # more. See docs/gpu-transcoding.md.
-    talosImageURL: factory.talos.dev/installer/36cd6536eaec8ba802be2d38974108359069cedba8857302f69792b26b87c010
-    controlPlane: true
+    # The only node. Iris Xe passthrough for Jellyfin QuickSync (i915 +
+    # intel-ucode), plus the two extensions Longhorn needs on any node:
+    # iscsi-tools for iscsiadm and util-linux-tools. Without them
+    # longhorn-manager crashloops and no volume can attach.
+    # Regenerate with the POST in docs/operations.md.
+    talosImageURL: factory.talos.dev/installer/249d9135de54962744e917cfe654117000cba369f9152fbab9d055a00aa3664f
+    nodeLabels:
+      node.kubernetes.io/exclude-from-external-load-balancers: ""
+      # Read by intel-device-plugin-operator's DaemonSet, which exposes
+      # gpu.intel.com/i915 — what both Jellyfin instances request. No Node
+      # Feature Discovery runs here, so the label is placed by hand.
+      intel.feature.node.kubernetes.io/gpu: "true"
     networkInterfaces:
       - deviceSelector:
-          hardwareAddr: "bc:24:11:a7:ba:13"
+          hardwareAddr: "bc:24:11:00:57:81"
         dhcp: false
         addresses:
           - "10.57.57.80/24"
@@ -44,86 +49,11 @@ nodes:
         mtu: 1500
         vip:
           ip: "10.57.57.88"
-  - hostname: "kubernetes-worker-1"
-    ipAddress: "10.57.57.81"
-    installDisk: "/dev/sda"
-    controlPlane: false
-    machineSpec:
-      secureboot: false
-    # Iris Xe passthrough for Jellyfin QuickSync (i915 + intel-ucode), plus the
-    # two extensions Longhorn needs on the host: iscsi-tools for iscsiadm and
-    # util-linux-tools. Without them longhorn-manager crashloops on this node
-    # and no Longhorn volume can attach here. Same set the control plane runs —
-    # diff against `talosctl get extensions` there before changing it.
-    # Regenerate with the POST in docs/operations.md.
-    talosImageURL: factory.talos.dev/installer/249d9135de54962744e917cfe654117000cba369f9152fbab9d055a00aa3664f
-    nodeLabels:
-      # Consumed by intel-device-plugin-operator, which exposes
-      # gpu.intel.com/i915. Set ahead of the operator being restored from
-      # 6bb0f3d^ — a label with no consumer is inert.
-      intel.feature.node.kubernetes.io/gpu: "true"
-    networkInterfaces:
-      - deviceSelector:
-          hardwareAddr: "bc:24:11:00:57:81"
-        dhcp: false
-        addresses:
-          - "10.57.57.81/24"
-        routes:
-          - network: "0.0.0.0/0"
-            gateway: "10.57.57.1"
-        mtu: 1500
-  # --- SINGLE-NODE since 2026-08-17 ------------------------------------------
-  # Nodes 2 and 3 were removed from etcd and Kubernetes and their VMs deleted.
-  # See talos/SINGLE-NODE.md; uncomment both blocks to roll back to three.
-  #
-  # Their VMs no longer exist, so a rollback must recreate them first — the
-  # exact `qm create` lines are in SINGLE-NODE.md's "VM recreation spec".
-  #
-  # ⚠ The MAC below for controlplane-2 does NOT match the VM that was actually
-  # running (BC:24:11:43:4E:63), most likely drift from an earlier DR test on
-  # different hardware. deviceSelector matches on MAC, so reconcile the two
-  # before applying, or the node boots with no address. controlplane-3's MAC was never verified
-  # against a live VM.
-  #
-  # - hostname: "kubernetes-controlplane-2"
-  #   ipAddress: "10.57.57.82"
-  #   installDisk: "/dev/sda"
-  #   machineSpec:
-  #     secureboot: false
-  #   talosImageURL: factory.talos.dev/installer/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510
-  #   controlPlane: true
-  #   networkInterfaces:
-  #     - deviceSelector:
-  #         hardwareAddr: "bc:24:11:a5:4b:9e"
-  #       dhcp: false
-  #       addresses:
-  #         - "10.57.57.82/24"
-  #       routes:
-  #         - network: "0.0.0.0/0"
-  #           gateway: "10.57.57.1"
-  #       mtu: 1500
-  #       vip:
-  #         ip: "10.57.57.88"
-  # - hostname: "kubernetes-controlplane-3"
-  #   ipAddress: "10.57.57.84"
-  #   installDisk: "/dev/sda"
-  #   machineSpec:
-  #     secureboot: false
-  #   talosImageURL: factory.talos.dev/installer/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510
-  #   controlPlane: true
-  #   networkInterfaces:
-  #     - deviceSelector:
-  #         hardwareAddr: "bc:24:11:96:87:40"
-  #       dhcp: false
-  #       addresses:
-  #         - "10.57.57.84/24"
-  #       routes:
-  #         - network: "0.0.0.0/0"
-  #           gateway: "10.57.57.1"
-  #       mtu: 1500
-  #       vip:
-  #         ip: "10.57.57.88"
-  # ---------------------------------------------------------------------------
+  # One node, deliberately. Two control planes cannot form a quorum and there
+  # is no third fault domain, so this is the honest shape — recovery is a
+  # restore, not a failover. See talos/SINGLE-NODE.md.
+  # The 3-node blocks that used to sit here were removed 2026-09-01; their VMs
+  # had been gone since August. Git has them: `git show 793bf33:talos/talconfig.yaml`.
 
 # Global patches
 patches:
@@ -140,7 +70,5 @@ controlPlane:
     - "@./patches/controller/admission-controller-patch.yaml"
     - "@./patches/controller/cluster.yaml"
 
-# Worker patches
-#worker:
-#  patches:
-#    - "@./patches/global/machine-longhorn-labels.yaml"
+# No worker patches: there are no workers. machine-longhorn-labels.yaml is
+# unused — the `longhorn: "true"` label it carries is read by nothing.

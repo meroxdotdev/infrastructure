@@ -12,8 +12,8 @@ vars:
   TALOS_DIR: '{{.ROOT_DIR}}/talos'
   PRIVATE_DIR: '{{.ROOT_DIR}}/.private'
   TALOSCONFIG: '{{.ROOT_DIR}}/talos/clusterconfig/talosconfig'
-  PROD_HOST: '10.57.57.250'   # pve — hosts the prod cluster VM
-  PROD_VMID: '800'            # kubernetes-controlplane-1
+  PROD_HOST: '10.57.57.254'   # px-0 — hosts the prod cluster VM since 2026-09-01
+  PROD_VMID: '810'            # kubernetes-1
 
 env:
   KUBECONFIG: '{{.ROOT_DIR}}/kubeconfig'
@@ -71,8 +71,8 @@ tasks:
         MAC_COUNT=$((MAC_COUNT / 2))
         if [ "$NODE_COUNT" -ne "$MAC_COUNT" ]; then
           echo "  ✗ talconfig.yaml declares $NODE_COUNT node(s), terraform.tfvars has $MAC_COUNT MAC(s)."
-          echo "    They must match. Either uncomment the extra nodes in talconfig.yaml"
-          echo "    (see talos/SINGLE-NODE.md) or trim node_macs/node_ips in terraform.tfvars."
+          echo "    They must match. Add or trim node_macs/node_ips in terraform.tfvars"
+          echo "    to mirror talconfig.yaml — see talos/SINGLE-NODE.md."
           exit 1
         fi
 
@@ -180,7 +180,7 @@ tasks:
   dr:restore-prod:
     desc: "DR: start the prod cluster VM again and clear pods orphaned by the shutdown"
     summary: |
-      Run after dr:destroy-vms. Starting VM 800 leaves a handful of pods in
+      Run after dr:destroy-vms. Starting the prod VM leaves a handful of pods in
       Error from the shutdown; each is already replaced by a Running one, so
       they are noise that otherwise sits in `kubectl get pods -A` for days.
     cmds:

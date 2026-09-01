@@ -33,9 +33,7 @@ follows.
 #    is missing from the restore list
 bash scripts/dr-preflight.sh
 
-# 1. Stop prod — DR reuses its IPs and MACs, so both must be down.
-#    810 lives on px-0, which is also where the DR VMs are built.
-ssh root@10.57.57.250 "qm shutdown 800 --timeout 180"
+# 1. Stop prod — DR reuses its IP and MAC
 ssh root@10.57.57.254 "qm shutdown 810 --timeout 180"
 
 # 2. Create the DR VM(s)

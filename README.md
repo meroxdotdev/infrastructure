@@ -1,7 +1,7 @@
 # merox.dev Infrastructure
 
-Talos Kubernetes cluster on two Proxmox hosts, plus an Oracle Cloud VPS for
-off-site services. Everything is declarative and GitOps-managed: `git push`
+Single-node Talos Kubernetes cluster on a Beelink mini PC, a Dell R730xd as
+the storage and backup host, plus an Oracle Cloud VPS for off-site services. Everything is declarative and GitOps-managed: `git push`
 deploys, updates or rebuilds any part.
 
 Rebuild from nothing takes ~35 minutes and needs three things — this repo,
@@ -16,7 +16,7 @@ Read this first if it has been a while.
 | | |
 |---|---|
 | **Network** | pfSense routes and hands out addresses. Tailscale is the only way in from outside and nothing is port-forwarded; what is public reaches the internet through an outbound-only Cloudflare tunnel. |
-| **Compute** | Two Proxmox hosts, standalone rather than clustered. `pve` runs the Talos control plane (VM 800) and holds every stateful thing; `px-0` runs a worker (VM 810) for compute, with its iGPU passed through. Flux reconciles the cluster from this repo, so a push is the deploy — there is no other way to change it. |
+| **Compute** | Two Proxmox hosts, standalone rather than clustered. `px-0` (Beelink) runs the entire Kubernetes cluster as one VM, `kubernetes-1`, with its iGPU passed through for transcoding. `pve` (R730xd) holds the disks: the media array, every backup leg, and the Nextcloud VM. There is no HA and that is deliberate — [why](talos/SINGLE-NODE.md). Flux reconciles the cluster from this repo, so a push is the deploy. |
 | **Storage** | ZFS. `media` is twelve SAS disks in two raidz2 vdevs, holds bulk and spins down when idle; `rpool` is a mirrored SSD pair holding anything an application touches during the day. |
 | **Backup** | Every source writes into `/media/backups/` on pve. From there restic pushes it to Oracle nightly, and a weekly rsync relays a plain-file copy to the Synology. Only what git cannot rebuild is backed up. |
 | **Off-site** | An Oracle Cloud VPS runs what should outlive the house: Authentik SSO, Traefik, Pi-hole, Joplin, Guacamole, Homepage. It depends on nothing at home, pushes its own state to pve nightly, and is rebuilt with `cd vps && make dr-full`. Tailscale is what joins the two sites. |
@@ -90,12 +90,12 @@ off the VPS.
 
 | Device | Role | Specs |
 |---|---|---|
-| Dell R730xd — `pve`, `10.57.57.250` | Proxmox host and backup hub: the K8s control-plane VM, the Garage S3 LXC, NFS for the SAS pool, and every backup leg. [Runbook](proxmox/r730xd/README.md) · [Reinstall](proxmox/r730xd/REINSTALL.md) | Xeon E5-2630 v4 (10C/20T), 251GB DDR4, Quadro P2200 (in the chassis but unused, 3.86 W idle) |
+| Dell R730xd — `pve`, `10.57.57.250` | Storage and backup host: the media array and its NFS exports, the Garage S3 LXC Longhorn backs into, the Nextcloud VM, and every backup leg. No longer runs any Kubernetes node. [Runbook](proxmox/r730xd/README.md) · [Reinstall](proxmox/r730xd/REINSTALL.md) | Xeon E5-2630 v4 (10C/20T), 251GB DDR4, Quadro P2200 (in the chassis but unused, 3.86 W idle) |
 | XCY X44 — `fw`, `10.57.57.1` | pfSense: gateway, DHCP, Tailscale subnet router. [Reinstall](pfsense/REINSTALL.md) | N100, 8GB |
 | Oracle Cloud ARM VPS — `vps01`, us-phoenix-1 | Off-site services | 4 vCPU ARM, 24GB, 200GB |
 | Oracle Cloud ARM VPS — `edge-fra`, eu-frankfurt-1 | Public TLS edge, borrowed tenancy | 2 vCPU ARM, 12GB, 45GB |
 | Synology DS223+ — `10.57.57.201` | Cold storage only, weekly versioned push from pve | 2x2TB RAID1 |
-| Beelink GTi13 Ultra — `px-0`, `10.57.57.254` | Second Proxmox host: the Kubernetes worker (VM 810, Iris Xe passed through) and Proxmox Datacenter Manager. Also the DR drill target. [Runbook](proxmox/px-0/README.md) | i9-13900HK, 64GB DDR5, 2x1TB NVMe (QLC) |
+| Beelink GTi13 Ultra — `px-0`, `10.57.57.254` | Runs the cluster: `kubernetes-1` (VM 810, 14 cores / 44 GiB, Iris Xe passed through) and Proxmox Datacenter Manager. [Runbook](proxmox/px-0/README.md) | i9-13900HK, 64GB DDR5, 2x1TB NVMe (QLC) |
 | Dell OptiPlex 3050 ×2 | Retained, powered off | i5-6500T, 32GB, 128GB NVMe |
 
 ## Where to go

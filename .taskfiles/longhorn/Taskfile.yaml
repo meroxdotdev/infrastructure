@@ -43,6 +43,7 @@ tasks:
       After pods are up, run: task longhorn:post-restore-jellyfin
       to re-trigger Jellyfin metadata+image downloads (~10 min).
     cmds:
+      - task: wait-for-longhorn
       - task: patch-backup-target
       - task: wait-for-backup-volumes
       - task: restore-all-volumes
@@ -57,6 +58,33 @@ tasks:
       - echo ""
       - echo "✓ Longhorn restore complete. Watch pods start:"
       - echo "  kubectl get pods -A --watch"
+
+  wait-for-longhorn:
+    internal: true
+    desc: Wait until Flux has actually deployed Longhorn
+    summary: |
+      bootstrap:apps returns as soon as Flux is installed, not when it has
+      finished reconciling — Longhorn appears a few minutes later. Running the
+      restore before that fails in wait-for-backup-volumes with "0 backup
+      volumes found, check S3 connectivity", which sends you debugging Garage
+      when the real answer is that longhorn-manager does not exist yet.
+      Cost 5 wasted minutes during the 2026-09-01 collapse to one node.
+    cmds:
+      - |
+        echo "→ Waiting for Flux to deploy Longhorn..."
+        for i in $(seq 1 60); do
+          if kubectl get crd backuptargets.longhorn.io >/dev/null 2>&1 \
+             && [ "$(kubectl -n longhorn-system get pods --no-headers 2>/dev/null \
+                     | grep -c 'longhorn-manager.*Running')" -ge 1 ]; then
+            echo "  ✓ Longhorn is up"
+            exit 0
+          fi
+          [ $((i % 6)) -eq 0 ] && echo "  [$((i / 6)) min] still waiting for longhorn-manager"
+          sleep 10
+        done
+        echo "  ✗ Longhorn did not come up in 10 min."
+        echo "    Check: flux get kustomizations -A | grep -i longhorn"
+        exit 1
 
   patch-backup-target:
     desc: Patch Longhorn BackupTarget CRD (required in Longhorn 1.11.2+)
@@ -110,7 +138,6 @@ tasks:
     silent: true
 
   clear-stalled-helmreleases:
-    internal: true
     desc: Reset HelmReleases that failed while volumes were still attaching
     summary: |
       bootstrap:apps reconciles every app before the volumes exist, so Helm

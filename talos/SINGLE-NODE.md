@@ -1,25 +1,28 @@
 # Single control plane
 
-The cluster runs **one** control-plane VM: `kubernetes-controlplane-1` (VM 800,
-`10.57.57.80`, on `pve`/R730xd). Since 2026-09-01 it is joined by
-`kubernetes-worker-1` (VM 810 on `px-0`), so the cluster has two nodes — but
-still one etcd member, and that is the part this page is about.
+The cluster is **one node**: `kubernetes-1` (VM 810, `10.57.57.80`, on
+`px-0`/Beelink), control plane and workload host in the same VM. 14 cores,
+44 GiB, with the Iris Xe passed through for Jellyfin.
 
-This has been the case since 2026-08-17 and is the intentional, accepted state
-— not a degraded or temporary one. Nodes 2 and 3 were removed because all three
-VMs ran on the same physical host anyway, so the 3-node HA was illusory (one
-`pve` outage always took down all three) and cost 3x the Longhorn replicas and
-etcd raft overhead for a failure mode (single-VM death) that never happened.
+That has been the shape since 2026-09-01. Before it, the single control plane
+lived on `pve`/R730xd with a worker on `px-0`; before that, three control
+planes on `pve`. Each step removed machinery that was not buying anything.
 
-**A second control plane would be worse than one, not better.** Two members
-cannot form a quorum: lose either and the cluster stops. Three would need a
-third fault domain, which does not exist — a third VM on `pve` or `px-0`
-rebuilds exactly the illusion torn down in August.
+**Why one and not two.** Two control planes cannot form a quorum — lose either
+and the cluster stops, which is strictly worse than one. Three would need a
+third fault domain, and there are only two machines. A third VM on `pve` or
+`px-0` rebuilds exactly the illusion torn down in August: HA that dies with
+the host underneath it.
 
-The Quadro P2200 was detached from this VM on 2026-09-01 — Jellyfin transcodes
-on `px-0`'s iGPU now, and a VM with `hostpci` cannot be live-migrated. The card
-is still in the chassis, unused. See
-[../docs/gpu-transcoding.md](../docs/gpu-transcoding.md).
+**So there is no HA, deliberately.** Recovery is a restore, not a failover:
+`docs/dr-quickstart.md`, drilled, ~35 minutes. If you want the cluster to
+survive either machine going down, it takes a third etcd vote in a third
+fault domain plus Longhorn replicas on both — priced out in the 2026-09-01
+discussion, not adopted.
+
+**What `pve` still carries:** the media array and its NFS exports, every
+backup leg, the Garage S3 LXC that Longhorn backs up into, and the Nextcloud
+VM. Losing it costs media and backups, not the cluster.
 
 The sizing math and the exact migration steps lived in
 `single-node-migration-log.md`, removed 2026-08-29 once the migration was
@@ -32,22 +35,22 @@ Related: [talconfig.yaml](talconfig.yaml) · [DR.md](../DR.md) ·
 
 | Signal | Command | Healthy |
 |---|---|---|
-| CPU pressure | `kubectl top node` | < 7 of 10 cores |
-| Memory pressure | `kubectl top node` | < 45 GiB of 64 |
+| CPU pressure | `kubectl top node` | < 10 of 14 cores |
+| Memory pressure | `kubectl top node` | < 34 GiB of 44 |
 | etcd fsync | `EtcdSlowFsyncBurst` alert | quiet outside 03:00-03:30 |
 | etcd elections | `EtcdLeaderElectionsCreeping` | structurally impossible now |
 | Longhorn headroom | `kubectl -n longhorn-system get nodes.longhorn.io` | > 150 GiB free |
-| `rpool` | `zfs list rpool` | < 40% |
+| `cluster-storage` | `zpool list cluster-storage` | < 60% |
 
-If `kubectl top node` sits above 7 of 10 cores during an evening Jellyfin
-transcode, raise to 12 before concluding one node doesn't work — the host
-has 16 threads and 153 GB free. Also watch `Pending` pods
+If `kubectl top node` sits high during an evening Jellyfin transcode, raise
+the VM before concluding one node doesn't work — the Beelink has 20 threads
+and 62 GiB, of which ARC takes 4 and Proxmox Datacenter Manager 8. Also watch `Pending` pods
 (`kubectl get pods -A --field-selector=status.phase=Pending`): the scheduler
 binds on `requests`, not usage, so a node can look idle in `top` while a pod
 still won't schedule.
 
-Nightly etcd snapshot (the one thing single-node made strictly worse — no
-peer to rebuild from) runs at 03:03 via
+Nightly etcd snapshot (the one thing a single member makes strictly worse —
+no peer to rebuild from) runs at 03:03 via
 [`proxmox/r730xd/scripts/etcd-snapshot.sh`](../proxmox/r730xd/scripts/etcd-snapshot.sh).
 Restore: `talosctl bootstrap --recover-from=<snapshot>`, snapshot lives under
 `/media/backups/etcd/` and rides the existing restic push to Oracle.
@@ -66,76 +69,15 @@ node cordoned and its workloads on the floor. Use `DRAIN=false`:
 task talos:upgrade-node IP=10.57.57.80 DRAIN=false
 ```
 
-The default stays `true` because it is correct for `kubernetes-worker-1`,
-whose pods have somewhere else to go.
+The default stays `true` because it is correct for a worker, whose pods have
+somewhere else to go. There are no workers today.
 
-## Rollback to 3 nodes
+## Going back
 
-No data loss, ~30 minutes (most of it Longhorn copying ~100 GiB back onto
-the returning nodes). Talos nodes are disposable and declarative, so this is
-re-provisioning from git, not restoring anything.
+There is nothing to roll back to. VMs 802/804 were deleted in August and VM
+800 in September; the node blocks left `talconfig.yaml` on 2026-09-01. Adding
+a node is `docs/operations.md` → "Adding a worker node", from scratch.
 
-```bash
-# 1. Put nodes 2 and 3 back in git
-#    - uncomment both blocks in talos/talconfig.yaml
-#    - revert the Longhorn replica counts (defaultReplicaCount "3",
-#      defaultClassReplicaCount 3, csi.* 3, longhornUI 3)
-#    - optionally re-add spegel (removed 2026-08-17, kubernetes-controlplane-1
-#      commit d3a53fb^ has the last copy of its manifests) - peer-to-peer
-#      image caching between nodes, worth having again with 3 real ones.
-git revert <the single-node migration commit> && git push
-
-# 2. Recreate VMs 802/804 — they were deleted, not just stopped, see
-#    "VM recreation spec" below. Then boot to maintenance mode:
-ssh root@10.57.57.250 'qm start 802; qm start 804'
-
-# 3. Regenerate and apply — they join as fresh control-plane members
-task talos:generate-config
-task talos:apply-node IP=10.57.57.82 MODE=auto
-task talos:apply-node IP=10.57.57.84 MODE=auto
-
-# 4. Let Flux restore the Longhorn settings, then re-expand the volumes
-flux reconcile kustomization cluster-apps --with-source
-for n in kubernetes-controlplane-2 kubernetes-controlplane-3; do
-  kubectl -n longhorn-system patch nodes.longhorn.io $n --type=merge \
-    -p '{"spec":{"allowScheduling":true,"evictionRequested":false}}'
-done
-kubectl -n longhorn-system get volumes.longhorn.io -o name | while read -r v; do
-  kubectl -n longhorn-system patch "$v" --type=merge -p '{"spec":{"numberOfReplicas":3}}'
-done
-
-# 5. Watch the rebuild
-watch -n30 'kubectl -n longhorn-system get volumes.longhorn.io \
-  -o custom-columns=NAME:.metadata.name,ROBUST:.status.robustness'
-```
-
-### VM recreation spec
-
-VMs 804 and 802 were deleted (not just stopped) during the migration, so
-rollback recreates them from this captured config:
-
-```bash
-# Node 2 — the exact config that was running
-qm create 802 --name kubernetes-controlplane-2 --tags k8s \
-  --cores 4 --sockets 1 --cpu host --memory 49152 --numa 0 \
-  --ostype l26 --scsihw virtio-scsi-single --boot 'order=scsi0;net0' --onboot 1 \
-  --net0 'virtio=BC:24:11:43:4E:63,bridge=vmbr0,firewall=1' \
-  --scsi0 'local-zfs:400,format=raw,iothread=1,ssd=1'
-
-# Node 3 — same shape; only name, vmid and MAC differ
-qm create 804 --name kubernetes-controlplane-3 --tags k8s \
-  --cores 4 --sockets 1 --cpu host --memory 49152 --numa 0 \
-  --ostype l26 --scsihw virtio-scsi-single --boot 'order=scsi0;net0' --onboot 1 \
-  --net0 'virtio=BC:24:11:96:87:40,bridge=vmbr0,firewall=1' \
-  --scsi0 'local-zfs:400,format=raw,iothread=1,ssd=1'
-```
-
-⚠️ **`talconfig.yaml` and the live MAC of node 2 disagree.** The file
-declares `bc:24:11:a5:4b:9e` for `kubernetes-controlplane-2`; the VM that
-was actually running used `BC:24:11:43:4E:63`. Node 1 matches its file
-correctly, so this is node-2-only drift.
-`networkInterfaces[].deviceSelector.hardwareAddr` picks the NIC by MAC:
-recreate the VM with the file's MAC and nothing matches, so the node boots
-with no address. Either create the VM with `bc:24:11:a5:4b:9e` to match the
-file, or fix the file first — don't assume they agree. Node 3's MAC was
-never independently verified against a live VM.
+Git holds every previous shape: `git show 793bf33:talos/talconfig.yaml` for
+the two-node version, `git show 9385285:talos/single-node-migration-log.md`
+for the original three.

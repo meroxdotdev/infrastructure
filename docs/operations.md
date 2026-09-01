@@ -60,8 +60,13 @@ today, deliberately ([../talos/SINGLE-NODE.md](../talos/SINGLE-NODE.md)) — so 
 second physical host joins as a worker, not as a second control plane. Two
 control planes are strictly worse than one: they cannot form a quorum.
 
-Worked example below: `kubernetes-worker-1`, VM 810 on `px-0` (10.57.57.254),
-node address 10.57.57.81.
+**The cluster has no workers today** — it collapsed to the single node
+`kubernetes-1` on 2026-09-01. This runbook is kept because adding one is a
+reasonable thing to want, and because the traps below cost a day to find.
+
+Worked example: `kubernetes-worker-1`, **VM 811** on `px-0` (10.57.57.254),
+node address 10.57.57.81. Do not reuse VM 810 or 10.57.57.80 — those are
+`kubernetes-1`, the live cluster.
 
 **Check the version skew first.** A new node is built from `talos/talenv.yaml`,
 so if that file is ahead of the running control plane the worker boots with a
@@ -91,7 +96,7 @@ installs the wrong Talos and the mistake only shows up as a skew error later.
 DR VMs only, and this node is permanent.
 
 ```bash
-ssh root@10.57.57.254 'qm create 810 --name kubernetes-worker-1 --tags k8s \
+ssh root@10.57.57.254 'qm create 811 --name kubernetes-worker-1 --tags k8s \
   --cores 8 --sockets 1 --cpu host --memory 32768 --numa 0 \
   --ostype l26 --bios ovmf --machine q35 --scsihw virtio-scsi-single --onboot 1 \
   --boot "order=scsi0;ide2" \
@@ -113,7 +118,7 @@ ISO once the node is up.
 **3. Boot it** and wait ~60s for maintenance mode. It takes a DHCP lease first:
 
 ```bash
-ssh root@10.57.57.254 'qm start 810'
+ssh root@10.57.57.254 'qm start 811'
 nmap -Pn -n -p 50000 --open 10.57.57.0/24      # find the maintenance-mode node
 ```
 
@@ -225,7 +230,7 @@ bound to `vfio-pci`, left over from when that host ran the Intel setup — so
 nothing has to be prepared on the host:
 
 ```bash
-ssh root@10.57.57.254 'qm set 810 --hostpci0 0000:00:02.0'
+ssh root@10.57.57.254 'qm set 811 --hostpci0 0000:00:02.0'   # the iGPU is already claimed by 810
 ```
 
 **The node label.** Set `intel.feature.node.kubernetes.io/gpu: "true"` in the
@@ -251,7 +256,34 @@ kubectl drain kubernetes-worker-1 --ignore-daemonsets --delete-emptydir-data
 kubectl delete node kubernetes-worker-1
 talosctl reset -n 10.57.57.81 --graceful=false --reboot
 # then delete the node block from talconfig.yaml, and the VM
-ssh root@10.57.57.254 'qm stop 810 && qm destroy 810'
+ssh root@10.57.57.254 'qm stop 811 && qm destroy 811'
+```
+
+### Rebuilding the cluster on the same hardware
+
+The 2026-09-01 collapse to one node was a deliberate DR run. Four things cost
+time that the quickstart did not warn about:
+
+- **`talosctl reset` needs `--endpoints`** when the endpoint in `talosconfig`
+  is a node you have already stopped. Otherwise it tries to reach the target
+  *through* the dead one and times out with a confusing dial error.
+- **A reset node comes back on DHCP**, not on its old static address — the
+  reset wipes `STATE`, and the static address lives there. Find it with
+  `nmap -Pn -n -p 50000 --open 10.57.57.0/24`, do not wait on the old IP.
+- **Resize the VM for its new role.** A VM sized as a worker will not hold the
+  whole cluster: 32 GiB left Jellyfin `Pending` on `Insufficient memory` with
+  38 GiB of requests. `kubernetes-1` runs 14 cores / 44 GiB.
+- **Take a fresh backup first.** `longhorn:restore` restores the newest backup
+  in S3, and the nightly job runs at 23:50 — anything changed during the day
+  is not in it. Fire the job early by patching its cron a few minutes ahead,
+  then put the cron back.
+
+```bash
+kubectl -n longhorn-system patch recurringjob backup-homelab-k8s \
+  --type=merge -p '{"spec":{"cron":"<mm> <hh> * * *"}}'   # a few minutes out, UTC
+# wait for the Job to complete, then:
+kubectl -n longhorn-system patch recurringjob backup-homelab-k8s \
+  --type=merge -p '{"spec":{"cron":"50 23 * * *"}}'
 ```
 
 ### Automatic updates (Renovate)

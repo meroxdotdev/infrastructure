@@ -1,7 +1,7 @@
 # GPU Transcoding
 
 Jellyfin hardware transcoding runs on **Intel QuickSync**, on the Beelink's
-Iris Xe passed through to `kubernetes-worker-1`. Both instances — `jellyfin`
+Iris Xe passed through to `kubernetes-1`. Both instances — `jellyfin`
 and `jellyfin-public` — use it.
 
 It ran on an Nvidia Quadro P2200 from 2026-07-17 to 2026-09-01. That stack is
@@ -22,7 +22,7 @@ VM config is one line: `hostpci0: 0000:00:02.0`, with `--machine q35` and
 
 ## Talos
 
-`kubernetes-worker-1` runs Image Factory schematic
+`kubernetes-1` runs Image Factory schematic
 `249d9135de54962744e917cfe654117000cba369f9152fbab9d055a00aa3664f`:
 
 | Extension | Why |
@@ -110,7 +110,7 @@ kubectl exec -n default "$POD" -- /usr/lib/jellyfin-ffmpeg/ffmpeg \
 
 Look for `Stream mapping: ... -> h264_qsv`. Then force a transcode from a real
 client and confirm Playback Info reports it, and that the pod is on
-`kubernetes-worker-1`:
+`kubernetes-1`:
 
 ```bash
 kubectl get pods -n default -o wide | grep jellyfin
@@ -119,7 +119,7 @@ kubectl get pods -n default -o wide | grep jellyfin
 ## The Quadro, after retirement
 
 Removed from git on 2026-09-01: the `nonfree-kmod-nvidia-lts` and
-`nvidia-container-toolkit-lts` extensions from controlplane-1's schematic (now
+`nvidia-container-toolkit-lts` extensions from kubernetes-1's schematic (now
 `36cd6536ea…b87c010`, carrying only intel-ucode + the two Longhorn tools),
 `talos/patches/controller/nvidia-kernel-modules.yaml`, the
 `nvidia.com/gpu` node labels, and `kubernetes/apps/kube-system/nvidia-device-plugin/`.

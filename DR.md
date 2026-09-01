@@ -15,34 +15,25 @@ Previously 2026-08-03 on pve/R730xd.
 
 ## Which host to target
 
-**px-0 (Beelink)** — the real test. Different physical box, so it answers
-"the R730xd died, can we recover?" and not just "did a recent change break
-the restore?". 62GB RAM comfortably runs the restored node at
-`vm_memory_mb = 32768`.
+**pve (R730xd)** — the default target now. 251 GB of RAM with nothing on it
+but Nextcloud and the storage services, and it is no longer where production
+runs, so a drill there does not touch the live cluster. It cannot test "the
+Beelink died" — the DR VM lands on a different box than production, which is
+exactly what you want here.
 
-⚠ **px-0 stopped being an idle box on 2026-09-01.** It now runs
-`kubernetes-worker-1` (VM 810) and Proxmox Datacenter Manager. Three
-consequences for a drill:
+**px-0 (Beelink)** — **production lives here since 2026-09-01.** `kubernetes-1`
+is VM 810 on this host. A drill here means stopping the live cluster first, and
+competing with it for RAM and pool space. The DR VMIDs start at 820 so they
+cannot collide with 810. Use it only to answer "px-0 died, can we recover onto
+it after a rebuild?", and expect the whole homelab down for the duration.
 
-- **VM 810 must be shut down**, not just tolerated. DR reuses production MACs
-  and IPs, and the worker's are among them now — two VMs with
-  `bc:24:11:00:57:81` on the same LAN is not a subtle failure.
-- **DR restores two nodes**, since `talconfig.yaml` declares two.
-  `terraform.tfvars` carries both MACs; `dr:apply-talos-configs` aborts if the
-  counts disagree.
-- **The DR VMIDs moved to 820+** so they cannot collide with VM 810.
-
-The drill therefore takes the whole cluster down, both hosts, not just pve.
-
-**pve (R730xd)** — 238GB+ RAM free once prod is stopped, so it can match
-prod exactly (`vm_memory_mb = 49152`). Use it only when px-0 is unavailable,
-and note it cannot test host failure: the DR VMs land on the same box as
-prod.
+**Sizing:** the DR VM must carry the entire cluster — `vm_memory_mb = 45056`,
+`vm_cores = 14`. 32 GiB is not enough; pods sit `Pending` on
+`Insufficient memory` with 38 GiB of requests.
 
 **What neither host tests:** hardware transcoding. Both Jellyfin instances
-request `gpu.intel.com/i915`, which only the real `kubernetes-worker-1`
-advertises, so on DR VMs they stay `Pending` by design — see step 8 of the
-quickstart.
+request `gpu.intel.com/i915`, which only a node with the Iris Xe passed
+through advertises, so on a DR VM without it they stay `Pending` by design.
 
 **Not part of DR at all:** `edge-fra`, the public TLS edge in Frankfurt. It is
 stateless by design and in no backup set — `cd vps && make edge-setup` rebuilds
@@ -196,7 +187,7 @@ kubectl get helmreleases -A | grep -v "True\|READY"
 task dr:destroy-vms
 
 # Restart the prod node via Proxmox UI:
-# VM 800 → kubernetes-controlplane-1 (pve / R730xd) - the only control-plane
+# VM 800 → kubernetes-1 (pve / R730xd) - the only control-plane
 # VM since the 2026-08-17 single-node downsize (see talos/SINGLE-NODE.md).
 ```
 
@@ -286,7 +277,7 @@ being up to a week stale — the push is weekly. Oracle is for the case where
 both on-prem machines are gone.
 
 Longhorn's backup target (Garage LXC 103) sits on the same physical host as
-`kubernetes-controlplane-1`. R730xd being both a live cluster node and the
+`kubernetes-1`. R730xd being both a live cluster node and the
 backup hub is an accepted blast-radius tradeoff.
 
 Mitigations:

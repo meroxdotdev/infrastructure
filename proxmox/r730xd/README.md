@@ -47,7 +47,7 @@ everything else on this page — provisioned/documented directly.
   override in `/etc/systemd/system/ollama.service.d/override.conf` so it's
   reachable from the K8s cluster (default is loopback-only).
 - Model: `qwen3:4b-instruct`, CPU inference (no GPU on this VM — the only
-  GPU passthrough on this host is dedicated to `kubernetes-controlplane-1`
+  GPU passthrough on this host is dedicated to `kubernetes-1`
   for Jellyfin transcoding).
 - API reachable at `http://10.57.57.90:11434` from anywhere on the LAN/K8s
   cluster (no auth — trusted network only, not exposed externally).

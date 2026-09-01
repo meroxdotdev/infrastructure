@@ -1,12 +1,19 @@
 # Beelink GTi13 Ultra — `px-0`, `10.57.57.254`
 
-Second Proxmox host, standalone — not clustered with pve. Runs
-`kubernetes-worker-1` (VM 810, Iris Xe passed through) and Proxmox Datacenter
-Manager (VM 100).
+Standalone Proxmox host, not clustered with pve. **Runs the entire Kubernetes
+cluster** as `kubernetes-1` (VM 810 — 14 cores, 44 GiB, Iris Xe passed
+through), plus Proxmox Datacenter Manager (VM 100).
 
-Control plane, Longhorn data, media and backups all stay on pve. Losing px-0
-costs compute and transcoding; losing pve still takes everything down. That
-asymmetry is intended — [../../talos/SINGLE-NODE.md](../../talos/SINGLE-NODE.md).
+Since 2026-09-01 this is the machine the homelab runs on. `pve` keeps the
+disks: media and its NFS exports, the Garage S3 LXC that Longhorn backs into,
+Nextcloud, and every backup leg. Losing `pve` costs media, Nextcloud and
+backups but leaves the cluster running; losing this box stops everything.
+There is no HA, deliberately —
+[../../talos/SINGLE-NODE.md](../../talos/SINGLE-NODE.md).
+
+**Memory budget** (62 GiB total): ZFS ARC 4, Proxmox ~2, PDM 8, `kubernetes-1`
+44. VM 102 is stopped and does not count. Sizing the cluster VM below ~40 GiB
+leaves pods `Pending` — total requests are 38 GiB.
 
 | | |
 |---|---|
@@ -17,10 +24,16 @@ asymmetry is intended — [../../talos/SINGLE-NODE.md](../../talos/SINGLE-NODE.m
 | GPU | Iris Xe, bound to `vfio-pci`, passed to VM 810 |
 | Power | 0.83 W package idle after tuning |
 
-**Both NVMe are Crucial P3 Plus — QLC, DRAM-less.** The pool disk has burned a
-third of its endurance, so the Longhorn node object here is
-`allowScheduling: false`. Replacing it with TLC is the precondition for putting
-the control plane or Longhorn replicas on this host.
+**Both NVMe are Crucial P3 Plus — QLC, DRAM-less.** The split matters: the OS
+is on `nvme1n1` (1% worn), and `cluster-storage` — etcd and every Longhorn
+volume — is on `nvme0n1`, which has burned a third of its endurance. Keep it
+that way. Putting VM images on the OS disk means one failure takes both
+Proxmox and the cluster.
+
+Measured 2026-09-01: 67 TB written over 10,987 power-on hours ≈ 147 GB/day,
+leaving ~153 TB and therefore roughly **three years**. Not urgent. A TLC
+replacement is worth doing for etcd fsync latency rather than for endurance,
+and it is the precondition for ever holding a second Longhorn replica here.
 
 ## BIOS
 

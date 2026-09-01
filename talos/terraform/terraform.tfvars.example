@@ -1,52 +1,29 @@
-# Copy to terraform.tfvars and fill in your values
-# terraform.tfvars is gitignored
-
-proxmox_url          = "https://10.57.57.254:8006"   # px-0; pve is 10.57.57.250
-proxmox_token_id     = "root@pam!terraform"   # create at: Proxmox → Datacenter → API Tokens
-proxmox_token_secret = "your-token-secret-here"
-
-# REQUIRED for DR on Proxmox homelab (fixed MACs = prod node MACs from talconfig.yaml):
-# Target: px-0/Beelink — a different physical host, so the drill actually
-# tests host failure. See DR.md "Which host to target".
-proxmox_nodes = ["px-0", "px-0", "px-0"]
-disk_storage  = "cluster-storage"
-iso_storage   = "local-data"
-vmid_start    = 820   # 810 is kubernetes-worker-1 on px-0 — do not reuse
-vm_cores      = 6
-vm_memory_mb  = 32768            # one node, comfortably inside px-0's 62GB
-vm_disk_gb    = 250
-talos_version = "v1.13.8"
-
-# Fallback target — pve/R730xd. Cannot test host failure (same box as prod),
-# but has the headroom to match prod exactly:
-#   proxmox_nodes = ["pve", "pve", "pve"]
-#   disk_storage  = "local-zfs"
-#   iso_storage   = "media-isos"
-#   vm_memory_mb  = 49152
-
-# DR reuses prod's MACs and IPs, so the node count here IS the DR node count
-# (main.tf derives it from this list) and talconfig.yaml never needs editing.
-# One entry = one node, matching prod since the 2026-08-17 downsize.
+# DR target: pve (R730xd). Default since 2026-09-01 — production moved to
+# px-0, so a drill on pve does not touch the live cluster and has 251 GB of
+# RAM to play with.
 #
-# MACs come from talos/talconfig.yaml hardwareAddr — verify before running,
-# they drift whenever a prod VM's NIC changes. A wrong MAC means the node
-# never gets its static IP (dr:apply-talos-configs can't match it).
-#
-# To test a 3-node restore instead, uncomment nodes 2/3 in talconfig.yaml
-# and add their MACs/IPs here. Nothing else changes.
-# One entry per node in talconfig.yaml, in the same order and with the same
-# MACs — dr:apply-talos-configs aborts if the counts disagree, and Talos
-# selects its NIC by MAC. Since 2026-09-01 that means two: the control plane
-# and kubernetes-worker-1. (must match talconfig.yaml)
-node_macs = ["bc:24:11:a7:ba:13", "bc:24:11:00:57:81"]
-node_ips  = ["10.57.57.80", "10.57.57.81"]
+# To drill on px-0 instead, swap in terraform.tfvars.px-0 and expect to stop
+# VM 810 first: it is kubernetes-1, the live cluster.
+
+proxmox_url          = "https://10.57.57.250:8006"
+proxmox_token_id     = "root@pam!terraform"
+proxmox_token_secret = "REPLACE-ME"
+
+proxmox_nodes = ["pve"]
+disk_storage  = "local-zfs"
+iso_storage   = "media-isos"
+vmid_start    = 820   # 810 is kubernetes-1, the live cluster on px-0 — do not reuse
+
+# One entry per node in talconfig.yaml, with the same MAC —
+# dr:apply-talos-configs aborts if the counts disagree, and Talos selects its
+# NIC by MAC. Since the 2026-09-01 collapse that means exactly one: kubernetes-1.
+node_macs = ["bc:24:11:00:57:81"]
+node_ips  = ["10.57.57.80"]
 node_vip  = "10.57.57.88"
 
-# PREREQUISITE: prod cluster VM must be stopped before DR (same IPs/MACs).
-
-# KNOWN WORKING (re-verified during the 2026-08-03 DR drill):
-# - pve (R730xd): disk_storage 'local-zfs', iso_storage 'media-isos' (the
-#   'local' storage there only has content=snippets, no iso support).
-# - Proxmox API tokens for terraform don't survive between hosts if you
-#   ever add a second one back - re-run `pveum user token add root@pam
-#   terraform --privsep 0` on whichever host you target.
+# The DR node carries the whole cluster: 32 GiB leaves pods Pending on
+# Insufficient memory against 38 GiB of requests.
+vm_cores      = 14
+vm_memory_mb  = 45056
+vm_disk_gb    = 250
+talos_version = "v1.13.9"
