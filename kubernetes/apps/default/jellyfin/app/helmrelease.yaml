@@ -21,11 +21,10 @@ spec:
       jellyfin:
         annotations:
           reloader.stakater.com/auto: "true"
-        pod:
-          # Nvidia Quadro P2200 transcoding (containerd runtime registered by the
-          # nvidia-container-toolkit Talos extension). See docs/gpu-transcoding.md
-          # to revert to the previous Intel QSV setup.
-          runtimeClassName: nvidia
+        # Intel QuickSync on the Beelink's Iris Xe, via kubernetes-worker-1.
+        # No runtimeClassName: unlike Nvidia, which needs a containerd runtime
+        # handler, the Intel plugin just injects /dev/dri into the container.
+        # See proxmox/px-0/README.md.
         containers:
           app:
             image:
@@ -60,15 +59,30 @@ spec:
               requests:
                 cpu: 100m
               limits:
-                nvidia.com/gpu: 1
                 memory: 8Gi
     defaultPodOptions:
+      # Prefer the node with the iGPU, but do not require it. A hard
+      # gpu.intel.com/i915 request would pin Jellyfin to px-0 and leave it
+      # Pending whenever that host is down or in maintenance. Playback matters
+      # more than transcoding: on pve it falls back to software.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: intel.feature.node.kubernetes.io/gpu
+                    operator: In
+                    values: ["true"]
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+        # Vestigial: the `video` group, from the pre-2026-07 Intel setup. Talos
+        # ships /dev/dri/renderD128 as 0666, so nothing needs it. Harmless,
+        # kept only so its absence is not mistaken for a regression.
         supplementalGroups: [44]
     service:
       app:
@@ -85,6 +99,17 @@ spec:
             namespace: kube-system
             sectionName: https
     persistence:
+      # The render node itself, instead of a device-plugin resource. Talos
+      # ships /dev/dri/renderD128 as 0666, so no capabilities or supplementary
+      # groups are needed. DirectoryOrCreate is what makes the fallback work:
+      # on a node without a GPU the mount is an empty directory, Jellyfin finds
+      # no QSV device and transcodes in software rather than refusing to start.
+      dri:
+        type: hostPath
+        hostPath: /dev/dri
+        hostPathType: DirectoryOrCreate
+        globalMounts:
+          - path: /dev/dri
       config:
         existingClaim: jellyfin
         globalMounts:

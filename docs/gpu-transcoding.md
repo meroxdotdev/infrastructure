@@ -1,90 +1,139 @@
-# GPU Transcoding — Nvidia Quadro P2200
+# GPU Transcoding
 
-Jellyfin hardware transcoding runs on Nvidia NVENC/NVDEC (Quadro P2200
-passthrough on the R730xd, `10.57.57.250`) to `kubernetes-controlplane-1`.
+Jellyfin hardware transcoding runs on **Intel QuickSync**, on the Beelink's
+Iris Xe passed through to `kubernetes-worker-1`. Both instances — `jellyfin`
+and `jellyfin-public` — use it.
+
+It ran on an Nvidia Quadro P2200 from 2026-07-17 to 2026-09-01. That stack is
+still deployed but is being retired; see the last section.
 
 ---
 
-## Hardware / host (Proxmox, R730xd `10.57.57.250`)
+## Hardware / host
 
-The GPU (`04:00.0` VGA + `04:00.1` Audio, IOMMU group 19, cleanly isolated) is
-passed through to the `kubernetes-controlplane-1` VM via `vfio-pci`.
+The iGPU sits alone in IOMMU group 0 on `px-0` and is bound to `vfio-pci`.
+Everything about that — `vfio.conf`, the module blacklists, the GRUB command
+line — is recorded in
+[../proxmox/px-0/README.md](../proxmox/px-0/README.md), along with the BIOS
+settings that keep the iGPU present on a headless box.
 
-Host-level config:
-
-| File                                                                               | Purpose                                                                                                                                    |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/etc/default/grub` — `GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt"` | Enable IOMMU (host is legacy GRUB, not `proxmox-boot-tool` — confirmed via `proxmox-boot-tool status` failing with "uuids does not exist") |
-| `/etc/modprobe.d/blacklist-nvidia.conf`                                            | Blacklists `nvidia`, `nvidia_drm`, `nvidia_modeset`, `nvidia_uvm` on the **host** so it never claims the GPU                               |
-| `/etc/modprobe.d/vfio.conf`                                                        | `options vfio-pci ids=10de:1c31,10de:10f1` — binds both GPU functions to vfio-pci                                                          |
-| `/etc/modules-load.d/vfio.conf`                                                    | `vfio`, `vfio_pci`, `vfio_iommu_type1`, `vfio_virqfd`                                                                                      |
-
-VM config: `hostpci0: 0000:04:00.0` (video function only, no audio — Talos
-doesn't need it), disk on `local-lvm` (low latency, required for etcd — not
-`bulk-backups`).
+VM config is one line: `hostpci0: 0000:00:02.0`, with `--machine q35` and
+`--bios ovmf`. Inside the guest the device appears at `0000:06:10.0`.
 
 ## Talos
 
-Quadro P2200 is **Pascal** (GP106) — the current Nvidia "production" driver
-branch (595.x) dropped Pascal support (`NVRM: ... will ignore this GPU`).
-Pascal requires the **LTS branch** (580.x):
+`kubernetes-worker-1` runs Image Factory schematic
+`249d9135de54962744e917cfe654117000cba369f9152fbab9d055a00aa3664f`:
 
-- `talos/talconfig.yaml` — `kubernetes-controlplane-1` uses a custom Talos
-  Image Factory schematic with extensions:
-  `siderolabs/nonfree-kmod-nvidia-lts` + `siderolabs/nvidia-container-toolkit-lts`
-  (schematic `914e76a6752e45504176b24f0f6a0a06f993c2dfa4cd314224f822f34730c2dc`,
-  regenerate via the Image Factory API if the extension list changes — see
-  `curl -X POST --data-binary @schematic.yaml https://factory.talos.dev/schematics`).
-- `talos/patches/controller/nvidia-kernel-modules.yaml` — loads `nvidia`,
-  `nvidia_uvm`, `nvidia_modeset`, `nvidia_drm` at boot (the extension alone
-  does not auto-load them).
-- Node labels on `kubernetes-controlplane-1`: `nvidia.com/gpu: "true"` and
-  `nvidia.com/gpu.present: "true"`. The second label is required because the
-  `nvidia-device-plugin` chart's default `nodeAffinity` looks for NFD labels
-  we don't run (no Node Feature Discovery in this cluster) — `gpu.present`
-  satisfies one of its OR'd affinity terms directly.
-- containerd gets a `nvidia` runtime handler automatically from the
-  `nvidia-container-toolkit` extension (`/etc/cri/conf.d/10-nvidia-container-runtime.part`),
-  but Kubernetes needs an explicit `RuntimeClass` object to expose it — see
-  `kubernetes/apps/kube-system/nvidia-device-plugin/app/runtimeclass.yaml`.
+| Extension | Why |
+|---|---|
+| `siderolabs/i915` | the driver |
+| `siderolabs/intel-ucode` | microcode |
+| `siderolabs/iscsi-tools` | **Longhorn**, not the GPU — without it `longhorn-manager` crashloops |
+| `siderolabs/util-linux-tools` | Longhorn |
+
+Regenerate with the POST in
+[operations.md](operations.md#variant-a-worker-that-transcodes) if the list
+changes. Unlike the Nvidia extensions, `i915` needs no kernel-module patch and
+no `RuntimeClass` — the device plugin injects `/dev/dri` directly.
+
+`talos/talconfig.yaml` sets `intel.feature.node.kubernetes.io/gpu: "true"` on
+the node. No Node Feature Discovery runs in this cluster, so it is placed by
+hand; Jellyfin's node affinity is what reads it.
 
 ## Kubernetes
 
-- `kubernetes/apps/kube-system/nvidia-device-plugin/` — Flux app (OCIRepository
-  + HelmRelease, chart `nvidia-device-plugin` 0.19.3). Exposes `nvidia.com/gpu`
-  as an allocatable resource on labeled nodes.
-- `kubernetes/apps/default/jellyfin/app/helmrelease.yaml`:
-    - `resources.limits`: `nvidia.com/gpu: 1`
-    - `pod.runtimeClassName: nvidia`
+There is **no Intel device plugin**, deliberately. Both Jellyfin helmreleases
+reach the GPU through a plain hostPath instead:
+
+```yaml
+dri:
+  type: hostPath
+  hostPath: /dev/dri
+  hostPathType: DirectoryOrCreate
+  globalMounts:
+    - path: /dev/dri
+```
+
+paired with a `preferredDuringSchedulingIgnoredDuringExecution` affinity for
+`intel.feature.node.kubernetes.io/gpu`. Neither sets `runtimeClassName`, and
+neither needs `supplementalGroups` — Talos ships `renderD128` as 0666.
+
+**Why not the device plugin.** `gpu.intel.com/i915: 1` is a hard resource
+request, and only px-0 advertises it, so Jellyfin would sit `Pending` whenever
+that host is down or in maintenance. Playback matters more than transcoding:
+most of it is direct play, which needs no GPU at all. `DirectoryOrCreate` is
+what makes the fallback graceful — on a node with no GPU the mount is an empty
+directory, Jellyfin finds no QSV device and transcodes in software instead of
+refusing to start.
+
+The operator was briefly restored from `6bb0f3d` on 2026-09-01 and then
+dropped again for exactly this reason. Do not reintroduce it without deciding
+what should happen to Jellyfin while px-0 is down.
+
+**One transitional wrinkle:** while the Quadro is still in pve, that node has
+its own `/dev/dri/renderD128` from `nvidia_drm`. A Jellyfin pod landing there
+mounts an Nvidia render node while configured for QSV, and transcodes will
+fail rather than fall back cleanly. It resolves itself when the card leaves.
 
 ## Jellyfin encoding.xml
 
-Stored in `/config/config/encoding.xml` on the PVC — not in git, see
-[jellyfin-post-restore.md](./jellyfin-post-restore.md) for the post-restore
-checklist.
+**Flux does not manage this.** It lives at `/config/config/encoding.xml` on
+the Longhorn PVC, so switching the manifests does not switch the transcoder —
+after the pods land on the worker, change it in
+**Dashboard → Playback → Transcoding**, or the setting stays on NVENC and
+every transcode fails.
 
-| Setting                                              | Value                                                                                                                    |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `HardwareAccelerationType`                           | `nvenc`                                                                                                                  |
-| `EnableHardwareEncoding`                             | `true`                                                                                                                   |
-| `EnableVppTonemapping`                               | `false` (Intel-only)                                                                                                     |
-| `EnableTonemapping`                                  | `true` (generic OpenCL/CUDA tonemapping)                                                                                 |
-| `EnableIntelLowPowerH264HwEncoder` / `HevcHwEncoder` | `false` (Intel-only)                                                                                                     |
-| `HardwareDecodingCodecs`                             | `h264`, `hevc`, `vc1`, `vp9`, `mpeg2video`, `mpeg4` — **no `av1`**: Pascal's NVDEC does not decode AV1 (added in Ampere) |
+| Setting | Value |
+|---|---|
+| `HardwareAccelerationType` | `qsv` |
+| `EnableHardwareEncoding` | `true` |
+| `EnableVppTonemapping` | `true` — Intel VPP tonemapping, unavailable on the Quadro |
+| `EnableTonemapping` | `true` |
+| `EnableIntelLowPowerH264HwEncoder` | `true` |
+| `EnableIntelLowPowerHevcHwEncoder` | `true` |
 
-Encoding support on P2200: **decode** h264/hevc/vc1/vp9/mpeg2/mpeg4 (no AV1);
-**encode** h264/hevc via NVENC (no AV1 encode on Pascal either).
-
-## Verifying it actually works
-
-Not just `nvidia-smi` — confirm a real transcode:
+Do not copy a codec list from here. Ask the hardware what it supports, from
+inside the pod, and tick exactly that:
 
 ```bash
 POD=$(kubectl get pod -n default -l app.kubernetes.io/name=jellyfin -o jsonpath='{.items[0].metadata.name}')
-kubectl exec -n default "$POD" -- nvidia-smi
-kubectl exec -n default "$POD" -- /usr/lib/jellyfin-ffmpeg/ffmpeg -hwaccel cuda \
-  -f lavfi -i testsrc=duration=5:size=1280x720:rate=30 -c:v h264_nvenc -f null -
+kubectl exec -n default "$POD" -- /usr/lib/jellyfin-ffmpeg/vainfo
 ```
 
-Then check `Stream mapping: ... -> h264_nvenc` in the output, and/or force a
-transcode from an actual client and check Playback Info shows `nvenc`.
+The headline difference against the P2200: Raptor Lake decodes **AV1**, which
+Pascal cannot, and encodes HEVC 10-bit. Neither chip encodes AV1.
+
+## Verifying it actually works
+
+`vainfo` only proves the driver loaded. Force a real encode:
+
+```bash
+POD=$(kubectl get pod -n default -l app.kubernetes.io/name=jellyfin -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -n default "$POD" -- ls -l /dev/dri
+kubectl exec -n default "$POD" -- /usr/lib/jellyfin-ffmpeg/ffmpeg \
+  -init_hw_device qsv=hw -filter_hw_device hw \
+  -f lavfi -i testsrc=duration=5:size=1280x720:rate=30 \
+  -vf format=nv12,hwupload=extra_hw_frames=64 -c:v h264_qsv -f null -
+```
+
+Look for `Stream mapping: ... -> h264_qsv`. Then force a transcode from a real
+client and confirm Playback Info reports it, and that the pod is on
+`kubernetes-worker-1`:
+
+```bash
+kubectl get pods -n default -o wide | grep jellyfin
+```
+
+## The Nvidia stack, pending retirement
+
+Still deployed, nothing requests `nvidia.com/gpu` any more: the card itself,
+the `nonfree-kmod-nvidia-lts` + `nvidia-container-toolkit-lts` extensions in
+controlplane-1's schematic (`914e76a675…30c2dc`),
+`talos/patches/controller/nvidia-kernel-modules.yaml` and
+`kubernetes/apps/kube-system/nvidia-device-plugin/`.
+
+It stays only until QuickSync has proven itself, then all of it goes in one
+commit and the card comes out of the server. Keeping two GPU stacks configured
+forever as a fallback costs more than the failure mode is worth. Selling the
+card is a decision to take with the R730xd, not separately.
