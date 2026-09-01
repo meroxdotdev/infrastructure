@@ -186,9 +186,10 @@ kubectl get helmreleases -A | grep -v "True\|READY"
 # Destroy DR VMs after test (or when ready to fail back to prod)
 task dr:destroy-vms
 
-# Restart the prod node via Proxmox UI:
-# VM 800 → kubernetes-1 (pve / R730xd) - the only control-plane
-# VM since the 2026-08-17 single-node downsize (see talos/SINGLE-NODE.md).
+# Restart the prod node — or just `task dr:restore-prod`, which does this
+# and clears the pods orphaned by the shutdown:
+# VM 810 → kubernetes-1 on px-0 (Beelink). The whole cluster is that one VM
+# since the 2026-09-01 collapse (see talos/SINGLE-NODE.md).
 ```
 
 ---

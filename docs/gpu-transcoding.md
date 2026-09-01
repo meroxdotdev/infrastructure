@@ -129,10 +129,10 @@ it. It costs **3.86 W** idle, measured in pstate P8 — about 34 kWh a year. It
 causes no fan ramp: iDRAC cannot see it at all (`PCIe Slot1-4 = Not Readable`),
 which `proxmox/r730xd/known-issues.md` records as never having triggered one.
 
-It was detached from VM 800 (`qm set 800 --delete hostpci0`) rather than left
-attached, because `hostpci` makes a VM ineligible for live migration — and
-migrating the control plane off `pve` is the maintenance path worth keeping
-open.
+It was detached from the old control-plane VM before that VM was retired:
+`hostpci` makes a VM ineligible for live migration. That VM (800 on pve) was
+destroyed on 2026-09-01 once the cluster had collapsed onto px-0 and the
+restore was verified; the card stayed in the chassis.
 
 To use it again: regenerate a schematic with the two LTS extensions, restore
 `nvidia-kernel-modules.yaml` and the device plugin from git history
