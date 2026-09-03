@@ -36,12 +36,13 @@ Back to the runbook: [../DR.md](../DR.md).
 
 ## Open
 
-Two items, neither of which affects a drill.
+Three items, none of which affects a drill.
 
 | Symptom | Root cause | Fix |
 |---|---|---|
 | `terraform destroy` fails: `storage 'synology-nas' is not online`, leaving the DR VMs stopped but not deleted | `qmdestroy` walks every configured storage to purge disks. px-0 still carries two NFS storage definitions left over from its old identity — `synology-nas` (NAS is on a power schedule) and `r730xd-backups` (pve stopped exporting to it on 2026-08-26). Both are dead weight there | Remove them once and the failure is gone for good: `ssh root@10.57.57.254 "pvesm remove synology-nas && pvesm remove r730xd-backups"` |
 | First **cold** boot of a Terraform-made DR node lands in maintenance mode instead of the installed system | `main.tf` sets `boot_order = ["ide2", "scsi0"]` and leaves the ISO attached. Masked in practice because Talos upgrades use `kexec`, and because a DR cluster is destroyed rather than rebooted | Only matters if a DR cluster is kept: `qm set <vmid> --boot order=scsi0` and `--ide2 none,media=cdrom`. The `lifecycle { ignore_changes = [cdrom] }` block means Terraform will not fight it |
+| Jellyfin shows no posters or artwork after a restore | `/config/metadata` is its own PVC, `jellyfin-cache`, and nothing backs it up. The 2026-09-01 move restored `jellyfin` (config, watch state, users) and recreated the cache empty; the missing images were noticed two days later | Not a data loss — the images are re-fetchable. Refresh both libraries from the API and it repopulates in minutes: `curl -X POST -H "X-Emby-Token: <key>" "https://media.merox.dev/Items/<libraryId>/Refresh?metadataRefreshMode=FullRefresh&imageRefreshMode=FullRefresh&replaceAllImages=true&recursive=true"`, library ids from `/Library/VirtualFolders`. Add it to the DR checklist rather than to the backups |
 
 **Fixed 2026-09-01:** `talosctl get machinestatus` used to hang at `booting`
 on GPU-less hardware, because the Talos image carried `ext-nvidia-persistenced`

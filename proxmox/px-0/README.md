@@ -124,7 +124,17 @@ and no `upsc` until 2026-09-01. Install `nut-client` before copying anything —
 
 `nut.conf` here is `MODE=netclient`: upsmon only, no driver, no upsd. It
 monitors `cyberpower@10.57.57.250` as a slave and shuts this host down on
-battery. Coming back up needs nothing — `State After G3` is `S0`.
+battery. Coming back up needs nothing *from this host* — `State After G3` is
+`S0`, verified by hand on 2026-09-03: unplug the cord with the box shut down,
+plug it back in, it boots.
+
+⚠️ That is not enough on its own. On 2026-09-03 a real power cut took both hosts
+down cleanly and only pve came back; this one sat off for 46 minutes. `S0` needs
+a G3 to act on, and NUT was shutting the hosts down without ever telling the UPS
+to cut its own output — so there was no power cycle to react to. Fixed on the
+pve side, in `proxmox/r730xd/etc/nut/` (`offdelay`/`ondelay`, `POWERDOWNFLAG`,
+`POWEROFF_WAIT`). **Not yet proven by a drill** — the battery was at 18% that
+night.
 
 Verify from this host, not from pve — a working `upsc` here proves the whole
 path, listener and credentials included:
