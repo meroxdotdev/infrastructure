@@ -58,6 +58,13 @@ spec:
             resources:
               requests:
                 cpu: 100m
+                # Declared on purpose. With only a limit set, Kubernetes copies
+                # it into the request, so the 8Gi ceiling below became an 8Gi
+                # reservation - on a 32Gi node that is a quarter of it, held for
+                # a pod whose steady state is a few hundred MB. It scheduled
+                # fine for months and then could not get back in after a restart
+                # on 2026-09-03, with the node at 98% requested and ~25% used.
+                memory: 1Gi
               limits:
                 # Pins Jellyfin to kubernetes-1 — only px-0 has an
                 # Intel GPU. A /dev/dri hostPath was tried instead so it could
