@@ -96,6 +96,7 @@ import shutil
 import sys
 import datetime
 import os
+import socket
 import subprocess
 import urllib.request
 import urllib.error
@@ -432,6 +433,47 @@ if new_home_up_confirmed != prev_home_up:
         )
 new_state["home_up"] = new_home_up_confirmed
 new_state["home_down_streak"] = down_streak
+
+# The two Proxmox hosts. Nothing else watches these: Prometheus and
+# Alertmanager run on px-0, so the box that would report px-0 down is px-0.
+# On 2026-09-03 it stayed off after a power cut and that went unnoticed for an
+# hour. A TCP connect to the API port rather than a ping - it answers the
+# question that matters, "is Proxmox serving", not "does the NIC reply".
+PVE_HOSTS = [("pve", "10.57.57.250"), ("px-0", "10.57.57.254")]
+
+
+def api_up(ip, port=8006, timeout=5):
+    try:
+        with socket.create_connection((ip, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+# Skipped entirely while home is unreachable: the hosts are behind the subnet
+# router, so a WAN outage would otherwise fire three alerts about one fault.
+prev_hosts = prev.get("hosts_up", {})
+prev_streaks = prev.get("hosts_down_streak", {})
+hosts_up, hosts_streak = {}, {}
+for name, ip in PVE_HOSTS:
+    was_up = prev_hosts.get(name, True)
+    if not new_home_up_confirmed:
+        hosts_up[name], hosts_streak[name] = was_up, prev_streaks.get(name, 0)
+        continue
+    streak = 0 if api_up(ip) else prev_streaks.get(name, 0) + 1
+    # Two consecutive misses, ~10 minutes: a reboot must not page anyone.
+    is_up = streak < 2
+    if is_up != was_up:
+        if is_up:
+            send_telegram(f"\u2705 {name} ({ip}) is back.")
+        else:
+            send_telegram(
+                f"{ALERT_PREFIX} {name} ({ip}) unreachable on 8006, "
+                "2 consecutive checks."
+            )
+    hosts_up[name], hosts_streak[name] = is_up, streak
+new_state["hosts_up"] = hosts_up
+new_state["hosts_down_streak"] = hosts_streak
 
 state_tmp = state_file + ".tmp"
 with open(state_tmp, "w") as f:
