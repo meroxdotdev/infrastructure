@@ -1,7 +1,7 @@
 # Beelink GTi13 Ultra — `px-0`, `10.57.57.254`
 
 Standalone Proxmox host, not clustered with pve. **Runs the entire Kubernetes
-cluster** as `kubernetes-1` (VM 810 — 14 cores, 44 GiB, Iris Xe passed
+cluster** as `kubernetes-1` (VM 810 — 14 cores, 32 GiB, 350 GB, Iris Xe passed
 through), plus Proxmox Datacenter Manager (VM 100).
 
 Since 2026-09-01 this is the machine the homelab runs on. `pve` keeps the

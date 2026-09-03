@@ -2,7 +2,7 @@
 
 The cluster is **one node**: `kubernetes-1` (VM 810, `10.57.57.80`, on
 `px-0`/Beelink), control plane and workload host in the same VM. 14 cores,
-44 GiB, with the Iris Xe passed through for Jellyfin.
+32 GiB, with the Iris Xe passed through for Jellyfin.
 
 That has been the shape since 2026-09-01. Before it, the single control plane
 lived on `pve`/R730xd with a worker on `px-0`; before that, three control

@@ -95,7 +95,7 @@ off the VPS.
 | Oracle Cloud ARM VPS — `vps01`, us-phoenix-1 | Off-site services | 4 vCPU ARM, 24GB, 200GB |
 | Oracle Cloud ARM VPS — `edge-fra`, eu-frankfurt-1 | Public TLS edge, borrowed tenancy | 2 vCPU ARM, 12GB, 45GB |
 | Synology DS223+ — `10.57.57.201` | Cold storage only, weekly versioned push from pve | 2x2TB RAID1 |
-| Beelink GTi13 Ultra — `px-0`, `10.57.57.254` | Runs the cluster: `kubernetes-1` (VM 810, 14 cores / 44 GiB, Iris Xe passed through) and Proxmox Datacenter Manager. [Runbook](proxmox/px-0/README.md) | i9-13900HK, 64GB DDR5, 2x1TB NVMe (QLC) |
+| Beelink GTi13 Ultra — `px-0`, `10.57.57.254` | Runs the cluster: `kubernetes-1` (VM 810, 14 cores / 32 GiB / 350 GB, Iris Xe passed through) and Proxmox Datacenter Manager. [Runbook](proxmox/px-0/README.md) | i9-13900HK, 64GB DDR5, 2x1TB NVMe (QLC) |
 | Dell OptiPlex 3050 ×2 | Retained, powered off | i5-6500T, 32GB, 128GB NVMe |
 
 ## Where to go

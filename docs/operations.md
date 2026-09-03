@@ -270,9 +270,20 @@ time that the quickstart did not warn about:
 - **A reset node comes back on DHCP**, not on its old static address — the
   reset wipes `STATE`, and the static address lives there. Find it with
   `nmap -Pn -n -p 50000 --open 10.57.57.0/24`, do not wait on the old IP.
-- **Resize the VM for its new role.** A VM sized as a worker will not hold the
-  whole cluster: 32 GiB left Jellyfin `Pending` on `Insufficient memory` with
-  38 GiB of requests. `kubernetes-1` runs 14 cores / 44 GiB.
+- **Check what the requests actually add up to.** A VM sized as a worker looks
+  too small for the whole cluster: 32 GiB left Jellyfin `Pending` on
+  `Insufficient memory` against 38 GiB of requests, and the conclusion written
+  here was to resize to 44 GiB. That resize was never applied, this page said
+  it had been for two days, and on 2026-09-03 the same Pending returned.
+
+  The VM was not the problem. Thirteen containers declared a memory limit and
+  no memory request, so Kubernetes copied each limit into its request: 38 GiB
+  reserved against about 9 GiB in use. With requests set to limit/8 the same
+  workload sits at 28% of the same 32 GiB VM. `kubernetes-1` runs 14 cores /
+  32 GiB / 350 GB and needs no more.
+
+  Growing the VM instead would have worked for a while and hidden the same
+  fault until it was 44 GiB of reservations.
 - **Take a fresh backup first.** `longhorn:restore` restores the newest backup
   in S3, and the nightly job runs at 23:50 — anything changed during the day
   is not in it. Fire the job early by patching its cron a few minutes ahead,
