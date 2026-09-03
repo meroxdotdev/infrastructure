@@ -20,7 +20,8 @@ FAIL=0
 
 # Run from inside the repo checkout: every file this applies is a sibling.
 # Copying just the script somewhere else silently applies the wrong paths.
-for need in etc/crontab etc/exports etc/storage.cfg install-spindown.sh; do
+for need in etc/crontab etc/exports etc/storage.cfg install-spindown.sh \
+            scripts/fan-control.sh etc/fan-control.service; do
   [ -f "$REPO/$need" ] || {
     printf 'Run this from the repo checkout — %s is missing next to the script.\n' "$need"
     exit 1
@@ -112,6 +113,23 @@ else
   ok "install-spindown.sh ran — it generates the four sas-*/spindown-* scripts"
 fi
 
+# --- fan control -----------------------------------------------------------
+# Installed last of the host services and first of the ones you will hear. A
+# fresh install runs on iDRAC's algorithm until this is in place, which is
+# loud but never unsafe — so a failure here is a warning, not a hard stop.
+say "Fan control"
+run install -m 755 "$REPO/scripts/fan-control.sh" /root/scripts/fan-control.sh
+run install -m 644 "$REPO/etc/fan-control.service" /etc/systemd/system/fan-control.service
+run systemctl daemon-reload
+run systemctl enable --now fan-control.service
+if [ "$CHECK" = 1 ]; then
+  ok "would install and enable fan-control.service"
+elif systemctl is-active --quiet fan-control.service; then
+  ok "fan-control.service running — /root/scripts/fan-control.sh --status to see it"
+else
+  warn "fan-control.service is not running; the box stays on iDRAC's algorithm (loud, safe)"
+fi
+
 # --- nextcloud borg receiver ----------------------------------------------
 say "Nextcloud borg receiver"
 if id borg-nextcloud >/dev/null 2>&1; then
@@ -137,6 +155,7 @@ E=$(grep -c '^[0-9*]' "$REPO/etc/crontab")
 [ "$N" -ge "$E" ] && ok "cron jobs: $N (repo declares $E, plus the redacted Synology line)" \
                   || bad "cron jobs: $N, expected at least $E"
 systemctl is-active --quiet nfs-server && ok "nfs-server running" || bad "nfs-server not running"
+systemctl is-active --quiet fan-control && ok "fan-control running" || warn "fan-control not running — fans on iDRAC's algorithm"
 if [ -f /root/.restic-oracle-password ]; then
   ok "restic password present"
 else

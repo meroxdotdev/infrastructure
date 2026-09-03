@@ -71,6 +71,7 @@ check "$G/etc/network-interfaces" /etc/network/interfaces "/etc/network/interfac
 check "$G/etc/nut/ups.conf"       /etc/nut/ups.conf       "/etc/nut/ups.conf"
 check "$G/etc/nut/nut.conf"       /etc/nut/nut.conf       "/etc/nut/nut.conf"
 check "$G/etc/nut/upsd.conf"      /etc/nut/upsd.conf      "/etc/nut/upsd.conf"
+check "$G/etc/fan-control.service" /etc/systemd/system/fan-control.service "fan-control.service"
 
 # --- report ----------------------------------------------------------------
 if [ -n "$DRIFT" ]; then

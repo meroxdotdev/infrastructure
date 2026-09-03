@@ -1,0 +1,21 @@
+# Lives at /etc/systemd/system/fan-control.service on pve.
+#
+# The unit is deliberately thin: everything that matters is in the script, and
+# the two lines that matter here are the ones that make the failure modes end
+# in Dell's algorithm rather than in stuck fans.
+[Unit]
+Description=Quiet the chassis fans (IPMI manual mode with a thermal fallback)
+Documentation=https://github.com/meroxdotdev/infrastructure/blob/main/proxmox/r730xd/scripts/fan-control.sh
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/root/scripts/fan-control.sh
+# Belt and braces: the script hands cooling back on every exit path it can see,
+# and systemd hands it back on the ones it cannot - SIGKILL included.
+ExecStopPost=/usr/bin/ipmitool raw 0x30 0x30 0x01 0x01
+Restart=always
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

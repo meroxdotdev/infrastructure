@@ -24,6 +24,7 @@ running copy, these are the reviewable ones:
 | [`etc/network-interfaces`](etc/network-interfaces) | bridges |
 | [`etc/authorized_keys`](etc/authorized_keys) | forced commands (pubkeys redacted) |
 | [`etc/jobs.cfg`](etc/jobs.cfg) | PVE job scheduler — no vzdump jobs; nothing on this host is dumped |
+| [`etc/fan-control.service`](etc/fan-control.service) | runs [`scripts/fan-control.sh`](scripts/fan-control.sh) — the chassis fans |
 | [`nextcloud/`](nextcloud/) | the Nextcloud VM: compose, firewall rules, runbook |
 
 Neighbours: [pfSense](../../pfsense/REINSTALL.md)
@@ -134,6 +135,34 @@ Tried 2026-08-20 and reverted the next morning: it had moved the entire window
 three hours early, which put restic ahead of every source that feeds it. One
 night's Nextcloud, Longhorn, Immich, pfSense and VPS data missed the off-site
 push and went out the following night instead.
+
+## Fan control
+
+The chassis fans are held near their floor by
+[`scripts/fan-control.sh`](scripts/fan-control.sh) under
+`fan-control.service`, instead of by iDRAC. iDRAC's own algorithm has nothing
+quieter left to offer — every thermal setting is already at its minimum-cooling
+position and it still asks for ~3800 RPM with the disks parked and the room at
+27 °C. The hardware floor is 1680 RPM, about -18 dB, and the full measurements
+and reasoning are in [known-issues.md](known-issues.md#the-fans-idle-at-3800-rpm-because-that-is-idracs-honest-answer).
+
+Manual mode means no dynamic response from iDRAC, so the script is the
+response: it reads CPU, hottest drive and PERC ROC temperature every 30 s,
+climbs a four-rung ladder (0% / 8% / 16% / 28%), and hands cooling back to
+iDRAC above the top rung, above 32 °C inlet, on an unreadable sensor, and on
+exit. `ExecStopPost` in the unit hands it back once more for the exits the
+script cannot see. Every failure ends in Dell's algorithm, not in stuck fans.
+
+```sh
+/root/scripts/fan-control.sh --status    # sensors, chosen rung, live RPM
+journalctl -u fan-control -n 20          # it logs changes, not ticks
+systemctl stop fan-control               # back to iDRAC, immediately
+```
+
+⚠️ A host that dies with the power still on leaves the fans where the script
+left them. A dead host makes no heat, so that is accepted rather than solved.
+A cold boot or an iDRAC reset reverts to automatic on its own, and the loop
+puts it back within one cycle.
 
 ## Storage layout
 

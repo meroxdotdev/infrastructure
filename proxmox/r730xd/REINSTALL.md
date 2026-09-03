@@ -49,7 +49,11 @@ Tailscale traffic, so pve never sees the VPS's Tailscale address.
 ```
 
 Packages, storage, exports, ZFS reservation and quota, crontab, spin-down,
-borg receiver, verify.
+fan control, borg receiver, verify.
+
+A freshly installed host is loud: iDRAC's algorithm asks for ~3800 RPM whatever
+the temperatures are, and stays there until `fan-control.service` is enabled by
+the step above. That is the expected order — never quiet before it is safe.
 
 ## 5. etcd credential
 

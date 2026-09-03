@@ -15,6 +15,7 @@ network config.
 | `etcd-snapshot.sh` | `/root/scripts/` | cron 03:03 — needs `/root/.talos-etcd-backup` |
 | `nightly-checks.sh` | `/root/scripts/` | cron 03:20 — runs the three host checks below, pings once |
 | `git-drift-check.sh` | `/root/scripts/` | by `nightly-checks.sh` — fetches this repo and diffs it against the host |
+| `fan-control.sh` | `/root/scripts/` | systemd — [`fan-control.service`](../etc/fan-control.service), the only one here that is not cron |
 
 
 Forced commands are pinned in [`../etc/authorized_keys`](../etc/authorized_keys).
