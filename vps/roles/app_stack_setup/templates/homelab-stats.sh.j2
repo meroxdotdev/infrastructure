@@ -65,10 +65,16 @@ chmod 600 "$CURL_CONF"
 # iDRAC credentials via curl config file, not argv - keeps them out of `ps aux`.
 printf 'user = "%s:%s"\ninsecure\n' "$IDRAC_USER" "$IDRAC_PASS" > "$CURL_CONF"
 
+# `|| true` is load-bearing under `set -e`. Without it a single unreachable
+# source kills the whole run: on 2026-09-03 the VPS lost its route to the iDRAC
+# and this script had been exiting 28 at the first curl every five minutes ever
+# since - taking UPS, storage, fan and container alerting down with it, silently,
+# because a cron job that dies early looks exactly like one with nothing to say.
+# The parsing below already treats a missing file as "source unreachable".
 curl -sS -m 10 -K "$CURL_CONF" -o "$POWER_FILE" \
-  "https://$IDRAC_HOST/redfish/v1/Chassis/System.Embedded.1/Power"
+  "https://$IDRAC_HOST/redfish/v1/Chassis/System.Embedded.1/Power" || true
 curl -sS -m 10 -K "$CURL_CONF" -o "$THERMAL_FILE" \
-  "https://$IDRAC_HOST/redfish/v1/Chassis/System.Embedded.1/Thermal"
+  "https://$IDRAC_HOST/redfish/v1/Chassis/System.Embedded.1/Thermal" || true
 
 NODE_NAMES=()
 for target in "${PVE_TARGETS[@]}"; do
@@ -96,7 +102,6 @@ import shutil
 import sys
 import datetime
 import os
-import socket
 import subprocess
 import urllib.request
 import urllib.error
@@ -106,10 +111,20 @@ import urllib.error
  n8n_webhook_url, n8n_webhook_resolve, n8n_webhook_token) = sys.argv[1:12]
 nodes = sys.argv[12:]
 
-with open(power_file) as f:
-    power = json.load(f)
-with open(thermal_file) as f:
-    thermal = json.load(f)
+# An unreachable iDRAC leaves these empty. Treat that as "no reading" rather
+# than as a crash: the fan and power sections below already handle absent data,
+# and the alerts that matter most - hosts down, UPS on battery - do not come
+# from the iDRAC at all. Losing one source must not cost the other five.
+def load_json(path, default):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return default
+
+
+power = load_json(power_file, {})
+thermal = load_json(thermal_file, {})
 
 power_control = (power.get("PowerControl") or [{}])[0]
 metrics = power_control.get("PowerMetrics") or {}
@@ -437,17 +452,24 @@ new_state["home_down_streak"] = down_streak
 # The two Proxmox hosts. Nothing else watches these: Prometheus and
 # Alertmanager run on px-0, so the box that would report px-0 down is px-0.
 # On 2026-09-03 it stayed off after a power cut and that went unnoticed for an
-# hour. A TCP connect to the API port rather than a ping - it answers the
-# question that matters, "is Proxmox serving", not "does the NIC reply".
+# hour.
+#
+# ICMP and not a TCP probe on 8006, which was tried first: from this VPS the
+# tailnet reaches pve on 22 but not on 8006, and px-0 on 8006 but not on 22.
+# Whatever pfSense is doing there, a port check answers "is that port allowed
+# from here", which is not the question. Ping answers the question. Root cron
+# owns the raw socket, so it works unprivileged concerns aside.
 PVE_HOSTS = [("pve", "10.57.57.250"), ("px-0", "10.57.57.254")]
 
 
-def api_up(ip, port=8006, timeout=5):
+def api_up(ip, timeout=4):
     try:
-        with socket.create_connection((ip, port), timeout=timeout):
-            return True
-    except OSError:
-        return False
+        return subprocess.run(
+            ["ping", "-c", "1", "-W", str(timeout), ip],
+            capture_output=True, timeout=timeout + 3,
+        ).returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return True  # unknown - never alert on an ambiguous reading
 
 
 # Skipped entirely while home is unreachable: the hosts are behind the subnet
@@ -468,7 +490,7 @@ for name, ip in PVE_HOSTS:
             send_telegram(f"\u2705 {name} ({ip}) is back.")
         else:
             send_telegram(
-                f"{ALERT_PREFIX} {name} ({ip}) unreachable on 8006, "
+                f"{ALERT_PREFIX} {name} ({ip}) not answering, "
                 "2 consecutive checks."
             )
     hosts_up[name], hosts_streak[name] = is_up, streak
