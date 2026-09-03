@@ -138,37 +138,40 @@ push and went out the following night instead.
 
 ## Fan control
 
-The chassis fans are held near their floor by
-[`scripts/fan-control.sh`](scripts/fan-control.sh) under
-`fan-control.service`, instead of by iDRAC. iDRAC's own algorithm has nothing
-quieter left to offer — every thermal setting is already at its minimum-cooling
-position and it still asks for ~3800 RPM with the disks parked and the room at
-27 °C. The hardware floor is 1680 RPM, about -18 dB, and the full measurements
-and reasoning are in [known-issues.md](known-issues.md#the-fans-idle-at-3800-rpm-because-that-is-idracs-honest-answer).
+The chassis fans run on [`scripts/fan-control.sh`](scripts/fan-control.sh)
+under `fan-control.service`, not on iDRAC. iDRAC has no quieter setting left —
+every thermal knob is at its minimum-cooling position and it still asks for
+~3800 RPM with the pool parked. The floor is 1680 RPM, about -18 dB. Numbers
+and reasoning: [known-issues.md](known-issues.md#fan-noise-idracs-floor-is-3800-rpm-the-hardwares-is-1680).
 
-Manual mode means no dynamic response from iDRAC, so the script is the
-response: it reads CPU, hottest drive, PERC ROC and exhaust temperature every
-30 s, climbs a four-rung ladder (0% / 8% / 16% / 28%), and hands cooling back
-to iDRAC above the top rung, above 32 °C inlet, on an unreadable sensor, and on
-exit. Exhaust is in there as the catch-all: there is no sensor for the VRMs,
-the RAM or the idle Quadro, but their heat still leaves through the same hole.
+Manual mode has no dynamic response, so the script is it: CPU, hottest drive,
+PERC ROC and exhaust every 30 s against a four-rung ladder.
 
-Every failure ends in Dell's algorithm rather than in stuck fans, by three
-independent routes: the script's own `trap`, `ExecStopPost` for the exits it
-cannot see (SIGKILL included), and `WatchdogSec=90` for the one case
-`Restart=always` misses — a loop that wedges instead of dying. Sensor reads are
-wrapped in `timeout` for the same reason.
+| Rung | CPU | Drive | ROC | Exhaust | PWM | RPM |
+|---|---|---|---|---|---|---|
+| 0 | ≤55 | ≤42 | ≤78 | ≤50 | 0% | 1680 |
+| 1 | ≤62 | ≤46 | ≤84 | ≤55 | 8% | 2900 |
+| 2 | ≤68 | ≤49 | ≤88 | ≤60 | 16% | ~4300 |
+| 3 | ≤73 | ≤52 | ≤92 | ≤65 | 28% | ~5400 |
+| — | — | — | — | — | iDRAC | — |
+
+Any one sensor over its ceiling steps up; all four must be 4 °C under to step
+back down. Exhaust is the catch-all for what has no sensor — VRMs, RAM, the
+idle Quadro.
+
+Cooling returns to iDRAC on six paths: above the top rung, inlet >32 °C, an
+unreadable or timed-out sensor, the script's `trap`, `ExecStopPost` (covers
+SIGKILL), and `WatchdogSec=90` for a loop that wedges rather than dies.
 
 ```sh
-/root/scripts/fan-control.sh --status    # sensors, chosen rung, live RPM
-journalctl -u fan-control -n 20          # it logs changes, not ticks
+/root/scripts/fan-control.sh --status    # sensors + live RPM
+journalctl -u fan-control                # transitions only, not ticks
 systemctl stop fan-control               # back to iDRAC, immediately
 ```
 
-⚠️ A host that dies with the power still on leaves the fans where the script
-left them. A dead host makes no heat, so that is accepted rather than solved.
-A cold boot or an iDRAC reset reverts to automatic on its own, and the loop
-puts it back within one cycle.
+⚠️ A host that dies with the power on leaves the fans where the script left
+them; a dead host makes no heat. A cold boot or iDRAC reset reverts to
+automatic on its own and the loop reapplies within one cycle.
 
 ## Storage layout
 

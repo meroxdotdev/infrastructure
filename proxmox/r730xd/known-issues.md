@@ -80,59 +80,57 @@ the chassis reports temperature again.
 Manual control arrived later anyway, for the ordinary idle noise rather than
 for a blind ramp: see the next section.
 
-## The fans idle at 3800 RPM because that is iDRAC's honest answer
+## Fan noise: iDRAC's floor is ~3800 RPM, the hardware's is 1680
 
-Every thermal knob iDRAC has was already at its quietest by 2026-08-27, and
-the fans still ran at 3720-3840 RPM with the room at 27 °C, the disks parked
-and the CPU at 41 °C:
+Every thermal knob was already at its quietest by 2026-08-27 and the fans still
+ran 3720-3840 RPM at inlet 27 °C, disks parked, CPU 41 °C:
 
 ```sh
 racadm get system.thermalsettings        # on 10.57.57.249
-ThermalProfile=Minimum Power             # the obvious lever, already pulled
-FanSpeedOffset=Off                       # nothing added on top of baseline
-MinimumFanSpeed=255                      # sentinel for unset: no artificial floor
-ThirdPartyPCIFanResponse=Disabled        # the blind PCIe ramp, already off
-AirExhaustTemp=70                        # real exhaust 35 °C, ceiling never engaged
+ThermalProfile=Minimum Power
+FanSpeedOffset=Off
+MinimumFanSpeed=255                      # sentinel for unset
+ThirdPartyPCIFanResponse=Disabled
+AirExhaustTemp=70                        # real exhaust 35 °C
 ```
 
-`MinimumFanSpeed` is a floor, not a ceiling — it can only make the box louder.
-There is no supported setting anywhere that asks for *less* air than the
-algorithm wants, and what it wants for a 2U chassis with twelve spinning SAS
-drives in front of it is ~3800 RPM whether or not those drives are spinning.
+`MinimumFanSpeed` is a floor, not a ceiling. No supported setting asks for less
+air than the algorithm wants.
 
-⚠️ **Read `racadm get`, not the OEM IPMI byte.**
-`ipmitool raw 0x30 0xce 0x01 0x16 0x05 0x00 0x00 0x00` returns
-`16 05 00 00 00 05 00 01 00 00` on this host. That `0x01` was once read as
-"Maximum Performance" and produced a recommendation to switch to a profile
-that was already active. The byte mapping is not reliable; `racadm` is.
+⚠️ **Read `racadm get`, not the OEM IPMI byte.** `ipmitool raw 0x30 0xce 0x01
+0x16 0x05 0x00 0x00 0x00` returns `16 05 00 00 00 05 00 01 00 00`; that `0x01`
+was once misread as "Maximum Performance" and produced a recommendation for a
+profile that was already active. The byte mapping is not reliable.
 
-What the fans will actually do, measured 2026-09-03 through
-`ipmitool raw 0x30 0x30 0x02 0xff <pct>` at inlet 27 °C:
+### Measured, 2026-09-03, inlet 27 °C
 
-| PWM | 0% | 1% | 2% | 4% | 5% | 8% | 10% | 12% | 15% | iDRAC auto |
+`ipmitool raw 0x30 0x30 0x02 0xff <pct>`, all six fans:
+
+| PWM | 0% | 1% | 2% | 4% | 5% | 8% | 10% | 12% | 15% | auto |
 |---|---|---|---|---|---|---|---|---|---|---|
 | RPM | 1680 | 1740 | 2040 | 2400 | 2400 | 2900 | 3320 | 3600 | 4060 | 3720-3840 |
 
-Two things fall out of that table. iDRAC's idle choice is about 12%, and the
-hardware floor is 1680 RPM — less than half of it. Fan noise goes as
-`50·log10(rpm ratio)`, so 3840 → 1680 is roughly **-18 dB**, and nothing else
-on this host moves the noise floor anywhere near that far.
+iDRAC's idle choice is ~12%. Noise goes as `50·log10(rpm ratio)`, so
+3840 → 1680 is about **-18 dB** — on the fans alone; drives and PSU are
+unchanged.
 
-Fourteen minutes at 1680 RPM, same conditions, says the air is there: CPU
-43 → 48 °C, hottest drive 34 → 36 °C, exhaust 35 → 39 °C, and the ROC 63 → 70 °C
-where it plateaued by minute nine and stayed. Half the air costs about 7 °C on
-the hottest part in the chassis, and leaves it 30 °C below anything that would
-worry it.
+14 minutes at 1680 RPM, everything settled and stopped:
 
-The cost is that manual mode switches off the dynamic response, so something
-else has to be it: [`scripts/fan-control.sh`](scripts/fan-control.sh), run by
-`fan-control.service`. It watches CPU, hottest drive and the PERC's ROC, walks
-a four-rung ladder, and hands cooling back to iDRAC above the top rung, in a
-warm room, on an unreadable sensor and on exit. The ROC is in there because it
-is the hottest thing in the chassis by a wide margin — 61-63 °C while the CPU
-sits at 41 °C — and it is fed by exactly the airflow this turns down.
+| | start | end | limit |
+|---|---|---|---|
+| CPU | 43 °C | 48 °C | 78 Tcase |
+| Hottest drive (parked) | 34 °C | 36 °C | 55-60 |
+| PERC ROC | 63 °C | **70 °C, plateau at min 9** | ~100 throttle |
+| Exhaust | 35 °C | 39 °C | 70 (AirExhaustTemp) |
 
-The electrical saving is ~2-4 W, inside the measurement noise on a host that
-swings 116-287 W. This is an acoustic change and only an acoustic change — do
-not reopen it as a power one. At 112 W with the pool parked, package and RAM
-account for 29 W of it; the other 83 W is fixed iron.
+The plateau is the evidence: heat in equals heat out with 30 °C to spare on the
+hottest part.
+
+### What runs it
+
+[`scripts/fan-control.sh`](scripts/fan-control.sh) under `fan-control.service`.
+Ladder, sensors and failure paths are documented in the script header and in
+[README.md](README.md#fan-control).
+
+Not a power change: ~2-4 W, inside the measurement noise on a host that swings
+116-287 W.
