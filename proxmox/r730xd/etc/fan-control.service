@@ -16,6 +16,12 @@ ExecStart=/root/scripts/fan-control.sh
 ExecStopPost=/usr/bin/ipmitool raw 0x30 0x30 0x01 0x01
 Restart=always
 RestartSec=15
+# Restart=always covers a script that dies. This covers one that wedges - stops
+# deciding without stopping running, which is the failure that would actually
+# leave the fans somewhere stale. The loop pings once per 30 s cycle; two
+# missed cycles and systemd kills it, which runs ExecStopPost above.
+WatchdogSec=90
+NotifyAccess=all
 
 [Install]
 WantedBy=multi-user.target

@@ -35,8 +35,8 @@
 # WHAT IT COSTS
 #
 # Manual mode switches off the dynamic response, so this script has to be the
-# response. It reads the three things that get hot here - the CPU, the hottest
-# drive and the PERC's ROC - climbs a small ladder of fixed speeds,
+# response. It reads the four things worth reading - the CPU, the hottest drive,
+# the PERC's ROC and the exhaust - climbs a small ladder of fixed speeds,
 # and above the top of the ladder gives control back to iDRAC and leaves it
 # there until the box is cool again. It also gives control back on an
 # unreadable sensor, on a warm room, and on exit. The dumbest failure - this
@@ -67,10 +67,10 @@ INLET_MAX=32         # a room this warm is iDRAC's problem, not this script's
 HYST=4               # degrees below a step's ceiling before dropping back down
 
 # Each rung: the CPU ceiling, the hottest-drive ceiling, the PERC ROC ceiling,
-# and the fan percent to hold while under all three. Past the last rung the
-# ladder ends and iDRAC takes over.
+# the exhaust ceiling, and the fan percent to hold while under all four. Past
+# the last rung the ladder ends and iDRAC takes over.
 #
-# Three sensors and not just the CPU, because on this box the CPU is the least
+# Four sensors and not just the CPU, because on this box the CPU is the least
 # of it. The drives are what front-to-back airflow in a 2U chassis is actually
 # there to cool, and the H730P's ROC is the part that runs hottest of all: 61 C
 # with the fans at 3800 RPM, against a 55 C rating on the drives and a 41 C
@@ -78,16 +78,22 @@ HYST=4               # degrees below a step's ceiling before dropping back down
 # the ROC throttles around 100 C - because the point of a rung is to react
 # early, not to sit at the limit.
 #
+# Exhaust is the catch-all, and it is in the ladder for the things there is no
+# sensor for: VRMs, RAM, the idle Quadro. Whatever heats up in this chassis,
+# its heat leaves through the same hole, so exhaust rising is the one symptom
+# nothing can hide from. Measured 39 C at the floor; Dell's own limit for it,
+# AirExhaustTemp, is 70.
+#
 # The drive ceilings are deliberately not tight around the 36 C measured with
 # the pool parked. Spinning twelve SAS drives up for a backup or a scrub is
 # worth several degrees on its own, and iDRAC accepts that without ramping;
 # reacting to it at 37 C would make this louder than the algorithm it replaced,
 # which is a strange way to lose.
 STEPS=(
-  "55 42 78  0"
-  "62 46 84  8"
-  "68 49 88 16"
-  "73 52 92 28"
+  "55 42 78 50  0"
+  "62 46 84 55  8"
+  "68 49 88 60 16"
+  "73 52 92 65 28"
 )
 
 say() { printf '%s %s\n' "$(date '+%F %T')" "$*"; }
@@ -96,15 +102,23 @@ ipmi_auto()   { ipmitool raw 0x30 0x30 0x01 0x01 >/dev/null 2>&1; }
 ipmi_manual() { ipmitool raw 0x30 0x30 0x01 0x00 >/dev/null 2>&1; }
 ipmi_pwm()    { ipmitool raw 0x30 0x30 0x02 0xff "$(printf '0x%02x' "$1")" >/dev/null 2>&1; }
 
-# One IPMI call for both temperatures. Sensor IDs rather than names: this
+# All three IPMI temperatures in one call. Sensor IDs rather than names: this
 # chassis has two sensors called "Temp" and the second one is a disabled CPU2.
-#   04h = Inlet, 0Eh = CPU1
+#   04h = Inlet, 01h = Exhaust, 0Eh = CPU1
+#
+# Every sensor read is wrapped in `timeout`. A command that returns an error is
+# handled - it ends in iDRAC's algorithm. A command that hangs forever is not:
+# the loop would stop deciding while the fans stayed where they were, and
+# systemd cannot tell a wedged process from a busy one. Ten seconds is roughly
+# five times the slowest honest reading seen here.
 read_ipmi_temps() {
   local out
-  out=$(ipmitool sdr type temperature 2>/dev/null) || return 1
-  INLET=$(awk -F'|' '$2 ~ /04h/ {gsub(/[^0-9]/,"",$5); print $5+0; exit}' <<<"$out")
-  CPU=$(awk   -F'|' '$2 ~ /0Eh/ {gsub(/[^0-9]/,"",$5); print $5+0; exit}' <<<"$out")
-  [ -n "${INLET:-}" ] && [ -n "${CPU:-}" ] && [ "$CPU" -gt 0 ] && [ "$INLET" -gt 0 ]
+  out=$(timeout 10 ipmitool sdr type temperature 2>/dev/null) || return 1
+  INLET=$(awk   -F'|' '$2 ~ /04h/ {gsub(/[^0-9]/,"",$5); print $5+0; exit}' <<<"$out")
+  EXHAUST=$(awk -F'|' '$2 ~ /01h/ {gsub(/[^0-9]/,"",$5); print $5+0; exit}' <<<"$out")
+  CPU=$(awk     -F'|' '$2 ~ /0Eh/ {gsub(/[^0-9]/,"",$5); print $5+0; exit}' <<<"$out")
+  [ -n "${INLET:-}" ] && [ -n "${CPU:-}" ] && [ -n "${EXHAUST:-}" ] &&
+    [ "$CPU" -gt 0 ] && [ "$INLET" -gt 0 ] && [ "$EXHAUST" -gt 0 ]
 }
 
 # The hottest drive, and the controller itself. Both come from the PERC, which
@@ -113,9 +127,9 @@ read_ipmi_temps() {
 # asleep=12/12 throughout). Do not swap this for smartctl: on SAS that spins
 # the platters up, see install-spindown.sh.
 read_storcli_temps() {
-  DRIVE=$(storcli /c0/eall/sall show all 2>/dev/null |
+  DRIVE=$(timeout 10 storcli /c0/eall/sall show all 2>/dev/null |
     awk '/Drive Temperature/ {gsub(/C/,"",$4); if ($4+0 > m) m = $4+0} END {print m+0}')
-  ROC=$(storcli /c0 show temperature 2>/dev/null | awk '/ROC temperature/ {print $4+0}')
+  ROC=$(timeout 10 storcli /c0 show temperature 2>/dev/null | awk '/ROC temperature/ {print $4+0}')
   [ -n "${DRIVE:-}" ] && [ "$DRIVE" -gt 0 ] && [ -n "${ROC:-}" ] && [ "$ROC" -gt 0 ]
 }
 
@@ -125,21 +139,24 @@ read_all() { read_ipmi_temps && read_storcli_temps; }
 # coming down needs HYST degrees of margin, so a load that hovers on a
 # threshold does not make the fans breathe in and out.
 pick_step() {
-  local c d r
+  local c d r x
   while [ "$STEP" -gt 0 ]; do
-    read -r c d r _ <<<"${STEPS[$((STEP - 1))]}"
-    [ "$CPU" -le $((c - HYST)) ] && [ "$DRIVE" -le $((d - HYST)) ] && [ "$ROC" -le $((r - HYST)) ] || break
+    read -r c d r x _ <<<"${STEPS[$((STEP - 1))]}"
+    [ "$CPU" -le $((c - HYST)) ] && [ "$DRIVE" -le $((d - HYST)) ] &&
+      [ "$ROC" -le $((r - HYST)) ] && [ "$EXHAUST" -le $((x - HYST)) ] || break
     STEP=$((STEP - 1))
   done
   while [ "$STEP" -lt "${#STEPS[@]}" ]; do
-    read -r c d r _ <<<"${STEPS[$STEP]}"
-    [ "$CPU" -gt "$c" ] || [ "$DRIVE" -gt "$d" ] || [ "$ROC" -gt "$r" ] || break
+    read -r c d r x _ <<<"${STEPS[$STEP]}"
+    [ "$CPU" -gt "$c" ] || [ "$DRIVE" -gt "$d" ] || [ "$ROC" -gt "$r" ] ||
+      [ "$EXHAUST" -gt "$x" ] || break
     STEP=$((STEP + 1))
   done
 }
 
 status_line() {
-  printf 'cpu=%sC drive=%sC roc=%sC inlet=%sC -> %s' "$CPU" "$DRIVE" "$ROC" "$INLET" "$1"
+  printf 'cpu=%sC drive=%sC roc=%sC exhaust=%sC inlet=%sC -> %s' \
+    "$CPU" "$DRIVE" "$ROC" "$EXHAUST" "$INLET" "$1"
 }
 
 case "${1:-}" in
@@ -155,7 +172,7 @@ case "${1:-}" in
     if [ "$STEP" -ge "${#STEPS[@]}" ] || [ "$INLET" -gt "$INLET_MAX" ]; then
       status_line "iDRAC automatic"
     else
-      read -r _ _ _ p <<<"${STEPS[$STEP]}"
+      read -r _ _ _ _ p <<<"${STEPS[$STEP]}"
       status_line "${p}% manual"
     fi
     echo
@@ -187,7 +204,7 @@ while :; do
       LAST="auto:inlet"
       ipmi_auto
     else
-      read -r _ _ _ pwm <<<"${STEPS[$STEP]}"
+      read -r _ _ _ _ pwm <<<"${STEPS[$STEP]}"
       [ "$LAST" != "manual:$pwm" ] && say "$(status_line "${pwm}% manual")"
       LAST="manual:$pwm"
       # Reapplied every cycle on purpose: an iDRAC reset silently drops back to
@@ -196,5 +213,10 @@ while :; do
       ipmi_pwm "$pwm"
     fi
   fi
+  # Tell systemd the loop is still deciding. WatchdogSec in the unit turns a
+  # missing ping into a restart, and a restart runs ExecStopPost, which hands
+  # cooling back to iDRAC. That closes the one hole `Restart=always` does not
+  # cover: a process that is wedged rather than dead.
+  [ -n "${WATCHDOG_USEC:-}" ] && systemd-notify WATCHDOG=1 2>/dev/null
   sleep "$INTERVAL"
 done

@@ -147,11 +147,17 @@ position and it still asks for ~3800 RPM with the disks parked and the room at
 and reasoning are in [known-issues.md](known-issues.md#the-fans-idle-at-3800-rpm-because-that-is-idracs-honest-answer).
 
 Manual mode means no dynamic response from iDRAC, so the script is the
-response: it reads CPU, hottest drive and PERC ROC temperature every 30 s,
-climbs a four-rung ladder (0% / 8% / 16% / 28%), and hands cooling back to
-iDRAC above the top rung, above 32 °C inlet, on an unreadable sensor, and on
-exit. `ExecStopPost` in the unit hands it back once more for the exits the
-script cannot see. Every failure ends in Dell's algorithm, not in stuck fans.
+response: it reads CPU, hottest drive, PERC ROC and exhaust temperature every
+30 s, climbs a four-rung ladder (0% / 8% / 16% / 28%), and hands cooling back
+to iDRAC above the top rung, above 32 °C inlet, on an unreadable sensor, and on
+exit. Exhaust is in there as the catch-all: there is no sensor for the VRMs,
+the RAM or the idle Quadro, but their heat still leaves through the same hole.
+
+Every failure ends in Dell's algorithm rather than in stuck fans, by three
+independent routes: the script's own `trap`, `ExecStopPost` for the exits it
+cannot see (SIGKILL included), and `WatchdogSec=90` for the one case
+`Restart=always` misses — a loop that wedges instead of dying. Sensor reads are
+wrapped in `timeout` for the same reason.
 
 ```sh
 /root/scripts/fan-control.sh --status    # sensors, chosen rung, live RPM
