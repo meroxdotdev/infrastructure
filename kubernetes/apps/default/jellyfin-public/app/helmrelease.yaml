@@ -69,6 +69,7 @@ spec:
             resources:
               requests:
                 cpu: 100m
+                memory: 512Mi
               limits:
                 # Pins Jellyfin to kubernetes-1 — only px-0 has an
                 # Intel GPU. A /dev/dri hostPath was tried instead so it could

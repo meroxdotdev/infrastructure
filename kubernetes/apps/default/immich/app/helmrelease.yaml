@@ -42,6 +42,7 @@ spec:
               resources:
                 requests:
                   cpu: 25m
+                  memory: 64Mi
                 limits:
                   memory: 256Mi
 
@@ -64,6 +65,7 @@ spec:
               resources:
                 requests:
                   cpu: 100m
+                  memory: 512Mi
                 limits:
                   memory: 4Gi
       route:
