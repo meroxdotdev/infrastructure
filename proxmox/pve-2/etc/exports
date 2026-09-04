@@ -4,14 +4,18 @@
 # tree. Narrowed 2026-08-11 to the hosts that actually mount, verified
 # against live nfsd peers first.
 #
-#   10.57.57.80        kubernetes-controlplane-1 (pve-2)
-#   10.57.57.81        kubernetes-worker-1 (pve-1) — added 2026-09-01
-#   10.57.57.82/84     retired control planes, kept for a 3-node rollback
+#   10.57.57.80        kubernetes-1 (on pve-1)
+#   10.57.57.82        kubernetes-2 (on pve-2) — added 2026-09-04
+#   10.57.57.83        kubernetes-3 (on pve-3) — added 2026-09-04
+#
+# .81 and .84 were dropped on 2026-09-04. They were a retired worker and a
+# retired control plane; with no_root_squash, each was a standing root grant
+# on the backup tree to whatever might take the address next.
 #
 # Adding a client means adding its IP here, not widening back to /24.
-/media/library                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.81(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
-/media/backups                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.81(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
-/media/backups/longhorn-garage  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.81(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash,crossmnt)
+/media/library                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.83(rw,sync,no_subtree_check,no_root_squash)
+/media/backups                  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.83(rw,sync,no_subtree_check,no_root_squash,crossmnt)
+/media/backups/longhorn-garage  10.57.57.80(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash,crossmnt) 10.57.57.83(rw,sync,no_subtree_check,no_root_squash,crossmnt)
 
 
 # Public Jellyfin library, on the SSD pool so streaming to friends never wakes
@@ -28,4 +32,4 @@
 # Layout inside: Movies/ is what Jellyfin scans, downloads/ is qbittorrent's
 # save path for the public category. Same filesystem on purpose, so radarr
 # imports by hardlink and a seeding torrent costs no second copy.
-/public/library                 10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.81(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.84(rw,sync,no_subtree_check,no_root_squash)
+/public/library                 10.57.57.80(rw,sync,no_subtree_check,no_root_squash) 10.57.57.82(rw,sync,no_subtree_check,no_root_squash) 10.57.57.83(rw,sync,no_subtree_check,no_root_squash)

@@ -4,3 +4,5 @@ kubernetes-kubernetes-controlplane-3.yaml
 talosconfig
 kubernetes-kubernetes-worker-1.yaml
 kubernetes-kubernetes-1.yaml
+kubernetes-kubernetes-2.yaml
+kubernetes-kubernetes-3.yaml

@@ -25,10 +25,14 @@ nodes:
     controlPlane: true
     machineSpec:
       secureboot: false
-    # The only node. Iris Xe passthrough for Jellyfin QuickSync (i915 +
-    # intel-ucode), plus the two extensions Longhorn needs on any node:
-    # iscsi-tools for iscsiadm and util-linux-tools. Without them
-    # longhorn-manager crashloops and no volume can attach.
+    # The only node with a GPU: Iris Xe passthrough for Jellyfin QuickSync
+    # (i915 + intel-ucode), plus the two extensions Longhorn needs on any
+    # node: iscsi-tools for iscsiadm and util-linux-tools. Without them
+    # longhorn-manager crashloops and no volume can attach — the other two
+    # nodes carry the same pair without i915.
+    # This node holds no Longhorn replica: its pool is a single QLC NVMe at
+    # 34% wear, and keeping volume writes off it is worth more than a local
+    # read. See kubernetes/apps/storage/longhorn.
     # Regenerate with the POST in docs/operations.md.
     talosImageURL: factory.talos.dev/installer/249d9135de54962744e917cfe654117000cba369f9152fbab9d055a00aa3664f
     nodeLabels:
@@ -49,11 +53,61 @@ nodes:
         mtu: 1500
         vip:
           ip: "10.57.57.88"
-  # One node, deliberately. Two control planes cannot form a quorum and there
-  # is no third fault domain, so this is the honest shape — recovery is a
-  # restore, not a failover. See talos/SINGLE-NODE.md.
-  # The 3-node blocks that used to sit here were removed 2026-09-01; their VMs
-  # had been gone since August. Git has them: `git show 793bf33:talos/talconfig.yaml`.
+  # Second control plane, VM 811 on pve-2 (R730xd). No GPU, so no i915 in the
+  # schematic — just intel-ucode and the two extensions Longhorn needs. This is
+  # where workloads land if pve-1 dies: 251 GB of RAM behind it, and one of the
+  # two Longhorn replicas lives here.
+  - hostname: "kubernetes-2"
+    ipAddress: "10.57.57.82"
+    installDisk: "/dev/sda"
+    controlPlane: true
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/36cd6536eaec8ba802be2d38974108359069cedba8857302f69792b26b87c010
+    nodeLabels:
+      node.kubernetes.io/exclude-from-external-load-balancers: ""
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:9d:5b:96"
+        dhcp: false
+        addresses:
+          - "10.57.57.82/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "10.57.57.1"
+        mtu: 1500
+        vip:
+          ip: "10.57.57.88"
+  # Third control plane, VM 812 on pve-3 (OptiPlex). Its disk is the raw Intel
+  # D3-S4510 passed straight through — the only disk here with power-loss
+  # protection, which is why etcd wants it. Tainted: this node exists to hold
+  # an etcd vote and a Longhorn replica, not to run workloads. Four cores
+  # cannot carry the workload set, and allowSchedulingOnControlPlanes is on
+  # globally, so without the taint the scheduler would send pods here.
+  # Longhorn tolerates it via defaultSettings.taintToleration.
+  - hostname: "kubernetes-3"
+    ipAddress: "10.57.57.83"
+    installDisk: "/dev/sda"
+    controlPlane: true
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/36cd6536eaec8ba802be2d38974108359069cedba8857302f69792b26b87c010
+    nodeLabels:
+      node.kubernetes.io/exclude-from-external-load-balancers: ""
+    nodeTaints:
+      node-role.kubernetes.io/control-plane: ":NoSchedule"
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:24:46:05"
+        dhcp: false
+        addresses:
+          - "10.57.57.83/24"
+        routes:
+          - network: "0.0.0.0/0"
+            gateway: "10.57.57.1"
+        mtu: 1500
+        vip:
+          ip: "10.57.57.88"
 
 # Global patches
 patches:
@@ -70,5 +124,7 @@ controlPlane:
     - "@./patches/controller/admission-controller-patch.yaml"
     - "@./patches/controller/cluster.yaml"
 
-# No worker patches: there are no workers. machine-longhorn-labels.yaml is
-# unused — the `longhorn: "true"` label it carries is read by nothing.
+# No worker patches: all three nodes are control planes. There is no fourth
+# fault domain to put a worker in, and the workload set fits on one node
+# anyway. machine-longhorn-labels.yaml is unused — the `longhorn: "true"`
+# label it carries is read by nothing.
