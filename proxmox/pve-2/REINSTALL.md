@@ -1,4 +1,4 @@
-# pve (R730xd) — reinstall from bare metal
+# pve-2 (R730xd) — reinstall from bare metal
 
 Host only. The cluster on top is [`DR.md`](../../DR.md).
 
@@ -17,7 +17,7 @@ PERC H730P → **HBA mode**. Otherwise ZFS sees virtual disks.
 ## 2. Install
 
 `rpool` = ZFS mirror, the two 960GB Intel SSDs in slots 0–1.
-`pve` · `10.57.57.250/24` · gw `10.57.57.1`.
+`pve-2` · `10.57.57.250/24` · gw `10.57.57.1`.
 Network: match [`etc/network-interfaces`](etc/network-interfaces) — `vmbr0`
 bridges `nic3`, the rest stay manual.
 
@@ -39,7 +39,7 @@ Unreachable? Copy [`scripts/`](scripts/) from this repo and paste the
 
 Re-add the VPS push key to `/root/.ssh/authorized_keys` — line in
 [`README.md`](README.md). `from=` must be `10.57.57.1`; pfSense NATs the
-Tailscale traffic, so pve never sees the VPS's Tailscale address.
+Tailscale traffic, so pve-2 never sees the VPS's Tailscale address.
 
 ## 4. Run it
 

@@ -1,6 +1,6 @@
 # Nextcloud (VM 1000)
 
-As-built reference. Multi-user file service on `pve`, reachable from the
+As-built reference. Multi-user file service on `pve-2`, reachable from the
 internet over a Cloudflare tunnel: per-user storage, shared folder, public
 share links, in-browser office editing, TOTP 2FA. Built 2026-08-20.
 
@@ -91,7 +91,7 @@ VLAN. Only port 22 listens on the network.
 | Share links need a password, expire in 30 days | `shareapi_enforce_links_password`, `shareapi_expire_after_n_days` |
 | Automatic updates | AIO backs up immediately before each one |
 
-WAF expressions live in `/root/PRIVATE-NOTES.md` on pve, same convention as the
+WAF expressions live in `/root/PRIVATE-NOTES.md` on pve-2, same convention as the
 Synology wake window.
 
 **No fail2ban, deliberately.** Behind a tunnel, a jail acting on web logs bans
@@ -107,7 +107,7 @@ cluster.
 
 [`docker-lan-isolation.sh`](scripts/docker-lan-isolation.sh) writes
 `DOCKER-USER` rules dropping container traffic to RFC1918 destinations leaving
-on the physical NIC, with two exceptions: DNS to pfSense, and SSH to pve for
+on the physical NIC, with two exceptions: DNS to pfSense, and SSH to pve-2 for
 borg. Container-to-container traffic and outbound internet are untouched. The
 unit is `PartOf=docker.service`, so the rules survive Docker recreating its
 chains.
@@ -124,7 +124,7 @@ No new mechanism — Nextcloud is one more source in the existing mesh.
 
 ```
 AIO borg (nightly, 23:40 UTC)
-   └─ ssh://borg-nextcloud@pve/media/backups/nextcloud      encrypted, on SAS
+   └─ ssh://borg-nextcloud@pve-2/media/backups/nextcloud      encrypted, on SAS
         ├─ restic 00:10 UTC  → Oracle VPS                   encrypted, off-site
         └─ rsync weekly      → Synology                     cold, local
 ```
@@ -139,10 +139,10 @@ pinned to `command="borg serve --restrict-to-repository …",restrict`.
 Append-only was rejected: it blocks AIO's retention from reclaiming space and
 forces a manual `borg compact` forever. A compromised Nextcloud can destroy the
 borg repository but holds no credential for the restic repo or the Synology
-relay — both are written *by pve*.
+relay — both are written *by pve-2*.
 
 **Restore one file, without AIO.** Works anywhere borg is installed and the
-repository is reachable — pve, or the Synology copy if pve is gone.
+repository is reachable — pve-2, or the Synology copy if pve-2 is gone.
 
 ```bash
 export BORG_PASSPHRASE='…'
@@ -159,7 +159,7 @@ button in AIO pointed at the same repository.
 reinstall takes the live data. `media` is on separate disks: `zpool import
 media` brings the repository back. Rebuild the VM, install Docker and AIO,
 point AIO's restore at it. Worst case is one night of files.
-[../REINSTALL.md](../REINSTALL.md) covers the pve side, including recreating
+[../REINSTALL.md](../REINSTALL.md) covers the pve-2 side, including recreating
 the `borg-nextcloud` account — which does not survive a reinstall even though
 its repository does.
 
@@ -181,7 +181,7 @@ its repository does.
 | AIO schedules in UTC, ignoring the configured timezone | in winter the backup lands an hour early and wakes the SAS pool separately | accepted; revisit in October |
 | Cloudflare free allows one rate-limit rule | caps velocity rather than banning | 2FA and Nextcloud's own throttle carry the weight |
 | Geo rule blocks the owner abroad | sync clients cannot answer a challenge | disable it while travelling |
-| Files are ext4 inside a zvol | not readable from pve with `ls`, unlike the LXC design | §9 |
+| Files are ext4 inside a zvol | not readable from pve-2 with `ls`, unlike the LXC design | §9 |
 
 ## 9. Why it looks like this
 
@@ -192,6 +192,6 @@ its repository does.
 | AIO in a VM | Hand-rolled compose in an LXC | AIO needs the Docker socket, unsupported in an unprivileged LXC. Brings tested backup/restore/update paths and serves Collabora on the main hostname |
 | zvol | Longhorn | Longhorn holds small state like Immich and the ARR configs. Several hundred GB is a different question, and single-node with replica count 1 did not change the answer |
 
-The cost of the VM: files were meant to stay readable from pve with `ls`. They
+The cost of the VM: files were meant to stay readable from pve-2 with `ls`. They
 are still plain files, now on ext4 inside a zvol, reached over SSH to the VM.
 The escape hatch survives, one hop longer.

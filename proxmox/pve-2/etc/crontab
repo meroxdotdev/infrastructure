@@ -15,7 +15,7 @@
 
 # REDACTED - the weekly Synology push time reveals the NAS wake window, which
 # this repo deliberately does not publish. Real line is in
-# /root/PRIVATE-NOTES.md on pve (restic backs it up). Restoring from this file
+# /root/PRIVATE-NOTES.md on pve-2 (restic backs it up). Restoring from this file
 # alone therefore leaves the weekly leg unscheduled - add it back.
 # <min> <hr> * * <day> /root/scripts/weekly-push-to-synology.sh
 

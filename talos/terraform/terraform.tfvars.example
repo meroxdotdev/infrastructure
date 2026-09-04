@@ -1,18 +1,18 @@
-# DR target: pve (R730xd). Default since 2026-09-01 — production moved to
-# px-0, so a drill on pve does not touch the live cluster and has 251 GB of
+# DR target: pve-2 (R730xd). Default since 2026-09-01 — production moved to
+# pve-1, so a drill on pve-2 does not touch the live cluster and has 251 GB of
 # RAM to play with.
 #
-# To drill on px-0 instead, swap in terraform.tfvars.px-0 and expect to stop
+# To drill on pve-1 instead, swap in terraform.tfvars.pve-1 and expect to stop
 # VM 810 first: it is kubernetes-1, the live cluster.
 
 proxmox_url          = "https://10.57.57.250:8006"
 proxmox_token_id     = "root@pam!terraform"
 proxmox_token_secret = "REPLACE-ME"
 
-proxmox_nodes = ["pve"]
+proxmox_nodes = ["pve-2"]
 disk_storage  = "local-zfs"
 iso_storage   = "media-isos"
-vmid_start    = 820   # 810 is kubernetes-1, the live cluster on px-0 — do not reuse
+vmid_start    = 820   # 810 is kubernetes-1, the live cluster on pve-1 — do not reuse
 
 # One entry per node in talconfig.yaml, with the same MAC —
 # dr:apply-talos-configs aborts if the counts disagree, and Talos selects its

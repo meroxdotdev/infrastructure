@@ -17,7 +17,7 @@ variable "proxmox_token_secret" {
 variable "proxmox_nodes" {
   description = "Proxmox node names to distribute VMs across."
   type        = list(string)
-  default     = ["pve", "pve", "pve"]
+  default     = ["pve-2", "pve-2", "pve-2"]
 }
 
 variable "talos_version" {
@@ -51,7 +51,7 @@ variable "network_bridge" {
 }
 
 variable "vmid_start" {
-  description = "Starting VMID for DR nodes (prod uses 800-805 on pve and 810 on px-0, DR uses 820+)"
+  description = "Starting VMID for DR nodes (prod uses 800-805 on pve-2 and 810 on pve-1, DR uses 820+)"
   type        = number
   default     = 820
 }

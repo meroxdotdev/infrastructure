@@ -263,7 +263,7 @@
   <div class="grid g3">
     <div class="card">
       <div class="card-hd">
-        <span class="name">pve — R730xd</span>
+        <span class="name">pve-2 — R730xd</span>
         <span class="sub">10.57.57.250 · Xeon E5-2630 v3 · 251 GB</span>
       </div>
       <ul class="svc">
@@ -305,7 +305,7 @@
         <li><span>gateway · DHCP · DNS</span><span>—</span></li>
         <li><span>Tailscale subnet router</span><span>—</span></li>
         <li><span>snort · pfBlockerNG</span><span>—</span></li>
-        <li><span>config.xml.gz → pve</span><span class="pill p-ok">03:00</span></li>
+        <li><span>config.xml.gz → pve-2</span><span class="pill p-ok">03:00</span></li>
       </ul>
       <div class="note" style="font-size:.79rem;padding:.55rem .8rem">
         Scriptul de push și cheia lui stau în <code>/root</code>, care
@@ -332,7 +332,7 @@
     <div class="card">
       <div class="card-hd">
         <span class="name">Kubernetes</span>
-        <span class="sub">1 × Talos (VM 800), pe pve</span>
+        <span class="sub">1 × Talos (VM 800), pe pve-2</span>
       </div>
       <ul class="svc">
         <li><span>22 PVC-uri, 193 Gi alocați</span><span>~28 G reali</span></li>
@@ -354,13 +354,13 @@
   <div class="sechead prose">
     <p class="eyebrow">Drumul datelor</p>
     <h2>Totul converge într-un singur loc, apoi pleacă în două direcții</h2>
-    <p><code>/media/backups</code> de pe pve e zona de aterizare. Nimic nu pleacă
+    <p><code>/media/backups</code> de pe pve-2 e zona de aterizare. Nimic nu pleacă
     din casă fără să treacă pe acolo întâi.</p>
   </div>
 
   <figure>
     <div class="figbox">
-      <svg viewBox="0 0 900 430" role="img" aria-label="Șase surse scriu în /media/backups pe pve; de acolo pleacă nightly cu restic spre Oracle și săptămânal cu rsync spre Synology.">
+      <svg viewBox="0 0 900 430" role="img" aria-label="Șase surse scriu în /media/backups pe pve-2; de acolo pleacă nightly cu restic spre Oracle și săptămânal cu rsync spre Synology.">
         <defs>
           <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
@@ -380,7 +380,7 @@
           <text x="32" y="141">pfSense config.xml.gz</text><text x="32" y="154" opacity=".55" font-size="10">03:00 · push de pe firewall</text>
 
           <rect x="20" y="172" width="212" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".75"/>
-          <text x="32" y="187">VPS → pve (rsync)</text><text x="32" y="200" opacity=".55" font-size="10">03:00 · Authentik, Joplin, extras</text>
+          <text x="32" y="187">VPS → pve-2 (rsync)</text><text x="32" y="200" opacity=".55" font-size="10">03:00 · Authentik, Joplin, extras</text>
 
           <rect x="20" y="218" width="212" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".75"/>
           <text x="32" y="233">Garage meta (SSD → SAS)</text><text x="32" y="246" opacity=".55" font-size="10">03:01 · LMDB stă pe SSD</text>
@@ -402,7 +402,7 @@
         <!-- hub -->
         <rect x="340" y="120" width="196" height="98" rx="10" fill="none" stroke="currentColor" stroke-width="2"/>
         <text x="438" y="146" text-anchor="middle" class="svg-mono" font-size="12.5" font-weight="700" fill="currentColor">/media/backups</text>
-        <text x="438" y="163" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".6">pe pve · pool SAS · 123 G</text>
+        <text x="438" y="163" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".6">pe pve-2 · pool SAS · 123 G</text>
         <line x1="356" y1="174" x2="520" y2="174" stroke="currentColor" stroke-width="1" opacity=".2"/>
         <text x="438" y="192" text-anchor="middle" class="svg-mono" font-size="10.5" fill="currentColor" opacity=".75">snapshot ZFS 03:05</text>
         <text x="438" y="208" text-anchor="middle" class="svg-mono" font-size="10" fill="currentColor" opacity=".55">retenție 14 zile</text>
@@ -439,7 +439,7 @@
     fizice, una offsite — 3-2-1 respectat. <strong>Nextcloud (VM 1000)</strong> e a opta
     sursă: AIO borg 23:40 UTC scrie în <code>media/backups/nextcloud</code> (6,8 G) direct
     prin SSH, în afara ferestrei de mai sus — vezi
-    <code>proxmox/r730xd/nextcloud/README.md</code> §6. Nu apare desenat aici.</figcaption>
+    <code>proxmox/pve-2/nextcloud/README.md</code> §6. Nu apare desenat aici.</figcaption>
   </figure>
 </section>
 
@@ -550,22 +550,22 @@
         <tr><td>netboot.xyz</td><td>k8s</td><td class="mono">PVC <span class="pill p-ssd">SSD</span></td><td class="num">0,03 G</td><td><span class="pill p-skip">regenerabil</span></td></tr>
         <tr><td>Longhorn · Cilium · cert-manager · Flux</td><td>k8s</td><td class="mono">config în git</td><td class="num">—</td><td><span class="pill p-skip">declarativ</span></td></tr>
 
-        <tr class="grouprow"><td colspan="5">pve — direct pe host</td></tr>
-        <tr><td>Home Assistant (VM 101)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">3,5 G</td><td><span class="pill p-ok">vzdump → doar Synology</span></td></tr>
-        <tr><td>Ollama (VM 105)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">7,4 G</td><td><span class="pill p-skip">deliberat exclus — model re-fetchable, OS reproductibil din runbook</span></td></tr>
-        <tr><td>Nextcloud (VM 1000)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">16,2 G</td><td><span class="pill p-ok">AIO borg 23:40 UTC → restic + Synology</span></td></tr>
-        <tr><td>windows11 (VM 100)</td><td>pve</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">58,4 G</td><td><span class="pill p-warn">fără vzdump — verifică, vezi §6</span></td></tr>
-        <tr><td>Garage S3 — date (LXC 103)</td><td>pve</td><td class="mono"><code>media/backups/longhorn-garage</code> <span class="pill p-sas">SAS</span></td><td class="num">19,0 G</td><td><span class="pill p-ok">e chiar ținta de backup</span></td></tr>
-        <tr><td>Garage S3 — meta</td><td>pve</td><td class="mono"><code>rpool/garage-meta</code> <span class="pill p-ssd">SSD</span></td><td class="num">29,5 M</td><td><span class="pill p-ok">copiat nightly 03:01</span></td></tr>
-        <tr><td>ISO-uri / template-uri</td><td>pve</td><td class="mono"><code>media/isos</code> <span class="pill p-sas">SAS</span></td><td class="num">3,55 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
+        <tr class="grouprow"><td colspan="5">pve-2 — direct pe host</td></tr>
+        <tr><td>Home Assistant (VM 101)</td><td>pve-2</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">3,5 G</td><td><span class="pill p-ok">vzdump → doar Synology</span></td></tr>
+        <tr><td>Ollama (VM 105)</td><td>pve-2</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">7,4 G</td><td><span class="pill p-skip">deliberat exclus — model re-fetchable, OS reproductibil din runbook</span></td></tr>
+        <tr><td>Nextcloud (VM 1000)</td><td>pve-2</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">16,2 G</td><td><span class="pill p-ok">AIO borg 23:40 UTC → restic + Synology</span></td></tr>
+        <tr><td>windows11 (VM 100)</td><td>pve-2</td><td class="mono">zvol <span class="pill p-ssd">SSD</span></td><td class="num">58,4 G</td><td><span class="pill p-warn">fără vzdump — verifică, vezi §6</span></td></tr>
+        <tr><td>Garage S3 — date (LXC 103)</td><td>pve-2</td><td class="mono"><code>media/backups/longhorn-garage</code> <span class="pill p-sas">SAS</span></td><td class="num">19,0 G</td><td><span class="pill p-ok">e chiar ținta de backup</span></td></tr>
+        <tr><td>Garage S3 — meta</td><td>pve-2</td><td class="mono"><code>rpool/garage-meta</code> <span class="pill p-ssd">SSD</span></td><td class="num">29,5 M</td><td><span class="pill p-ok">copiat nightly 03:01</span></td></tr>
+        <tr><td>ISO-uri / template-uri</td><td>pve-2</td><td class="mono"><code>media/isos</code> <span class="pill p-sas">SAS</span></td><td class="num">3,55 G</td><td><span class="pill p-skip">re-descărcabil</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">VPS Oracle</td></tr>
-        <tr><td>Authentik (SSO)</td><td>VPS</td><td class="mono">volum Docker</td><td class="num">—</td><td><span class="pill p-ok">dump 02:40 → pve</span></td></tr>
-        <tr><td>Joplin + Postgres</td><td>VPS</td><td class="mono">volum Docker</td><td class="num">—</td><td><span class="pill p-ok">dump 02:45 → pve</span></td></tr>
-        <tr><td>Traefik · Pi-hole · Guacamole · Homepage ×2 · Portainer</td><td>VPS</td><td class="mono">volume Docker</td><td class="num">—</td><td><span class="pill p-ok">tar 02:50 → pve</span></td></tr>
+        <tr><td>Authentik (SSO)</td><td>VPS</td><td class="mono">volum Docker</td><td class="num">—</td><td><span class="pill p-ok">dump 02:40 → pve-2</span></td></tr>
+        <tr><td>Joplin + Postgres</td><td>VPS</td><td class="mono">volum Docker</td><td class="num">—</td><td><span class="pill p-ok">dump 02:45 → pve-2</span></td></tr>
+        <tr><td>Traefik · Pi-hole · Guacamole · Homepage ×2 · Portainer</td><td>VPS</td><td class="mono">volume Docker</td><td class="num">—</td><td><span class="pill p-ok">tar 02:50 → pve-2</span></td></tr>
 
         <tr class="grouprow"><td colspan="5">Alte mașini</td></tr>
-        <tr><td>pfSense — configurație</td><td>fw</td><td class="mono">config.xml.gz</td><td class="num">—</td><td><span class="pill p-ok">push 03:00 → pve</span></td></tr>
+        <tr><td>pfSense — configurație</td><td>fw</td><td class="mono">config.xml.gz</td><td class="num">—</td><td><span class="pill p-ok">push 03:00 → pve-2</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -593,7 +593,7 @@
       <tbody>
         <tr><td class="mono">discard=on pe discurile Talos</td><td>blocurile eliberate în guest nu se întorc la ZFS</td><td class="num">~90–145 G</td><td><span class="pill p-skip">cere repornire — încă neverificat</span></td></tr>
         <tr><td class="mono">VM windows11</td><td>rulează; nu s-a confirmat dacă RDP-ul e expus</td><td class="num">58,4 G</td><td><span class="pill p-warn">re-verifică</span></td></tr>
-        <tr><td class="mono">VM windows11</td><td>nicio vzdump în crontab-ul lui pve pentru VM 100 — doar VM 101 are. Ollama (VM 105) nu are nevoie, documentat; Nextcloud (VM 1000) e acoperit separat, prin AIO borg</td><td class="num">—</td><td><span class="pill p-warn">decide dacă merită vzdump</span></td></tr>
+        <tr><td class="mono">VM windows11</td><td>nicio vzdump în crontab-ul lui pve-2 pentru VM 100 — doar VM 101 are. Ollama (VM 105) nu are nevoie, documentat; Nextcloud (VM 1000) e acoperit separat, prin AIO borg</td><td class="num">—</td><td><span class="pill p-warn">decide dacă merită vzdump</span></td></tr>
         <tr><td class="mono">media/photos</td><td>copie stale de la migrarea Immich; nimic nu o mai citește (Filebrowser eliminat)</td><td class="num">3,28 G</td><td><span class="pill p-skip">candidat la ștergere</span></td></tr>
         <tr><td class="mono">Leg Synology fără healthcheck</td><td>un eșec e invizibil</td><td class="num">—</td><td><span class="pill p-skip">tot deschis</span></td></tr>
       </tbody>

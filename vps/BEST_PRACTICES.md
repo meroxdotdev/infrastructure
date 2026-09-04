@@ -78,7 +78,7 @@ make setup   # first run: applies changes; subsequent runs: verifies state
 | .53 | pihole |
 | .60 | joplin-db |
 | .61 | joplin-server |
-| .62-64 | free (was reserved for Nextcloud as a VPS container; built as a VM on pve instead, see `proxmox/r730xd/nextcloud/README.md`) |
+| .62-64 | free (was reserved for Nextcloud as a VPS container; built as a VM on pve-2 instead, see `proxmox/pve-2/nextcloud/README.md`) |
 | .70 | authentik-postgresql |
 | .71 | authentik-redis |
 | .72 | authentik-server |

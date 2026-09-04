@@ -5,19 +5,19 @@ and DR.md link here instead of repeating the schedule.
 
 Backup plumbing for the Oracle VPS. Two pieces, both cron-driven:
 
-All times below are UTC (this VPS's system timezone) — pve/R730xd runs
-EEST (UTC+3), so these are timed to land there right around pve's own
+All times below are UTC (this VPS's system timezone) — pve-2/R730xd runs
+EEST (UTC+3), so these are timed to land there right around pve-2's own
 03:00 EEST window (pfSense's fixed nightly push), keeping the SAS media
 pool's spin-down to a single nightly wake instead of scattering across
-several hours. See [proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md)
-for the pve side of this alignment.
+several hours. See [proxmox/pve-2/README.md](../../../proxmox/pve-2/README.md)
+for the pve-2 side of this alignment.
 
 | Script | Cron (UTC) | What it does |
 |---|---|---|
 | `nightly-backup.sh` | 23:45 | Runs the three below in order and pings once. Stops at the first failure — the push has nothing to send if a producer died. |
 | `backup-joplin.sh` | by the wrapper |  Joplin DB dump into `/srv/backups/`. |
 | `backup-vps-extras.sh` | by the wrapper | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), Homepage config (`kubeconfig.yaml`/`kube.config` excluded), Portainer state. 7-day retention. |
-| `backup-push-r730xd.sh` | by the wrapper | Off-site sync to R730xd (`pve`, `10.57.57.250`): **pushes** `/srv/backups/` straight to `/media/backups/oracle-vps/srv-backups/` on pve over plain SSH rsync — lands ~03:00 EEST. Deliberately excludes this VPS's own local Garage instance — see below. |
+| `backup-push-r730xd.sh` | by the wrapper | Off-site sync to R730xd (`pve-2`, `10.57.57.250`): **pushes** `/srv/backups/` straight to `/media/backups/oracle-vps/srv-backups/` on pve-2 over plain SSH rsync — lands ~03:00 EEST. Deliberately excludes this VPS's own local Garage instance — see below. |
 | `restore-drill.sh` | monthly, 1st @ 04:00 | Proves the latest Authentik/Joplin dumps actually restore — imports each into a throwaway `--rm` postgres container, checks the schema has tables, tears down. Never touches live DBs. See "Restore drill" below. |
 
 Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via the
@@ -29,27 +29,27 @@ One further script is DR-only (no cron) — see "Restore" below:
 
 ## Why push, and why no daemon indirection
 
-R730xd (`pve`) is plain Debian — no restrictions on rsync server-mode over
+R730xd (`pve-2`) is plain Debian — no restrictions on rsync server-mode over
 SSH, unlike Synology's DSM. So this leg is just a normal `rsync -e ssh` push,
 authenticated by a dedicated SSH key. No rsyncd daemon, no password file, no
 "SSH in and trigger a pull" indirection — that dance (formerly used for the
 now-retired *Synology* HyperBackup destination, see below) was only ever
 needed to work around DSM's patched rsync, and doesn't apply here.
 
-The key (`/root/.ssh/oracle-vps-to-r730xd`) is restricted on the pve side via
+The key (`/root/.ssh/oracle-vps-to-r730xd`) is restricted on the pve-2 side via
 `rrsync` (limits it to `/media/backups/oracle-vps` only) and `from=` (limits
 it to the source IP pfSense presents when relaying Tailscale traffic onto the
-LAN — **not** the VPS's own Tailscale IP; traffic arrives at pve looking like
+LAN — **not** the VPS's own Tailscale IP; traffic arrives at pve-2 looking like
 it's from pfSense's LAN address, `10.57.57.1`, because pfSense NATs it).
-pve isn't in this repo's Ansible inventory, so this authorized_keys line is
+pve-2 isn't in this repo's Ansible inventory, so this authorized_keys line is
 provisioned by hand — see
-[proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#downstream-legs)
+[proxmox/pve-2/README.md](../../../proxmox/pve-2/README.md#downstream-legs)
 for the exact line and how to recreate it.
 
 `/etc/rsyncd.conf` on this VPS is gone entirely as of 2026-07-26 — it used
 to run one module, `synology_backup`, which was the destination Synology's
 own HyperBackup task pushed into. That leg is retired (see
-[proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#downstream-legs));
+[proxmox/pve-2/README.md](../../../proxmox/pve-2/README.md#downstream-legs));
 the offsite-to-Oracle job it did is now covered by R730xd's own
 `restic-push-oracle.sh` instead. The `vps_backups`/`garage_backup`/
 `vps_restore`/`garage_restore` modules that used to exist alongside
@@ -64,11 +64,11 @@ Garage LXC and was kept only as a temporary rollback safety net for a
 couple of weeks past that date. The *real*, current Garage backup target
 (R730xd's own LXC) is already covered by the `longhorn-garage` category in
 R730xd's own weekly Synology push and nightly Oracle restic push — see
-[proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#garage-longhorns-backup-target).
+[proxmox/pve-2/README.md](../../../proxmox/pve-2/README.md#garage-longhorns-backup-target).
 
 ## Nightly backup traffic
 
-All UTC. K8s cluster nodes also run UTC; pve/R730xd runs EEST (UTC+3) —
+All UTC. K8s cluster nodes also run UTC; pve-2/R730xd runs EEST (UTC+3) —
 add 3h for pve-side local times.
 
 - **23:40** — Authentik pg_dump → `/srv/backups/` (7-day retention, `authentik_setup` role).
@@ -80,7 +80,7 @@ From there, R730xd's own weekly push relays a copy on to Synology
 (cold storage, fast local-ish recovery), and — independently, nightly —
 R730xd pushes the same data straight to Oracle via `restic`, without this
 role needing to know or care about either hop. See
-[proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#downstream-legs)
+[proxmox/pve-2/README.md](../../../proxmox/pve-2/README.md#downstream-legs)
 for that side of the story.
 
 ## What Longhorn backs up (K8s side)
@@ -154,7 +154,7 @@ restic-backup` → `ChrootDirectory` + `ForceCommand internal-sftp`, no
 forwarding, no PTY, no password auth). The public key is a plain var
 (`vps_backup_restic_public_key`, not secret); the matching private key
 lives on R730xd only — see
-[proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#r730xd--oracle-cloud-direct-via-restic-done-2026-07-24)
+[proxmox/pve-2/README.md](../../../proxmox/pve-2/README.md#r730xd--oracle-cloud-direct-via-restic-done-2026-07-24)
 for the R730xd-side setup and restore instructions.
 
 ## Still manual (keep copies off this VPS)
@@ -170,12 +170,12 @@ kubeconfig` for the new cluster into both paths.
 
 1. SSH keypair for `/root/.ssh/oracle-vps-to-r730xd` — private half is in
    vault (`vault_oracle_vps_to_r730xd_ssh_key`, deployed by this role);
-   public key must be in `root@pve:~/.ssh/authorized_keys`, restricted via
-   `rrsync` + `from=` (see proxmox/r730xd/README.md for the exact line).
+   public key must be in `root@pve-2:~/.ssh/authorized_keys`, restricted via
+   `rrsync` + `from=` (see proxmox/pve-2/README.md for the exact line).
 
 > **Synology HyperBackup retired 2026-07-26.** The rsyncd daemon/module
 > (`synology_backup`) that existed solely as its destination is gone too —
-> see [proxmox/r730xd/README.md](../../../proxmox/r730xd/README.md#downstream-legs)
+> see [proxmox/pve-2/README.md](../../../proxmox/pve-2/README.md#downstream-legs)
 > for what replaced it (R730xd's own `restic-push-oracle.sh`, extended to
 > cover everything HyperBackup used to relay, proven with a real restore
 > drill before the cutover, not just a successful push).

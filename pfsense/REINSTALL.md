@@ -8,7 +8,7 @@ Gateway, DHCP and Tailscale subnet router. Losing it takes down the LAN
 **You need:**
 
 - pfSense installer
-- a config from `/media/backups/pfsense/` on pve (nightly, 30-day retention)
+- a config from `/media/backups/pfsense/` on pve-2 (nightly, 30-day retention)
 - physical or serial console access
 
 ## What a config restore does not cover
@@ -29,7 +29,7 @@ rebuild day. Steps 3 and 4 exist for this.
 ## 1. Install and restore the config
 
 Install pfSense, then Diagnostics → Backup & Restore → restore the newest
-`config-*.xml.gz` from `/media/backups/pfsense/` on pve (gunzip first if
+`config-*.xml.gz` from `/media/backups/pfsense/` on pve-2 (gunzip first if
 the UI wants plain XML). Reboot.
 
 ## 2. Confirm the basics before moving on
@@ -47,7 +47,7 @@ mkdir -p /root/scripts
 chmod +x /root/scripts/backup-to-r730xd.sh
 ```
 
-## 4. New SSH key, and authorise it on pve
+## 4. New SSH key, and authorise it on pve-2
 
 The old private key is gone and is not worth recovering — generate a fresh
 pair:
@@ -57,7 +57,7 @@ ssh-keygen -t ed25519 -f /root/.ssh/pfsense-backup -N "" -C "pfsense-backup-to-r
 cat /root/.ssh/pfsense-backup.pub
 ```
 
-On pve, add **one** line to `/root/.ssh/authorized_keys` — the forced
+On pve-2, add **one** line to `/root/.ssh/authorized_keys` — the forced
 command is what limits this key to dropping files in one directory:
 
 ```
@@ -67,9 +67,9 @@ command="/root/pfsense-backup-receive.sh",no-port-forwarding,no-X11-forwarding,n
 ⚠️ Exactly one line for this key. Two lines with the same key means SSH
 uses the first and silently ignores the second — that is how the 30-day
 prune sat dead until 2026-08-11. Pattern in
-[`proxmox/r730xd/etc/authorized_keys`](../proxmox/r730xd/etc/authorized_keys);
+[`proxmox/pve-2/etc/authorized_keys`](../proxmox/pve-2/etc/authorized_keys);
 receiver in
-[`proxmox/r730xd/scripts/pfsense-backup-receive.sh`](../proxmox/r730xd/scripts/pfsense-backup-receive.sh).
+[`proxmox/pve-2/scripts/pfsense-backup-receive.sh`](../proxmox/pve-2/scripts/pfsense-backup-receive.sh).
 
 ## 5. Verify the loop actually closes
 
@@ -78,7 +78,7 @@ receiver in
 ```
 
 ```bash
-ls -1t /media/backups/pfsense/ | head -2          # on pve — a fresh timestamp
+ls -1t /media/backups/pfsense/ | head -2          # on pve-2 — a fresh timestamp
 ```
 
 Not done until a file with today's timestamp appears on pve.

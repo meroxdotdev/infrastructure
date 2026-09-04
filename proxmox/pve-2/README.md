@@ -1,6 +1,6 @@
-# proxmox/r730xd
+# proxmox/pve-2
 
-Canonical reference for R730xd-side backup infrastructure. `pve`
+Canonical reference for R730xd-side backup infrastructure. `pve-2`
 (`10.57.57.250`) is the hub of the backup mesh: Longhorn's backup target,
 landing spot for VM/pfSense/VPS backups, weekly relay to Synology, nightly
 restic push to Oracle.
@@ -42,7 +42,7 @@ everything else on this page — provisioned/documented directly.
 - 4 vCPU, 8GB RAM hard-capped (`balloon: 0` — won't grow into host
   headroom under pressure), 40GB disk on `local-zfs`.
 - Ubuntu 24.04 LTS, cloud-init user `ollama`, SSH key-only
-  (`/root/.ssh/ollama-vm-key` on pve — private key lives only there, same
+  (`/root/.ssh/ollama-vm-key` on pve-2 — private key lives only there, same
   discipline as the other restricted keys documented below).
 - Ollama installed via the official install script, `OLLAMA_HOST=0.0.0.0`
   override in `/etc/systemd/system/ollama.service.d/override.conf` so it's
@@ -56,7 +56,7 @@ everything else on this page — provisioned/documented directly.
 **Recreating this VM** (host loss, or starting over):
 
 ```bash
-# on pve, as root
+# on pve-2, as root
 cd /tmp && wget -q https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img \
   -O ubuntu-2404-cloudimg.img
 ssh-keygen -t ed25519 -f /root/.ssh/ollama-vm-key -N "" -C "root-to-ollama-vm"
@@ -93,8 +93,8 @@ work wakes the spun-down SAS disks once per night. Playback wakes them too,
 whenever it happens — that is expected; what is not is the enforcer parking
 them mid-stream, fixed 2026-08-16 (see
 [spindown-setup.md](spindown-setup.md#3-spin-down-enforcer-stateless-replaces-hd-idle)).
-Times below are **local** (pve, EEST in summer). The Oracle VPS, the K8s
-cluster and Nextcloud AIO all schedule in UTC and cannot be changed; pve's cron
+Times below are **local** (pve-2, EEST in summer). The Oracle VPS, the K8s
+cluster and Nextcloud AIO all schedule in UTC and cannot be changed; pve-2's cron
 runs on local time. In summer the two sets interleave into one tight window,
 which is the point — everything touching the spun-down SAS pool should wake the
 disks once, together.
@@ -106,21 +106,21 @@ disks once, together.
 | 02:45 (23:45 UTC) | Joplin DB dump | VPS |
 | 02:50 (23:50 UTC) | VPS extras tar (Guacamole/Traefik/Pi-hole/Homepage/Portainer) | VPS |
 | 02:50 (23:50 UTC) | Longhorn → Garage backup (ARR/Jellyfin configs, Immich library) | K8s |
-| 03:00 | pfSense config push (fixed, external) | → pve |
-| 03:00 (00:00 UTC) | VPS → pve backup push | → pve |
-| 03:01 | Garage meta copy (SSD → media) | pve |
+| 03:00 | pfSense config push (fixed, external) | → pve-2 |
+| 03:00 (00:00 UTC) | VPS → pve-2 backup push | → pve-2 |
+| 03:01 | Garage meta copy (SSD → media) | pve-2 |
 | 03:02 (00:02 UTC) | Immich Postgres pg_dump | K8s |
-| 03:03 | etcd snapshot | pve |
-| 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve |
-| 03:10 | restic push → Oracle | pve |
-| 03:20 | nightly checks — disk health, spin-down, git drift | pve |
-| weekly | Relay → Synology (cold storage) | pve |
-| 03:40 1st/mo | `media` scrub | pve |
-| 05:00 1st/mo | restic restore drill | pve |
+| 03:03 | etcd snapshot | pve-2 |
+| 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve-2 |
+| 03:10 | restic push → Oracle | pve-2 |
+| 03:20 | nightly checks — disk health, spin-down, git drift | pve-2 |
+| weekly | Relay → Synology (cold storage) | pve-2 |
+| 03:40 1st/mo | `media` scrub | pve-2 |
+| 05:00 1st/mo | restic restore drill | pve-2 |
 | 07:00 1st/mo (04:00 UTC) | Authentik/Joplin restore drill | VPS |
 
 **They only interleave because Romania is UTC+3 in summer.** From late October
-the UTC half drops to 01:40-02:02 local while the pve half stays at 02:55-03:25,
+the UTC half drops to 01:40-02:02 local while the pve-2 half stays at 02:55-03:25,
 and the SAS pool wakes twice a night instead of once, for about five months.
 
 Accepted, not fixed. The ordering that actually matters still holds in both
@@ -259,20 +259,20 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 
 | Leg | When | Method |
 |---|---|---|
-| VPS → pve | nightly 03:00 | SSH rsync push, rrsync-restricted key |
-| pve → Synology | weekly, in NAS wake window | rsync `--link-dest` versioned snapshots, 21-day retention |
-| pve → Oracle | nightly 03:10 | restic over SFTP, verified + monthly drill |
+| VPS → pve-2 | nightly 03:00 | SSH rsync push, rrsync-restricted key |
+| pve-2 → Synology | weekly, in NAS wake window | rsync `--link-dest` versioned snapshots, 21-day retention |
+| pve-2 → Oracle | nightly 03:10 | restic over SFTP, verified + monthly drill |
 | ZFS snapshots | nightly 03:05 | `media/backups@daily-*`, 14-day retention |
-| pfSense → pve | nightly 03:00 | pfSense-side cron pushes `config.xml.gz` over a forced-command key |
+| pfSense → pve-2 | nightly 03:00 | pfSense-side cron pushes `config.xml.gz` over a forced-command key |
 
 Retired: Synology→Oracle HyperBackup (2026-07-26) — restoring its
 proprietary vault needs a working DSM; the restic leg replaced it.
 
-### pfSense → pve
+### pfSense → pve-2
 
 - Push runs on the firewall:
   [`pfsense/scripts/backup-to-r730xd.sh`](../../pfsense/scripts/backup-to-r730xd.sh)
-- pve pins the key to a receiver:
+- pve-2 pins the key to a receiver:
   [`scripts/pfsense-backup-receive.sh`](scripts/pfsense-backup-receive.sh)
   — does the `scp -t` **and** the 30-day prune
 - Rebuild steps: [pfsense/REINSTALL.md](../../pfsense/REINSTALL.md)
@@ -286,21 +286,21 @@ never ran — despite being documented here.
 is **not** in `config.xml.gz`. A config restore brings back the cron entry
 but not the script it calls.
 
-### VPS → pve
+### VPS → pve-2
 
-`authorized_keys` line on pve (restricted):
+`authorized_keys` line on pve-2 (restricted):
 
 ```
 restrict,command="rrsync /media/backups/oracle-vps",from="10.57.57.1" ssh-ed25519 AAAA... oracle-vps-to-r730xd
 ```
 
 ⚠️ `from=` must be `10.57.57.1` (pfSense LAN) — pfSense NATs
-Tailscale-routed traffic, so pve never sees the VPS's Tailscale IP. Fails
+Tailscale-routed traffic, so pve-2 never sees the VPS's Tailscale IP. Fails
 silently otherwise; debug via `journalctl -u ssh` (no auth.log on this
 host). Key rotation: regenerate on VPS, update
 `vault_oracle_vps_to_r730xd_ssh_key` in the vps Ansible vault.
 
-### pve → Synology
+### pve-2 → Synology
 
 [`scripts/weekly-push-to-synology.sh`](scripts/weekly-push-to-synology.sh),
 weekly, timed inside the NAS wake window. Schedule is redacted from
@@ -316,11 +316,11 @@ weekly, timed inside the NAS wake window. Schedule is redacted from
 -mtime` — `rsync -a` copies source mtimes, which once made the script
 delete a snapshot the moment it was created.
 
-### pve → Oracle (restic)
+### pve-2 → Oracle (restic)
 
 Open format — restorable anywhere with the `restic` binary + repo
 password. Dest: chrooted SFTP-only user `restic-backup` on the VPS
-(provisioned by the `vps_backup` role). Private key lives on pve only.
+(provisioned by the `vps_backup` role). Private key lives on pve-2 only.
 
 Scope: everything under `/media/backups/`, plus `/media/photos` and
 `/root`. No exclusions — every directory under `/media/backups/` is pushed.
@@ -329,7 +329,7 @@ Scope: everything under `/media/backups/`, plus `/media/photos` and
 `PRIVATE-NOTES.md` and the restic password file existed on exactly one
 disk, the one being backed up.
 
-One-time setup on pve:
+One-time setup on pve-2:
 
 ```bash
 apt install -y restic
@@ -358,14 +358,14 @@ cron `10 3 * * *`. Retention `--keep-daily 7 --keep-weekly 4
 Restore from anywhere:
 
 ```bash
-export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"   # ~/.ssh/config alias on pve
+export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"   # ~/.ssh/config alias on pve-2
 export RESTIC_PASSWORD_FILE=/path/to/password             # password manager
 restic snapshots && restic restore latest --target /tmp/restored
 ```
 
 Off-host, the alias doesn't exist — use `sftp:restic-backup@<vps-ip>:/data`.
 
-⚠️ **If pve is gone, so is that key.** It lives in `/root/.ssh/` on pve,
+⚠️ **If pve-2 is gone, so is that key.** It lives in `/root/.ssh/` on pve-2,
 which means it only exists inside the backup it is needed to open. Drilled
 2026-08-29 and the way out is the VPS: you reach it over Tailscale
 independently of home, so authorise a fresh key there.
@@ -393,11 +393,11 @@ Monthly drill: [`scripts/restic-restore-drill.sh`](scripts/restic-restore-drill.
 cron `0 5 1 * *`. Restores pfsense + immich-postgres to a throwaway dir,
 hash-compares against live source, pings healthchecks.io.
 
-⚠️ The drill runs **on pve**, where the password file is present. It
+⚠️ The drill runs **on pve-2**, where the password file is present. It
 proves the data is good; it cannot prove you can still open the repo
 without pve.
 
-Key rotation: new pair on pve → update `vps_backup_restic_public_key` in
+Key rotation: new pair on pve-2 → update `vps_backup_restic_public_key` in
 `vps/roles/vps_backup/defaults/main.yml` → re-run role with `--tags backup`.
 
 ### ZFS snapshots
@@ -418,7 +418,7 @@ Snapshot mtime is meaningless here.
 
 ## UPS-triggered shutdown
 
-The UPS (CyberPower VP700ELCD) is on **pve's own USB**, monitored by **NUT**.
+The UPS (CyberPower VP700ELCD) is on **pve-2's own USB**, monitored by **NUT**.
 `upsmon` shuts this host down locally on low battery — no second machine, no
 SSH hop, no forced-command key.
 

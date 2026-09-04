@@ -94,5 +94,5 @@ instanceName: merox-main
 # proxmox and longhorn providers removed: neither is consumed by any widget
 # below (the Longhorn card is disabled in widgets.yaml for being unreachable
 # from the VPS). Restore from git history alongside re-adding the
-# corresponding widget, pointed at pve (10.57.57.250) for Proxmox.
+# corresponding widget, pointed at pve-2 (10.57.57.250) for Proxmox.
 providers: {}

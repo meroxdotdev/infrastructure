@@ -45,7 +45,7 @@
             {
               "id": "41315bfd-50c2-4bea-a7f2-a5fa96e1cd0d",
               "name": "source_label",
-              "value": "={{ ($json.labels.job || '').toLowerCase().includes('blackbox') ? '☁️ VPS' : ($json.labels.job || '').toLowerCase().includes('pve') || ($json.labels.alertname || '').toLowerCase().startsWith('pve') ? '🖥️ Proxmox' : '☸️ K8s Cluster' }}",
+              "value": "={{ ($json.labels.job || '').toLowerCase().includes('blackbox') ? '☁️ VPS' : ($json.labels.job || '').toLowerCase().includes('pve-2') || ($json.labels.alertname || '').toLowerCase().startsWith('pve-2') ? '🖥️ Proxmox' : '☸️ K8s Cluster' }}",
               "type": "string"
             }
           ]

@@ -1,4 +1,4 @@
-ssh-rsa <PUBKEY-REDACTED> root@pve
+ssh-rsa <PUBKEY-REDACTED> root@pve-2
 ssh-rsa <PUBKEY-REDACTED> merox@macbook
 command="/root/pfsense-backup-receive.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 <PUBKEY-REDACTED> pfsense-backup-to-r730xd
 restrict,command="rrsync /media/backups/oracle-vps",from="10.57.57.1" ssh-ed25519 <PUBKEY-REDACTED> oracle-vps-to-r730xd

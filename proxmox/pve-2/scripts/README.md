@@ -1,6 +1,6 @@
-# proxmox/r730xd/scripts
+# proxmox/pve-2/scripts
 
-Verbatim copies of the scripts on `pve`. The host is the running copy;
+Verbatim copies of the scripts on `pve-2`. The host is the running copy;
 this is the reviewable one and the source for a reinstall.
 
 That split means every change has to be applied twice, so
@@ -27,7 +27,7 @@ single source of truth.
 
 Every `hc-ping.com` URL here reads `REPLACE-ME-SEE-PRIVATE-NOTES`: this repo
 is public and those URLs are capability tokens. Real values live in
-`/root/PRIVATE-NOTES.md` on pve, which restic backs up — paste them back after
+`/root/PRIVATE-NOTES.md` on pve-2, which restic backs up — paste them back after
 a restore. The drift check normalises these before comparing, so a differing
 URL is not reported as drift.
 

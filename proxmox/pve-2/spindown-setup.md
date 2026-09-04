@@ -132,7 +132,7 @@ activity — so that one needs the etcd alert above.
 | Controller patrol read | Removed at source — `storcli /c0 set patrolread=off` |
 | `sas-health-check.sh` | Safe — every `smartctl` uses `-n standby` |
 | **Monthly ZFS scrub** | Moved into the window — see below. Default was 00:00 on the 1st, hours of full-pool read entirely outside it. |
-| Proxmox web UI → Datacenter → pve → **Disks** tab | Wakes every SAS disk (`PVE::Diskmanage::get_smart_data`, no `-n`, not fixable). Re-slept within ~15 min. |
+| Proxmox web UI → Datacenter → pve-2 → **Disks** tab | Wakes every SAS disk (`PVE::Diskmanage::get_smart_data`, no `-n`, not fixable). Re-slept within ~15 min. |
 | Manual `smartctl`/`sg_start` without `-n standby` | Same |
 | **`zfs get -r <prop> media`** | Walks every dataset *and snapshot*; woke the pool from 12/12 asleep while measuring on 2026-08-16. Use `-s local` or name datasets explicitly. |
 | The enforcer itself, parking mid-stream | Fixed 2026-08-16 — pool-level rule. Was the top waker: 24 parks in one hour of playback. |

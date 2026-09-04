@@ -1,5 +1,5 @@
 #!/bin/bash
-# pve post-install: everything after Proxmox is on disk and the media pool is
+# pve-2 post-install: everything after Proxmox is on disk and the media pool is
 # imported. Idempotent — run it twice, nothing breaks.
 #
 #   ./reinstall.sh --check    what it would do, changes nothing

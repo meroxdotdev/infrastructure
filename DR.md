@@ -7,24 +7,24 @@ Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.
 - **In a hurry:** [`docs/dr-quickstart.md`](docs/dr-quickstart.md) — same
   procedure, commands only.
 - **Rebuilding a host instead of the cluster:**
-  [pve](proxmox/r730xd/REINSTALL.md) · [pfSense](pfsense/REINSTALL.md)
+  [pve-2](proxmox/pve-2/REINSTALL.md) · [pfSense](pfsense/REINSTALL.md)
 
-**Tested end-to-end:** 2026-08-29 on **px-0**, a different physical host —
+**Tested end-to-end:** 2026-08-29 on **pve-1**, a different physical host —
 71 min of prod downtime, prod VM stopped and restarted clean afterward.
-Previously 2026-08-03 on pve/R730xd.
+Previously 2026-08-03 on pve-2/R730xd.
 
 ## Which host to target
 
-**pve (R730xd)** — the default target now. 251 GB of RAM with nothing on it
+**pve-2 (R730xd)** — the default target now. 251 GB of RAM with nothing on it
 but Nextcloud and the storage services, and it is no longer where production
 runs, so a drill there does not touch the live cluster. It cannot test "the
 Beelink died" — the DR VM lands on a different box than production, which is
 exactly what you want here.
 
-**px-0 (Beelink)** — **production lives here since 2026-09-01.** `kubernetes-1`
+**pve-1 (Beelink)** — **production lives here since 2026-09-01.** `kubernetes-1`
 is VM 810 on this host. A drill here means stopping the live cluster first, and
 competing with it for RAM and pool space. The DR VMIDs start at 820 so they
-cannot collide with 810. Use it only to answer "px-0 died, can we recover onto
+cannot collide with 810. Use it only to answer "pve-1 died, can we recover onto
 it after a rebuild?", and expect the whole homelab down for the duration.
 
 **Sizing:** the DR VM must carry the entire cluster — `vm_memory_mb = 45056`,
@@ -89,9 +89,9 @@ photo library. All three are now cross-checked automatically:
 > # fill in proxmox_token_id and proxmox_token_secret
 > ```
 >
-> **Storage layout on pve:** `local-zfs` for `disk_storage`, `media-isos`
+> **Storage layout on pve-2:** `local-zfs` for `disk_storage`, `media-isos`
 > for `iso_storage` — the `local` storage there only has content=snippets,
-> no iso support. Working DR config: `proxmox_nodes = ["pve", "pve", "pve"]`.
+> no iso support. Working DR config: `proxmox_nodes = ["pve-2", "pve-2", "pve-2"]`.
 
 ```bash
 task dr:create-vms          # one VM per MAC in terraform.tfvars
@@ -188,7 +188,7 @@ task dr:destroy-vms
 
 # Restart the prod node — or just `task dr:restore-prod`, which does this
 # and clears the pods orphaned by the shutdown:
-# VM 810 → kubernetes-1 on px-0 (Beelink). The whole cluster is that one VM
+# VM 810 → kubernetes-1 on pve-1 (Beelink). The whole cluster is that one VM
 # since the 2026-09-01 collapse (see talos/SINGLE-NODE.md).
 ```
 
@@ -208,7 +208,7 @@ for two days.
 ## Backup schedule
 
 Canonical schedules: [VPS side](vps/roles/vps_backup/README.md) ·
-[R730xd side](proxmox/r730xd/README.md#downstream-legs).
+[R730xd side](proxmox/pve-2/README.md#downstream-legs).
 
 Short version:
 
@@ -259,12 +259,12 @@ a second safety net — do not treat it as current.
 
 ## R730xd / Garage total loss fallback
 
-**Drilled 2026-08-29 on px-0**, with nothing carried over from pve. What it
+**Drilled 2026-08-29 on pve-1**, with nothing carried over from pve. What it
 measured, end to end:
 
 | Step | Result |
 |---|---|
-| Reach the restic repo without pve's key | Works — authorise a fresh key on the VPS, see [proxmox/r730xd/README.md](proxmox/r730xd/README.md#pve--oracle-restic) |
+| Reach the restic repo without pve-2's key | Works — authorise a fresh key on the VPS, see [proxmox/pve-2/README.md](proxmox/pve-2/README.md#pve--oracle-restic) |
 | Restore `longhorn-garage` from Oracle | 17.4 GiB in **29 min** (~11 MB/s), 56 541 files, byte-identical to the source |
 | Start Garage on the restored tree | Healthy node, one command |
 | Bucket intact | `longhorn`, **17.6 GiB, 11 296 objects**, `longhorn-key` present with RWO |
@@ -295,7 +295,7 @@ preference:
 
 ```bash
 # Wake Synology if asleep (it sleeps outside a short weekly window - wake
-# schedule and WoL MAC are in /root/PRIVATE-NOTES.md on pve, deliberately
+# schedule and WoL MAC are in /root/PRIVATE-NOTES.md on pve-2, deliberately
 # not in this public repo):
 wakeonlan <MAC-from-private-notes>
 # wait ~1-2 min, then confirm it's up:
@@ -315,7 +315,7 @@ restore wizard. The old Hyper Backup path (proprietary chunked vault,
 required a working DSM to read) was retired 2026-07-26.
 
 ```bash
-# On pve, "oracle-vps-restic" is an ~/.ssh/config alias — off-host, use the
+# On pve-2, "oracle-vps-restic" is an ~/.ssh/config alias — off-host, use the
 # real target + key, both recoverable from /root once you can read the repo.
 export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
 export RESTIC_PASSWORD_FILE=/path/to/saved/password   # password manager, "restic bak password"
@@ -324,7 +324,7 @@ restic restore latest --include /media/backups/longhorn-garage --target /tmp/gar
 ```
 
 **3. Stand up a fresh Garage instance** anywhere the cluster can reach — a
-new LXC on `pve`, or the VPS temporarily — with the recovered
+new LXC on `pve-2`, or the VPS temporarily — with the recovered
 `data`/`meta` bind-mounted in. Reuse `vps/roles/garage_setup`, setting
 `garage_webui_enabled` per host, same as
 `vps/playbooks/garage-setup-r730xd.yml`.

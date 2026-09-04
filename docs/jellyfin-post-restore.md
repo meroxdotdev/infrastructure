@@ -164,7 +164,7 @@ These do **not** need manual intervention after restore:
 
 | What                                                                 | Where configured                                |
 | -------------------------------------------------------------------- | ----------------------------------------------- |
-| Intel GPU device (`gpu.intel.com/i915: 1`), which also pins the pod to px-0 | `helmrelease.yaml` → `resources.limits`   |
+| Intel GPU device (`gpu.intel.com/i915: 1`), which also pins the pod to pve-1 | `helmrelease.yaml` → `resources.limits`   |
 | Video group access (`supplementalGroups: [44]`) — inert on Talos, renderD128 is 0666 | `helmrelease.yaml` → `securityContext` |
 | NFS media mount (read-only from R730xd, `NFS_SERVER` var)            | `helmrelease.yaml` → `persistence.media`        |
 | Longhorn PVCs for config + metadata cache                            | `pvc.yaml`                                      |

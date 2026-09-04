@@ -11,10 +11,10 @@ gone; see the last section for what remains.
 
 ## Hardware / host
 
-The iGPU sits alone in IOMMU group 0 on `px-0` and is bound to `vfio-pci`.
+The iGPU sits alone in IOMMU group 0 on `pve-1` and is bound to `vfio-pci`.
 Everything about that — `vfio.conf`, the module blacklists, the GRUB command
 line — is recorded in
-[../proxmox/px-0/README.md](../proxmox/px-0/README.md), along with the BIOS
+[../proxmox/pve-1/README.md](../proxmox/pve-1/README.md), along with the BIOS
 settings that keep the iGPU present on a headless box.
 
 VM config is one line: `hostpci0: 0000:00:02.0`, with `--machine q35` and
@@ -55,7 +55,7 @@ char 226:128, so `vainfo` fails with `Failed to open the given device!`. Only
 a device plugin — or `privileged: true`, which is not acceptable on an
 internet-facing pod — adds the device to the allowlist.
 
-**The consequence is that Jellyfin is pinned to px-0**, since no other node
+**The consequence is that Jellyfin is pinned to pve-1**, since no other node
 advertises the resource. During maintenance on that host, drop the request so
 it can run anywhere on software transcoding:
 
@@ -65,7 +65,7 @@ kubectl -n default patch helmrelease jellyfin --type=json \
 ```
 
 Flux puts it back on the next reconcile, so suspend the HelmRelease for the
-duration (`flux suspend hr jellyfin -n default`) and resume when px-0 is back.
+duration (`flux suspend hr jellyfin -n default`) and resume when pve-1 is back.
 
 ## Jellyfin encoding.xml
 
@@ -127,11 +127,11 @@ Removed from git on 2026-09-01: the `nonfree-kmod-nvidia-lts` and
 **The card itself stays in the R730xd**, unused, in case a future project wants
 it. It costs **3.86 W** idle, measured in pstate P8 — about 34 kWh a year. It
 causes no fan ramp: iDRAC cannot see it at all (`PCIe Slot1-4 = Not Readable`),
-which `proxmox/r730xd/known-issues.md` records as never having triggered one.
+which `proxmox/pve-2/known-issues.md` records as never having triggered one.
 
 It was detached from the old control-plane VM before that VM was retired:
-`hostpci` makes a VM ineligible for live migration. That VM (800 on pve) was
-destroyed on 2026-09-01 once the cluster had collapsed onto px-0 and the
+`hostpci` makes a VM ineligible for live migration. That VM (800 on pve-2) was
+destroyed on 2026-09-01 once the cluster had collapsed onto pve-1 and the
 restore was verified; the card stayed in the chassis.
 
 To use it again: regenerate a schematic with the two LTS extensions, restore

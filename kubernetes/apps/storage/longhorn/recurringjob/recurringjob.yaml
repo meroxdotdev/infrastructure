@@ -5,7 +5,7 @@ metadata:
   name: backup-homelab-k8s
   namespace: longhorn-system
 spec:
-  # 23:50 UTC = 02:50 EEST — cluster runs UTC, pve runs EEST. Timed just
+  # 23:50 UTC = 02:50 EEST — cluster runs UTC, pve-2 runs EEST. Timed just
   # before vzdump HA (02:55) so this lands in the same compact nightly SAS
   # backup window instead of firing at the naive-looking but wrong 05:00 EEST.
   cron: "50 23 * * *"

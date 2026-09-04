@@ -221,7 +221,7 @@ spec:
 # without checking prod first (kubectl get volumes.longhorn.io <name> -n
 # longhorn-system -o jsonpath='{.status.actualSize}'). They only look dead
 # on a *fresh* DR-restore cluster, where they've genuinely never existed.
-# On prod (pve/R730xd) these are the live, real, un-backed-up app volumes -
+# On prod (pve-2/R730xd) these are the live, real, un-backed-up app volumes -
 # this exact "cleanup" deleted them off prod on 2026-08-03, stuck Terminating
 # for 2 days on kubernetes.io/pv-protection, silently breaking both apps
 # until fixed 2026-08-05. See DR.md's Known issues table.

@@ -123,7 +123,7 @@
 
 # Was three cron entries and three healthchecks for one 15-minute sequence.
 # They fail as a unit and are investigated as a unit. Timed so the push lands
-# on pve alongside pfSense's fixed 03:00 EEST push, keeping the nightly SAS
+# on pve-2 alongside pfSense's fixed 03:00 EEST push, keeping the nightly SAS
 # window compact for spin-down.
 - name: Schedule the nightly backup chain (Joplin, extras, push to R730xd)
   cron:
@@ -148,7 +148,7 @@
 # --- restic landing user: R730xd -> Oracle VPS, DSM-independent offsite leg ---
 # SFTP-only, chrooted, no shell - restic's sftp backend talks to this over SSH.
 # Private key lives on R730xd only (not managed here); see
-# proxmox/r730xd/README.md for the one-time push-side setup.
+# proxmox/pve-2/README.md for the one-time push-side setup.
 
 - name: Create restic-backup system group
   group:

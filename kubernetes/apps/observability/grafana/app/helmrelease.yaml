@@ -96,7 +96,7 @@ spec:
     dashboards:
       default:
         # Disabled - the UPS here is CyberPower, not APC (see
-        # proxmox/r730xd/README.md's UPS section), this SNMP dashboard
+        # proxmox/pve-2/README.md's UPS section), this SNMP dashboard
         # doesn't apply.
         # apc-ups:
         #   # renovate: depName="APC UPS (SNMP)"
@@ -196,8 +196,8 @@ spec:
           revision: 7
           datasource: Prometheus
         # Disabled - smartctl-exporter isn't deployed anywhere in this
-        # cluster (disk health is watched by proxmox/r730xd/scripts/
-        # sas-health-check.sh on pve instead).
+        # cluster (disk health is watched by proxmox/pve-2/scripts/
+        # sas-health-check.sh on pve-2 instead).
         # smartctl-exporter:
         #   # renovate: depName="SMARTctl Exporter Dashboard"
         #   gnetId: 22604
@@ -241,9 +241,9 @@ spec:
         #   datasource:
         #     - { name: DS_PROMETHEUS, value: Prometheus }
         #     - { name: VAR_REPLICATIONDESTNAME, value: .*-dst }
-        # Disabled - not because there's no ZFS (pve has two pools, rpool
+        # Disabled - not because there's no ZFS (pve-2 has two pools, rpool
         # and media) but because node_exporter's ZFS metrics only come from
-        # nodes it runs on (the Talos nodes, no ZFS there), not from pve
+        # nodes it runs on (the Talos nodes, no ZFS there), not from pve-2
         # itself - same reasoning as kube-prometheus-stack's disabled
         # zfs-rules. Pool capacity is covered by the PveStorageNearFull
         # alert instead; pool health by sas-health-check.sh on pve.

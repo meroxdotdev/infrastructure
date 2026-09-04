@@ -22,7 +22,7 @@ if ! curl -fsSL --max-time 60 "$TARBALL" | tar xz -C "$TMP" --strip-components=1
   echo "$(date '+%F %T') FETCH-FAILED: could not download the repo"
   exit 1
 fi
-G="$TMP/proxmox/r730xd"
+G="$TMP/proxmox/pve-2"
 DRIFT=""
 
 # Healthcheck URLs are redacted in git (public repo), so blank them on both

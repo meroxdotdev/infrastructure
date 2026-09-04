@@ -7,7 +7,7 @@ metadata:
   namespace: &namespace kube-system
 spec:
   # Exposes gpu.intel.com/i915 on kubernetes-1, whose VM has the
-  # Beelink's Iris Xe passed through. Deleted in 6bb0f3d when px-0 was
+  # Beelink's Iris Xe passed through. Deleted in 6bb0f3d when pve-1 was
   # decommissioned, restored 2026-09-01 when it came back as the worker.
   #
   # Not optional, and not replaceable by a /dev/dri hostPath: the container's

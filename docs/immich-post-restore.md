@@ -48,7 +48,7 @@ Both used to be NFS mounts on the `media` (SAS) pool — moved to Longhorn
 because Immich's random access pattern (phone sync/browsing any time of day)
 defeats the SAS pool's `hd-idle` spin-down, unlike Jellyfin/backups which
 only touch it in scheduled bursts. See
-[proxmox/r730xd/README.md](../proxmox/r730xd/README.md#nightly-schedule-spin-down-aligned).
+[proxmox/pve-2/README.md](../proxmox/pve-2/README.md#nightly-schedule-spin-down-aligned).
 Both PVCs are labeled for the nightly Longhorn→Garage recurring backup
 (`recurring-job-group.longhorn.io/media: enabled`), same mechanism as
 `immich-postgres`.
@@ -67,7 +67,7 @@ Scan.
 
 ## 4. Backup
 
-Nightly `pg_dump` CronJob (`immich-postgres-backup`, 03:02, inside pve's
+Nightly `pg_dump` CronJob (`immich-postgres-backup`, 03:02, inside pve-2's
 compact nightly SAS backup window) dumps to `/media/backups/immich-postgres/`
 on the SAS pool, gzipped, 30-day retention. This is the DB only (albums, face
 tags, favorites, sharing links) — the actual photo files are covered by

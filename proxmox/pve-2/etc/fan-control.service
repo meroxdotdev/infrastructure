@@ -3,7 +3,7 @@
 # in Dell's algorithm rather than in stuck fans.
 [Unit]
 Description=Quiet the chassis fans (IPMI manual mode with a thermal fallback)
-Documentation=https://github.com/meroxdotdev/infrastructure/blob/main/proxmox/r730xd/scripts/fan-control.sh
+Documentation=https://github.com/meroxdotdev/infrastructure/blob/main/proxmox/pve-2/scripts/fan-control.sh
 After=multi-user.target
 
 [Service]

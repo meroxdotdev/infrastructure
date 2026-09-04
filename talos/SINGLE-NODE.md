@@ -1,17 +1,17 @@
 # Single control plane
 
 The cluster is **one node**: `kubernetes-1` (VM 810, `10.57.57.80`, on
-`px-0`/Beelink), control plane and workload host in the same VM. 14 cores,
+`pve-1`/Beelink), control plane and workload host in the same VM. 14 cores,
 32 GiB, with the Iris Xe passed through for Jellyfin.
 
 That has been the shape since 2026-09-01. Before it, the single control plane
-lived on `pve`/R730xd with a worker on `px-0`; before that, three control
-planes on `pve`. Each step removed machinery that was not buying anything.
+lived on `pve-2`/R730xd with a worker on `pve-1`; before that, three control
+planes on `pve-2`. Each step removed machinery that was not buying anything.
 
 **Why one and not two.** Two control planes cannot form a quorum — lose either
 and the cluster stops, which is strictly worse than one. Three would need a
-third fault domain, and there are only two machines. A third VM on `pve` or
-`px-0` rebuilds exactly the illusion torn down in August: HA that dies with
+third fault domain, and there are only two machines. A third VM on `pve-2` or
+`pve-1` rebuilds exactly the illusion torn down in August: HA that dies with
 the host underneath it.
 
 **So there is no HA, deliberately.** Recovery is a restore, not a failover:
@@ -20,7 +20,7 @@ survive either machine going down, it takes a third etcd vote in a third
 fault domain plus Longhorn replicas on both — priced out in the 2026-09-01
 discussion, not adopted.
 
-**What `pve` still carries:** the media array and its NFS exports, every
+**What `pve-2` still carries:** the media array and its NFS exports, every
 backup leg, the Garage S3 LXC that Longhorn backs up into, and the Nextcloud
 VM. Losing it costs media and backups, not the cluster.
 
@@ -51,12 +51,12 @@ still won't schedule.
 
 Nightly etcd snapshot (the one thing a single member makes strictly worse —
 no peer to rebuild from) runs at 03:03 via
-[`proxmox/r730xd/scripts/etcd-snapshot.sh`](../proxmox/r730xd/scripts/etcd-snapshot.sh).
+[`proxmox/pve-2/scripts/etcd-snapshot.sh`](../proxmox/pve-2/scripts/etcd-snapshot.sh).
 Restore: `talosctl bootstrap --recover-from=<snapshot>`, snapshot lives under
 `/media/backups/etcd/` and rides the existing restic push to Oracle.
 
 A Talos/Kubernetes upgrade of this node is a full outage of a few minutes
-instead of a rolling one — accepted, since a `pve` reboot already took all
+instead of a rolling one — accepted, since a `pve-2` reboot already took all
 three old nodes down simultaneously anyway.
 
 **It also cannot be drained**, which matters because the upgrade task tries to

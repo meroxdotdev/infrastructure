@@ -3,7 +3,7 @@
 # holds real metadata (albums, face tags, favorites, sharing links) that
 # isn't just derived from the photo files — worth a real backup even though
 # a full HA operator (CNPG) wasn't justified for a single-instance DB.
-# Schedule is UTC (K8s cluster nodes run UTC, not pve's EEST) — 0:02 UTC =
+# Schedule is UTC (K8s cluster nodes run UTC, not pve-2's EEST) — 0:02 UTC =
 # 03:02 EEST, right after pfSense's own fixed 03:00 push to pve. Keeps the
 # whole nightly SAS backup window compact (~02:55-03:20) so hd-idle only
 # spins the media pool disks up once a night instead of cycling on gaps.

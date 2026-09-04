@@ -71,15 +71,15 @@ spec:
                 cpu: 100m
                 memory: 512Mi
               limits:
-                # Pins Jellyfin to kubernetes-1 — only px-0 has an
+                # Pins Jellyfin to kubernetes-1 — only pve-1 has an
                 # Intel GPU. A /dev/dri hostPath was tried instead so it could
-                # fall back to pve; it cannot work, the container device cgroup
+                # fall back to pve-2; it cannot work, the container device cgroup
                 # denies open() on char 226:128 regardless of file mode. During
-                # px-0 maintenance, drop this request to let Jellyfin run
+                # pve-1 maintenance, drop this request to let Jellyfin run
                 # anywhere on software transcoding — see docs/gpu-transcoding.md.
                 gpu.intel.com/i915: 1
                 memory: 4Gi
-                # Hard ceiling, kept after the move to px-0. etcd is no longer
+                # Hard ceiling, kept after the move to pve-1. etcd is no longer
                 # on the same node, but the Beelink is a 20-thread mini PC and
                 # a runaway transcode should not take the whole worker.
                 cpu: 4

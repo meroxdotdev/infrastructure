@@ -174,7 +174,7 @@ spec:
               #
               # Threshold: healthy here is ~30/day, all inside the nightly
               # backup hour when the spun-down SAS disks are legitimately woken
-              # (see proxmox/r730xd/spindown-setup.md). Pre-fix was 346/day and
+              # (see proxmox/pve-2/spindown-setup.md). Pre-fix was 346/day and
               # 203 in a single hour. 50/h clears the backup window and still
               # catches a regression on the first bad hour.
               - alert: EtcdSlowFsyncBurst
@@ -234,12 +234,12 @@ spec:
                   severity: critical
       pve-rules:
         groups:
-          - name: pve
+          - name: pve-2
             rules:
               # pve_uptime_seconds resetting (not pve_up==0) is what actually
               # answers "did a VM/LXC restart" - pve_up==0 alone would also
               # fire permanently for guests that are just deliberately kept
-              # off (windows11, ubuntu-server on pve). `id` alone would
+              # off (windows11, ubuntu-server on pve-2). `id` alone would
               # collide if a second Proxmox host is ever added (both would
               # have a "qemu/100") - join on (id, instance) or a rule
               # silently errors out on the shared ID instead of firing
@@ -318,13 +318,13 @@ spec:
                 labels:
                   severity: critical
       # ZFS rules stay off, but NOT for the reason the old comment gave
-      # ("nu ai ZFS") — pve has two ZFS pools, rpool and media. The real
+      # ("nu ai ZFS") — pve-2 has two ZFS pools, rpool and media. The real
       # reason is the metric: node_zfs_zpool_state comes from node_exporter,
       # which runs on the Talos nodes (no ZFS there) and not on pve. Pool
       # capacity is covered by PveStorageNearFull above instead; pool *health*
-      # is covered by sas-health-check.sh on pve, which mails on zpool
+      # is covered by sas-health-check.sh on pve-2, which mails on zpool
       # READ/WRITE/CKSUM errors. To enable these rules, node_exporter would
-      # have to run on pve itself.
+      # have to run on pve-2 itself.
       # zfs-rules:
       #   groups:
       #     - name: zfs

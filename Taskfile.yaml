@@ -12,7 +12,7 @@ vars:
   TALOS_DIR: '{{.ROOT_DIR}}/talos'
   PRIVATE_DIR: '{{.ROOT_DIR}}/.private'
   TALOSCONFIG: '{{.ROOT_DIR}}/talos/clusterconfig/talosconfig'
-  PROD_HOST: '10.57.57.254'   # px-0 — hosts the prod cluster VM since 2026-09-01
+  PROD_HOST: '10.57.57.254'   # pve-1 — hosts the prod cluster VM since 2026-09-01
   PROD_VMID: '810'            # kubernetes-1
 
 env:

@@ -18,7 +18,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # produced 53 slow fsyncs and an `etcdserver timeout` that failed a Flux
 # Kustomization, i.e. this job caused exactly the outage it exists to recover
 # from. Inside the window the disks are already spinning for the other jobs and
-# it costs nothing extra. See proxmox/r730xd/spindown-setup.md.
+# it costs nothing extra. See proxmox/pve-2/spindown-setup.md.
 #
 # The credential is deliberately NOT the admin talosconfig. It carries the
 # os:etcd:backup role only, so a compromise of this host cannot reboot or reset

@@ -1,12 +1,12 @@
-# Beelink GTi13 Ultra — `px-0`, `10.57.57.254`
+# Beelink GTi13 Ultra — `pve-1`, `10.57.57.254`
 
 Standalone Proxmox host, not clustered with pve. **Runs the entire Kubernetes
 cluster** as `kubernetes-1` (VM 810 — 14 cores, 32 GiB, 350 GB, Iris Xe passed
 through), plus Proxmox Datacenter Manager (VM 100).
 
-Since 2026-09-01 this is the machine the homelab runs on. `pve` keeps the
+Since 2026-09-01 this is the machine the homelab runs on. `pve-2` keeps the
 disks: media and its NFS exports, the Garage S3 LXC that Longhorn backs into,
-Nextcloud, and every backup leg. Losing `pve` costs media, Nextcloud and
+Nextcloud, and every backup leg. Losing `pve-2` costs media, Nextcloud and
 backups but leaves the cluster running; losing this box stops everything.
 There is no HA, deliberately —
 [../../talos/SINGLE-NODE.md](../../talos/SINGLE-NODE.md).
@@ -20,7 +20,7 @@ leaves pods `Pending` — total requests are 38 GiB.
 | CPU / RAM | i9-13900HK (6P+8E, 20 threads), 62 GB DDR5 |
 | `nvme1n1` | Proxmox root, LVM/ext4, `/local_data` for ISOs. **1% worn** |
 | `nvme0n1` | ZFS `cluster-storage`, single disk, no redundancy. **33% worn**, 67 TB written |
-| Network | 2x 2.5 GbE Intel I226 (`enp89s0` in use, `enp90s0` unused) |
+| Network | 2x 2.5 GbE Intel I226 (`enp89s0` in use, `enp90s0` unused). Links at **1 GbE** — the switch is the ceiling, not the NIC |
 | GPU | Iris Xe, bound to `vfio-pci`, passed to VM 810 |
 | Power | 0.83 W package idle after tuning |
 
@@ -75,14 +75,14 @@ last column.
 |---|---|---|
 | `etc/systemd/system/cpu-power.service` | same | `systemctl daemon-reload && systemctl enable --now cpu-power` |
 | `etc/nut/nut.conf` | same | `apt install nut-client` **first** — see NUT below |
-| `etc/nut/upsmon.conf` | same | password is redacted here, fill it in from pve |
+| `etc/nut/upsmon.conf` | same | password is redacted here, fill it in from pve-2 |
 | `etc/modprobe.d/vfio.conf` | same | `update-initramfs -u` and reboot |
 | `etc/modprobe.d/blacklist.conf` | same | as above |
 | `etc/modprobe.d/zfs.conf` | same | ARC capped at 4 GB |
 | `etc/modules` | same | as above |
 | `etc/default-grub` | the `GRUB_CMDLINE_*` lines of `/etc/default/grub` | `update-grub` and reboot |
 
-There is no drift check for this host. pve has one because it carries dozens
+There is no drift check for this host. pve-2 has one because it carries dozens
 of files and every backup script; eight files did not justify a second
 mechanism. Add one if this grows.
 
@@ -114,9 +114,9 @@ appears at `0000:06:10.0`.
 
 ## NUT
 
-The CyberPower VP700ELCD is on **pve's** USB. px-0 is on the same UPS but has
+The CyberPower VP700ELCD is on **pve-2's** USB. pve-1 is on the same UPS but has
 no data connection to it, so without this it takes a hard cut on every mains
-failure while pve shuts down cleanly — the worst case for ZFS on QLC.
+failure while pve-2 shuts down cleanly — the worst case for ZFS on QLC.
 
 Proxmox does **not** ship NUT: this host had no `nut` package, no `/etc/nut`
 and no `upsc` until 2026-09-01. Install `nut-client` before copying anything —
@@ -129,31 +129,31 @@ battery. Coming back up needs nothing *from this host* — `State After G3` is
 plug it back in, it boots.
 
 ⚠️ That is not enough on its own. On 2026-09-03 a real power cut took both hosts
-down cleanly and only pve came back; this one sat off for 46 minutes. `S0` needs
+down cleanly and only pve-2 came back; this one sat off for 46 minutes. `S0` needs
 a G3 to act on, and NUT was shutting the hosts down without ever telling the UPS
 to cut its own output — so there was no power cycle to react to. Fixed on the
-pve side, in `proxmox/r730xd/etc/nut/` (`offdelay`/`ondelay`, `POWERDOWNFLAG`,
+pve-2 side, in `proxmox/pve-2/etc/nut/` (`offdelay`/`ondelay`, `POWERDOWNFLAG`,
 `POWEROFF_WAIT`). **Not yet proven by a drill** — the battery was at 18% that
 night.
 
-Verify from this host, not from pve — a working `upsc` here proves the whole
+Verify from this host, not from pve-2 — a working `upsc` here proves the whole
 path, listener and credentials included:
 
 ```bash
 upsc cyberpower@10.57.57.250 ups.status     # expect OL
 ```
 
-pve logs the login as `User upsslave@10.57.57.254 logged into UPS`. The
+pve-2 logs the login as `User upsslave@10.57.57.254 logged into UPS`. The
 `nut-common-tmpfiles.conf` warning in `journalctl -u nut-monitor` is a Debian
 packaging artefact and is harmless.
 
-pve serves it via `proxmox/r730xd/etc/nut/{nut.conf,upsd.conf,upsd.users}`:
+pve-2 serves it via `proxmox/pve-2/etc/nut/{nut.conf,upsd.conf,upsd.users}`:
 `MODE=netserver`, a `LISTEN` on the LAN address, and an `upsslave` user. That
 password guards read-only status on the LAN and nothing else — if lost,
 generate a new one and write it into both files.
 
 ## Related
 
-[../r730xd/README.md](../r730xd/README.md) ·
+[../pve-2/README.md](../pve-2/README.md) ·
 [../../talos/talconfig.yaml](../../talos/talconfig.yaml) ·
 [../../docs/operations.md](../../docs/operations.md) — adding a worker node

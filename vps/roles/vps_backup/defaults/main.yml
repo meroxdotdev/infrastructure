@@ -3,12 +3,12 @@
 vps_backup_root: /srv/backups
 vps_backup_retention_days: 7
 
-# R730xd (pve) - always-on backup hub, reachable over the Tailscale-routed LAN.
+# R730xd (pve-2) - always-on backup hub, reachable over the Tailscale-routed LAN.
 # Plain SSH rsync push, no daemon indirection - that was only needed for
 # Synology's patched rsync refusing server-mode over SSH; R730xd is plain
-# Debian and has no such restriction. Public key is restricted on the pve side
-# via rrsync + from= (see proxmox/r730xd/README.md) - not ansible-managed,
-# pve isn't in this inventory.
+# Debian and has no such restriction. Public key is restricted on the pve-2 side
+# via rrsync + from= (see proxmox/pve-2/README.md) - not ansible-managed,
+# pve-2 isn't in this inventory.
 vps_backup_r730xd_user: root
 vps_backup_r730xd_host: 10.57.57.250
 vps_backup_r730xd_ssh_key: /root/.ssh/oracle-vps-to-r730xd
@@ -16,10 +16,10 @@ vps_backup_r730xd_base: /media/backups/oracle-vps
 
 # Restic landing spot for R730xd -> Oracle VPS, DSM/Synology-independent restore
 # path. R730xd pushes here directly over SFTP (restic's sftp backend) - not
-# ansible-managed on the R730xd side (pve isn't in this inventory), only the
+# ansible-managed on the R730xd side (pve-2 isn't in this inventory), only the
 # receiving side (this dedicated, chrooted, SFTP-only system user) is.
 # The private half of this keypair lives on R730xd only, not in this repo -
-# see proxmox/r730xd/README.md for the one-time provisioning steps.
+# see proxmox/pve-2/README.md for the one-time provisioning steps.
 vps_backup_restic_user: restic-backup
 vps_backup_restic_chroot: /srv/restic-repo
 vps_backup_restic_data_dir: /srv/restic-repo/data

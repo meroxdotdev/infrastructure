@@ -16,7 +16,7 @@ IPs and MACs stay. This page is for when they change.
 | Portainer EE license | Portainer account |
 | Hetzner API token | console.hetzner.cloud → Security → API Tokens |
 | DR SSH key | `~/.ssh/cloudlab_dr_test{,.pub}` — `ssh-keygen -t ed25519 -f ~/.ssh/cloudlab_dr_test -N ""` |
-| R730xd push key | `vault_oracle_vps_to_r730xd_ssh_key`; public half authorised on `root@pve` |
+| R730xd push key | `vault_oracle_vps_to_r730xd_ssh_key`; public half authorised on `root@pve-2` |
 
 `vps/terraform/terraform.tfvars` is gitignored — recreate it:
 
@@ -41,7 +41,7 @@ cd vps/
 make vault-edit          # vault_tailscale_auth_key
 make terraform-init      # first time only
 make dr-full             # preflight + terraform + Ansible
-make dr-restore          # pulls service data back from pve
+make dr-restore          # pulls service data back from pve-2
 ```
 
 Terraform provisions the server; Ansible runs from your machine over SSH.

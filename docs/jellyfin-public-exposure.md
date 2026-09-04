@@ -46,7 +46,7 @@ record. Everything that must outlive the house stays on `vps01`.
 | Library | 1.11 TB, 4K, SAS array | curated 1080p, SSD |
 | Reachable from internet | no | yes |
 | Accounts, watch history | yours | two shared accounts |
-| GPU | Intel Iris Xe on px-0 | a share of the same iGPU |
+| GPU | Intel Iris Xe on pve-1 | a share of the same iGPU |
 | Longhorn backup | yes | no, fully reconstructible |
 
 RCE in the public instance reaches a read-only view of re-encoded films and
@@ -202,7 +202,7 @@ Steps 1-2 are in the **borrowed tenancy's** console, not vps01's.
 
 **Tag the node before opening 443.** Untagged it falls under `autogroup:member`
 in the tailnet ACL, which grants `dst: *` — an internet-facing box with full
-reach into the house. Tagged, it reaches one address and one port; pve's SSH,
+reach into the house. Tagged, it reaches one address and one port; pve-2's SSH,
 pfSense, the k8s gateway and the personal Jellyfin on `.107` are all refused.
 
 **Port 80 is deliberately absent**, in OCI and in Traefik. Certificates come

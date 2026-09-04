@@ -2,7 +2,7 @@
 # The three nightly host checks, one ping.
 #
 # They run minutes apart, are silent unless something is wrong, and are all
-# investigated the same way — ssh to pve and read the log. Three separate
+# investigated the same way — ssh to pve-2 and read the log. Three separate
 # healthchecks would be three places to look for one answer, so this runs them
 # in order and reports once, naming whichever failed.
 #

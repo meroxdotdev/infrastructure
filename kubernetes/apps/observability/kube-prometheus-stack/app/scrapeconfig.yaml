@@ -28,13 +28,13 @@ spec:
       replacement: *name
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
-# pve (R730xd), standalone host - queried through pve-exporter's blackbox-
+# pve-2 (R730xd), standalone host - queried through pve-exporter's blackbox-
 # style /pve endpoint. `module: default` picks the matching section in
 # pve-exporter-secret's pve.yml.
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: ScrapeConfig
 metadata:
-  name: &name pve
+  name: &name pve-2
 spec:
   staticConfigs:
     - targets:

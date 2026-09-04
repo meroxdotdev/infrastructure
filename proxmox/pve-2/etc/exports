@@ -4,8 +4,8 @@
 # tree. Narrowed 2026-08-11 to the hosts that actually mount, verified
 # against live nfsd peers first.
 #
-#   10.57.57.80        kubernetes-controlplane-1 (pve)
-#   10.57.57.81        kubernetes-worker-1 (px-0) — added 2026-09-01
+#   10.57.57.80        kubernetes-controlplane-1 (pve-2)
+#   10.57.57.81        kubernetes-worker-1 (pve-1) — added 2026-09-01
 #   10.57.57.82/84     retired control planes, kept for a 3-node rollback
 #
 # Adding a client means adding its IP here, not widening back to /24.

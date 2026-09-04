@@ -27,7 +27,7 @@ IDRAC_PASS="{{ vault_idrac_password }}"
 # entry to PVE_TARGETS below if a second Proxmox host ever exists.
 {% if vault_pve_r730xd_username is defined %}
 PVE_TARGETS=(
-  "pve:10.57.57.250:8006:{{ vault_pve_r730xd_username }}={{ vault_pve_r730xd_password }}"
+  "pve-2:10.57.57.250:8006:{{ vault_pve_r730xd_username }}={{ vault_pve_r730xd_password }}"
 )
 {% else %}
 PVE_TARGETS=()
@@ -87,7 +87,7 @@ done
 
 # Disabled: pwrstat-over-SSH source. PWRSTAT_FILE stays empty,
 # ups.reachable becomes false downstream, no false alerts fire. Rebuild
-# against NUT on pve directly (upsc cyberpower) instead if this needs
+# against NUT on pve-2 directly (upsc cyberpower) instead if this needs
 # re-enabling.
 
 mkdir -p "$OUT_DIR"
@@ -450,16 +450,16 @@ new_state["home_up"] = new_home_up_confirmed
 new_state["home_down_streak"] = down_streak
 
 # The two Proxmox hosts. Nothing else watches these: Prometheus and
-# Alertmanager run on px-0, so the box that would report px-0 down is px-0.
+# Alertmanager run on pve-1, so the box that would report pve-1 down is pve-1.
 # On 2026-09-03 it stayed off after a power cut and that went unnoticed for an
 # hour.
 #
 # ICMP and not a TCP probe on 8006, which was tried first: from this VPS the
-# tailnet reaches pve on 22 but not on 8006, and px-0 on 8006 but not on 22.
+# tailnet reaches pve-2 on 22 but not on 8006, and pve-1 on 8006 but not on 22.
 # Whatever pfSense is doing there, a port check answers "is that port allowed
 # from here", which is not the question. Ping answers the question. Root cron
 # owns the raw socket, so it works unprivileged concerns aside.
-PVE_HOSTS = [("pve", "10.57.57.250"), ("px-0", "10.57.57.254")]
+PVE_HOSTS = [("pve-2", "10.57.57.250"), ("pve-1", "10.57.57.254")]
 
 
 def api_up(ip, timeout=4):

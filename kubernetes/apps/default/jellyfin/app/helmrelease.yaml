@@ -24,7 +24,7 @@ spec:
         # Intel QuickSync on the Beelink's Iris Xe, via kubernetes-1.
         # No runtimeClassName: unlike Nvidia, which needs a containerd runtime
         # handler, the Intel plugin just injects /dev/dri into the container.
-        # See proxmox/px-0/README.md.
+        # See proxmox/pve-1/README.md.
         containers:
           app:
             image:
@@ -66,11 +66,11 @@ spec:
                 # on 2026-09-03, with the node at 98% requested and ~25% used.
                 memory: 1Gi
               limits:
-                # Pins Jellyfin to kubernetes-1 — only px-0 has an
+                # Pins Jellyfin to kubernetes-1 — only pve-1 has an
                 # Intel GPU. A /dev/dri hostPath was tried instead so it could
-                # fall back to pve; it cannot work, the container device cgroup
+                # fall back to pve-2; it cannot work, the container device cgroup
                 # denies open() on char 226:128 regardless of file mode. During
-                # px-0 maintenance, drop this request to let Jellyfin run
+                # pve-1 maintenance, drop this request to let Jellyfin run
                 # anywhere on software transcoding — see docs/gpu-transcoding.md.
                 gpu.intel.com/i915: 1
                 memory: 8Gi

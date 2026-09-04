@@ -64,7 +64,7 @@ control planes are strictly worse than one: they cannot form a quorum.
 `kubernetes-1` on 2026-09-01. This runbook is kept because adding one is a
 reasonable thing to want, and because the traps below cost a day to find.
 
-Worked example: `kubernetes-worker-1`, **VM 811** on `px-0` (10.57.57.254),
+Worked example: `kubernetes-worker-1`, **VM 811** on `pve-1` (10.57.57.254),
 node address 10.57.57.81. Do not reuse VM 810 or 10.57.57.80 — those are
 `kubernetes-1`, the live cluster.
 
@@ -225,7 +225,7 @@ Getting this wrong is recoverable without rebuilding the node: fix
 `task talos:upgrade-node IP=… DRAIN=false`. The node reboots onto the new
 extension set in about a minute.
 
-**The GPU on the VM.** On `px-0` the iGPU is alone in IOMMU group 0 and already
+**The GPU on the VM.** On `pve-1` the iGPU is alone in IOMMU group 0 and already
 bound to `vfio-pci`, left over from when that host ran the Intel setup — so
 nothing has to be prepared on the host:
 
@@ -241,9 +241,9 @@ needed on the Kubernetes side.
 
 #### NFS: the export ACL is per host
 
-`/etc/exports` on pve lists client IPs one by one, not the subnet — see the
+`/etc/exports` on pve-2 lists client IPs one by one, not the subnet — see the
 comment at the top of
-[../proxmox/r730xd/etc/exports](../proxmox/r730xd/etc/exports). A new node is
+[../proxmox/pve-2/etc/exports](../proxmox/pve-2/etc/exports). A new node is
 not on that list, so every inline NFS mount (Jellyfin, jellyfin-public,
 qbittorrent, radarr-public) fails to mount on it with a permission error that
 looks nothing like an ACL problem. Add the node's address to each export line

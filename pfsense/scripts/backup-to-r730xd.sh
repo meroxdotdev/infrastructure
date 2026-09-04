@@ -1,6 +1,6 @@
 #!/bin/sh
 # Push pfSense config to R730xd (SAS pool, dedicated pfsense/ folder).
-# Remote side (pve) auto-prunes copies older than 30 days on receipt.
+# Remote side (pve-2) auto-prunes copies older than 30 days on receipt.
 set -e
 TS=$(date +%Y-%m-%d_%H%M%S)
 TMP=/tmp/config-$TS.xml.gz

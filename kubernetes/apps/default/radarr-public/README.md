@@ -60,6 +60,6 @@ shared with nothing else, and ~50 titles at 6-8 GB is what it was sized for.
 
 ```sh
 kubectl -n default logs deploy/radarr-public -f
-df -h /public/library                      # on pve: quota is 400G
+df -h /public/library                      # on pve-2: quota is 400G
 ls /public/library/downloads               # in-flight
 ```

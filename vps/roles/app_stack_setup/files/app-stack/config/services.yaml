@@ -35,7 +35,7 @@
 
     # UPS card removed: its data source (pwrstat) is disabled -
     # see homelab-stats.sh.j2 - so this would always show "Unreachable".
-    # Real UPS shutdown safety is unaffected (local NUT on pve). Restore
+    # Real UPS shutdown safety is unaffected (local NUT on pve-2). Restore
     # from git history if the local-NUT-based rebuild ever happens.
 
     - Oracle VPS:

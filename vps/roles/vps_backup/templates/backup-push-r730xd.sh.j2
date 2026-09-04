@@ -4,7 +4,7 @@
 # there, R730xd's own weekly push relays a copy to Synology (cold storage)
 # and, independently, its nightly restic push sends the same data to Oracle
 # (open format, no DSM dependency - replaced Synology's HyperBackup relay,
-# retired 2026-07-26) - see proxmox/r730xd/README.md for the full loop.
+# retired 2026-07-26) - see proxmox/pve-2/README.md for the full loop.
 #
 # Deliberately does NOT touch this VPS's own local Garage instance - that's
 # a temporary rollback safety net from the pre-2026-07-21 Longhorn cutover,
@@ -17,7 +17,7 @@
 # only required for Synology's patched rsync refusing server-mode over SSH;
 # R730xd is plain Debian). The SSH key is restricted server-side via rrsync +
 # from= to only touch {{ vps_backup_r730xd_base }} - not ansible-managed,
-# pve isn't in this inventory (see proxmox/r730xd/README.md for the exact
+# pve-2 isn't in this inventory (see proxmox/pve-2/README.md for the exact
 # authorized_keys line).
 # Deployed by ansible (vps_backup role).
 set -euo pipefail
@@ -28,7 +28,7 @@ R730XD_HOST="{{ vps_backup_r730xd_host }}"
 SSH_KEY="{{ vps_backup_r730xd_ssh_key }}"
 SSH_OPTS="ssh -i $SSH_KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
 
-# rrsync on the pve side restricts this key to {{ vps_backup_r730xd_base }}
+# rrsync on the pve-2 side restricts this key to {{ vps_backup_r730xd_base }}
 # as its root, so the remote path below is relative to that, not absolute.
 rsync -a --delete -e "$SSH_OPTS" "{{ vps_backup_root }}/" "$R730XD_USER@$R730XD_HOST:/srv-backups/"
 

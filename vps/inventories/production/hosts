@@ -14,7 +14,7 @@ ansible_python_interpreter=/usr/bin/python3
 ansible_user=root
 
 [r730xd_garage]
-# LXC 103 on pve (R730xd), backup-orchestration container: Garage S3 for
+# LXC 103 on pve-2 (R730xd), backup-orchestration container: Garage S3 for
 # Longhorn + relay scripts to Synology/Oracle. Reached directly on the LAN.
 garage-r730xd ansible_host=10.57.57.61
 

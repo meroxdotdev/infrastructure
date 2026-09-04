@@ -1,4 +1,4 @@
-# pve (R730xd) — known issues & fixes
+# pve-2 (R730xd) — known issues & fixes
 
 Forensic record for hardware/OS quirks on this host — read it before
 "simplifying" something that looks like unnecessary complexity in
@@ -8,7 +8,7 @@ Back to the host reference: [README.md](README.md).
 
 ## Why NUT, not PowerPanel, for the UPS
 
-The UPS (CyberPower VP700ELCD) is on pve's own USB, monitored by NUT
+The UPS (CyberPower VP700ELCD) is on pve-2's own USB, monitored by NUT
 (`upsmon` shuts the host down locally on low battery — see
 [README.md](README.md#ups-triggered-shutdown) for the operational config).
 `powerpanel` was tried first and is now masked/disabled — leave it that way,

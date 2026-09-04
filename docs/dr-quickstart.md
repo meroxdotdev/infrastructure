@@ -3,7 +3,7 @@
 Rebuild the whole cluster from scratch. Eight commands, no manual edits.
 Reasoning lives in [`DR.md`](../DR.md).
 
-**Last run:** 2026-08-29 on px-0 — 71 min of prod downtime.
+**Last run:** 2026-08-29 on pve-1 — 71 min of prod downtime.
 
 **You need:** `age.key`, `talos/talsecret.sops.yaml`, SSH to the target
 Proxmox host, this repo. On macOS once:
