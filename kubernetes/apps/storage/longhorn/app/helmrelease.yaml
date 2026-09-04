@@ -40,10 +40,25 @@ spec:
       # reconcile work for a placement decision that has one answer.
       defaultDataLocality: disabled
       defaultLonghornStaticStorageClass: longhorn
-      # 3 -> 1. Three Longhorn replicas sat on top of a ZFS mirror, i.e. six
-      # physical copies of every byte. One replica still leaves two, because
-      # the mirror underneath is what actually provides disk redundancy.
-      defaultReplicaCount: "1"
+      # 1 -> 2 (2026-09-04, three nodes). The old comment here said one replica
+      # was enough because a ZFS mirror sat underneath — true on pve-2's rpool,
+      # but the node moved to pve-1 on 2026-09-01, onto a single QLC NVMe with
+      # no redundancy at all, and the justification moved with it unnoticed.
+      # Two replicas, and they go on kubernetes-2 and kubernetes-3: scheduling
+      # is disabled on kubernetes-1 because its pool is one QLC disk at 34%
+      # wear carrying every write in the cluster. Keeping volume writes off it
+      # takes the disk from roughly three years to roughly fourteen, and costs
+      # a network hop on reads — over the same 1 GbE the media already crosses.
+      defaultReplicaCount: "2"
+      # kubernetes-3 is tainted so workloads stay off its four cores. Longhorn
+      # has to tolerate that or it places no replica there and the node is an
+      # etcd vote only.
+      taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
+      # 5 -> 1. etcd and Longhorn share one 1 GbE link, and a rebuild moves
+      # ~200 GiB. Longhorn v1 has no bandwidth throttle — "Replica Rebuilding
+      # Bandwidth Limit" is V2 data engine only — so limiting concurrency is
+      # the only lever there is. It narrows the burst; it does not remove it.
+      concurrentReplicaRebuildPerNodeLimit: "1"
       guaranteedEngineManagerCPU: "20"
       guaranteedReplicaManagerCPU: "20"
       nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
@@ -60,7 +75,7 @@ spec:
 
     persistence:
       defaultClass: true
-      defaultClassReplicaCount: 1
+      defaultClassReplicaCount: 2
       reclaimPolicy: Delete
       migratable: false
 
