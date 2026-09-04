@@ -78,6 +78,31 @@ not whether the scheduler will place a replica. So the node either holds
 replicas or is isolated from workloads, never both. Keep pods off it with
 per-workload constraints if it ever matters.
 
+## Editing talconfig.yaml changes nothing on its own
+
+The taint came back on 2026-09-04, hours after being removed. Not a Talos bug:
+`talconfig.yaml` had been edited and committed, but the node was still running
+the machine config generated *before* that edit, and re-applied its taint when
+it re-registered during the `pve-1` drill.
+
+It surfaced as `KubeDaemonSetRolloutStuck` and `KubeDaemonSetMisScheduled` —
+with `kubernetes-3` tainted again, the DaemonSet controller computed
+`desiredNumberScheduled: 2` while three pods were running, so one counted as
+misscheduled. Longhorn's existing replicas were unaffected, because a taint
+blocks new placement rather than running replicas; the damage would have shown
+up only the next time one needed rebuilding there.
+
+Editing the file is two thirds of the job:
+
+```bash
+task talos:generate-config
+task talos:apply-node IP=10.57.57.83 MODE=auto   # applied without a reboot
+```
+
+Nothing compares a node's running config against this repo, the same gap that
+let `talenv.yaml` sit six days ahead of the cluster. `nightly-checks.sh` does
+exactly this for `pve-2`; the nodes have no equivalent.
+
 ## Upgrades are rolling again
 
 `DRAIN=false` is no longer needed. Pods have somewhere to go, so the Longhorn
