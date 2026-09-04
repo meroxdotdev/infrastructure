@@ -60,9 +60,14 @@ spec:
       # takes the disk from roughly three years to roughly fourteen, and costs
       # a network hop on reads — over the same 1 GbE the media already crosses.
       defaultReplicaCount: "2"
-      # kubernetes-3 is tainted so workloads stay off its four cores. Longhorn
-      # has to tolerate that or it places no replica there and the node is an
-      # etcd vote only.
+      # Kept, but it does not do what it looks like it does. It lets Longhorn's
+      # own components *run* on a tainted node — instance-manager did start on
+      # kubernetes-3 carrying this toleration. It does not make the replica
+      # scheduler *choose* that node: with the taint in place every placement
+      # failed with "no disk candidates found", and replicas appeared the
+      # moment the taint came off (2026-09-04). Do not read this as "Longhorn
+      # works on tainted nodes" — see the kubernetes-3 block in
+      # talos/talconfig.yaml.
       taintToleration: "node-role.kubernetes.io/control-plane=:NoSchedule"
       # 5 -> 1. etcd and Longhorn share one 1 GbE link, and a rebuild moves
       # ~200 GiB. Longhorn v1 has no bandwidth throttle — "Replica Rebuilding

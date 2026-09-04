@@ -80,11 +80,19 @@ nodes:
           ip: "10.57.57.88"
   # Third control plane, VM 812 on pve-3 (OptiPlex). Its disk is the raw Intel
   # D3-S4510 passed straight through — the only disk here with power-loss
-  # protection, which is why etcd wants it. Tainted: this node exists to hold
-  # an etcd vote and a Longhorn replica, not to run workloads. Four cores
-  # cannot carry the workload set, and allowSchedulingOnControlPlanes is on
-  # globally, so without the taint the scheduler would send pods here.
-  # Longhorn tolerates it via defaultSettings.taintToleration.
+  # protection, which is why etcd wants it.
+  #
+  # Deliberately NOT tainted, though four cores cannot carry the workload set
+  # and allowSchedulingOnControlPlanes is on globally. A NoSchedule taint here
+  # was tried on 2026-09-04 and reverted: Longhorn's replica scheduler rejects
+  # a tainted node outright ("no disk candidates found"), even with
+  # defaultSettings.taintToleration set and instance-manager running there
+  # carrying the toleration. The toleration governs whether the pod may run,
+  # not whether the scheduler will place a replica. So the choice is binary —
+  # this node holds Longhorn replicas, or it is isolated from workloads, never
+  # both. Replicas win: moving them off pve-1's QLC was the point.
+  # If pods landing here becomes a problem, constrain them per workload, not
+  # with a taint.
   - hostname: "kubernetes-3"
     ipAddress: "10.57.57.83"
     installDisk: "/dev/sda"
@@ -94,8 +102,6 @@ nodes:
     talosImageURL: factory.talos.dev/installer/36cd6536eaec8ba802be2d38974108359069cedba8857302f69792b26b87c010
     nodeLabels:
       node.kubernetes.io/exclude-from-external-load-balancers: ""
-    nodeTaints:
-      node-role.kubernetes.io/control-plane: ":NoSchedule"
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:24:46:05"
