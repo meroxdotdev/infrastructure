@@ -13,6 +13,25 @@ Losing any one machine leaves a quorum. That is the whole point, and it is the
 first time it has been true here — the three control planes that existed until
 August all sat on `pve`, so a single host reboot took every one of them down.
 
+## Drilled, 2026-09-04
+
+`pve-1` powered off cold at 19:40, with no warning to the cluster.
+
+| | |
+|---|---|
+| etcd | Quorum held on two members. The API stayed reachable through the VIP, which floated to a surviving node |
+| Workloads | 61 running pods on the dead node. `kubernetes-2` went 14 → 41, `kubernetes-3` 12 → 15 |
+| Volumes | 19 of 23 detached and reattached on their own. The other four belonged to pods that could not schedule |
+| Back up | Immich, Radarr, Sonarr, Prowlarr, qBittorrent, Jellyseerr, n8n, Flux and Grafana all 1/1 by 19:47 — **about six minutes** |
+| Down | Jellyfin and jellyfin-public, `Pending` on `Insufficient gpu.intel.com/i915`. Expected: the iGPU is only on `pve-1` |
+| Recovery | Woken with a magic packet at 19:49, host up in 27 seconds, VM autostarted, node `Ready` and uncordoned by 19:52 |
+
+Two things worth keeping from it. Wake-on-LAN works on `pve-1`
+(`b0:41:6f:15:2b:02`), so this whole cycle ran without anyone in the house —
+though the `ethtool` setting behind it does not survive a reboot. And Longhorn
+did **not** move replicas back onto the QLC when the node returned, because
+scheduling stays disabled there; the placement survived the outage.
+
 ## What each machine costs you when it dies
 
 | Dies | Result |
