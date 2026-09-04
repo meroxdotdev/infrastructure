@@ -11,6 +11,7 @@
   ],
   dependencyDashboard: true,
   dependencyDashboardTitle: "Renovate Dashboard 🤖",
+  dependencyDashboardHeader: "**Before approving the `talos` group:** Talos v1.13 serves Kubernetes **1.31-1.36** only — [support matrix](https://docs.siderolabs.com/talos/v1.13/getting-started/support-matrix). Reject any kubelet the running Talos minor cannot serve; this approval is the only gate. Merged unchecked on 2026-08-29, v1.37.0 would have left every node with a kubelet newer than its API server.",
   schedule: ["every weekend"],
   ignorePaths: ["**/*.sops.*"],
   flux: {
@@ -29,6 +30,19 @@
     managerFilePatterns: ["/^kustomization\\.ya?ml(?:\\.j2)?$/"],
   },
   packageRules: [
+    {
+      description: "Talos and Kubernetes are one decision, not two. The Talos minor version fixes which Kubernetes versions can run at all (v1.13 -> 1.31-1.36), but Renovate sees two unrelated images. Group them so the support matrix is checked once, against both.",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/siderolabs/installer", "ghcr.io/siderolabs/kubelet"],
+      groupName: "talos",
+    },
+    {
+      description: "Before approving: check the Talos support matrix, and reject any kubelet the running Talos minor cannot serve. Renovate raised kubelet to v1.37.0 on 2026-08-29 (532e9c0) and it was merged unchecked; Talos 1.13.9 tops out at Kubernetes 1.36, so every node generated from talenv.yaml would have joined with a kubelet newer than the API server. Approval is the only gate - nothing else blocks an unsupported pair. Patch bumps (1.13.9 -> 1.13.10) still flow normally.",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/siderolabs/installer", "ghcr.io/siderolabs/kubelet"],
+      matchUpdateTypes: ["major", "minor"],
+      dependencyDashboardApproval: true,
+    },
     {
       description: "Require explicit dashboard approval for major bumps on stateful DB images - a major version jump needs a real migration (dump/restore or pg_upgrade), not a routine image swap. Incident 2026-07-25: merged alongside routine bumps, Postgres 15->17 couldn't start on the old data dir, HelmRelease stuck retrying/rolling-back hourly until reverted.",
       matchDatasources: ["docker"],
