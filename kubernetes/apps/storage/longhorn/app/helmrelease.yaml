@@ -32,6 +32,16 @@ spec:
     remediation:
       retries: 3
   values:
+    # The taintToleration setting below only reaches components Longhorn
+    # manages itself — instance-manager, the CSI driver, engine images. The
+    # manager DaemonSet, the UI and the driver deployer are placed by Helm and
+    # need their own toleration, or longhorn-manager never lands on
+    # kubernetes-3 and Longhorn does not see the node at all.
+    global:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
     defaultSettings:
       createDefaultDiskLabeledNodes: false
       # Single-node cluster (2026-08-17, talos/SINGLE-NODE.md). Data locality
