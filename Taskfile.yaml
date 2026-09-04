@@ -72,7 +72,7 @@ tasks:
         if [ "$NODE_COUNT" -ne "$MAC_COUNT" ]; then
           echo "  ✗ talconfig.yaml declares $NODE_COUNT node(s), terraform.tfvars has $MAC_COUNT MAC(s)."
           echo "    They must match. Add or trim node_macs/node_ips in terraform.tfvars"
-          echo "    to mirror talconfig.yaml — see talos/SINGLE-NODE.md."
+          echo "    to mirror talconfig.yaml — see talos/THREE-NODE.md."
           exit 1
         fi
 

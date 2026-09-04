@@ -9,7 +9,7 @@ disks: media and its NFS exports, the Garage S3 LXC that Longhorn backs into,
 Nextcloud, and every backup leg. Losing `pve-2` costs media, Nextcloud and
 backups but leaves the cluster running; losing this box stops everything.
 There is no HA, deliberately —
-[../../talos/SINGLE-NODE.md](../../talos/SINGLE-NODE.md).
+[../../talos/THREE-NODE.md](../../talos/THREE-NODE.md).
 
 **Memory budget** (62 GiB total): ZFS ARC 4, Proxmox ~2, PDM 8, `kubernetes-1`
 44. VM 102 is stopped and does not count. Sizing the cluster VM below ~40 GiB

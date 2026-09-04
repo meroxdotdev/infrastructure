@@ -74,7 +74,7 @@ photo library. All three are now cross-checked automatically:
 >
 > To exercise a 3-node restore instead, uncomment nodes 2 and 3 in
 > `talconfig.yaml` (see
-> [talos/SINGLE-NODE.md](talos/SINGLE-NODE.md#rollback-to-3-nodes)) and add
+> [talos/THREE-NODE.md](talos/THREE-NODE.md#rollback-to-3-nodes)) and add
 > their MACs/IPs to `terraform.tfvars`. `task dr:apply-talos-configs` refuses
 > to run if the two counts disagree, so a half-done change fails fast instead
 > of partially applying.
@@ -189,7 +189,7 @@ task dr:destroy-vms
 # Restart the prod node — or just `task dr:restore-prod`, which does this
 # and clears the pods orphaned by the shutdown:
 # VM 810 → kubernetes-1 on pve-1 (Beelink). The whole cluster is that one VM
-# since the 2026-09-01 collapse (see talos/SINGLE-NODE.md).
+# since the 2026-09-01 collapse (see talos/THREE-NODE.md).
 ```
 
 ---

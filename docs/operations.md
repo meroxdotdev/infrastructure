@@ -55,18 +55,20 @@ make dr-full            # provision fallback VPS + cloud-init deploys everything
 
 ### Adding a worker node
 
-Adds compute without touching etcd. The control-plane count stays odd — one
-today, deliberately ([../talos/SINGLE-NODE.md](../talos/SINGLE-NODE.md)) — so a
-second physical host joins as a worker, not as a second control plane. Two
-control planes are strictly worse than one: they cannot form a quorum.
+Adds compute without touching etcd. The control-plane count is three since
+2026-09-04, one per physical machine ([../talos/THREE-NODE.md](../talos/THREE-NODE.md)),
+and it should stay there: a fourth vote would need a fourth fault domain, and
+there are only three machines.
 
-**The cluster has no workers today** — it collapsed to the single node
-`kubernetes-1` on 2026-09-01. This runbook is kept because adding one is a
-reasonable thing to want, and because the traps below cost a day to find.
+**The cluster has no workers, and probably never needs one** — the whole
+workload measures about 2.4 cores and 12 GiB, against three control planes
+that already accept pods. This runbook is kept because the traps below cost a
+day to find, not because adding a worker is on the roadmap.
 
-Worked example: `kubernetes-worker-1`, **VM 811** on `pve-1` (10.57.57.254),
-node address 10.57.57.81. Do not reuse VM 810 or 10.57.57.80 — those are
-`kubernetes-1`, the live cluster.
+Worked example: `kubernetes-worker-1`, node address 10.57.57.84 — the address
+is already permitted in `pve-2`'s NFS exports. Pick a free VMID on whichever
+host has room; 810, 811 and 812 are `kubernetes-1`, `-2` and `-3`, and .80,
+.82 and .83 are the live nodes.
 
 **Check the version skew first.** A new node is built from `talos/talenv.yaml`,
 so if that file is ahead of the running control plane the worker boots with a

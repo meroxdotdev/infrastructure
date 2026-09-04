@@ -18,4 +18,4 @@ resources:
   - ./reloader/ks.yaml
   # Removed 2026-08-17 with the move to a single node: spegel is a peer-to-peer
   # image cache *between* nodes, so with one node it has no peer to serve or
-  # fetch from. See talos/SINGLE-NODE.md.
+  # fetch from. See talos/THREE-NODE.md.

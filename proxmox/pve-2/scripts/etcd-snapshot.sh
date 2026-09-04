@@ -3,11 +3,13 @@
 # /usr/local/bin. Without this the job silently does nothing.
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 #
-# Nightly etcd snapshot. Only matters because the cluster is a single node
-# (talos/SINGLE-NODE.md): with three members a lost etcd rebuilt from its peers,
-# with one there is no peer. Everything else is recoverable without this - Flux
-# rebuilds the workloads from git and Longhorn holds the volume data - so the
-# floor is a ~35 min DR.md rebuild. This turns that into a ~5 min restore.
+# Nightly etcd snapshot. Worth much less than it was: since 2026-09-04 there
+# are three members (talos/THREE-NODE.md), so a lost etcd rebuilds from its
+# peers and this snapshot is only needed if all three are gone at once - a
+# fire, a theft, or a mistake applied to every node. Kept for exactly those.
+# Everything else is recoverable without it: Flux rebuilds the workloads from
+# git and Longhorn holds the volume data, so the floor is a ~35 min DR.md
+# rebuild. This turns that into a ~5 min restore.
 #
 # Restore:  talosctl bootstrap --recover-from=<snapshot>
 #

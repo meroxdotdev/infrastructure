@@ -341,9 +341,10 @@
         <li><span>12 PVC-uri excluse</span><span class="pill p-skip">regenerabile</span></li>
       </ul>
       <div class="note warn" style="font-size:.79rem;padding:.55rem .8rem">
-        Un singur nod (<code>talos/SINGLE-NODE.md</code>). Nicio replică Longhorn
-        nu există pe alt nod — protecția vine doar din mirror-ul ZFS + backup-ul
-        nightly, nu din redundanța Kubernetes.
+        Trei noduri (<code>talos/THREE-NODE.md</code>). Din 2026-09-04 fiecare
+        volum are două replici, pe <code>kubernetes-2</code> și
+        <code>kubernetes-3</code> — niciuna pe QLC-ul lui pve-1. Protecția vine
+        acum din redundanța Longhorn <em>și</em> din backup-ul nightly.
       </div>
     </div>
   </div>

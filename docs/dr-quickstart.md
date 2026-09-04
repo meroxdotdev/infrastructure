@@ -10,19 +10,31 @@ Proxmox host, this repo. On macOS once:
 `brew install bash helmfile kustomize yq`, with `/opt/homebrew/bin` ahead of
 `/usr/bin` on `PATH`.
 
+**Pick the target host first.** Every command below uses `$PVE`, because the
+machine you rebuild onto depends on which one you still have. Set it once:
+
+```bash
+PVE=10.57.57.254   # pve-1, Beelink — the usual target
+# PVE=10.57.57.250 # pve-2, R730xd — if pve-1 is what died
+# PVE=10.57.57.253 # pve-3, OptiPlex — 32 GB, tight but it boots
+```
+
+This used to be hardcoded to pve-1, which quietly assumed the one machine
+whose loss is the reason you would be reading this page was still running.
+
 **Setup, once per machine:** copy `talos/terraform/terraform.tfvars.example`
 to `terraform.tfvars` and paste the Proxmox API token. It is gitignored
 because it holds that token; everything else in it is already filled in.
 
 ```bash
-ssh root@10.57.57.254 "pveum user token add root@pam terraform --privsep 0"
+ssh root@$PVE "pveum user token add root@pam terraform --privsep 0"
 ```
 
-The DR cluster mirrors prod's topology — one node per MAC in
-`terraform.tfvars`, which matches `talconfig.yaml`. Nothing needs commenting
-or uncommenting. To test a 3-node restore, uncomment nodes 2/3 in
-`talconfig.yaml` and add their MACs/IPs to `terraform.tfvars`; the tooling
-follows.
+Prod is three nodes since 2026-09-04, but **DR restores one**. That is
+deliberate: one node is enough to get the workloads back, and a three-node DR
+needs three hosts you may not have. `terraform.tfvars` carries the MACs it
+creates; add nodes 2 and 3 there and in `talconfig.yaml` only if you are
+rehearsing the full topology rather than recovering.
 
 ---
 
@@ -33,8 +45,8 @@ follows.
 #    is missing from the restore list
 bash scripts/dr-preflight.sh
 
-# 1. Stop prod — DR reuses its IP and MAC
-ssh root@10.57.57.254 "qm shutdown 810 --timeout 180"
+# 1. Stop prod — DR reuses its IP and MAC. Skip if the host is already gone.
+ssh root@$PVE "qm shutdown 810 --timeout 180"
 
 # 2. Create the DR VM(s)
 task dr:create-vms

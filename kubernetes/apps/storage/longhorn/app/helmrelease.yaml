@@ -44,10 +44,12 @@ spec:
           effect: "NoSchedule"
     defaultSettings:
       createDefaultDiskLabeledNodes: false
-      # Single-node cluster (2026-08-17, talos/SINGLE-NODE.md). Data locality
-      # and auto-balance both describe where replicas sit relative to their
-      # workload across nodes — meaningless with one node, and they cost
-      # reconcile work for a placement decision that has one answer.
+      # Left disabled after the move to three nodes (2026-09-04). best-effort
+      # would try to keep a replica on whichever node the workload runs on —
+      # exactly wrong here, because the node most likely to run a pod is
+      # kubernetes-1 and its disk is the one replicas are being kept off.
+      # Auto-balance stays off too: it moves replicas on its own schedule, and
+      # this cluster has one 1 GbE link shared with etcd.
       defaultDataLocality: disabled
       defaultLonghornStaticStorageClass: longhorn
       # 1 -> 2 (2026-09-04, three nodes). The old comment here said one replica

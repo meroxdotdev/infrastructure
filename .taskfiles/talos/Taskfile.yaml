@@ -29,17 +29,22 @@ tasks:
       - which talhelper talosctl yq
 
   upgrade-node:
-    desc: Upgrade Talos on a single node [IP=required, DRAIN=false for the lone control plane]
+    desc: Upgrade Talos on a single node [IP=required]
     summary: |
-      DRAIN defaults to true, which is right for a worker: its pods move to
-      another node first. It is wrong for the only control plane. Longhorn's
-      instance-manager PDB is minAvailable=1 with zero allowed disruptions, so
-      with nowhere to move it the eviction can never succeed — the drain burns
-      the whole timeout and aborts *before* the reboot, leaving the node
-      cordoned and its workloads on the floor. Recover with `kubectl uncordon`.
+      DRAIN defaults to true and that is now correct for every node: pods have
+      somewhere to go, so Longhorn's instance-manager PDB (minAvailable=1, zero
+      allowed disruptions) can be satisfied by moving it rather than burning
+      the whole drain timeout.
 
-      While the cluster is single-node (talos/SINGLE-NODE.md), upgrading
-      10.57.57.80 means DRAIN=false and accepting a few minutes of full outage.
+      DRAIN=false was mandatory while the cluster was one node — nowhere to
+      evict to meant the drain aborted *before* the reboot and left the node
+      cordoned with its workloads on the floor. That is history since
+      2026-09-04 (talos/THREE-NODE.md); if a drain ever hangs again, recover
+      with `kubectl uncordon` and find out what changed rather than reaching
+      for DRAIN=false.
+
+      Upgrade one node at a time and wait for it to rejoin etcd before
+      starting the next.
     dir: '{{.TALOS_DIR}}'
     cmd: talhelper gencommand upgrade --node {{.IP}} --extra-flags "--image='{{.TALOS_IMAGE}}:{{.TALOS_VERSION}}' --drain={{.DRAIN}} --timeout=15m" | bash
     vars:
