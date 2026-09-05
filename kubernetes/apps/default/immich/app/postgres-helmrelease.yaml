@@ -32,9 +32,29 @@ spec:
             # The consequence: VectorChord is frozen here until changed by hand.
             # It sat on 0.3.0 while upstream reached 1.1.1 for exactly that
             # reason. Immich v3.0.0 accepts >=0.3 <2 (server/src/constants.ts).
+            #
+            # 0.5.0 is the ceiling, and not for a version-range reason. This
+            # image is built for CloudNativePG, which supplies the command
+            # itself, and from 0.5.3 on it stopped carrying an entrypoint:
+            #
+            #   17-0.5.0  Entrypoint ["docker-entrypoint.sh"]  Cmd ["postgres"]
+            #   17-0.5.3  Entrypoint null                      Cmd ["bash"]
+            #
+            # Without the operator, the args below become the command and the
+            # container dies with `exec: "-c": executable file not found`.
+            # Confirmed by trying 17-1.1.1 here on 2026-09-05.
+            #
+            # Going past 0.5.0 therefore means leaving this image, not bumping
+            # it. The successor is ghcr.io/immich-app/postgres, which Immich
+            # builds for exactly this standalone case and tags with both
+            # extension versions (17-vectorchord1.1.1-pgvector0.8.5), so
+            # Renovate could finally see them. It needs more than a tag swap:
+            # its entrypoint expects root and a config file at
+            # /etc/postgresql/postgresql.conf, so the securityContext and the
+            # args below both have to change with it.
             image:
               repository: ghcr.io/tensorchord/cloudnative-vectorchord
-              tag: 17-1.1.1
+              tag: 17-0.5.0
             args:
               - "-c"
               - "shared_preload_libraries=vchord.so"
