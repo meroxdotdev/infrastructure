@@ -25,9 +25,16 @@ spec:
       immich-postgres:
         containers:
           app:
+            # Tag is <postgres major>-<VectorChord version>. Renovate reads the
+            # major as the version and the rest as a compatibility suffix, so it
+            # only ever proposes Postgres majors - which .renovaterc.json5
+            # disables for this image, because those need a dump and restore.
+            # The consequence: VectorChord is frozen here until changed by hand.
+            # It sat on 0.3.0 while upstream reached 1.1.1 for exactly that
+            # reason. Immich v3.0.0 accepts >=0.3 <2 (server/src/constants.ts).
             image:
               repository: ghcr.io/tensorchord/cloudnative-vectorchord
-              tag: 15-0.3.0
+              tag: 17-1.1.1
             args:
               - "-c"
               - "shared_preload_libraries=vchord.so"
@@ -75,6 +82,6 @@ spec:
             port: 5432
     persistence:
       data:
-        existingClaim: immich-postgres
+        existingClaim: immich-postgres-17
         globalMounts:
           - path: /var/lib/postgresql/data
