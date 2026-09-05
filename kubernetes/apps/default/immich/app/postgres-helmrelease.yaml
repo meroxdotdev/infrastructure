@@ -25,40 +25,38 @@ spec:
       immich-postgres:
         containers:
           app:
-            # Tag is <postgres major>-<VectorChord version>. Renovate reads the
-            # major as the version and the rest as a compatibility suffix, so it
-            # only ever proposes Postgres majors - which .renovaterc.json5
-            # disables for this image, because those need a dump and restore.
-            # The consequence: VectorChord is frozen here until changed by hand.
-            # It sat on 0.3.0 while upstream reached 1.1.1 for exactly that
-            # reason. Immich v3.0.0 accepts >=0.3 <2 (server/src/constants.ts).
+            # Immich builds this image for exactly this case: a standalone
+            # Postgres, outside any operator, with the extensions it requires.
             #
-            # 0.5.0 is the ceiling, and not for a version-range reason. This
-            # image is built for CloudNativePG, which supplies the command
-            # itself, and from 0.5.3 on it stopped carrying an entrypoint:
+            # The previous image, ghcr.io/tensorchord/cloudnative-vectorchord,
+            # was built for CloudNativePG, which supplies the
+            # container command itself. From tag 0.5.3 on it stopped shipping
+            # an entrypoint at all, so 0.5.0 was the last version this
+            # deployment could ever run - a ceiling that would have become an
+            # emergency the day Immich raised its minimum above it. Immich
+            # v3.0.0 wants VectorChord >=0.3 <2 and pgvector >=0.5 <1
+            # (server/src/constants.ts).
             #
-            #   17-0.5.0  Entrypoint ["docker-entrypoint.sh"]  Cmd ["postgres"]
-            #   17-0.5.3  Entrypoint null                      Cmd ["bash"]
+            # The extension versions are still not something Renovate can bump:
+            # it splits a docker tag at the first hyphen, so `17` is the version
+            # and `vectorchord1.1.1-pgvector0.8.5` is an opaque compatibility
+            # suffix it carries forward untouched. What changes is that the tag
+            # now states both versions instead of hiding them, so the drift is
+            # visible to a human reading this file. Check them against Immich's
+            # constants when its major moves.
             #
-            # Without the operator, the args below become the command and the
-            # container dies with `exec: "-c": executable file not found`.
-            # Confirmed by trying 17-1.1.1 here on 2026-09-05.
-            #
-            # Going past 0.5.0 therefore means leaving this image, not bumping
-            # it. The successor is ghcr.io/immich-app/postgres, which Immich
-            # builds for exactly this standalone case and tags with both
-            # extension versions (17-vectorchord1.1.1-pgvector0.8.5), so
-            # Renovate could finally see them. It needs more than a tag swap:
-            # its entrypoint expects root and a config file at
-            # /etc/postgresql/postgresql.conf, so the securityContext and the
-            # args below both have to change with it.
+            # No args here on purpose. The image's command already carries
+            # `-c config_file=/etc/postgresql/postgresql.conf`, and overriding
+            # it would drop that flag. shared_preload_libraries = 'vchord.so'
+            # is set inside that config, so it no longer needs passing in.
             image:
-              repository: ghcr.io/tensorchord/cloudnative-vectorchord
-              tag: 17-0.5.0
-            args:
-              - "-c"
-              - "shared_preload_libraries=vchord.so"
+              repository: ghcr.io/immich-app/postgres
+              tag: 17-vectorchord1.1.1-pgvector0.8.5
             env:
+              # Picks /var/postgresql-conf-tpl/postgresql.ssd.conf. Defaults to
+              # SSD anyway; stated because it is a real choice - the Longhorn
+              # volume behind this lives on the rpool mirror, not the SAS array.
+              DB_STORAGE_TYPE: SSD
               POSTGRES_USER: immich
               POSTGRES_DB: immich
               POSTGRES_PASSWORD:
@@ -79,20 +77,31 @@ spec:
                   timeoutSeconds: 5
                   failureThreshold: 6
               readiness: *probes
+            # This image's entrypoint starts as root: it stats the filesystem
+            # under PGDATA, writes /etc/postgresql/postgresql.conf from a
+            # template, then hands over to the stock postgres entrypoint, which
+            # chowns the data directory and drops to uid 999 itself. Dropping
+            # every capability would break that handover - chown and the setuid
+            # to postgres both fail - so the five it actually uses are added
+            # back and nothing else.
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
-              capabilities: { drop: ["ALL"] }
+              capabilities:
+                drop: ["ALL"]
+                add: ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"]
             resources:
               requests:
                 cpu: 100m
               limits:
                 memory: 2Gi
     defaultPodOptions:
+      # No runAsNonRoot/runAsUser here, unlike everything else in this cluster:
+      # the entrypoint described above has to begin as root. It does not stay
+      # there - postgres itself runs as 999, the same uid as before, so the
+      # existing data directory needs no ownership change. fsGroup still
+      # applies to the volume.
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
         fsGroup: 999
         fsGroupChangePolicy: OnRootMismatch
     service:

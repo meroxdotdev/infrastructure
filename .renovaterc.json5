@@ -44,9 +44,9 @@
       dependencyDashboardApproval: true,
     },
     {
-      description: "Never offer major bumps on this image. The tag carries the Postgres server major (15-0.3.0), so Renovate reads 15 -> 17 as a routine bump; it is not one. PGDATA on the PVC keeps the old on-disk format and the server exits with 'database files are incompatible with server'. This has now happened twice: 2026-07-25, and again 2026-09-05 when it went out in a batch of fifteen and took Immich's database down for about half an hour. dependencyDashboardApproval was the guard after the first incident and it did not hold - it asks once, on a dashboard checkbox, and the PR that follows looks like every other bump in the queue. Off entirely is the honest setting: a Postgres major is a dump on the old version and a restore into the new one, so it should arrive as a deliberate hand edit and never as a PR. Minor and patch updates of the vectorchord build still flow normally.",
+      description: "Never offer major bumps on this image. The tag leads with the Postgres server major (17-vectorchord1.1.1-pgvector0.8.5), so Renovate reads 15 -> 17 as a routine bump; it is not one. PGDATA on the PVC keeps the old on-disk format and the server exits with 'database files are incompatible with server'. This has now happened twice: 2026-07-25, and again 2026-09-05 when it went out in a batch of fifteen and took Immich's database down for about half an hour. dependencyDashboardApproval was the guard after the first incident and it did not hold - it asks once, on a dashboard checkbox, and the PR that follows looks like every other bump in the queue. Off entirely is the honest setting: a Postgres major is a dump on the old version and a restore into the new one, so it should arrive as a deliberate hand edit and never as a PR. Renovate treats everything after the first hyphen as a compatibility suffix, so nothing else here moves on its own either; the extension versions are a deliberate hand edit, checked against Immich's constants.ts.",
       matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/tensorchord/cloudnative-vectorchord"],
+      matchPackageNames: ["ghcr.io/immich-app/postgres"],
       matchUpdateTypes: ["major"],
       enabled: false,
     },
