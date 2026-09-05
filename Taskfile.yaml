@@ -62,19 +62,34 @@ tasks:
       - |
         set -euo pipefail
 
-        # DR provisions one VM per MAC in terraform.tfvars; talconfig.yaml must
-        # declare the same number of nodes. Both default to prod's topology, so
-        # the normal case needs no edits anywhere.
-        NODE_COUNT=$(yq '.nodes | length' {{.TALOS_DIR}}/talconfig.yaml)
-        MAC_COUNT=$(sed -n 's/^node_macs *= *\[\(.*\)\].*/\1/p' \
-          {{.TALOS_DIR}}/terraform/terraform.tfvars | grep -o '"' | wc -l)
-        MAC_COUNT=$((MAC_COUNT / 2))
-        if [ "$NODE_COUNT" -ne "$MAC_COUNT" ]; then
-          echo "  ✗ talconfig.yaml declares $NODE_COUNT node(s), terraform.tfvars has $MAC_COUNT MAC(s)."
-          echo "    They must match. Add or trim node_macs/node_ips in terraform.tfvars"
-          echo "    to mirror talconfig.yaml — see talos/THREE-NODE.md."
+        # Every MAC terraform creates must have a node in talconfig.yaml. That is
+        # the real requirement, and it is not the same as the two files being the
+        # same length: DR deliberately restores fewer nodes than prod runs
+        # (docs/dr-quickstart.md), so talconfig legitimately declares more. The
+        # apply step below matches by MAC, so the extra nodes are simply never
+        # used. What does break is a MAC with no config behind it - terraform
+        # brings the VM up and nothing ever configures it, silently.
+        TAL_MACS=$(yq -r '.nodes[].networkInterfaces[].deviceSelector.hardwareAddr
+                            | select(. != null) | downcase' \
+          {{.TALOS_DIR}}/talconfig.yaml)
+        TF_MACS=$(sed -n 's/^node_macs *= *\[\(.*\)\].*/\1/p' \
+          {{.TALOS_DIR}}/terraform/terraform.tfvars |
+          tr -d ' "' | tr ',' '\n' | tr 'A-Z' 'a-z' | grep .)
+        if [ -z "$TF_MACS" ]; then
+          echo "  ✗ node_macs is empty in terraform.tfvars - nothing to provision."
           exit 1
         fi
+        MISSING=""
+        for m in $TF_MACS; do
+          echo "$TAL_MACS" | grep -qx "$m" || MISSING="$MISSING $m"
+        done
+        if [ -n "$MISSING" ]; then
+          echo "  ✗ terraform.tfvars has MAC(s) with no node in talconfig.yaml:$MISSING"
+          echo "    Terraform would create a VM that never receives a config."
+          echo "    Add the node to talconfig.yaml or fix the MAC — see talos/THREE-NODE.md."
+          exit 1
+        fi
+        echo "  ✓ $(echo "$TF_MACS" | wc -w | tr -d ' ') MAC(s) in terraform.tfvars, all present in talconfig.yaml"
 
         echo "→ Scanning subnet for Talos maintenance-mode nodes (port 50000)..."
         DHCP_IPS=$(nmap -Pn -n -p 50000 --open 10.57.57.0/24 2>/dev/null | grep "Nmap scan report" | awk '{print $NF}')

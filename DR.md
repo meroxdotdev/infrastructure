@@ -67,24 +67,21 @@ photo library. All three are now cross-checked automatically:
 
 ## Phase 1 — Provision DR nodes
 
-> **One edit is required before Phase 1.** DR provisions one node per MAC in
-> `talos/terraform/terraform.tfvars`, which still carries a single MAC —
-> deliberately, because DR restores one node and a three-node restore needs
-> three hosts you may not have ([docs/dr-quickstart.md](docs/dr-quickstart.md)).
-> But `talos/talconfig.yaml` has declared all three nodes since prod went to
-> three on 2026-09-04, so the two counts now disagree: **3 vs 1**.
+> **No prerequisite edits.** `talos/terraform/terraform.tfvars` carries one
+> MAC, so DR provisions one node — deliberately: one node brings the workloads
+> back, and a three-node restore needs three hosts you may not have
+> ([docs/dr-quickstart.md](docs/dr-quickstart.md)). `talos/talconfig.yaml`
+> declares all three, because that is what prod runs since 2026-09-04. The two
+> are allowed to differ.
 >
-> `task dr:apply-talos-configs` checks that and exits before doing anything, so
-> a half-done change fails fast instead of partially applying. Under a real
-> recovery you will hit it. Pick one first:
+> `task dr:apply-talos-configs` checks that every MAC in `terraform.tfvars` has
+> a node in `talconfig.yaml`, not that the counts match. It matches by MAC and
+> applies only to the VMs it finds, so the extra nodes are simply unused. What
+> it refuses is a MAC with no config behind it — terraform would bring that VM
+> up and nothing would ever configure it.
 >
-> - **Restore one node** (the normal case) — comment out nodes 2 and 3 in
->   `talconfig.yaml`, leaving `kubernetes-1`.
-> - **Rehearse the full topology** — add the other two MACs/IPs to
->   `node_macs`/`node_ips` in `terraform.tfvars`.
->
-> This used to need no edits at all, back when prod itself was one node. See
-> [talos/THREE-NODE.md](talos/THREE-NODE.md) for what the third vote buys.
+> To restore all three instead, add their MACs and IPs to `node_macs`/`node_ips`
+> in `terraform.tfvars`. Nothing in `talconfig.yaml` needs touching either way.
 
 ### Option A — Terraform (automated, recommended)
 
