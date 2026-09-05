@@ -1,6 +1,6 @@
 /*
- * homepage.cloud.merox.dev — mirrors merox.dev design system
- * (config-public/custom.css is the inside.merox.dev twin; keep both in step)
+ * inside.merox.dev — mirrors merox.dev design system
+ * (config/custom.css is the private twin; keep both in step)
  * Column-first layout, editorial feel, IBM Plex family
  */
 
@@ -26,14 +26,13 @@
   /* ── Group accents — one hue per functional domain, so the eye learns
      "this color = this kind of thing" instead of scanning gray-on-gray.
      Order must match settings.yaml's layout: block exactly. ── */
-  --accent-1: #d97a3d; /* Compute & Hardware — echoes Proxmox orange */
-  --accent-2: #8b5cf6; /* Kubernetes — echoes Longhorn purple */
-  --accent-3: #3d8ed9; /* Storage & Backup — data at rest */
-  --accent-4: #d93d7a; /* Media */
-  --accent-5: #d9b83d; /* Files & Notes — documents, warm */
-  --accent-6: #3dd97a; /* Monitoring & Alerts — health/status */
-  --accent-7: #3dd9c8; /* Network */
-  --accent-8: #6e6e6e; /* Cloud / VPS — least "operational", stays neutral */
+  --accent-1: #d93d7a; /* Media */
+  --accent-2: #d9b83d; /* Files & Photos — documents, warm */
+  --accent-3: #d97a3d; /* Compute — echoes Proxmox orange */
+  --accent-4: #3d8ed9; /* Storage & Backup — data at rest */
+  --accent-5: #3dd9c8; /* Network & Access */
+  --accent-6: #8b5cf6; /* Identity & Ops — echoes Authentik purple */
+  --accent-7: #3dd97a; /* Observability — health/status */
 }
 
 /* ── Global typography — matches merox.dev tracking ── */
@@ -126,7 +125,6 @@
 .services-group:nth-of-type(5) { border-top-color: var(--accent-5) !important; }
 .services-group:nth-of-type(6) { border-top-color: var(--accent-6) !important; }
 .services-group:nth-of-type(7) { border-top-color: var(--accent-7) !important; }
-.services-group:nth-of-type(8) { border-top-color: var(--accent-8) !important; }
 
 .services-group:nth-of-type(1) .service-group-name { color: var(--accent-1) !important; }
 .services-group:nth-of-type(2) .service-group-name { color: var(--accent-2) !important; }
@@ -135,7 +133,6 @@
 .services-group:nth-of-type(5) .service-group-name { color: var(--accent-5) !important; }
 .services-group:nth-of-type(6) .service-group-name { color: var(--accent-6) !important; }
 .services-group:nth-of-type(7) .service-group-name { color: var(--accent-7) !important; }
-.services-group:nth-of-type(8) .service-group-name { color: var(--accent-8) !important; }
 
 /* ── Widget data area ── */
 .widget-container {

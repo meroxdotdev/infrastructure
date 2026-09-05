@@ -10,30 +10,35 @@ iconStyle: flat
 favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
 
 # ============================================================================
-# LAYOUT — grouped by function, not by device type (reorganized 2026-07-27)
+# LAYOUT — grouped by function, not by device type
 # ============================================================================
+# Rewritten 2026-09-05 alongside services.yaml.
+#
+# The old rule here was "columns == the group's item count, exactly". That is
+# no longer reachable: maxGroupColumns caps every group at 4, and two groups
+# now hold more than that. The rule is now "columns divides the item count, or
+# is the count when it is 4 or fewer" — Media 8/4 and Cloud 7/4 wrap cleanly
+# enough, Compute takes 3 because its cards carry widgets and squeeze at 4.
+# Update the count here when a group gains or loses an entry.
 layout:
 
-  # Column counts match each group's actual item count exactly - no ragged
-  # wraps, no phantom empty grid slots. Update the count here if a group
-  # gains/loses an entry in services.yaml.
   Compute & Hardware:
     style: row
-    columns: 2
+    columns: 3
     icon: mdi-server
-    useEqualHeights: true
-
-  Storage & Backup:
-    style: row
-    columns: 5
-    icon: mdi-database
     useEqualHeights: true
 
   Kubernetes:
     style: column
-    columns: 2
+    columns: 3
     icon: kubernetes.png
     useEqualHeights: false
+
+  Storage & Backup:
+    style: row
+    columns: 3
+    icon: mdi-database
+    useEqualHeights: true
 
   Media:
     style: row
@@ -41,9 +46,15 @@ layout:
     icon: mdi-filmstrip
     useEqualHeights: true
 
+  Files & Notes:
+    style: column
+    columns: 2
+    icon: mdi-folder-account
+    useEqualHeights: false
+
   Monitoring & Alerts:
     style: column
-    columns: 4
+    columns: 3
     icon: mdi-monitor-dashboard
     useEqualHeights: false
 
@@ -91,8 +102,9 @@ instanceName: merox-main
 # ============================================================================
 # API PROVIDERS
 # ============================================================================
-# proxmox and longhorn providers removed: neither is consumed by any widget
-# below (the Longhorn card is disabled in widgets.yaml for being unreachable
-# from the VPS). Restore from git history alongside re-adding the
-# corresponding widget, pointed at pve-2 (10.57.57.250) for Proxmox.
+# Empty on purpose. Nothing below consumes a shared provider: the Longhorn
+# widget is disabled in widgets.yaml (unreachable from the VPS), and the
+# Proxmox widget cannot be rebuilt from one credential pair now that there are
+# three standalone hosts — each needs its own API token. See the comment above
+# the Compute group in services.yaml before restoring either from git history.
 providers: {}

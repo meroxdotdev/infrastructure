@@ -20,11 +20,14 @@
       memory: false
       showLabel: true
 
-# Disabled 2026-07-27 - provider URL (10.57.57.80:30887) refuses connections
-# from the VPS (confirmed: connection refused, not a DNS issue this time).
-# Was showing a permanent "API Error" card at the very top of the page.
-# Re-enable once the real Longhorn UI address/port is confirmed.
+# Longhorn info widget, still disabled. The 2026-07-27 note blamed the URL
+# (10.57.57.80:30887, connection refused from the VPS); Longhorn has since
+# grown a proper route, so retry against that before assuming it is broken -
+# the homepage container resolves *.k8s.merox.dev through pfSense (see the
+# dns override in docker-compose.override.yml.j2). Re-add the matching
+# provider in settings.yaml if it works.
 # - longhorn:
+#     url: https://longhorn.k8s.merox.dev
 #     expanded: true
 #     total: true
 #     labels: true

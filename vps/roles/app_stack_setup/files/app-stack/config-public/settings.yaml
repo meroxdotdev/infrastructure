@@ -9,25 +9,44 @@ iconStyle: flat
 favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
 
 layout:
+  # Groups follow the README's own six-line summary, in the same order: what
+  # it plays, what it stores, what runs it, what keeps it, how it is reached,
+  # who it lets in, and how it is watched. columns is min(items, 4), the cap
+  # set by maxGroupColumns below.
   Media:
     style: column
     columns: 4
     icon: mdi-filmstrip
 
-  Infrastructure:
+  Files & Photos:
+    style: column
+    columns: 3
+    icon: mdi-folder-multiple-image
+
+  Compute:
     style: column
     columns: 4
     icon: mdi-server
 
-  Monitoring:
+  Storage & Backup:
+    style: column
+    columns: 4
+    icon: mdi-database
+
+  Network & Access:
+    style: column
+    columns: 4
+    icon: mdi-server-network
+
+  Identity & Ops:
+    style: column
+    columns: 4
+    icon: mdi-shield-account
+
+  Observability:
     style: column
     columns: 4
     icon: mdi-monitor-dashboard
-
-  Tools:
-    style: column
-    columns: 4
-    icon: mdi-tools
 
 fullWidth: false
 maxGroupColumns: 4

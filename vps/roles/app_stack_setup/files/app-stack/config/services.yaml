@@ -1,20 +1,48 @@
 ---
-# Reorganized 2026-07-27 — grouped by function (what it does), not by device
-# type. Previous layout mixed hypervisors/NAS into "Network" and left several
-# already-configured providers (Longhorn, Synology, Proxmox widgets) unused.
+# Private dashboard (homepage.cloud.merox.dev, tailnet only). Grouped by
+# function, not by device type.
+#
+# Rewritten 2026-09-05 against the live cluster and the repo. What changed and
+# why, so the same drift is recognisable next time:
+#   - Compute held only the R730xd and the VPS. The R730xd stopped being the
+#     compute host on 2026-09-01; pve-1, pve-3 and PDM were never added.
+#   - "Authentik (K8s) — sso.k8s.merox.dev" had no HTTPRoute behind it. Only
+#     the outpost runs in-cluster, and it has no UI of its own; it fronts
+#     Jellyseerr on download.merox.dev, noted on that card instead.
+#   - Portainer pointed at one.merox.dev, a host that exists nowhere else in
+#     the repo and in no tunnel table. Its Traefik router is
+#     portainer.cloud.merox.dev, which also survives a DR rebuild — unlike the
+#     Tailscale IP the README still quotes.
+#   - Longhorn said "see info widget above"; that widget was disabled
+#     2026-07-27 and the href was http on an https route.
+#   - n8n, jellyfin-public, Nextcloud, Garage and PDM had no cards at all.
+#
+# Every href below either resolves in the repo or was checked against the
+# live cluster's HTTPRoutes. Keep it that way: a card that always errors is
+# training to ignore the ones that mean something.
+
 # ============================================================================
 # COMPUTE & HARDWARE
 # ============================================================================
-# A second Proxmox card was removed: the host it pointed at is out of
-# scope, and the widget would just show a permanent connection error,
-# which trains you to ignore dashboard errors instead of noticing real
-# ones. Restore from git history if a second Proxmox host comes back.
+# Three standalone Proxmox hosts, joined through PDM rather than corosync.
+# No Proxmox widgets: each standalone host needs its own API token and only
+# one pair (HOMEPAGE_VAR_PROXMOX_USER/PASS) exists, with no record of which
+# host it belongs to. Add a token per host to homepage-env.j2 first, then a
+# `proxmox` widget here — same rule the stats script follows in PVE_TARGETS.
 - Compute & Hardware:
 
-    - R730xd:
+    - pve-1 (Beelink):
+        icon: proxmox.png
+        href: https://10.57.57.254:8006
+        description: Runs kubernetes-1 — losing this stops everything
+        ping: 10.57.57.254
+
+    - pve-2 (R730xd):
         id: r730xd-hw
         icon: mdi-server
-        description: Power draw & fan speed (iDRAC)
+        href: https://10.57.57.250:8006
+        description: Disks, backups, Nextcloud, kubernetes-2 — power & fans via iDRAC
+        ping: 10.57.57.250
         widget:
           type: customapi
           url: http://homelab-stats-server/homelab-stats.json
@@ -33,7 +61,19 @@
               format: number
               suffix: " RPM"
 
-    # UPS card removed: its data source (pwrstat) is disabled -
+    - pve-3 (OptiPlex):
+        icon: proxmox.png
+        href: https://10.57.57.253:8006
+        description: kubernetes-3 on a raw power-loss-protected SSD, plus PDM
+        ping: 10.57.57.253
+
+    - Datacenter Manager:
+        icon: mdi-view-dashboard-outline
+        href: https://dc.merox.dev
+        description: CT 100 on pve-3 — one pane over all three hosts
+        ping: 10.57.57.57
+
+    # UPS card removed 2026-07-27: its data source (pwrstat) is disabled -
     # see homelab-stats.sh.j2 - so this would always show "Unreachable".
     # Real UPS shutdown safety is unaffected (local NUT on pve-2). Restore
     # from git history if the local-NUT-based rebuild ever happens.
@@ -57,18 +97,36 @@
               suffix: "%"
 
 # ============================================================================
+# KUBERNETES
+# ============================================================================
+- Kubernetes:
+
+    - Headlamp:
+        icon: kubernetes.png
+        href: https://headlamp.k8s.merox.dev
+        description: K8s UI - three control-plane nodes, no HA by choice
+
+    - Longhorn:
+        icon: longhorn.png
+        href: https://longhorn.k8s.merox.dev
+        description: Distributed block storage, two replicas per volume
+
+    - n8n:
+        icon: n8n.png
+        href: https://n8n.k8s.merox.dev
+        description: Workflow automation - webhooks on n8n-webhook.k8s.merox.dev
+
+# ============================================================================
 # STORAGE & BACKUP
 # ============================================================================
 - Storage & Backup:
 
-    - Longhorn:
-        icon: longhorn.png
-        href: http://longhorn.k8s.merox.dev
-        description: K8s distributed storage (see info widget above)
-
-    - R730xd Storage Pools:
+    # "Fullest pool" is pve-2 only: PVE_TARGETS in homelab-stats.sh.j2 holds
+    # one entry, and pve-1/pve-3 have no token there. Per-pool detail still
+    # alerts via n8n.
+    - pve-2 Storage Pools:
         icon: mdi-harddisk
-        description: Fullest ZFS/storage pool, both hosts (per-pool detail still alerts via n8n)
+        description: Fullest ZFS/storage pool on pve-2
         widget:
           type: customapi
           url: http://homelab-stats-server/homelab-stats.json
@@ -82,6 +140,13 @@
               format: number
               suffix: "%"
 
+    # No href: this Garage runs LAN-only on pve-2 with no Traefik in front of
+    # it (garage_webui_enabled is the VPS-side default, not this host's).
+    - Garage S3:
+        icon: mdi-bucket-outline
+        description: LXC 103 on pve-2 - S3 target for Longhorn backups
+        ping: 10.57.57.61
+
     - Synology:
         icon: synology.png
         href: https://nas.merox.dev
@@ -94,34 +159,14 @@
           password: "{{HOMEPAGE_VAR_SYNOLOGY_PASS}}"
 
 # ============================================================================
-# KUBERNETES
-# ============================================================================
-- Kubernetes:
-
-    - Headlamp:
-        icon: kubernetes.png
-        href: https://headlamp.k8s.merox.dev
-        description: K8s UI
-
-    - Authentik (K8s):
-        icon: authentik.png
-        href: https://sso.k8s.merox.dev
-        description: SSO
-
-# ============================================================================
 # MEDIA
 # ============================================================================
 - Media:
 
-    - Immich:
-        icon: mdi-image-multiple
-        href: https://photos.k8s.merox.dev
-        description: Photo & Video Library
-
     - Jellyfin:
         icon: jellyfin.png
         href: https://media.merox.dev
-        description: Media Server
+        description: Media Server - LAN/Tailscale only
         widget:
           type: jellyfin
           url: https://media.merox.dev
@@ -129,10 +174,15 @@
           enableBlocks: true
           enableNowPlaying: true
 
+    - Jellyfin Public:
+        icon: jellyfin.png
+        href: https://studio.k8s.merox.dev
+        description: Curated library served publicly via the Frankfurt edge
+
     - Jellyseerr:
         icon: jellyseerr.png
         href: https://jellyseerr.k8s.merox.dev/login
-        description: Requests
+        description: Requests - public at download.merox.dev behind the Authentik outpost
         widget:
           type: seerr
           url: https://jellyseerr.k8s.merox.dev
@@ -151,7 +201,7 @@
     - Radarr:
         icon: radarr.png
         href: https://radarr.k8s.merox.dev
-        description: Movies
+        description: Movies - radarr-public feeds the public library
 
     - Sonarr:
         icon: sonarr.png
@@ -163,6 +213,28 @@
         href: https://prowlarr.k8s.merox.dev
         description: Indexers
 
+    - Immich:
+        icon: mdi-image-multiple
+        href: https://photos.k8s.merox.dev
+        description: Photo & Video Library
+
+# ============================================================================
+# FILES & NOTES
+# ============================================================================
+- Files & Notes:
+
+    - Nextcloud:
+        icon: nextcloud.png
+        href: https://drive.merox.dev
+        description: VM 1000 on pve-2 - AIO, own Cloudflare tunnel
+
+    - Joplin:
+        icon: joplin.png
+        href: https://joplin.cloud.merox.dev
+        description: Notes sync
+        server: my-docker
+        container: joplin-server
+
 # ============================================================================
 # MONITORING & ALERTS
 # ============================================================================
@@ -171,7 +243,7 @@
     - Grafana:
         icon: grafana.png
         href: https://grafana.k8s.merox.dev
-        description: Dashboards
+        description: Dashboards - metrics and Loki logs
 
     - Prometheus:
         icon: prometheus.png
@@ -242,13 +314,13 @@
     - Authentik:
         icon: authentik.png
         href: https://sso.merox.dev
-        description: SSO
+        description: SSO - the only Authentik; K8s runs its outpost only
         server: my-docker
         container: authentik-server
 
     - Portainer:
         icon: portainer.png
-        href: https://one.merox.dev
+        href: https://portainer.cloud.merox.dev
         description: Containers
         server: my-docker
         container: portainer
@@ -267,12 +339,13 @@
         server: my-docker
         container: guacamole
 
-    - Joplin:
-        icon: joplin.png
-        href: http://joplin.cloud.merox.dev
-        description: Notes
-        server: my-docker
-        container: joplin-server
+    # Separate Oracle tenancy, borrowed and stateless. Not on my-docker: its
+    # Docker socket is not exposed to this host, so no container status.
+    - Frankfurt edge:
+        icon: mdi-earth
+        href: https://studio.merox.dev
+        description: edge-fra - TLS for the public Jellyfin, geoblocked in kernel
+        ping: 100.99.62.31
 
     - Tailscale:
         icon: tailscale.png

@@ -1,5 +1,11 @@
 ---
 # Merox Infrastructure - Quick Access Bookmarks
+#
+# Reviewed 2026-09-05. Two entries were dropped for pointing at services that
+# appear nowhere else in the repo and are not part of the setup: UptimeRobot
+# (healthchecks.io is what every scheduled job pings - see README) and Grafana
+# Cloud (Grafana is self-hosted in the cluster). Same rule as services.yaml:
+# if it is not referenced anywhere else, it is probably a leftover.
 
 # ============================================================================
 # MAIN SITES
@@ -11,6 +17,12 @@
           href: https://merox.dev
           icon: mdi-web
           description: Main website & portfolio
+
+    - Infrastructure Repo:
+        - abbr: IN
+          href: https://github.com/meroxdotdev/infrastructure
+          icon: mdi-github
+          description: This homelab, as code - Flux reconciles from here
 
     - GitHub Profile:
         - abbr: GH
@@ -35,11 +47,29 @@
           icon: kubernetes.png
           description: Kubernetes documentation
 
+    - Talos Docs:
+        - abbr: TL
+          href: https://www.talos.dev/latest/
+          icon: mdi-console-line
+          description: The OS the cluster nodes actually run
+
+    - Flux Docs:
+        - abbr: FX
+          href: https://fluxcd.io/flux/
+          icon: mdi-source-branch
+          description: GitOps reconciler
+
     - Proxmox Wiki:
         - abbr: PX
           href: https://pve.proxmox.com/wiki
           icon: proxmox.png
           description: Proxmox VE documentation
+
+    - Longhorn Docs:
+        - abbr: LH
+          href: https://longhorn.io/docs/
+          icon: longhorn.png
+          description: Distributed block storage
 
 # ============================================================================
 # INFRASTRUCTURE TOOLS
@@ -50,13 +80,13 @@
         - abbr: CF
           href: https://dash.cloudflare.com
           icon: mdi-cloud-outline
-          description: DNS & CDN management
+          description: DNS, CDN & tunnel management
 
-    - Code Smarter:
-        - abbr: DH
-          href: https://tools.merox.dev
-          icon: mdi-tools
-          description: Ultimate dev toolkit
+    - Oracle Cloud:
+        - abbr: OC
+          href: https://cloud.oracle.com
+          icon: mdi-cloud-outline
+          description: VPS tenancy - vps01 (Phoenix) & edge-fra
 
     - Tailscale:
         - abbr: TS
@@ -64,19 +94,19 @@
           icon: mdi-vpn
           description: VPN management
 
+    - Code Smarter:
+        - abbr: DH
+          href: https://tools.merox.dev
+          icon: mdi-tools
+          description: Ultimate dev toolkit
+
 # ============================================================================
 # MONITORING & STATUS
 # ============================================================================
 
 - Monitoring:
-    - UptimeRobot:
-        - abbr: UR
-          href: https://uptimerobot.com
+    - healthchecks.io:
+        - abbr: HC
+          href: https://healthchecks.io
           icon: mdi-heart-pulse
-          description: Uptime monitoring
-
-    - Grafana Cloud:
-        - abbr: GC
-          href: https://grafana.com
-          icon: grafana.png
-          description: Cloud monitoring
+          description: Every scheduled job pings it - silence is the alarm
