@@ -43,12 +43,32 @@ Idempotent — safe to re-run. On subsequent runs it only updates changed files 
 
 ## Upgrade
 
-Update `authentik_version` in `defaults/main.yml`, then re-run:
+**Pulling the containers on the host does nothing.** Every other service in
+this stack (homepage, pihole, joplin, portainer, unbound) runs `:latest`, so
+`docker compose pull && up -d` moves them. Authentik is the one service pinned
+to an exact tag — `ghcr.io/goauthentik/server:{{ authentik_version }}` — so a
+pull re-fetches the *same* image and the UI keeps reporting the old version
+next to an "update available" notice. That notice is Authentik checking
+upstream, not checking this deployment.
+
+The version only moves from here:
+
 ```bash
+# 1. edit authentik_version in defaults/main.yml
+# 2. re-run the role
 make authentik-setup
 ```
 
-Authentik runs DB migrations automatically on startup.
+Authentik runs DB migrations automatically on startup, and it does not support
+skipping releases arbitrarily — read the release notes between the current tag
+and the target before jumping several minors.
+
+The `# renovate:` comment above `authentik_version` is what keeps this from
+drifting silently: without it, Renovate's annotated-dependency manager has
+nothing to latch onto in `vps/` and never opens a bump PR. Keep the comment
+directly above the variable and leave the value unquoted — the regex in
+[`.renovaterc.json5`](../../../.renovaterc.json5) reads the token after the
+colon verbatim, quotes included.
 
 ## Backup
 
