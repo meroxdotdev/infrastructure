@@ -1,27 +1,9 @@
 ---
-# Postgres 15 data, kept after the 2026-09-05 move to Postgres 17. A major
-# upgrade cannot happen in place - the on-disk format is version-specific - so
-# the new server got its own claim and this one was left untouched. That makes
-# rollback a one-line change back to `immich-postgres` rather than a restore.
-# Delete it once 17 has proven itself; nothing references it today.
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: immich-postgres
-  namespace: default
-  labels:
-    recurring-job.longhorn.io/source: enabled
-    recurring-job-group.longhorn.io/media: enabled
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn
-  resources:
-    requests:
-      storage: 10Gi
----
-# Live Postgres 17 data. Same size and the same nightly Longhorn->Garage
-# recurring job as the claim above.
+# Postgres 17 data. Nightly Longhorn->Garage recurring job, same as the
+# library claims below. The Postgres 15 claim it replaced on 2026-09-05 was
+# kept as a rollback for the rest of that day and removed once 17 had proven
+# itself; its data also lives in the nightly pg_dump chain on pve-2 (30 days),
+# which is what an actual recovery would use anyway.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
