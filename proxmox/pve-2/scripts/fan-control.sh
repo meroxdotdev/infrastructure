@@ -20,6 +20,32 @@
 # 35->39, ROC 63->70 with a plateau at minute nine. The plateau is the
 # evidence: heat in equals heat out, 30 C under anything that would worry it.
 #
+# THOSE NUMBERS ARE FROM AN IDLE HOST AND THE HOST STOPPED BEING IDLE THE NEXT
+# DAY. On 2026-09-04 `kubernetes-2` (VM 811) landed here, and the CPU baseline
+# rose about 8 C with it. Re-measured 2026-09-05, same inlet, pool still
+# parked, and the two fan states are now:
+#
+#   1680 RPM  ->  CPU 56, ROC 71, drive 38, exhaust 41
+#   2900 RPM  ->  CPU 51, ROC 63, drive 38, exhaust 40
+#
+# Read that carefully: the 5 C on the CPU and the 8 C on the ROC are not load,
+# they are the fan change itself. Each speed has its own equilibrium, and the
+# ladder decides which one the box sits at. So a ceiling placed *between* two
+# equilibria has no stable side - the box crosses it going up, the extra air
+# pulls it back under, and it crosses again. A limit cycle, not a thermal
+# event.
+#
+# That is exactly what the original CPU ceiling of 55 became once the baseline
+# moved: 117 drops to 0% against 118 climbs to 8% in a single day, every one of
+# them at cpu=56 up and cpu=51 down. Fans breathing in and out every five to
+# ten minutes, which is worse to live with than the constant 2900 it was
+# replacing. The CPU column was raised on 2026-09-05 to clear the 1680 RPM
+# equilibrium instead of splitting it.
+#
+# The rule this leaves behind: a ceiling must sit above the temperature its own
+# rung settles at, not between the rungs. If a node is ever added to or removed
+# from this host, re-measure both equilibria before trusting the ladder.
+#
 # COST: manual mode has no dynamic response, so this script is the response.
 # It reads CPU, hottest drive, PERC ROC and exhaust, climbs the ladder below,
 # and returns cooling to iDRAC above the top rung, above INLET_MAX, on an
@@ -59,11 +85,22 @@ HYST=4               # degrees below a step's ceiling before dropping back down
 # parked: spinning twelve SAS drives up for a backup is worth several degrees,
 # and iDRAC accepts that without ramping. Reacting at 37 C would make this
 # louder than what it replaced.
+#
+# The CPU column carries +5 over the original 2026-09-03 values (55/62/68/73),
+# raised 2026-09-05 to clear the post-kubernetes-2 baseline - see the limit
+# cycle described in the header. Rung 0 at 60 sits 4 C above where 1680 RPM
+# settles (56), and coming back down needs 60-HYST = 56, which 2900 RPM
+# comfortably reaches at 51. Both directions have margin now.
+#
+# The other three columns are untouched: they were never the ones triggering.
+# ROC swings 63-71 against 78 and the drives sat at 38 against 42 all day, and
+# the four escalations to 16% on 2026-09-05 were a genuine spin-up (drive 48).
+# The top rung stays under this Xeon's ~76 C Tcase; above it iDRAC takes over.
 STEPS=(
-  "55 42 78 50  0"
-  "62 46 84 55  8"
-  "68 49 88 60 16"
-  "73 52 92 65 28"
+  "60 42 78 50  0"
+  "66 46 84 55  8"
+  "70 49 88 60 16"
+  "74 52 92 65 28"
 )
 
 say() { printf '%s %s\n' "$(date '+%F %T')" "$*"; }

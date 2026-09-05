@@ -63,6 +63,48 @@ Authentik runs DB migrations automatically on startup, and it does not support
 skipping releases arbitrarily — read the release notes between the current tag
 and the target before jumping several minors.
 
+Release trains here are quarterly, not monthly: 2026.2 → 2026.5 → 2026.8.
+There is no 2026.6 or 2026.7, so 2026.5.6 → 2026.8.1 is one supported step,
+not three skipped ones. Check the tag list before assuming a jump is illegal.
+
+### The database password has to match, and once it did not
+
+`authentik_pg_pass` feeds both `POSTGRES_PASSWORD` and
+`AUTHENTIK_POSTGRESQL__PASSWORD`, so the vault is the single source for both
+sides. But `POSTGRES_PASSWORD` only does anything at initdb. On an existing
+volume Postgres ignores it and keeps the password it already has, which means
+the vault value and the real one can drift apart in silence and stay that way
+for as long as the containers are not recreated.
+
+That is what happened on 2026-09-05. The stack had been up since 4 August on
+containers created from an older compose file; the upgrade recreated them,
+they came up with the vault password, and the database rejected it:
+
+    FATAL: password authentication failed for user "authentik"
+
+SSO was down for about half an hour. The data was never at risk — the volume
+and its 215 tables were untouched, the mismatch was purely on the connection.
+The fix was to make the database agree with the vault rather than the other
+way round, which is the direction that keeps this role authoritative:
+
+```bash
+PW=$(grep -m1 'POSTGRES_PASSWORD:' /srv/docker/oracle-cloud/authentik/docker-compose.yml \
+     | sed 's/.*POSTGRES_PASSWORD:[[:space:]]*//; s/^"//; s/"$//')
+printf "ALTER USER authentik WITH PASSWORD '%s';\n" "${PW//\'/\'\'}" \
+  | docker exec -i authentik-postgresql psql -U authentik -d postgres
+docker restart authentik-server authentik-worker
+```
+
+`psql -U authentik` over the container's unix socket needs no password, which
+is what makes the repair possible at all. Note it pipes the statement in
+rather than passing `-c`: psql only interpolates `:'var'` on input it lexes
+itself, never on a `-c` string.
+
+Worth knowing before the next upgrade: `Wait for Authentik server to be ready`
+allows 120 s, and a release-train jump runs migrations for longer than that. A
+timeout on that task alone is not a failed upgrade — check the containers
+before concluding anything.
+
 The `# renovate:` comment above `authentik_version` is what keeps this from
 drifting silently: without it, Renovate's annotated-dependency manager has
 nothing to latch onto in `vps/` and never opens a bump PR. Keep the comment
