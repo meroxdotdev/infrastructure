@@ -1,7 +1,7 @@
 ---
 authentik_docker_dir: /srv/docker/oracle-cloud/authentik
 # renovate: datasource=docker depName=ghcr.io/goauthentik/server
-authentik_version: 2026.5.6
+authentik_version: 2026.8.1
 authentik_domain: "sso.merox.dev"
 authentik_port: 9000
 authentik_db_user: "authentik"
