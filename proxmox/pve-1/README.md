@@ -1,19 +1,32 @@
 # Beelink GTi13 Ultra — `pve-1`, `10.57.57.254`
 
-Standalone Proxmox host, not clustered with pve. **Runs the entire Kubernetes
-cluster** as `kubernetes-1` (VM 810 — 14 cores, 32 GiB, 350 GB, Iris Xe passed
-through), plus Proxmox Datacenter Manager (VM 100).
+Standalone Proxmox host, not clustered with `pve-2` or `pve-3` — the three are
+joined through Proxmox Datacenter Manager instead, never corosync. Runs
+`kubernetes-1` (VM 810 — 14 cores, 32 GiB, 350 GB, Iris Xe passed through),
+one of the cluster's three control planes.
 
-Since 2026-09-01 this is the machine the homelab runs on. `pve-2` keeps the
-disks: media and its NFS exports, the Garage S3 LXC that Longhorn backs into,
-Nextcloud, and every backup leg. Losing `pve-2` costs media, Nextcloud and
-backups but leaves the cluster running; losing this box stops everything.
-There is no HA, deliberately —
-[../../talos/THREE-NODE.md](../../talos/THREE-NODE.md).
+It stopped being the whole homelab on 2026-09-04, when `kubernetes-2` and
+`kubernetes-3` joined and etcd got three votes in three chassis. Losing this
+box no longer stops the cluster: quorum holds on the other two and pods
+reschedule in about six minutes, drilled by cutting its power —
+[../../talos/THREE-NODE.md](../../talos/THREE-NODE.md). What does not survive
+is **hardware transcoding**: the Iris Xe is only here, so Jellyfin and
+jellyfin-public stay `Pending` until this host is back.
 
-**Memory budget** (62 GiB total): ZFS ARC 4, Proxmox ~2, PDM 8, `kubernetes-1`
-44. VM 102 is stopped and does not count. Sizing the cluster VM below ~40 GiB
-leaves pods `Pending` — total requests are 38 GiB.
+`pve-2` still keeps the disks — media and its NFS exports, the Garage S3 LXC
+that Longhorn backs into, Nextcloud, and every backup leg — and no amount of
+Kubernetes HA covers losing those.
+
+PDM used to live here as VM 100. It moved to `pve-3` (CT 100) on 2026-09-04: a
+management plane that dies with the machine running the cluster is unavailable
+exactly when it is wanted.
+
+**Memory budget** (62 GiB total): ZFS ARC 4, Proxmox ~2, `kubernetes-1` 32.
+VM 102 is stopped and does not count. PDM's 8 GiB came back when it moved to
+`pve-3`, so there is now real headroom here rather than none. The old warning
+that the VM could not go below ~40 GiB belonged to the single-node cluster,
+where this box carried every pod; measured across the three nodes today, total
+memory *requests* are about 11 GiB and 32 GiB is comfortable.
 
 | | |
 |---|---|
@@ -25,8 +38,9 @@ leaves pods `Pending` — total requests are 38 GiB.
 | Power | 0.83 W package idle after tuning |
 
 **Both NVMe are Crucial P3 Plus — QLC, DRAM-less.** The split matters: the OS
-is on `nvme1n1` (1% worn), and `cluster-storage` — etcd and every Longhorn
-volume — is on `nvme0n1`, which has burned a third of its endurance. Keep it
+is on `nvme1n1` (1% worn), and `cluster-storage` — etcd, and nothing else of
+consequence since Longhorn scheduling was disabled on this node — is on
+`nvme0n1`, which has burned a third of its endurance. Keep it
 that way. Putting VM images on the OS disk means one failure takes both
 Proxmox and the cluster.
 

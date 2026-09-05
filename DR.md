@@ -67,17 +67,24 @@ photo library. All three are now cross-checked automatically:
 
 ## Phase 1 — Provision DR nodes
 
-> **No prerequisite edits.** DR provisions one node per MAC in
-> `talos/terraform/terraform.tfvars`, and both that file and
-> `talos/talconfig.yaml` default to prod's topology — one node since the
-> 2026-08-17 downsize. Restoring what you actually run is the point.
+> **One edit is required before Phase 1.** DR provisions one node per MAC in
+> `talos/terraform/terraform.tfvars`, which still carries a single MAC —
+> deliberately, because DR restores one node and a three-node restore needs
+> three hosts you may not have ([docs/dr-quickstart.md](docs/dr-quickstart.md)).
+> But `talos/talconfig.yaml` has declared all three nodes since prod went to
+> three on 2026-09-04, so the two counts now disagree: **3 vs 1**.
 >
-> To exercise a 3-node restore instead, uncomment nodes 2 and 3 in
-> `talconfig.yaml` (see
-> [talos/THREE-NODE.md](talos/THREE-NODE.md#rollback-to-3-nodes)) and add
-> their MACs/IPs to `terraform.tfvars`. `task dr:apply-talos-configs` refuses
-> to run if the two counts disagree, so a half-done change fails fast instead
-> of partially applying.
+> `task dr:apply-talos-configs` checks that and exits before doing anything, so
+> a half-done change fails fast instead of partially applying. Under a real
+> recovery you will hit it. Pick one first:
+>
+> - **Restore one node** (the normal case) — comment out nodes 2 and 3 in
+>   `talconfig.yaml`, leaving `kubernetes-1`.
+> - **Rehearse the full topology** — add the other two MACs/IPs to
+>   `node_macs`/`node_ips` in `terraform.tfvars`.
+>
+> This used to need no edits at all, back when prod itself was one node. See
+> [talos/THREE-NODE.md](talos/THREE-NODE.md) for what the third vote buys.
 
 ### Option A — Terraform (automated, recommended)
 

@@ -103,7 +103,7 @@ copy it back from `media/backups/longhorn-garage/meta/` (mirrored nightly at
 
 | VM | How |
 |---|---|
-| 800 Talos CP | [`dr-quickstart.md`](../../docs/dr-quickstart.md) — one node |
+| 811 `kubernetes-2` | Not restored from backup — recreate it as a Talos node and let it rejoin. [`../../talos/THREE-NODE.md`](../../talos/THREE-NODE.md). A total-loss rebuild instead follows [`dr-quickstart.md`](../../docs/dr-quickstart.md), which restores one node |
 | 1000 nextcloud | Its borg archive — [`nextcloud/README.md`](nextcloud/README.md) §6 |
 | 105 ollama | Rebuilt: [`README.md`](README.md#ollama-vm). Keep `10.57.57.90`, n8n addresses it directly |
 | 101 home-assistant | **No backup** since 2026-08-29. Put it in scope if you want it |

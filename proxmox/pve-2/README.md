@@ -5,6 +5,11 @@ Canonical reference for R730xd-side backup infrastructure. `pve-2`
 landing spot for VM/pfSense/VPS backups, weekly relay to Synology, nightly
 restic push to Oracle.
 
+It also runs `kubernetes-2` (VM 811) since 2026-09-04, one of the cluster's
+three control planes, and the Nextcloud VM. Neither is documented here — see
+[../../talos/THREE-NODE.md](../../talos/THREE-NODE.md) and
+[nextcloud/README.md](nextcloud/README.md). This page stays about backups.
+
 Related: [REINSTALL.md](REINSTALL.md) (rebuild this host from bare metal) ·
 [spindown-setup.md](spindown-setup.md) (SAS spin-down rebuild runbook) ·
 [known-issues.md](known-issues.md) (forensic record — UPS, fan noise) ·
@@ -47,9 +52,10 @@ everything else on this page — provisioned/documented directly.
 - Ollama installed via the official install script, `OLLAMA_HOST=0.0.0.0`
   override in `/etc/systemd/system/ollama.service.d/override.conf` so it's
   reachable from the K8s cluster (default is loopback-only).
-- Model: `qwen3:4b-instruct`, CPU inference (no GPU on this VM — the only
-  GPU passthrough on this host is dedicated to `kubernetes-1`
-  for Jellyfin transcoding).
+- Model: `qwen3:4b-instruct`, CPU inference. Nothing on this host has a GPU to
+  give it: the Quadro P2200 sits in the chassis unused since the Nvidia
+  extensions were dropped on 2026-09-01, and the only transcoding GPU in the
+  fleet is `pve-1`'s Iris Xe, passed to `kubernetes-1`.
 - API reachable at `http://10.57.57.90:11434` from anywhere on the LAN/K8s
   cluster (no auth — trusted network only, not exposed externally).
 
