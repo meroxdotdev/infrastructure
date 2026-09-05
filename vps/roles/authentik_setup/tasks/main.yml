@@ -13,9 +13,20 @@
   no_log: true
   notify: Restart authentik
 
+# `files` is not cosmetic. Compose resolves the project file by name
+# precedence -- compose.yaml, compose.yml, docker-compose.yaml,
+# docker-compose.yml -- so anything called compose.yml dropped into this
+# directory silently outranks the file this role writes. That happened on
+# 2026-09-05: the upstream compose.yml from the authentik upgrade docs was
+# downloaded here, and every `docker compose` call in this directory (this
+# task included) started reading it instead, failing on a PG_PASS variable
+# this deployment does not use. The upgrade looked like a no-op for weeks.
+# Naming the file explicitly makes the role immune to that.
 - name: Start Authentik
   community.docker.docker_compose_v2:
     project_src: "{{ authentik_docker_dir }}"
+    files:
+      - docker-compose.yml
     state: present
 
 - name: Wait for Authentik server to be ready

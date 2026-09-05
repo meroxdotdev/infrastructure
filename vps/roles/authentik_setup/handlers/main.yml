@@ -3,4 +3,8 @@
   when: not ansible_check_mode
   community.docker.docker_compose_v2:
     project_src: "{{ authentik_docker_dir }}"
+    # Same reason as the Start Authentik task: name the file so a stray
+    # compose.yml in this directory cannot outrank it.
+    files:
+      - docker-compose.yml
     state: restarted
