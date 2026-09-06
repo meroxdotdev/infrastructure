@@ -73,16 +73,24 @@ rebuild finished, physical writes on `kubernetes-1`'s NVMe went from
 **0.95 to 1.29 MB/s** — 82 to 112 GB a day, **+36%**, taking the disk from
 ~4.4 years of remaining endurance to **~3.2**.
 
-The prediction was +21%, and the way it failed is worth keeping. All 23 volumes
-together write only 72 KB/s (`longhorn_volume_write_throughput`, 24h average),
-and that was multiplied by the 2.8x amplification measured for the node's
-aggregate traffic. Replica writes are not aggregate traffic: they are small and
-random, so against a 16K `volblocksize` each one costs a read-modify-write. The
-measured amplification for that traffic alone is closer to **12x** — 0.34 MB/s
-of physical writes for 72 KB/s of volume writes.
+The prediction was +21%, and where it went wrong is the useful part. Inside the
+VM the change is barely visible — 0.345 to 0.365 MB/s, about +6%, which is
+roughly what 72 KB/s of volume writes should look like. The entire +36% at the
+disk comes from amplification rising:
 
-**Amplification belongs to a traffic pattern, not to a pool.** A single figure
-measured across mixed traffic cannot be applied to one new stream.
+| | Before | After |
+|---|---|---|
+| Written inside the VM | 0.345 MB/s | 0.365 MB/s |
+| Written to the NVMe | 0.95 MB/s | 1.29 MB/s |
+| Amplification | 2.8x | **3.5x** |
+
+Replica writes are small and random, and against a 16K `volblocksize` many of
+them become read-modify-write. They did not just add their own volume — they
+made every write on the pool more expensive on average.
+
+**A pool's amplification factor is not a constant.** Measuring it once and
+reusing it to price a new workload is what produced the wrong estimate; the
+new workload's write pattern is exactly what moves it.
 
 A local replica also ends the network hop on reads. `kubernetes-1` runs the
 most pods in the cluster, and until now every one of their volume reads crossed

@@ -66,12 +66,12 @@ spec:
       # 1.29 MB/s, 82 to 112 GB a day. That is **+36%**, and takes the disk
       # from ~4.4 years of remaining endurance to ~3.2.
       #
-      # A prediction of +21% was made first and was wrong, in a way worth
-      # keeping: it assumed the 72 KB/s of volume writes would amplify at the
-      # same 2.8x as the aggregate workload. Replica writes are small and
-      # random, so against a 16K volblocksize each one costs a read-modify-
-      # write — the measured amplification for that traffic is closer to 12x.
-      # Amplification is per traffic pattern, not per pool.
+      # Inside the VM almost nothing changed — 0.345 -> 0.365 MB/s. The whole
+      # +36% is amplification: the zvol's factor went from 2.8x to 3.5x,
+      # because replica writes are small and random and a 16K volblocksize
+      # turns many of them into read-modify-write. A pool's amplification is
+      # not a constant to be measured once and reused; adding a workload with
+      # a different write pattern moves it.
       defaultReplicaCount: "3"
       # Kept, but it does not do what it looks like it does. It lets Longhorn's
       # own components *run* on a tainted node — instance-manager did start on

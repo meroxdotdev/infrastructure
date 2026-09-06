@@ -33,6 +33,8 @@ nodes:
     # This node holds a Longhorn replica again since 2026-09-06. It was kept
     # off the QLC NVMe (34% wear) until the cost was measured: physical writes
     # went 0.95 -> 1.29 MB/s, +36%, taking the disk from ~4.4 to ~3.2 years.
+    # Writes inside the VM barely moved; the zvol's amplification did, 2.8x
+    # -> 3.5x.
     # Excluding it left the other two nodes with nowhere to rebuild a lost
     # replica, which was worth more than the endurance.
     # See kubernetes/apps/storage/longhorn and talos/THREE-NODE.md.
