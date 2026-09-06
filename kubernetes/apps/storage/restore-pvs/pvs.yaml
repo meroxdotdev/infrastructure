@@ -11,14 +11,16 @@
 # Post-restore, run: task longhorn:post-restore-jellyfin
 # Jellyfin images re-download automatically in ~10 min after that task runs.
 #
-# Do NOT "fix" the numberOfReplicas: "3" below to match the single-node
-# reality. csi.volumeAttributes is immutable on an already-created PV, so
-# editing it here fails the cluster-apps dry-run and wedges Flux for every
-# resource that Kustomization owns. The value is inert anyway: these PVs
-# bind by claimRef to Volume CRDs that already exist by the time this file
-# is applied, so no CreateVolume call ever reads it. The replica count that
-# actually applies is the Volume CRD's spec.numberOfReplicas, set from the
-# live node count by .taskfiles/longhorn/Taskfile.yaml (1 today).
+# Do NOT edit the numberOfReplicas: "3" below, in either direction.
+# csi.volumeAttributes is immutable on an already-created PV, so changing it
+# here fails the cluster-apps dry-run and wedges Flux for every resource that
+# Kustomization owns. The value is inert anyway: these PVs bind by claimRef to
+# Volume CRDs that already exist by the time this file is applied, so no
+# CreateVolume call ever reads it. The replica count that actually applies is
+# the Volume CRD's spec.numberOfReplicas, set from the live node count by
+# .taskfiles/longhorn/Taskfile.yaml — 3 today, which happens to agree with the
+# line below. It did not always: this said 3 through the single-node period
+# too, and was simply ignored.
 # Changing this line is only safe if the PVs are recreated from scratch.
 ---
 apiVersion: v1

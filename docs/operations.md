@@ -172,13 +172,24 @@ works: `task talos:apply-node IP=10.57.57.81`.
 kubectl get nodes -w
 ```
 
-**6. Decide its storage role.** Longhorn picks up any node carrying the
-`longhorn: "true"` label as a scheduling target. Whether a given node should
-hold replicas is a separate decision from whether it runs pods — read the
-comments in
+**6. Decide its storage role.** Longhorn gives every node a default disk and
+treats it as a scheduling target — `createDefaultDiskLabeledNodes` is `false`
+here, so no label is involved. (With it set to `true`, only nodes carrying
+`node.longhorn.io/create-default-disk=true` would get one. That is not this
+cluster. In particular this has nothing to do with the `longhorn: "true"` label
+in the commented-out `worker:` block — see step 4, nothing reads that either.)
+
+Whether a given node should hold replicas is a separate decision from whether
+it runs pods — read the comments in
 [../kubernetes/apps/storage/longhorn/app/helmrelease.yaml](../kubernetes/apps/storage/longhorn/app/helmrelease.yaml)
-for why `defaultReplicaCount` is 1 before changing it. To keep a node
-compute-only:
+for why `defaultReplicaCount` is 3 before changing it.
+
+**Excluding a node has a cost that is easy to miss.** With `defaultReplicaCount`
+at 3 and three nodes, marking one compute-only leaves Longhorn no spare
+scheduling target: lose one of the remaining two and every volume sits at a
+single replica with nowhere to rebuild, until the dead machine comes back. That
+was the state of this cluster between 2026-09-01 and 2026-09-06. Only do this
+on a cluster with more nodes than replicas:
 
 ```bash
 kubectl -n longhorn-system patch nodes.longhorn.io kubernetes-worker-1 \

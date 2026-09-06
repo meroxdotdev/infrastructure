@@ -30,9 +30,11 @@ nodes:
     # node: iscsi-tools for iscsiadm and util-linux-tools. Without them
     # longhorn-manager crashloops and no volume can attach — the other two
     # nodes carry the same pair without i915.
-    # This node holds no Longhorn replica: its pool is a single QLC NVMe at
-    # 34% wear, and keeping volume writes off it is worth more than a local
-    # read. See kubernetes/apps/storage/longhorn.
+    # This node holds a Longhorn replica again since 2026-09-06. It was kept
+    # off the QLC NVMe (34% wear) until the real cost was measured: 72 KB/s of
+    # volume writes cluster-wide, ~21% more physical writes here. Excluding it
+    # left the other two nodes with nowhere to rebuild a lost replica.
+    # See kubernetes/apps/storage/longhorn and talos/THREE-NODE.md.
     # Regenerate with the POST in docs/operations.md.
     talosImageURL: factory.talos.dev/installer/249d9135de54962744e917cfe654117000cba369f9152fbab9d055a00aa3664f
     nodeLabels:

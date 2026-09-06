@@ -291,8 +291,10 @@ tasks:
           exit 0
         fi
 
-        # Replica count matches the cluster being restored onto (1 on prod today,
-        # 3 on a DR drill) — capped at 3, Longhorn's own best-practice ceiling.
+        # Replica count matches the cluster being restored onto — capped at 3,
+        # Longhorn's own best-practice ceiling. Prod has been three nodes since
+        # 2026-09-04, so this yields 3 there and on a full DR drill alike; it
+        # only drops lower when restoring onto a partially rebuilt cluster.
         NODE_COUNT=$(kubectl get nodes --no-headers | wc -l)
         REPLICAS=$(( NODE_COUNT < 3 ? NODE_COUNT : 3 ))
 

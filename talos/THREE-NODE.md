@@ -4,7 +4,7 @@ The cluster is three nodes, one per physical machine, since 2026-09-04:
 
 | Node | Address | Runs on | Carries |
 |---|---|---|---|
-| `kubernetes-1` | 10.57.57.80 | VM 810 on `pve-1` (Beelink) | etcd, workloads, Iris Xe for transcoding |
+| `kubernetes-1` | 10.57.57.80 | VM 810 on `pve-1` (Beelink) | etcd, workloads, a Longhorn replica, Iris Xe for transcoding |
 | `kubernetes-2` | 10.57.57.82 | VM 811 on `pve-2` (R730xd) | etcd, workloads, a Longhorn replica |
 | `kubernetes-3` | 10.57.57.83 | VM 812 on `pve-3` (OptiPlex) | etcd, a Longhorn replica |
 
@@ -30,14 +30,15 @@ Two things worth keeping from it. Wake-on-LAN works on `pve-1`
 (`b0:41:6f:15:2b:02`), so this whole cycle ran without anyone in the house —
 though the `ethtool` setting behind it does not survive a reboot. And Longhorn
 did **not** move replicas back onto the QLC when the node returned, because
-scheduling stays disabled there; the placement survived the outage.
+scheduling was disabled there at the time; the placement survived the outage.
+That is no longer the arrangement — see [below](#longhorn-keeps-one-replica-per-node).
 
 ## What each machine costs you when it dies
 
 | Dies | Result |
 |---|---|
-| `pve-1` | Quorum holds. Pods reschedule onto `pve-2`. **Jellyfin loses hardware transcoding** — the Iris Xe is only here, and the Nvidia extensions for `pve-2`'s Quadro P2200 were dropped on 2026-09-01. |
-| `pve-3` | Nothing. It holds a vote and a replica; both are redundant. |
+| `pve-1` | Quorum holds. Pods reschedule onto `pve-2`, and its Longhorn replicas are covered by the other two. **Jellyfin loses hardware transcoding** — the Iris Xe is only here, and the Nvidia extensions for `pve-2`'s Quadro P2200 were dropped on 2026-09-01. |
+| `pve-3` | Nothing. It holds a vote and a replica; both are redundant, and the two surviving nodes still have a copy of every volume. |
 | `pve-2` | Cluster survives, but the media NFS exports, the Garage S3 LXC that Longhorn backs into, and the Nextcloud VM all go with it. Jellyfin and the \*arr stack keep running with no data underneath them. **No amount of Kubernetes HA fixes this** — a twelve-disk SAS array does not replicate to a mini PC. |
 
 ## etcd sits on three very different disks
@@ -55,20 +56,47 @@ While the cluster was one node, every fsync stall on that QLC was a cluster
 stall. Now the other two carry commits straight through it. The 2026-08
 `EtcdSlowFsyncBurst` problem stops being an outage and becomes a slow member.
 
-## Longhorn keeps nothing on `pve-1`
+## Longhorn keeps one replica per node
 
-Two replicas per volume, on `kubernetes-2` and `kubernetes-3`. Scheduling is
-disabled on `kubernetes-1`.
+Three replicas per volume since 2026-09-06, one on each node.
 
-Its pool is a single QLC NVMe with no redundancy underneath — the ZFS mirror
-that once justified a single replica belongs to `pve-2`, and the node stopped
-living there on 2026-09-01. Measured at 1.27 MB/s sustained, roughly 110 GB a
-day, that disk had about three years left while it carried every write in the
-cluster. Carrying only the OS and etcd, it has roughly fourteen.
+It ran on two — `kubernetes-2` and `kubernetes-3`, with scheduling disabled on
+`kubernetes-1` to keep writes off its QLC NVMe. That was a mistake, and not the
+one it looked like. With no third scheduling target, losing either `pve-2` or
+`pve-3` left every volume at a single replica **with nowhere to rebuild the
+second**. All 23 would have stayed that way until the dead machine physically
+came back. The 2026-09-04 drill missed it because it killed `pve-1` — the only
+node that held no replicas.
 
-The cost is that every volume read leaves the node. That is the same 1 GbE the
-media already crosses by NFS, so it is not a new category of traffic — but it
-is a real added latency of a few tenths of a millisecond per operation.
+The third copy was priced before it was added. Longhorn writes **72 KB/s**
+across all 23 volumes (24h average, `longhorn_volume_write_throughput`), so a
+replica on `kubernetes-1` costs about 0.2 MB/s once ZFS amplification is
+counted. The disk goes from ~4.4 years of remaining endurance to ~3.6. Moving
+replicas off it on 2026-09-01 cut its writes 4x; putting one back adds 21%.
+
+A local replica also ends the network hop on reads. `kubernetes-1` runs the
+most pods in the cluster, and until now every one of their volume reads crossed
+the 1 GbE link.
+
+### Do not trust write rates measured inside the VM
+
+An earlier version of this file put the disk's remaining life at "roughly
+fourteen" years. It was wrong by about 3x, because it counted what the Talos VM
+reported writing rather than what the physical NVMe actually wrote:
+
+| Layer | Rate |
+|---|---|
+| Inside the VM (`node_disk_written_bytes_total`, sda) | 0.345 MB/s |
+| Physical, on `pve-1` (`/proc/diskstats`, nvme1n1) | **0.95 MB/s** |
+
+That is **2.8x** amplification from the zvol (`volblocksize=16K`, `ashift=12`,
+`sync=standard`) plus ZFS metadata. Any endurance estimate has to start at the
+host, not in the guest. Real numbers, from SMART (34% used at 67.8 TB written):
+~4.4 years at the current rate, ~3.6 with the third replica.
+
+The rest of the fleet has no endurance question at all — all four Intel
+D3-S4510s (`pve-2`'s `rpool` mirror, `pve-3`'s etcd disk) read 0% wear after
+more than 9,000 hours.
 
 **`kubernetes-3` must not be tainted.** A `NoSchedule` taint there was tried
 and reverted on 2026-09-04: Longhorn's replica scheduler skips a tainted node
