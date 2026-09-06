@@ -61,12 +61,17 @@ spec:
       # back. The 2026-09-04 drill did not catch this because it killed pve-1,
       # the one node holding no replicas.
       #
-      # The cost of the third copy was measured before making the change, not
-      # estimated: Longhorn writes 72 KB/s across all volumes (24h average), so
-      # a replica on kubernetes-1 adds ~0.2 MB/s once ZFS amplification is
-      # counted. Its QLC NVMe goes from ~4.4 years of remaining endurance to
-      # ~3.6. Moving replicas off it in the first place cut its writes 4x;
-      # putting one back adds 21%, so nearly all of that win is kept.
+      # The cost of the third copy was measured after the rebuild, not
+      # predicted: physical writes on kubernetes-1's NVMe went from 0.95 to
+      # 1.29 MB/s, 82 to 112 GB a day. That is **+36%**, and takes the disk
+      # from ~4.4 years of remaining endurance to ~3.2.
+      #
+      # A prediction of +21% was made first and was wrong, in a way worth
+      # keeping: it assumed the 72 KB/s of volume writes would amplify at the
+      # same 2.8x as the aggregate workload. Replica writes are small and
+      # random, so against a 16K volblocksize each one costs a read-modify-
+      # write — the measured amplification for that traffic is closer to 12x.
+      # Amplification is per traffic pattern, not per pool.
       defaultReplicaCount: "3"
       # Kept, but it does not do what it looks like it does. It lets Longhorn's
       # own components *run* on a tainted node — instance-manager did start on

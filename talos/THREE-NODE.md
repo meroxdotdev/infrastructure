@@ -68,11 +68,21 @@ second**. All 23 would have stayed that way until the dead machine physically
 came back. The 2026-09-04 drill missed it because it killed `pve-1` — the only
 node that held no replicas.
 
-The third copy was priced before it was added. Longhorn writes **72 KB/s**
-across all 23 volumes (24h average, `longhorn_volume_write_throughput`), so a
-replica on `kubernetes-1` costs about 0.2 MB/s once ZFS amplification is
-counted. The disk goes from ~4.4 years of remaining endurance to ~3.6. Moving
-replicas off it on 2026-09-01 cut its writes 4x; putting one back adds 21%.
+The third copy cost more than predicted. Measured on the host after the
+rebuild finished, physical writes on `kubernetes-1`'s NVMe went from
+**0.95 to 1.29 MB/s** — 82 to 112 GB a day, **+36%**, taking the disk from
+~4.4 years of remaining endurance to **~3.2**.
+
+The prediction was +21%, and the way it failed is worth keeping. All 23 volumes
+together write only 72 KB/s (`longhorn_volume_write_throughput`, 24h average),
+and that was multiplied by the 2.8x amplification measured for the node's
+aggregate traffic. Replica writes are not aggregate traffic: they are small and
+random, so against a 16K `volblocksize` each one costs a read-modify-write. The
+measured amplification for that traffic alone is closer to **12x** — 0.34 MB/s
+of physical writes for 72 KB/s of volume writes.
+
+**Amplification belongs to a traffic pattern, not to a pool.** A single figure
+measured across mixed traffic cannot be applied to one new stream.
 
 A local replica also ends the network hop on reads. `kubernetes-1` runs the
 most pods in the cluster, and until now every one of their volume reads crossed
@@ -92,7 +102,7 @@ reported writing rather than what the physical NVMe actually wrote:
 That is **2.8x** amplification from the zvol (`volblocksize=16K`, `ashift=12`,
 `sync=standard`) plus ZFS metadata. Any endurance estimate has to start at the
 host, not in the guest. Real numbers, from SMART (34% used at 67.8 TB written):
-~4.4 years at the current rate, ~3.6 with the third replica.
+~4.4 years before the third replica, ~3.2 with it.
 
 The rest of the fleet has no endurance question at all — all four Intel
 D3-S4510s (`pve-2`'s `rpool` mirror, `pve-3`'s etcd disk) read 0% wear after
