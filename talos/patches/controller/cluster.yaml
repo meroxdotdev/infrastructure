@@ -12,6 +12,40 @@ cluster:
   etcd:
     extraArgs:
       listen-metrics-urls: http://0.0.0.0:2381
+      # etcd's own tuning guide describes this failure exactly: "disk activity
+      # from other processes may cause long fsync latencies. The upshot is etcd
+      # may miss heartbeats, causing request timeouts and temporary leader
+      # loss." That is this cluster, on kubernetes-2 in particular: VM 811's
+      # zvol lives on rpool, whose two S4510s share the H730P with the twelve
+      # SAS disks sas-spindown.sh parks. A wake answers sense 2/04/01,
+      # megaraid_sas turns that into a blocking AEN poll, and every other queue
+      # on the controller waits behind it. The mechanism is documented at
+      # length in sas-spindown.sh's header.
+      #
+      # Measured over 2026-09-04..07, all three nodes: 346 WAL fsyncs over
+      # 512ms, 38 over 1s, 4 over 2s, none over 4s. The 38 are the false
+      # elections - each one exceeded the 1000ms default and was read as a dead
+      # leader when nothing had died. 5000ms clears the observed worst case
+      # with room; 2500ms would not have covered the four over 2s.
+      #
+      # Only election-timeout moves. heartbeat-interval stays at its 100ms
+      # default because the guide ties that one to round-trip time - "0.5-1.5x
+      # the round-trip time" - and peer RTT here is ~12ms, so 100ms is already
+      # generous. Raising it would buy nothing and drift from the documented
+      # basis. Election timeout is the parameter that has to absorb disk
+      # latency, and its documented ceiling is 50s.
+      #
+      # The cost is noticing a genuinely dead leader in 5s rather than 1s. Real
+      # leader deaths run about one a week here; false ones ran thirteen a day.
+      #
+      # This does not make the stalls go away - the API still cannot commit
+      # during one. It stops a 1-second stall from costing more than 1 second.
+      # Fixing the stall itself needs etcd's disk off the H730P, and every route
+      # to that costs either money or the ~40-50W that parking the array saves.
+      #
+      # Same value on every member, which the guide requires: this patch is
+      # global to all three control planes.
+      election-timeout: "5000"
     advertisedSubnets:
       - 10.57.57.0/24
   proxy:

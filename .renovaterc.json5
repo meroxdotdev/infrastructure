@@ -44,6 +44,12 @@
       dependencyDashboardApproval: true,
     },
     {
+      description: "A hard ceiling, because approval is not a gate. Talos v1.13 serves Kubernetes 1.31-1.36 only, so a 1.37 kubelet is not a trade-off to weigh on a dashboard - it is a pair that cannot run, and the only correct answer is that Renovate never offers it. dependencyDashboardApproval was tried and failed twice: v1.37.0 merged unchecked on 2026-08-29 (532e9c0), pinned back in 9d956d2, then arrived again on 2026-09-05 in the grouped `talos` PR (da53820). Grouping is why the second one got through - a gated kubelet minor rides along on the ungated installer patch's branch, and the result reads like any other bump. It sat for two days until `talhelper genconfig` was run and refused outright, which means no machine config could be generated at all during that window. Same lesson as the Immich Postgres rule below: when a pair is invalid rather than risky, the honest setting is a constraint, not a question. Raise this bound in the same commit that moves the cluster to Talos 1.14, never before.",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/siderolabs/kubelet"],
+      allowedVersions: "<1.37.0",
+    },
+    {
       description: "Never offer major bumps on this image. The tag leads with the Postgres server major (17-vectorchord1.1.1-pgvector0.8.5), so Renovate reads 15 -> 17 as a routine bump; it is not one. PGDATA on the PVC keeps the old on-disk format and the server exits with 'database files are incompatible with server'. This has now happened twice: 2026-07-25, and again 2026-09-05 when it went out in a batch of fifteen and took Immich's database down for about half an hour. dependencyDashboardApproval was the guard after the first incident and it did not hold - it asks once, on a dashboard checkbox, and the PR that follows looks like every other bump in the queue. Off entirely is the honest setting: a Postgres major is a dump on the old version and a restore into the new one, so it should arrive as a deliberate hand edit and never as a PR. Renovate treats everything after the first hyphen as a compatibility suffix, so nothing else here moves on its own either; the extension versions are a deliberate hand edit, checked against Immich's constants.ts.",
       matchDatasources: ["docker"],
       matchPackageNames: ["ghcr.io/immich-app/postgres"],
