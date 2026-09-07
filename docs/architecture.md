@@ -97,11 +97,11 @@ smallest possible surface.
 | `rest-server` | the append-only backup endpoint |
 | Traefik | nothing above is reachable without it |
 | Pi-hole + Unbound | DNS for the tailnet |
+| Guacamole | Browser access to the estate without a client. `plan-2026-09.md` proposed retiring it on the grounds that Tailscale plus SSH is how these machines are reached; that was rejected on 2026-09-07. It stays. |
 
 | Remove | Why |
 |---|---|
 | **Portainer EE** | Ansible owns these containers; a UI editing them beside Ansible only produces drift. Its cluster agent also held a `cluster-admin` binding. |
-| **Guacamole** | Tailscale plus SSH/RDP is how these machines are actually reached. Retiring it also removes one of Authentik's two real consumers. |
 
 | Missing | Why it matters |
 |---|---|
