@@ -222,6 +222,48 @@ spec:
                 for: 10m
                 labels:
                   severity: warning
+      longhorn-backup-rules:
+        groups:
+          - name: longhorn-backup
+            rules:
+              # Backups are opt-in by label: the only recurring job targets the
+              # `media` group, so a volume that lands anywhere else is simply
+              # never backed up and nothing says so. On 2026-09-07 that was 11
+              # of 23 volumes. All eleven turned out to be ones that genuinely
+              # do not need it - but nothing had established that, and the next
+              # app to be deployed would have joined them in silence. That is
+              # the same class of failure that kept the Immich library out of
+              # DR for months.
+              #
+              # The exemptions are listed here, in git, rather than left
+              # implicit. Anything not named is expected to be backed up:
+              #   *-cache            ARR and Jellyfin scratch, rebuilt on start
+              #   netboot-xyz        images re-downloaded on demand
+              #   grafana            dashboards come from the Helm release
+              #   storage-loki-0     logs, and losing old ones costs nothing
+              #   alertmanager-*     silences only, seconds to recreate
+              #   prometheus-*       14d TSDB, and it rebuilds itself
+              #
+              # Adding a volume to this regex is a decision that shows up in a
+              # diff. Forgetting one is not.
+              - alert: LonghornVolumeNeverBackedUp
+                annotations:
+                  summary: "Longhorn: {{ $labels.pvc_namespace }}/{{ $labels.pvc }} has never been backed up and is not on the exemption list."
+                expr: longhorn_volume_last_backup_at{pvc!~".*-cache|netboot-xyz|grafana|storage-loki-0|alertmanager-.*|prometheus-.*"} == 0
+                for: 6h
+                labels:
+                  severity: warning
+              # The other half: a volume that was being backed up and quietly
+              # stopped. The recurring job runs daily at 23:50, so age peaks
+              # near 24h just before the next run; 36h is one missed run of
+              # slack. Measured 2026-09-07: the oldest live backup was 11.5h.
+              - alert: LonghornBackupStale
+                annotations:
+                  summary: "Longhorn: {{ $labels.pvc_namespace }}/{{ $labels.pvc }} last backup was {{ $value | humanizeDuration }} ago."
+                expr: (time() - longhorn_volume_last_backup_at > 129600) and (longhorn_volume_last_backup_at != 0)
+                for: 1h
+                labels:
+                  severity: warning
       oom-rules:
         groups:
           - name: oom

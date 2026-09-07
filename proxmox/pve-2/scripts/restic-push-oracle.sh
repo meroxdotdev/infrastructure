@@ -20,7 +20,17 @@ trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" 
 # /media/backups individually, so a new backup category was silently left out
 # until someone noticed — the same drift that kept the Immich library out of
 # the DR restore for months. Whatever lands under /media/backups is covered.
-restic backup /media/backups /media/photos /root --tag nightly
+# /media/backups/dump is excluded, and it is the one exclusion here with a
+# reason rather than an oversight. It holds weekly vzdump images of VM 1000,
+# the only guest in the estate not rebuilt from git. Each is ~8-10 GiB
+# compressed, and the Oracle repository sits at 67 GiB on a disk with 77 GiB
+# free, so a few of them would fill it. They still get two copies off this
+# machine - the local array and the Synology pull, which has 1.5 TB free - and
+# a machine image is worth restoring over the LAN, not over the tailnet from
+# Frankfurt. The data inside Nextcloud is backed up separately under
+# /media/backups/nextcloud and does go off-site.
+restic backup /media/backups /media/photos /root --tag nightly \
+  --exclude /media/backups/dump
 # No forget, no prune. Both are refused by the append-only endpoint, and that is
 # the entire point of moving to it: this host can add backups and can no longer
 # remove one. Retention runs on vps01 instead, as restic-retention.timer, which
