@@ -1,0 +1,9 @@
+---
+- name: Restart rest-server
+  community.docker.docker_compose_v2:
+    project_src: "{{ restic_rest_docker_dir }}"
+    state: restarted
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true

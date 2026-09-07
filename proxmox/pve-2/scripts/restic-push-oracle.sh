@@ -1,7 +1,17 @@
 #!/bin/bash
 set -euo pipefail
-export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
+# rest-server on vps01 in --append-only mode, not the old SFTP chroot. Same
+# repository on the same disk - nothing was copied - reached a different way.
+# Over SFTP this host could delete the off-site copy; over this endpoint it
+# cannot. Proven by curl on 2026-09-07: DELETE on a data pack returns 403,
+# DELETE on a lock returns 200 (restic needs that to run at all), a wrong
+# password returns 401.
+#
+# Credentials live in the URL because restic's rest backend accepts them
+# nowhere else. Built here rather than written inline so the password stays in a
+# 0600 file instead of this repository.
 export RESTIC_PASSWORD_FILE="/root/.restic-oracle-password"
+export RESTIC_REPOSITORY="rest:http://pve-2:$(cat /root/.restic-rest-password)@100.72.22.38:8000/"
 
 HC_URL="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" || true' ERR
@@ -11,11 +21,15 @@ trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" 
 # until someone noticed — the same drift that kept the Immich library out of
 # the DR restore for months. Whatever lands under /media/backups is covered.
 restic backup /media/backups /media/photos /root --tag nightly
-# --group-by host, not the default host+paths. Retention is per group, so
-# changing the backup path set would otherwise strand every older snapshot in
-# a group nothing new ever enters — pinned forever, never pruned. Grouping by
-# host alone lets the policy span a path change.
-restic forget --group-by host --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+# No forget, no prune. Both are refused by the append-only endpoint, and that is
+# the entire point of moving to it: this host can add backups and can no longer
+# remove one. Retention runs on vps01 instead, as restic-retention.timer, which
+# reaches the repository through the filesystem rather than through the port.
+#
+# It also uses --keep-within-* rather than --keep-daily N. A counted policy can
+# be turned against itself: append-only stops deletion but not insertion, so a
+# compromised client that writes a batch of cheap snapshots pushes the real ones
+# out of the retention window and the trusted host deletes them on its behalf.
 # `restic check` on its own reads metadata: the index, the tree structure, that
 # every referenced pack file is present. It never opens those packs, so it
 # passes over a repository whose data has rotted. --read-data-subset opens them,

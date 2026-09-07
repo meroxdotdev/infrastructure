@@ -1,0 +1,40 @@
+---
+# Append-only REST endpoint in front of the restic repository that already lives
+# at /srv/restic-repo/data - the same 67 GiB the SFTP chroot serves, not a copy.
+# Nothing was migrated to stand this up.
+#
+# Why it exists: restic-push-oracle.sh on pve-2 ran backup, then forget --prune,
+# then check, over SFTP with the key held on pve-2. Root there - ransomware, a
+# wrong command, a container that escapes - could therefore delete the off-site
+# copy, and the weekly Synology leg is a push from that same host. Three copies,
+# all destroyable from the one machine most likely to be the problem.
+#
+# --append-only lets a client add data and denies deletion or modification of
+# what is already there. Lock files are the documented exception, which is what
+# keeps "restic backup", "restic check" and "restic unlock" working while
+# "forget" and "prune" cannot run. Retention therefore has to live somewhere
+# else: restic-retention.service on this host reaches the repository through the
+# filesystem rather than through this port, so it keeps full control while pve-2
+# never has it. That asymmetry is the whole design.
+#
+# Bound to the tailnet address deliberately. On 0.0.0.0 this would be an
+# internet-facing service on an Oracle tenancy that is not ours.
+#
+# user 999:987 is the restic-backup account that owns the repository, so files
+# written through here stay readable to the SFTP path during the changeover and
+# to the retention job afterwards.
+services:
+  rest-server:
+    image: {{ restic_rest_image }}
+    container_name: rest-server
+    restart: unless-stopped
+    user: "{{ restic_rest_owner }}"
+    environment:
+      DATA_DIRECTORY: /data
+      PASSWORD_FILE: /auth/.htpasswd
+      OPTIONS: --append-only
+    volumes:
+      - {{ restic_rest_repo_path }}:/data
+      - {{ restic_rest_docker_dir }}/auth:/auth:ro
+    ports:
+      - "{{ restic_rest_listen_ip }}:8000:8000"

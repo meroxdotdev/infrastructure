@@ -1,0 +1,9 @@
+[Unit]
+Description=Expire old snapshots in the off-site restic repository
+Documentation=file:///srv/docker/rest-server/docker-compose.yml
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/restic-retention.sh

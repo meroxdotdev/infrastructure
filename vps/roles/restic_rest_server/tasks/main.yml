@@ -1,0 +1,75 @@
+---
+# Prerequisite this role deliberately does not automate: the htpasswd entry.
+# Creating it needs the client's plaintext password, and the point of the
+# arrangement is that the password is generated on pve-2 and never leaves it —
+# only the bcrypt hash is carried here. Generating it from Ansible would put the
+# plaintext on this host, which is the thing being avoided. See README.md.
+- name: Ensure the rest-server directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ restic_rest_owner.split(':')[0] }}"
+    group: "{{ restic_rest_owner.split(':')[1] }}"
+    mode: "0750"
+  loop:
+    - "{{ restic_rest_docker_dir }}"
+    - "{{ restic_rest_docker_dir }}/auth"
+
+- name: Fail early when no htpasswd entry exists
+  ansible.builtin.stat:
+    path: "{{ restic_rest_docker_dir }}/auth/.htpasswd"
+  register: restic_rest_htpasswd
+
+- name: Refuse to start an endpoint nobody can authenticate to
+  ansible.builtin.assert:
+    that:
+      - restic_rest_htpasswd.stat.exists
+      - restic_rest_htpasswd.stat.size > 0
+    fail_msg: >-
+      {{ restic_rest_docker_dir }}/auth/.htpasswd is missing or empty. Generate
+      the password on the backup client, hash it there with bcrypt ($2a), and
+      copy only the "user:hash" line here. rest-server started without it would
+      warn and serve nothing.
+
+- name: Deploy the rest-server compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ restic_rest_docker_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart rest-server
+
+- name: Start rest-server
+  community.docker.docker_compose_v2:
+    project_src: "{{ restic_rest_docker_dir }}"
+    state: present
+
+# Retention. Runs here rather than on the client precisely because the client
+# cannot delete anything any more; see README.md.
+- name: Install the retention script
+  ansible.builtin.copy:
+    src: restic-retention.sh
+    dest: /usr/local/sbin/restic-retention.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Install the retention units
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - restic-retention.service
+    - restic-retention.timer
+  notify: Reload systemd
+
+- name: Enable the retention timer
+  ansible.builtin.systemd:
+    name: restic-retention.timer
+    enabled: true
+    state: started
+    daemon_reload: true

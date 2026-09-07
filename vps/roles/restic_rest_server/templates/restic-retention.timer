@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily restic retention, after the nightly push has landed
+
+[Timer]
+# pve-2 pushes at 00:10 UTC. 05:00 leaves the backup, and any retry, well clear.
+OnCalendar=*-*-* 05:00:00 UTC
+Persistent=true
+RandomizedDelaySec=10m
+
+[Install]
+WantedBy=timers.target
