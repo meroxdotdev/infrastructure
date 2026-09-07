@@ -17,7 +17,6 @@
 # this repo deliberately does not publish. Real line is in
 # /root/PRIVATE-NOTES.md on pve-2 (restic backs it up). Restoring from this file
 # alone therefore leaves the weekly leg unscheduled - add it back.
-# <min> <hr> * * <day> /root/scripts/weekly-push-to-synology.sh
 
 # --- nightly backup window ---
 # vzdump of VM 101 (home-assistant) removed 2026-08-29: the VM is stopped, is
