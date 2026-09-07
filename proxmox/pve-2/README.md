@@ -37,8 +37,16 @@ Neighbours: [pfSense](../../pfsense/REINSTALL.md)
 ## Ollama VM
 
 Standalone VM (not a Talos node, not part of the K8s cluster) dedicated to
-running Ollama for the alert-triage AI stack (see n8n in
-`kubernetes/apps/default/n8n/`). Kept fully outside the cluster so it gets
+running Ollama.
+
+⚠️ **Nothing calls it since 2026-09-07.** Its only consumer was the alert-triage
+step in n8n, which sat between an alert firing and the phone buzzing and could
+add nothing Alertmanager did not already have; Alertmanager and Flux now reach
+Telegram directly. The daily news digest, the one workflow n8n still runs, calls
+the Anthropic API and never touched Ollama. The VM is left running pending a
+decision about the wider AI agent stack; it is 8 GB of RAM serving nothing.
+
+Kept fully outside the cluster so it gets
 its own hypervisor-enforced memory ceiling instead of sharing a
 kernel/cgroup tree with any kubelet. Not in the Ansible inventory, same as
 everything else on this page — provisioned/documented directly.
@@ -306,17 +314,29 @@ silently otherwise; debug via `journalctl -u ssh` (no auth.log on this
 host). Key rotation: regenerate on VPS, update
 `vault_oracle_vps_to_r730xd_ssh_key` in the vps Ansible vault.
 
-### pve-2 → Synology
+### Synology → pve-2
 
-[`scripts/weekly-push-to-synology.sh`](scripts/weekly-push-to-synology.sh),
-weekly, timed inside the NAS wake window. Schedule is redacted from
-[`etc/crontab`](etc/crontab) — it reveals the wake window; real line is in
-`/root/PRIVATE-NOTES.md`.
+**Reversed on 2026-09-07.** This host used to push, holding a key into the NAS
+and running `rsync --delete` against it, which made the NAS copy destroyable
+from the machine whose compromise is the reason the copy exists. It now holds no
+credential that reaches the NAS at all.
 
-- Dest: `admin@10.57.57.201:/volume1/NetBackup/<category>/`
-- Categories: photos (stale copy), dump, pfsense, longhorn-garage,
-  immich-postgres, oracle-vps, tools, nextcloud
-- Versioned via `rsync --link-dest`, 21-day retention
+The NAS pulls instead, on its own schedule inside its wake window, using two
+keys pinned in this host's `authorized_keys` to `rrsync -ro` over one directory
+each and to the NAS's IP:
+
+```
+restrict,command="rrsync -ro /media/backups",from="10.57.57.201"  nas-pull-backups@storage
+restrict,command="rrsync -ro /media/photos",from="10.57.57.201"   nas-pull-photos@storage
+```
+
+Two keys rather than one rooted at `/media`, so neither can reach
+`/media/library` or `/media/isos`. Writing back returns "sending to read-only
+server is not allowed"; anything that is not rsync returns "SSH_ORIGINAL_COMMAND
+does not run rsync".
+
+Retention (21 days, `--link-dest` versioning) moved to the NAS with the job. See
+[`synology/README.md`](../../synology/README.md).
 
 ⚠️ Retention prunes by **date parsed from the folder name**, never `find
 -mtime` — `rsync -a` copies source mtimes, which once made the script

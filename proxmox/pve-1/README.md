@@ -31,23 +31,59 @@ memory *requests* are about 11 GiB and 32 GiB is comfortable.
 | | |
 |---|---|
 | CPU / RAM | i9-13900HK (6P+8E, 20 threads), 62 GB DDR5 |
-| `nvme1n1` | Proxmox root, LVM/ext4, `/local_data` for ISOs. **1% worn** |
-| `nvme0n1` | ZFS `cluster-storage`, single disk, no redundancy. **33% worn**, 67 TB written |
+| `nvme0n1` | Proxmox root, LVM/ext4, plus `/local_data`. **1% worn**, 3.7 TB written |
+| `nvme1n1` | `cluster-storage`, LVM-thin, single disk, no redundancy. **34% worn**, 68 TB written |
 | Network | 2x 2.5 GbE Intel I226 (`enp89s0` in use, `enp90s0` unused). Links at **1 GbE** — the switch is the ceiling, not the NIC |
 | GPU | Iris Xe, bound to `vfio-pci`, passed to VM 810 |
 | Power | 0.83 W package idle after tuning |
 
 **Both NVMe are Crucial P3 Plus — QLC, DRAM-less.** The split matters: the OS
-is on `nvme1n1` (1% worn), and `cluster-storage` — etcd, and nothing else of
-consequence since Longhorn scheduling was disabled on this node — is on
-`nvme0n1`, which has burned a third of its endurance. Keep it
-that way. Putting VM images on the OS disk means one failure takes both
+is on `nvme0n1` (1% worn), and `cluster-storage` — VM 810, which is etcd plus a
+Longhorn replica — is on `nvme1n1`, which has burned a third of its endurance.
+Keep it that way. Putting VM images on the OS disk means one failure takes both
 Proxmox and the cluster.
 
-Measured 2026-09-01: 67 TB written over 10,987 power-on hours ≈ 147 GB/day,
-leaving ~153 TB and therefore roughly **three years**. Not urgent. A TLC
-replacement is worth doing for etcd fsync latency rather than for endurance,
-and it is the precondition for ever holding a second Longhorn replica here.
+⚠️ **This table had the two disks the wrong way round until 2026-09-07**, and
+the error had already been copied into `docs/plan-2026-09.md`, where Week 3's
+command block would have run `pvcreate` against the running hypervisor's own
+system disk. `talos/THREE-NODE.md` was right the whole time. Confirmed by serial:
+`cluster-storage` is `nvme-CT1000P3PSSD8_24534D2A66C6` → `nvme1n1`; the `pve`
+volume group is on `nvme0n1p3`.
+
+## `cluster-storage` is LVM-thin, not ZFS, since 2026-09-07
+
+It was a single-disk ZFS pool, and a single-disk pool is the worst of both
+worlds: ZFS could detect corruption there but never repair it, because there was
+no redundancy to repair from, while a 16K `volblocksize` under 4K guest writes
+cost a measured **3.5x** write amplification — 0.365 MB/s inside the VM against
+1.29 MB/s reaching the disk, or ~104 GB/day on QLC already at 34%.
+
+Converted in place without destroying the VM: both disks moved to `local-data`,
+the pool destroyed, LVM-thin created, the disks moved back. Zeroing is disabled
+(`lvchange --zero n`) because on a 512 KiB chunk it would write half a megabyte
+of zeros for every first touch of a 4 KiB block, which is the amplification this
+was meant to remove.
+
+⚠️ **The round trip did not survive cleanly.** The node booted, mounted a clean
+XFS and kept its cached images, but etcd and kubelet both spun at 100% CPU on a
+single thread and produced not one line of log. Wiping `EPHEMERAL` and letting
+the node rejoin fixed it immediately, which points at something in the
+containerd store. **Do not move a Talos node's disk between storage backends
+expecting to keep `/var`** — plan for the wipe, the way the original plan did.
+
+Recovery afterwards needed, in this order and no other, because Longhorn refuses
+each step until the one before it is done: delete the node's replicas, set the
+disk `allowScheduling: false`, remove it from `spec.disks`, re-add it identically.
+Only then does Longhorn read the new `diskUUID` instead of reporting
+`DiskFilesystemChanged`.
+
+Windows 11 (VM 101) now lives on `local-data` permanently rather than beside the
+cluster node. One disk, one purpose.
+
+**Expected:** ~104 GB/day → ~40 GB/day, taking remaining endurance from roughly
+three years to nine. Measure on the host, never in the guest:
+`grep ' nvme1n1 ' /proc/diskstats`. That mistake once put this disk's life at
+"fourteen years".
 
 ## BIOS
 
