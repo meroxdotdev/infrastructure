@@ -29,10 +29,12 @@ PWFILE=/etc/restic/repo-password
 IMAGE=restic/restic:0.18.0
 OWNER=999:987          # restic-backup, which owns the repository
 
-# Create a check at healthchecks.io and paste its URL here. Without it a failure
-# of this job is silent, and a retention job that silently stops is a repository
-# that silently fills the disk.
-HC_URL=""
+# Redacted here as everywhere else in this repository; the live value is on
+# vps01. Without it a failure of this job is silent, and this is the only thing
+# left that prunes the off-site repository - pve-2 cannot, by design. A
+# retention job that stops quietly is a disk that fills quietly, and the first
+# symptom is backups failing.
+HC_URL="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 
 fail() {
   echo "restic-retention: $*" >&2
