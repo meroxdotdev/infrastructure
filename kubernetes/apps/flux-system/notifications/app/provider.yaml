@@ -1,10 +1,18 @@
 ---
+# Flux speaks Telegram natively, so the generic webhook into n8n was a
+# translation layer between two things that already share a language. Same
+# reasoning as the Alertmanager receiver: see alertmanagerconfig.yaml.
+#
+# `address` is not set on purpose - the telegram provider ignores it entirely.
+# The destination is `channel`, which takes the chat id (a negative number for
+# a group, or @username), and the bot token comes from `secretRef` under the
+# key `token`.
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Provider
 metadata:
-  name: n8n
+  name: telegram
 spec:
-  type: generic
-  address: http://n8n.default.svc.cluster.local:8080/webhook/flux
+  type: telegram
+  channel: "7385893017"
   secretRef:
-    name: n8n-webhook-secret
+    name: telegram-token

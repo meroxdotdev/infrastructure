@@ -4,4 +4,4 @@ namespace: flux-system
 resources:
   - ./provider.yaml
   - ./alert.yaml
-  - ./n8n-secret.sops.yaml
+  - ./telegram-secret.sops.yaml

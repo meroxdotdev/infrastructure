@@ -36,7 +36,7 @@ spec:
           - name: alertname
             value: Watchdog
             matchType: "="
-      - receiver: n8n
+      - receiver: telegram
         matchers:
           - name: severity
             value: "critical|warning"
@@ -58,12 +58,31 @@ spec:
         - urlSecret:
             name: alertmanager-secret
             key: ALERTMANAGER_HEARTBEAT_URL
-    - name: n8n
-      webhookConfigs:
-        - url: http://n8n.default.svc.cluster.local:8080/webhook/alertmanager
-          httpConfig:
-            authorization:
-              type: Bearer
-              credentials:
-                name: alertmanager-secret
-                key: N8N_WEBHOOK_SECRET
+    # Straight to Telegram. This used to POST to n8n, which called a qwen3:4b on
+    # CPU to reword the alert and then sent it on. That put two processes that
+    # can hang between an alert firing and the phone buzzing, and the model could
+    # add nothing Alertmanager did not already have - the annotations above are
+    # written by hand and already name the cause. On 2026-09-07 the alert that
+    # started the etcd investigation arrived reading "(AI triage unavailable)":
+    # the model was down, the alert was fine without it. Had n8n itself been
+    # down, nothing would have arrived at all, and silence reads like health.
+    #
+    # No parseMode on purpose. HTML or Markdown means Telegram rejects the whole
+    # message if any annotation contains an unescaped <, & or *, and the failure
+    # is a dropped alert. Plain text cannot fail that way.
+    #
+    # chatID is an integer literal because the CRD types it that way - it cannot
+    # be a secretRef. That is fine: the chat id identifies a conversation, it
+    # does not authorise anything. The bot token is what authorises, and that
+    # stays in the secret.
+    - name: telegram
+      telegramConfigs:
+        - botToken:
+            name: alertmanager-secret
+            key: TELEGRAM_BOT_TOKEN
+          chatID: 7385893017
+          sendResolved: true
+          message: |-
+            {{ if eq .Status "firing" }}🔴 FIRING{{ else }}✅ RESOLVED{{ end }} — {{ .CommonLabels.alertname }}
+            {{ range .Alerts }}{{ .Annotations.summary }}
+            {{ end }}

@@ -2,10 +2,10 @@
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Alert
 metadata:
-  name: n8n
+  name: telegram
 spec:
   providerRef:
-    name: n8n
+    name: telegram
   eventSeverity: error
   # eventSources namespace is not wildcard-capable - list every namespace
   # that actually has Kustomizations/HelmReleases (see `flux get all -A`).
