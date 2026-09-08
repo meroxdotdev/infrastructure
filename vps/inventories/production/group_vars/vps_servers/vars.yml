@@ -20,18 +20,17 @@ traefik_docker_dir:      /srv/docker/oracle-cloud/traefik
 guacamole_docker_dir:    /srv/docker/oracle-cloud/guacamole
 authentik_docker_dir:    /srv/docker/oracle-cloud/authentik
 
-# Routing vars needed by traefik config.yml.j2 regardless of which roles run
-# Jellyfin — the only service served directly on the VPS public IP.
-# Backend is the dedicated K8s LB, reached over Tailscale.
-# See docs/jellyfin-public-exposure.md.
-# Points at the dedicated public instance (10.57.57.108), not the personal
-# one on .107. Separate hostname on purpose: with split-horizon DNS a shared
-# name would resolve to different servers depending on where you are, and a
-# friend on the home wifi would land on the personal instance where their
-# account does not exist.
-jellyfin_domain: "studio.merox.dev"
-jellyfin_backend_ip: "10.57.57.108"
-jellyfin_backend_port: 8096
+# vps01 serves nothing to the internet directly. Everything public arrives
+# through the Cloudflare tunnel, and everything internal through the tailnet.
+# The jellyfin_* vars that used to live here moved out with the `public`
+# entrypoint on 2026-09-08 — they belong to edge_servers, which still has them.
+#
+# The two roles below existed only to guard that entrypoint. Turning them off
+# rather than deleting them from site.yml keeps one switch to flip if a public
+# listener is ever put back on this host; on a rebuilt edge, edge.yml enables
+# them there instead.
+geoblock_enabled: false
+fail2ban_jellyfin_enabled: false
 
 guacamole_domain: "rmt.merox.dev"
 guacamole_ip: "172.25.10.33"
@@ -55,7 +54,8 @@ tailscale_authkey_expires: "2027-06-14"
 # vault has: vault_tailscale_auth_key  →  role expects: tailscale_auth_key
 tailscale_auth_key: "{{ vault_tailscale_auth_key }}"
 
-# fail2ban posts here on every ban against the public Jellyfin entrypoint.
+# Used by fail2ban's ban action. Idle on vps01 while fail2ban_jellyfin_enabled
+# is false; kept because edge_servers reads the same vault key.
 fail2ban_notify_url: "{{ vault_fail2ban_notify_url }}"
 
 # vault has: authentik_pg_pass  →  role/template expects: authentik_db_password

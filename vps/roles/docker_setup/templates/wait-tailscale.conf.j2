@@ -1,0 +1,18 @@
+# Docker must not start before tailscale0 has an address.
+#
+# Several containers publish on the tailnet address rather than 0.0.0.0 —
+# pihole's :53, portainer, the restic rest-server. Binding a specific address
+# fails outright if that address does not exist yet, and on a cold boot
+# tailscaled is not necessarily up when docker is. The result is a container
+# that never starts, on a host that looks healthy.
+#
+# The loop and not just After=: the unit is active before the interface has
+# been assigned its address, so ordering alone is not enough. It gives up
+# after {{ docker_wait_for_tailscale_timeout }}s and lets docker start anyway —
+# a boot that continues with one broken binding beats a boot that hangs.
+[Unit]
+After=tailscaled.service
+Wants=tailscaled.service
+
+[Service]
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 {{ docker_wait_for_tailscale_timeout }}); do ip -4 addr show tailscale0 | grep -q "100\." && break; sleep 1; done'

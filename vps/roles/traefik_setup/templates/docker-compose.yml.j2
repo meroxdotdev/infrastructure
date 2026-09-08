@@ -10,12 +10,21 @@ services:
       {{ traefik_network_name }}:
         ipv4_address: {{ traefik_container_ip }}
     ports:
-      - "80:80"
-      # Host :443 maps to the `public` entrypoint, not to `https`. The
-      # Cloudflare tunnel reaches `https` over the docker bridge instead
-      # (172.25.10.2:443), so it never traverses a published host port.
-      # See docs/jellyfin-public-exposure.md.
-      - "443:8443"
+      # The tailnet address, never 0.0.0.0 — the same rule pihole, portainer
+      # and the rest-server follow on this host.
+      #
+      # This is the whole access control. Pi-hole resolves *.cloud.merox.dev
+      # here, so internal clients reach the proxy on these ports, and nothing
+      # off the tailnet can open them at all — including from the internet,
+      # where the OCI security list still allows :443 and would otherwise let
+      # anyone reach sso/rmt directly with a Host header, bypassing the
+      # Cloudflare proxy. Publishing on 0.0.0.0 here re-opens that hole even
+      # though no router is bound to a "public" entrypoint any more.
+      #
+      # cloudflared does not use these ports: it dials the container's bridge
+      # address. docker_setup holds docker's start until this address exists.
+      - "{{ traefik_bind_ip }}:80:80"
+      - "{{ traefik_bind_ip }}:443:443"
     dns:
       - 1.1.1.1
       - 8.8.8.8

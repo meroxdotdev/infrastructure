@@ -76,6 +76,14 @@
     modification_time: preserve
     access_time: preserve
 
+# A pre-Ansible copy from 2026-05 sat beside the real file. `docker compose`
+# warns about the ambiguity and picks the .yml, but it would silently use this
+# four-month-old config the moment the .yml were missing.
+- name: Remove the stale docker-compose.yaml
+  ansible.builtin.file:
+    path: "{{ traefik_docker_dir }}/docker-compose.yaml"
+    state: absent
+
 - name: Deploy Traefik docker-compose.yml
   template:
     src: docker-compose.yml.j2

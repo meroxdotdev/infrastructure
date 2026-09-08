@@ -4,3 +4,10 @@
     name: docker
     state: restarted
     daemon_reload: yes
+
+# A systemd drop-in only governs the next start, so reloading the unit
+# definitions is enough — restarting docker here would bounce every container
+# on the host for a change that has no effect until the next boot.
+- name: reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes

@@ -4,10 +4,18 @@
 What faces the internet is a **second, dedicated Jellyfin** with a curated 1080p
 library on SSD. The personal instance (4K, SAS) is never reachable from outside.
 
-**Status:** live on `edge-fra` since 2026-08-30. DNS, certificate, geoblock,
-fail2ban and the egress guard all verified end to end with
-`bash scripts/edge-verify.sh` (18 checks). Only `vps01`'s old public path is
-still to be retired — see below.
+**Status: nothing is publicly served right now.** `jellyfin-public` is
+commented out of `kubernetes/apps/default/kustomization.yaml`, and the
+`edge-fra` instance it ran on is gone — it lived in a borrowed tenancy, which
+this document always treated as temporary. What is written below describes the
+design as it was verified live between 2026-08-30 and its teardown
+(`bash scripts/edge-verify.sh`, 18 checks), and is kept because rebuilding it
+is `cd vps && make edge-setup` plus a DNS record.
+
+`vps01`'s older public path — the one this document said was "still to be
+retired" — was retired on 2026-09-08. It had outlived its purpose by nine days
+and was actively breaking internal access; see
+[the entrypoint split](#the-entrypoint-split-on-vps01-retired) below.
 
 Build log: `git show 9385285:docs/jellyfin-public-exposure-log.md`.
 
@@ -286,3 +294,52 @@ still resolves to `10.57.57.101` at full bitrate.
 Sharing a library outside the household is a legal exposure separate from any
 provider clause, and on a borrowed account it is someone else's name on the
 terms. Say so to them.
+
+## The entrypoint split on vps01, retired
+
+Until 2026-09-08 `vps01`'s Traefik had two TLS entrypoints: `https` on
+container :443, unpublished and reached only by cloudflared over the docker
+bridge, and `public` on container :8443, published as host :443 and carrying
+`studio.merox.dev` alone. The split was sound for what it defended against —
+an IP allowlist cannot stop someone pointing their own Cloudflare zone at a
+known origin, but a router that does not exist on a port cannot be reached
+through it whatever Host header arrives.
+
+It was superseded on 2026-08-30 when `studio.merox.dev` moved to `edge-fra`,
+and from then on `public` carried nothing.
+
+**What it cost while it stood.** Pi-hole answers `*.cloud.merox.dev` with
+`vps01`'s tailnet address, so every internal client resolved to the host and
+connected to host :443 — the `public` entrypoint, where none of those routers
+existed. Everything internal returned a bare 404 over the tailnet: Joplin,
+Authentik, Guacamole, Homepage. It surfaced as a phone that would not sync,
+and the access log is what identified it, 28 unmatched `/api/sessions` requests
+from one tailnet address:
+
+```sh
+sudo grep joplin /var/log/traefik/access.log | jq -r 'select(.RouterName == null)'
+```
+
+`RouterName: null` on a 404 is the signature: the request arrived and matched
+no router, rather than reaching a router whose backend was down.
+
+**What replaced it.** One entrypoint, `https` on :443, published on the tailnet
+address only and also reached on the docker bridge by cloudflared.
+
+The split was doing one job worth keeping: making sure `sso.merox.dev` could
+not be reached straight off the public IP with a Host header, bypassing the
+Cloudflare proxy. Collapsing the entrypoints does not by itself preserve that —
+the OCI security list on `vps01` still allows `TCP 443` from `0.0.0.0/0`, and
+`geoblock_ro`, which used to drop that traffic, went off with the entrypoint it
+guarded. A `0.0.0.0` bind would therefore have re-opened exactly the hole
+commit `6b34494` was written to close.
+
+Binding the published ports to the tailnet address keeps the property, and
+keeps it in git rather than in a console setting. Closing `TCP 443` in the
+security list is still worth doing as a second layer — it is the only thing
+that stops a future `0.0.0.0` bind from being quietly wrong.
+
+**If a public listener is ever wanted here again**, `git show 6b34494` has the
+split, and `geoblock_enabled` / `fail2ban_jellyfin_enabled` in
+`group_vars/vps_servers/vars.yml` are the switches that turn its filtering back
+on. On a rebuilt edge none of that applies — `edge_proxy` carries its own copy.

@@ -2,44 +2,51 @@ api:
   dashboard: true
   debug: false
 
-# Two deliberately separate paths:
+# One TLS entrypoint, `https` on :443, reached two ways:
 #
-#   https   :443   container port only. NOT published to the host any more —
-#                  the Cloudflare tunnel reaches it over the docker bridge at
-#                  172.25.10.2:443. Serves everything that existed before, so
-#                  the ~9 `entrypoints=https` labels stay untouched.
-#   public  :8443  container port, published as host :443 and opened in the
-#                  Oracle NSG. ONLY the jellyfin router binds to it, so a
-#                  request to the public IP with `Host: sso.merox.dev` gets a
-#                  404 — that router does not exist on this port.
+#   tailnet    published on this host's tailscale address only. Pi-hole
+#              answers *.cloud.merox.dev with that address, so internal
+#              clients land here.
+#   internet   cloudflared dials the container on the docker bridge
+#              (172.25.10.2:443). It never touches a published host port.
 #
-# asDefault on `https`: a router with no `entryPoints` otherwise binds to ALL
-# entrypoints (doc.traefik.io/traefik/reference/install-configuration/
-# entrypoints/). With this, anything forgotten stays private rather than
-# exposed to the internet.
+# Nothing is published to the internet. That property is in the compose port
+# bindings, not here — see docker-compose.yml.j2, which explains why it cannot
+# be relaxed to 0.0.0.0.
+#
+# There used to be a second `public` entrypoint on :8443, published as host
+# :443, carrying studio.merox.dev alone. It was retired on 2026-09-08: that
+# hostname moved to edge-fra on 2026-08-30 and the split had been marked for
+# removal since. While it stood it owned host :443, so every tailnet client
+# asking for an internal hostname reached an entrypoint with no matching
+# router and got a 404 — which is how it was found, with Joplin failing to
+# sync from a phone. `git show 6b34494` has the split if it is ever needed
+# again; on a rebuilt edge it is edge_proxy's job, not this role's.
+#
+# asDefault stays: it is a no-op with a single entrypoint, but if a second one
+# is ever added here, a router that forgets to declare `entryPoints` binds to
+# every entrypoint. This keeps the failure mode "stays private".
 entryPoints:
   http:
     address: ":80"
     http:
       redirections:
         entryPoint:
-          to: public
+          to: https
           scheme: https
   https:
     address: ":443"
     asDefault: true
-  public:
-    address: ":8443"
 
-# Access log. Two reasons: nothing else records who reached the public
-# entrypoint, and fail2ban needs a file to read failed logins from.
+# Access log. Kept after the public entrypoint was retired: it is the only
+# record of what reached this proxy, and it is what identified the 404s above.
 #
-# Only 4xx/5xx are kept. Successful playback would otherwise write a line per
-# HLS segment and drown the signal.
+# Only 4xx/5xx are kept — a request that worked is not interesting here, and
+# filtering keeps the file small enough to read by hand.
 #
-# Jellyfin sometimes carries an api_key in the query string, and RequestPath
-# includes it. The file is therefore root-only and rotated; do not relax those
-# permissions or ship it somewhere less protected.
+# Request paths can carry tokens in the query string, so the file stays
+# root-only and rotated; do not relax those permissions or ship it somewhere
+# less protected.
 accessLog:
   filePath: /var/log/traefik/access.log
   format: json

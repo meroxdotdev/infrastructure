@@ -66,9 +66,26 @@
     msg: "{{ geoblock_run.stdout_lines | default(['skipped']) }}"
   tags: ['geoblock', 'firewall']
 
-# Disabling: `geoblock_enabled: false` removes the rule but leaves the set
-# and the units on disk — reversible from a single variable.
+# Teardown, when `geoblock_enabled: false`. The rule goes, the units stop, and
+# the ipset and unit files stay on disk — reversible from the single variable.
 #
+# Order matters. The units are stopped FIRST: geoblock.timer fires the refresh
+# script, and a refresh landing between the delete and the stop puts the rule
+# straight back. Observed doing exactly that on 2026-09-08. Disabling them is
+# what makes the teardown survive a reboot — geoblock.service re-applies the
+# rule at every boot.
+- name: Stop and disable the units when disabled
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+  loop:
+    - geoblock.service
+    - geoblock.timer
+  when: not geoblock_enabled
+  failed_when: false
+  tags: ['geoblock', 'firewall']
+
 # match_set with a "!" prefix negates it (confirmed against the module
 # source: produces "-m set ! --match-set <name> src", matching the rule
 # geoblock-refresh.sh actually creates) - this must mirror that rule
@@ -89,4 +106,24 @@
     state: absent
   when: not geoblock_enabled
   failed_when: false
+  tags: ['geoblock', 'firewall']
+
+# The task above reports `changed` whether or not it matched anything, and an
+# already-clean chain is a legitimate state, so it cannot fail loudly on its
+# own. Assert the outcome instead of trusting the report.
+- name: Read back the chain after teardown
+  ansible.builtin.command: "iptables -S {{ geoblock_chain }}"
+  register: geoblock_chain_rules
+  changed_when: false
+  when: not geoblock_enabled
+  tags: ['geoblock', 'firewall']
+
+- name: Fail if the DROP rule survived
+  ansible.builtin.assert:
+    that: geoblock_set_name not in geoblock_chain_rules.stdout
+    fail_msg: >-
+      {{ geoblock_set_name }} is still referenced in {{ geoblock_chain }} after
+      teardown. Something re-added it: check that geoblock.timer is stopped,
+      then iptables -S {{ geoblock_chain }}
+  when: not geoblock_enabled
   tags: ['geoblock', 'firewall']

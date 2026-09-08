@@ -1,74 +1,14 @@
+# Dynamic configuration: shared middlewares only.
+#
+# The docker-label routers reference `default-headers@file`, so a parse error
+# in this file takes all of them down, not just what is defined here.
+#
+# It used to also carry the studio.merox.dev routers on the `public`
+# entrypoint. Both were retired on 2026-09-08 together with that entrypoint —
+# the hostname is served from edge-fra, whose own copy of this file lives in
+# vps/roles/edge_proxy. See docs/jellyfin-public-exposure.md.
 http:
-  routers:
-    # ---------------------------------------------------------------------
-    # Jellyfin — the ONLY router bound to the `public` entrypoint (:443,
-    # exposed to the internet through the Oracle NSG). Everything else lives
-    # on `https` (:8443), which is not published in docker and is reachable
-    # only by cloudflared.
-    #
-    # The property this buys: `curl -H "Host: sso.merox.dev" https://<VPS-IP>`
-    # returns 404, because that router does not exist on this port. Isolation
-    # by architecture, not by an IP allowlist — an allowlist is bypassable,
-    # since anyone can point a free Cloudflare zone at this origin IP and
-    # arrive from legitimate Cloudflare addresses.
-    #
-    # RO geoblocking is NOT here: it runs as an ipset rule in DOCKER-USER,
-    # before TLS. See vps/roles/geoblock_ro/README.md for why.
-    # ---------------------------------------------------------------------
-    jellyfin:
-      entryPoints:
-        - "public"
-      rule: "Host(`{{ jellyfin_domain }}`)"
-      middlewares:
-        - default-headers
-      tls:
-        certResolver: cloudflare
-      service: jellyfin
-
-    # Same backend, login endpoint only, with a rate limit.
-    # Higher `priority` so it wins over the Host rule above.
-    jellyfin-auth:
-      entryPoints:
-        - "public"
-      rule: "Host(`{{ jellyfin_domain }}`) && PathPrefix(`/Users/AuthenticateByName`)"
-      priority: 100
-      middlewares:
-        - jellyfin-login-ratelimit
-        - default-headers
-      # TLS on, but no certResolver: the router above already requests the
-      # certificate for this hostname, and Traefik's certificate store is
-      # global. Two routers on one host both asking ACME race each other into
-      # "81058: An identical record already exists" on the _acme-challenge TXT
-      # record, and neither gets a certificate.
-      tls: {}
-      service: jellyfin
-
-  services:
-    jellyfin:
-      loadBalancer:
-        # Dedicated K8s LB (jellyfin-external), separate from the internal
-        # gateway. Traffic reaches it over Tailscale — pfSense is the subnet
-        # router.
-        servers:
-          - url: "http://{{ jellyfin_backend_ip }}:{{ jellyfin_backend_port }}"
-        passHostHeader: true
-
   middlewares:
-    # 5 attempts per minute per source IP. `sourceCriterion` is deliberately
-    # omitted: Traefik then defaults to the request's remote address, which is
-    # exactly what is wanted here. There is no proxy in front of the `public`
-    # entrypoint, so X-Forwarded-For would be attacker-controlled.
-    #
-    # Do not write `ipStrategy: {}` to express the default — Traefik rejects it
-    # with "ipStrategy cannot be a standalone element", and a file-provider
-    # parse error takes down every middleware in this file, including
-    # default-headers@file that the docker-label routers depend on.
-    jellyfin-login-ratelimit:
-      rateLimit:
-        average: 5
-        period: 1m
-        burst: 3
-
     https-redirectscheme:
       redirectScheme:
         scheme: https

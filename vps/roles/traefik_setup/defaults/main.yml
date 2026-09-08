@@ -9,3 +9,8 @@ traefik_container_ip: 172.25.10.2
 traefik_domain: "traefik.cloud.merox.dev"
 traefik_wildcard_domain: "cloud.merox.dev"
 traefik_log_dir: /var/log/traefik
+
+# Address the proxy is published on. Read from facts so a DR rebuild onto a
+# new tailnet address needs no edit here; tailscale_expected_ip is the
+# documented value dr-verify diffs against and serves as the fallback.
+traefik_bind_ip: "{{ ansible_facts.tailscale0.ipv4.address | default(tailscale_expected_ip, true) }}"

@@ -76,3 +76,30 @@ docker exec garage /garage bucket list
 kubectl -n longhorn-system get secret minio-secret
 ```
 
+
+## A `*.cloud.merox.dev` hostname returns 404 on the tailnet
+
+The app is probably fine — check whether the request matched a router at all.
+
+```bash
+# on vps01. RouterName null = arrived, matched nothing. A router with a dead
+# backend gives 502 instead, and names itself.
+sudo jq -r 'select(.DownstreamStatus >= 400)
+  | "\(.time) \(.RequestHost)\(.RequestPath) \(.DownstreamStatus) \(.RouterName // "NO ROUTER") <- \(.ClientHost)"' \
+  /var/log/traefik/access.log | tail
+
+sudo docker inspect <container> --format '{{json .Config.Labels}}' | jq   # rule + entrypoint
+sudo docker exec traefik wget -qO- http://localhost:8080/api/http/routers  # if the dashboard is up
+```
+
+Then confirm the entrypoint the client actually lands on. Pi-hole resolves
+these names to vps01's tailnet address, so the client reaches the *published*
+host port — which is not necessarily the entrypoint the router is bound to.
+
+```bash
+sudo docker inspect traefik --format '{{json .NetworkSettings.Ports}}' | jq
+curl -sk --resolve <host>:443:100.72.22.38 -o /dev/null -w '%{http_code}\n' https://<host>/
+```
+
+A whole-host version of this bug is written up in
+[jellyfin-public-exposure.md](jellyfin-public-exposure.md#the-entrypoint-split-on-vps01-retired).

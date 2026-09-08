@@ -28,3 +28,8 @@ docker_users: []
 
 # Install Docker Compose V2 plugin
 docker_install_compose_plugin: true
+
+# Hold docker's start until tailscale0 has an address. Needed on any host with
+# containers that publish on the tailnet address instead of 0.0.0.0.
+docker_wait_for_tailscale: true
+docker_wait_for_tailscale_timeout: 60

@@ -44,6 +44,31 @@
   notify: restart docker
   tags: ['docker', 'setup', 'packages']
 
+# Before the service is started, so a first run on a fresh host already has it.
+- name: Create the docker systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+    mode: '0755'
+  tags: ['docker', 'setup']
+
+- name: Order docker after tailscale
+  ansible.builtin.template:
+    src: wait-tailscale.conf.j2
+    dest: /etc/systemd/system/docker.service.d/wait-tailscale.conf
+    mode: '0644'
+  when: docker_wait_for_tailscale
+  notify: reload systemd
+  tags: ['docker', 'setup']
+
+- name: Remove the tailscale ordering when not wanted
+  ansible.builtin.file:
+    path: /etc/systemd/system/docker.service.d/wait-tailscale.conf
+    state: absent
+  when: not docker_wait_for_tailscale
+  notify: reload systemd
+  tags: ['docker', 'setup']
+
 - name: Ensure Docker service is started and enabled
   ansible.builtin.systemd:
     name: docker
