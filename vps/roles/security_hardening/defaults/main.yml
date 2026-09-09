@@ -52,3 +52,11 @@ fail2ban_notify_url: ""
 # Defined here as well as in traefik_setup: this role runs first and has to
 # create the file before fail2ban starts. Keep the two in step.
 traefik_log_dir: /var/log/traefik
+
+# `no`, not `prohibit-password`. The host has had root SSH off since before this
+# role existed, and prohibit-password would re-open it for whoever holds a key in
+# /root/.ssh/authorized_keys — which on 2026-09-09 still listed root@px-0, a
+# decommissioned host, and one unidentified 2048-bit RSA key. Root has not logged
+# in over SSH in the journal's memory. Ansible connects as `ubuntu` and escalates,
+# so nothing here needs it.
+ssh_permit_root_login: "no"
