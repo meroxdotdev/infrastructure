@@ -44,12 +44,41 @@ previous dated copy; only genuinely new files cross the wire.
 
 `pull-from-pve2.sh` is not in cron. DSM owns scheduling through Control Panel →
 Task Scheduler, and a hand-edited `/etc/crontab` is liable to be rewritten by
-DSM. Create a weekly user-defined script task running
-`/volume1/NetBackup/pull-from-pve2.sh` as root, inside the NAS's wake window.
+DSM. The task exists as of 2026-09-09: a weekly user-defined script running
+`bash /volume1/NetBackup/pull-from-pve2.sh` as **root** — it needs root to write
+over the mixed ownership left by the old push.
 
-Until that task exists this runs only when started by hand, and the
-`pve-push-synology` healthcheck (period 1 week, grace 1 day) will go red — which
-is the intended behaviour, not a bug.
+The times are deliberately not in this file. They are the NAS's wake window, and
+this repository is public; a window is the one thing worth knowing about a
+machine that holds the only offline copy. They live in `/root/PRIVATE-NOTES.md`
+on `pve-2`, next to the WoL MAC, for the same reason the weekly crontab line is
+redacted there — see `proxmox/pve-2/REINSTALL.md` §9.
+
+The order those times have to keep, which is the part worth writing down:
+
+1. The NAS wakes on an RTC schedule. Nothing in cron does this, so it is
+   invisible from the shell — `wakeonlan` with the MAC from the private notes is
+   the manual equivalent.
+2. `pve-2` refreshes `/media/backups` — garage metadata, etcd, ZFS snapshots,
+   restic, then the nightly checks. About twenty minutes, all in its own crontab.
+3. **Then** the pull runs. Earlier and it copies yesterday's set while tonight's
+   is still being written.
+4. The NAS powers itself off on the schedule's other half.
+
+Step 3 must finish before step 4, and DSM's scheduled power-off does not wait
+for a running task. A truncated pull is not corruption — `rsync` repairs it the
+following week — but it leaves a dated directory that looks like a copy and is
+not one, so leave real margin rather than the minimum that fits. The gap was 15
+minutes until 2026-09-09 and is now 95.
+
+Measured cost, so the margin can be judged: 45 s for a one-day delta, 3 min for
+the same set pulled again. Both against a recent `--link-dest` base — a full
+week of deltas moves more, mostly new Longhorn chunks and borg segments, which
+are genuinely new files and do cross the wire.
+
+If the task is ever lost, this runs only when started by hand, and the
+`pve-push-synology` healthcheck (period 1 week, grace 1 day) goes red — which is
+the intended behaviour, not a bug.
 
 ## Stale keys, not touched
 
