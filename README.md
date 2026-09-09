@@ -69,15 +69,20 @@ The blog is a separate repo, `meroxdotdev/merox` → Cloudflare Pages.
 
 ## Hardware
 
-| Device | Host | Runs | Specs |
-|---|---|---|---|
-| Beelink GTi13 Ultra | `pve-1` · .254 | `kubernetes-1` (VM 810) | i9-13900HK, 64GB, 2×1TB NVMe. Iris Xe passed through — **the only GPU**, so transcoding lives here. [Runbook](proxmox/pve-1/README.md) |
-| Dell R730xd | `pve-2` · .250 | `kubernetes-2` (VM 811), Nextcloud (VM 1000), Garage LXC | Xeon E5-2630 v4, 251GB, 12× SAS + SSD mirror. Storage, backup hub, NFS. [Runbook](proxmox/pve-2/README.md) · [Reinstall](proxmox/pve-2/REINSTALL.md) |
-| Dell OptiPlex 3050 | `pve-3` · .253 | `kubernetes-3` (VM 812), PDM | i5-6500T, 32GB, Intel D3-S4510 passed raw — **best etcd disk here**. [Runbook](proxmox/pve-3/README.md) |
-| XCY X44 | `fw` · .1 | pfSense | N100, 8GB. Gateway, DHCP, Tailscale subnet router. [Reinstall](pfsense/REINSTALL.md) |
-| Synology DS223+ | `storage` · .201 | Cold copy | 2×2TB RAID1. **Pulls** from pve-2, never pushed to. Asleep most of the week. [Runbook](synology/README.md) |
-| Oracle ARM | `vps01` | Off-site services | 4 vCPU, 24GB, 200GB. Free tier |
-| Dell OptiPlex 3050 | — | Cold spare, off | i5-6500T, 32GB |
+| Device | Host | Runs |
+|---|---|---|
+| Beelink GTi13 Ultra | `pve-1` · .254 | `kubernetes-1` — **the only GPU**, transcoding lives here |
+| Dell R730xd | `pve-2` · .250 | `kubernetes-2`, Nextcloud, Garage. Storage, backup hub, NFS |
+| Dell OptiPlex 3050 | `pve-3` · .253 | `kubernetes-3`, PDM. **Best etcd disk here** |
+| XCY X44 | `fw` · .1 | pfSense — gateway, DHCP, Tailscale subnet router |
+| Synology DS223+ | `storage` · .201 | Cold copy. **Pulls** from pve-2, asleep most of the week |
+| Oracle ARM | `vps01` | Off-site services |
+| Dell OptiPlex 3050 | — | Cold spare, off |
+
+Runbooks: [pve-1](proxmox/pve-1/README.md) · [pve-2](proxmox/pve-2/README.md) ·
+[pve-3](proxmox/pve-3/README.md) · [pfSense](pfsense/REINSTALL.md) ·
+[Synology](synology/README.md). Specs and the reasoning behind each box are on
+the [homelab tour](https://merox.dev/blog/homelab-tour/).
 
 ---
 
