@@ -137,5 +137,4 @@ controlPlane:
 
 # No worker patches: all three nodes are control planes. There is no fourth
 # fault domain to put a worker in, and the workload set fits on one node
-# anyway. machine-longhorn-labels.yaml is unused — the `longhorn: "true"`
-# label it carries is read by nothing.
+# anyway.

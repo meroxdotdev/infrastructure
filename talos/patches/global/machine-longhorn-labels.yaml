@@ -1,4 +1,0 @@
-machine:
-  nodeLabels:
-    longhorn: "true"
-#    intel.feature.node.kubernetes.io/gpu: "true"
