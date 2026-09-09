@@ -1,0 +1,103 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: alloy
+spec:
+  interval: 1h
+  # A HelmRepository, not an OCIRepository like loki beside it. Grafana does not
+  # publish the alloy chart to ghcr.io/grafana/helm-charts, only to the classic
+  # index — checked 2026-09-09. The source kind is theirs to decide, not a
+  # preference here.
+  chart:
+    spec:
+      chart: alloy
+      version: 1.12.1
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+  install:
+    remediation:
+      retries: -1
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  values:
+    fullnameOverride: alloy
+    controller:
+      # One per node, and the config below only asks the API for pods scheduled
+      # on this node — so the work splits by node instead of every replica
+      # reading every pod.
+      type: daemonset
+    alloy:
+      # Nothing here listens for pushed telemetry; Alloy pulls. The port is only
+      # the UI and its own /metrics.
+      extraPorts: []
+      configMap:
+        content: |-
+          // Discover pods on this node only. Without the selector every Alloy in
+          // the DaemonSet would tail every pod in the cluster and Loki would see
+          // each line three times over.
+          discovery.kubernetes "pod" {
+            role = "pod"
+            selectors {
+              role  = "pod"
+              field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+            }
+          }
+
+          // The label set promtail produced, kept identical on purpose: existing
+          // Grafana dashboards and Loki alert rules select on namespace, pod,
+          // container, app and job. Renaming any of them here silently empties
+          // panels rather than breaking anything loudly.
+          discovery.relabel "pod_logs" {
+            targets = discovery.kubernetes.pod.targets
+
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              action        = "replace"
+              target_label  = "namespace"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_name"]
+              action        = "replace"
+              target_label  = "pod"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_container_name"]
+              action        = "replace"
+              target_label  = "container"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+              action        = "replace"
+              target_label  = "app"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+              action        = "replace"
+              target_label  = "job"
+              separator     = "/"
+              replacement   = "$1"
+            }
+          }
+
+          // Reads through the Kubernetes API rather than /var/log/pods, so this
+          // needs no hostPath mount and keeps working if the container runtime
+          // changes its log layout.
+          loki.source.kubernetes "pod_logs" {
+            targets    = discovery.relabel.pod_logs.output
+            forward_to = [loki.write.default.receiver]
+          }
+
+          loki.write "default" {
+            endpoint {
+              // The same headless service promtail wrote to.
+              url = "http://loki-headless.observability.svc.cluster.local:3100/loki/api/v1/push"
+            }
+          }
+    serviceMonitor:
+      enabled: true
