@@ -67,5 +67,16 @@ spec:
   # already carries.
   groups:
     - default
+  parameters:
+    # Metadata only. Longhorn's default for a system backup is if-not-present,
+    # which takes a volume backup of every volume that lacks a current one —
+    # every volume in the cluster, not the `media` group. Observed on
+    # 2026-09-09 while verifying this: a manual run started backing up the
+    # alertmanager PVC and three *-cache volumes, the exact set both other jobs
+    # exclude on purpose.
+    #
+    # So the split is deliberate: this job captures configuration,
+    # backup-homelab-k8s captures data. Neither reaches into the other's job.
+    volume-backup-policy: disabled
   retain: 2
   concurrency: 1
