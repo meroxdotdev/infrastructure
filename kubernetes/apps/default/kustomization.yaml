@@ -21,12 +21,10 @@ resources:
   - ./network-policy.yaml
   # Media Stack
   - ./jellyfin/ks.yaml
-  #- ./jellyfin-public/ks.yaml
   - ./jellyseerr/ks.yaml
   - ./prowlarr/ks.yaml
   - ./qbittorrent/ks.yaml
   - ./radarr/ks.yaml
-  #- ./radarr-public/ks.yaml
   - ./sonarr/ks.yaml
   # Photos
   - ./immich/ks.yaml
