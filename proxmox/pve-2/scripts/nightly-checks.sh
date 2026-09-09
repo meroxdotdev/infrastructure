@@ -1,9 +1,9 @@
 #!/bin/bash
-# The three nightly host checks, one ping.
+# The four nightly host checks, one ping.
 #
 # They run minutes apart, are silent unless something is wrong, and are all
-# investigated the same way — ssh to pve-2 and read the log. Three separate
-# healthchecks would be three places to look for one answer, so this runs them
+# investigated the same way — ssh to pve-2 and read the log. Four separate
+# healthchecks would be four places to look for one answer, so this runs them
 # in order and reports once, naming whichever failed.
 #
 # Each sub-check prints to its own log and exits non-zero on a problem. That
@@ -14,7 +14,7 @@ set -uo pipefail
 HC_URL="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 FAILED=""
 
-for c in sas-health-check spindown-drift-check git-drift-check; do
+for c in sas-health-check spindown-drift-check git-drift-check vzdump-freshness-check; do
   s="/root/scripts/$c.sh"
   if [ ! -x "$s" ]; then
     FAILED="$FAILED $c(missing)"
@@ -31,5 +31,5 @@ if [ -n "$FAILED" ]; then
   exit 1
 fi
 
-echo "$(date '+%F %T') ok (disk health, spin-down, git drift)"
+echo "$(date '+%F %T') ok (disk health, spin-down, git drift, vzdump age)"
 curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true
