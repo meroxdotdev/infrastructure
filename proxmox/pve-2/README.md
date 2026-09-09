@@ -34,72 +34,6 @@ running copy, these are the reviewable ones:
 
 Neighbours: [pfSense](../../pfsense/REINSTALL.md)
 
-## Ollama VM
-
-Standalone VM (not a Talos node, not part of the K8s cluster) dedicated to
-running Ollama.
-
-⚠️ **Nothing calls it since 2026-09-07.** Its only consumer was the alert-triage
-step in n8n, which sat between an alert firing and the phone buzzing and could
-add nothing Alertmanager did not already have; Alertmanager and Flux now reach
-Telegram directly. The daily news digest, the one workflow n8n still runs, calls
-the Anthropic API and never touched Ollama. The VM is left running pending a
-decision about the wider AI agent stack; it is 8 GB of RAM serving nothing.
-
-Kept fully outside the cluster so it gets
-its own hypervisor-enforced memory ceiling instead of sharing a
-kernel/cgroup tree with any kubelet. Not in the Ansible inventory, same as
-everything else on this page — provisioned/documented directly.
-
-- **VMID 105**, name `ollama`, IP `10.57.57.90` (static, cloud-init).
-- 4 vCPU, 8GB RAM hard-capped (`balloon: 0` — won't grow into host
-  headroom under pressure), 40GB disk on `local-zfs`.
-- Ubuntu 24.04 LTS, cloud-init user `ollama`, SSH key-only
-  (`/root/.ssh/ollama-vm-key` on pve-2 — private key lives only there, same
-  discipline as the other restricted keys documented below).
-- Ollama installed via the official install script, `OLLAMA_HOST=0.0.0.0`
-  override in `/etc/systemd/system/ollama.service.d/override.conf` so it's
-  reachable from the K8s cluster (default is loopback-only).
-- Model: `qwen3:4b-instruct`, CPU inference. Nothing on this host has a GPU to
-  give it: the Quadro P2200 sits in the chassis unused since the Nvidia
-  extensions were dropped on 2026-09-01, and the only transcoding GPU in the
-  fleet is `pve-1`'s Iris Xe, passed to `kubernetes-1`.
-- API reachable at `http://10.57.57.90:11434` from anywhere on the LAN/K8s
-  cluster (no auth — trusted network only, not exposed externally).
-
-**Recreating this VM** (host loss, or starting over):
-
-```bash
-# on pve-2, as root
-cd /tmp && wget -q https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img \
-  -O ubuntu-2404-cloudimg.img
-ssh-keygen -t ed25519 -f /root/.ssh/ollama-vm-key -N "" -C "root-to-ollama-vm"
-
-qm create 105 --name ollama --memory 8192 --balloon 0 --cores 4 --cpu host \
-  --net0 virtio,bridge=vmbr0,firewall=1 --scsihw virtio-scsi-single \
-  --ostype l26 --agent enabled=1
-qm importdisk 105 /tmp/ubuntu-2404-cloudimg.img local-zfs
-qm set 105 --scsi0 local-zfs:vm-105-disk-0,iothread=1
-qm set 105 --ide2 local-zfs:cloudinit
-qm set 105 --boot order=scsi0
-qm set 105 --serial0 socket --vga serial0
-qm set 105 --ipconfig0 ip=10.57.57.90/24,gw=10.57.57.1
-qm set 105 --sshkeys /root/.ssh/ollama-vm-key.pub
-qm set 105 --ciuser ollama
-qm resize 105 scsi0 40G
-qm start 105
-
-# once booted (ssh -i /root/.ssh/ollama-vm-key ollama@10.57.57.90):
-curl -fsSL https://ollama.com/install.sh | sudo sh
-sudo mkdir -p /etc/systemd/system/ollama.service.d
-printf '[Service]\nEnvironment="OLLAMA_HOST=0.0.0.0"\n' | sudo tee /etc/systemd/system/ollama.service.d/override.conf
-sudo systemctl daemon-reload && sudo systemctl restart ollama
-ollama pull qwen3:4b-instruct
-```
-
-Nothing on this VM needs backing up — the model is a re-fetchable cache,
-not unique data, and the OS is fully reproducible from the steps above.
-
 ## Nightly schedule
 
 All jobs touching the `media` pool run in one compact window, so scheduled
@@ -235,9 +169,9 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 
 ```
 /media/backups/
-├── dump/              empty — PVE recreates it for any dir storage with
-│                      content=backup. Nothing writes here since the
-│                      home-assistant vzdump was retired 2026-08-29.
+├── dump/              vzdump images of VM 1000, weekly Sat 22:00, keep-last=3.
+│                      Excluded from the restic push — see restic-push-oracle.sh
+│                      for why — so the Synology pull is its only second copy.
 ├── nextcloud/         borg repo, nightly 02:40 (AIO schedules in UTC), written
 │                      by the VM over a forced-command SSH key
 │                      (borg-nextcloud account). See nextcloud/README.md.
