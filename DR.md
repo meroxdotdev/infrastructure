@@ -15,25 +15,26 @@ Previously 2026-08-03 on pve-2/R730xd.
 
 ## Which host to target
 
-**pve-2 (R730xd)** — the default target now. 251 GB of RAM with nothing on it
-but Nextcloud and the storage services, and it is no longer where production
-runs, so a drill there does not touch the live cluster. It cannot test "the
-Beelink died" — the DR VM lands on a different box than production, which is
-exactly what you want here.
+Three nodes since 2026-09-04, one per host: VM 810 on `pve-1`, 811 on `pve-2`,
+812 on `pve-3`. Losing one leaves a quorum, so a single dead host is a
+reschedule, not a DR event. This runbook is for losing the cluster.
 
-**pve-1 (Beelink)** — **production lives here since 2026-09-01.** `kubernetes-1`
-is VM 810 on this host. A drill here means stopping the live cluster first, and
-competing with it for RAM and pool space. The DR VMIDs start at 820 so they
-cannot collide with 810. Use it only to answer "pve-1 died, can we recover onto
-it after a rebuild?", and expect the whole homelab down for the duration.
+| Target | Use it to answer | Cost |
+|---|---|---|
+| `pve-2` (R730xd) | "the cluster is gone, rebuild it" | None. 251 GB RAM, DR VMIDs start at 820 so they cannot collide |
+| `pve-1` (Beelink) | "pve-1 died, can we recover onto it after a rebuild?" | The live node here stops first. Whole homelab down for the drill |
 
-**Sizing:** the DR VM must carry the entire cluster — `vm_memory_mb = 45056`,
-`vm_cores = 14`. 32 GiB is not enough; pods sit `Pending` on
-`Insufficient memory` with 38 GiB of requests.
+**Sizing:** a DR VM that carries the whole workload set needs
+`vm_memory_mb = 45056`, `vm_cores = 14`. 32 GiB leaves pods `Pending` on
+`Insufficient memory` against 38 GiB of requests.
 
-**What neither host tests:** hardware transcoding. Both Jellyfin instances
-request `gpu.intel.com/i915`, which only a node with the Iris Xe passed
-through advertises, so on a DR VM without it they stay `Pending` by design.
+**Replica count is derived, not fixed.** `restore-volume` reads
+`kubectl get nodes` and caps at 3, so a full three-node restore gets 3 and a
+partial rebuild gets what exists. Do not hardcode it.
+
+**What no drill here tests:** hardware transcoding. Jellyfin requests
+`gpu.intel.com/i915`, advertised only by a node with the Iris Xe passed through.
+On a DR VM without it, it stays `Pending` by design.
 
 **Not part of DR at all:** nothing here is public. The Frankfurt edge was
 deleted on 2026-09-08 along with the Jellyfin instance it served —
@@ -189,10 +190,10 @@ kubectl get helmreleases -A | grep -v "True\|READY"
 # Destroy DR VMs after test (or when ready to fail back to prod)
 task dr:destroy-vms
 
-# Restart the prod node — or just `task dr:restore-prod`, which does this
-# and clears the pods orphaned by the shutdown:
-# VM 810 → kubernetes-1 on pve-1 (Beelink). The whole cluster is that one VM
-# since the 2026-09-01 collapse (see talos/THREE-NODE.md).
+# Restart the prod nodes — or `task dr:restore-prod`, which does this and
+# clears the pods orphaned by the shutdown.
+# Three nodes since 2026-09-04, one per host: VM 810 on pve-1, 811 on pve-2,
+# 812 on pve-3. See talos/THREE-NODE.md.
 ```
 
 ---
