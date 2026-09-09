@@ -293,23 +293,19 @@ One-time setup on pve-2:
 
 ```bash
 apt install -y restic
-install -m 600 /path/to/restic-r730xd-to-oracle /root/.ssh/restic-r730xd-to-oracle
-cat >> /root/.ssh/config <<'EOF'
-
-Host oracle-vps-restic
-    HostName 100.72.22.38
-    User restic-backup
-    IdentityFile /root/.ssh/restic-r730xd-to-oracle
-    StrictHostKeyChecking accept-new
-    BatchMode yes
-EOF
-chmod 600 /root/.ssh/config
 openssl rand -base64 32 > /root/.restic-oracle-password   # save in password manager!
 chmod 600 /root/.restic-oracle-password
-export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
+# The rest-server credential, separate from the repo password: it authenticates
+# to the endpoint, it does not decrypt anything. Also in the password manager.
+chmod 600 /root/.restic-rest-password
 export RESTIC_PASSWORD_FILE="/root/.restic-oracle-password"
+export RESTIC_REPOSITORY="rest:http://pve-2:$(cat /root/.restic-rest-password)@100.72.22.38:8000/"
 restic init
 ```
+
+The SFTP chroot this replaced was retired on 2026-09-07 and its key revoked;
+`/srv/restic-repo/.ssh/authorized_keys` on the VPS is empty. Over SFTP this host
+could delete the off-site copy. Over the append-only endpoint it cannot.
 
 Nightly: [`scripts/restic-push-oracle.sh`](scripts/restic-push-oracle.sh),
 cron `10 3 * * *`. Retention `--keep-daily 7 --keep-weekly 4
@@ -318,31 +314,32 @@ cron `10 3 * * *`. Retention `--keep-daily 7 --keep-weekly 4
 Restore from anywhere:
 
 ```bash
-export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"   # ~/.ssh/config alias on pve-2
 export RESTIC_PASSWORD_FILE=/path/to/password             # password manager
+export RESTIC_REPOSITORY="rest:http://pve-2:$(cat /root/.restic-rest-password)@100.72.22.38:8000/"
 restic snapshots && restic restore latest --target /tmp/restored
 ```
 
-Off-host, the alias doesn't exist — use `sftp:restic-backup@<vps-ip>:/data`.
+⚠️ **If pve-2 is gone, both credentials in that command are gone with it.**
+`/root/.restic-rest-password` lives only on pve-2 — inside the backup it is
+needed to open. The repo password is in the password manager; the rest-server
+one is not the thing to go hunting for.
 
-⚠️ **If pve-2 is gone, so is that key.** It lives in `/root/.ssh/` on pve-2,
-which means it only exists inside the backup it is needed to open. Drilled
-2026-08-29 and the way out is the VPS: you reach it over Tailscale
-independently of home, so authorise a fresh key there.
+Do not try to restore the credential. Read the repository where it sits, on the
+VPS, where no pve-2 secret is involved at all — only sudo there and the repo
+password. Verified 2026-09-09:
 
 ```bash
-# on the replacement machine
-ssh-keygen -t ed25519 -f /root/.ssh/restic-recovery -N ""
-
-# on the VPS, as a sudoer
-echo "restrict $(cat /root/.ssh/restic-recovery.pub)" \
-  | sudo tee -a /srv/restic-repo/.ssh/authorized_keys
-
-# back on the replacement machine — the repo password comes from the
-# password manager, it is not on the VPS either
-export RESTIC_REPOSITORY="sftp:restic-backup@100.72.22.38:/data"
-restic snapshots
+# on the VPS
+sudo docker run --rm -u 999:987 \
+  -v /srv/restic-repo/data:/repo -v /etc/restic/repo-password:/pw:ro \
+  -e RESTIC_REPOSITORY=/repo -e RESTIC_PASSWORD_FILE=/pw \
+  restic/restic:0.18.0 snapshots
 ```
+
+This is also how `restic-retention.sh` reaches the repository, so it is a path
+that runs nightly rather than one first tried during a disaster. `/etc/restic/repo-password`
+on the VPS holds the same repo password as the password manager — if the VPS is
+gone too, that is the copy you need.
 
 `restrict` is not optional: without it the key is a general-purpose login on
 the VPS rather than an SFTP-only one. Remove the line once recovery is done —

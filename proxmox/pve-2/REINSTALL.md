@@ -29,9 +29,22 @@ zpool import -f media
 
 Only the restic leg carries `/root`: SSH keys, healthcheck URLs, `PRIVATE-NOTES.md`.
 
+Circular, and the way out is not on this host. Restoring `/root` needs a
+credential to reach the repository, and every such credential lives in `/root`:
+the old SFTP key did, `/root/.restic-rest-password` does now. So do not restore
+`/root` from pve-2 — read the repository on the VPS, where the only secret is
+the repo password from the password manager, and copy `/root` back over
+Tailscale.
+
 ```bash
-export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
-restic restore latest --target / --include /root
+# on the VPS, as a sudoer
+sudo docker run --rm -u 999:987 \
+  -v /srv/restic-repo/data:/repo -v /etc/restic/repo-password:/pw:ro \
+  -v /tmp/root-restore:/restore \
+  -e RESTIC_REPOSITORY=/repo -e RESTIC_PASSWORD_FILE=/pw \
+  restic/restic:0.18.0 restore latest --include /root --target /restore
+# then, from the rebuilt pve-2
+rsync -a ubuntu@100.72.22.38:/tmp/root-restore/root/ /root/
 ```
 
 Unreachable? Copy [`scripts/`](scripts/) from this repo and paste the

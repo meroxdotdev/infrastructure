@@ -6,8 +6,14 @@
 # a real backup category) to a throwaway dir, compares against the live
 # source with sha256sum, cleans up. Never touches the live data.
 set -uo pipefail
-export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
+# The same endpoint restic-push-oracle.sh writes through, not the SFTP chroot
+# it replaced on 2026-09-07. Reading over SFTP proved the repository was
+# readable that way, which is the opposite of what this estate wants: the
+# append-only endpoint is the only path pve-2 is supposed to have, and a drill
+# that exercises a different one proves the wrong thing. Restoring needs only
+# GET, which the append-only mode allows.
 export RESTIC_PASSWORD_FILE="/root/.restic-oracle-password"
+export RESTIC_REPOSITORY="rest:http://pve-2:$(cat /root/.restic-rest-password)@100.72.22.38:8000/"
 
 HC_URL="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 FAIL=0

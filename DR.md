@@ -318,14 +318,24 @@ scp -r admin@10.57.57.201:/volume1/NetBackup/longhorn-garage/<latest-date>/ \
 restore wizard. The old Hyper Backup path (proprietary chunked vault,
 required a working DSM to read) was retired 2026-07-26.
 
+Read it on the VPS, not from a rebuilt pve-2. The endpoint pve-2 pushes through
+needs `/root/.restic-rest-password`, which lives only on pve-2 — inside the
+backup it would be opening. On the VPS the repository is a directory, and the
+only secret is the repo password from the password manager. Verified 2026-09-09.
+
 ```bash
-# On pve-2, "oracle-vps-restic" is an ~/.ssh/config alias — off-host, use the
-# real target + key, both recoverable from /root once you can read the repo.
-export RESTIC_REPOSITORY="sftp:oracle-vps-restic:/data"
-export RESTIC_PASSWORD_FILE=/path/to/saved/password   # password manager, "restic bak password"
-restic restore latest --include /media/backups/longhorn-garage --target /tmp/garage-recovered
-# data/ and meta/ land under /tmp/garage-recovered/media/backups/longhorn-garage/
+# on the VPS (100.72.22.38 over Tailscale), as a sudoer
+sudo docker run --rm -u 999:987 \
+  -v /srv/restic-repo/data:/repo -v /etc/restic/repo-password:/pw:ro \
+  -e RESTIC_REPOSITORY=/repo -e RESTIC_PASSWORD_FILE=/pw \
+  restic/restic:0.18.0 \
+  restore latest --include /media/backups/longhorn-garage --target /restore
+# bind-mount somewhere real for --target; data/ and meta/ land under
+# <target>/media/backups/longhorn-garage/
 ```
+
+The SFTP path this replaced was revoked on 2026-09-07 and now returns
+`Permission denied (publickey)`.
 
 **3. Stand up a fresh Garage instance** anywhere the cluster can reach — a
 new LXC on `pve-2`, or the VPS temporarily — with the recovered
