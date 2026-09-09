@@ -17,3 +17,55 @@ spec:
     - media
   retain: 3
   concurrency: 1
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-homelab-k8s
+  namespace: longhorn-system
+spec:
+  # Every six hours. The backup job above runs once a night, so until this
+  # existed the recovery point for a bad `kubectl delete` or a corrupting
+  # application write was up to 24 hours old, and getting it back meant pulling
+  # from Garage rather than rolling the volume back in place.
+  #
+  # Snapshots are not backups: they live on the same Longhorn replicas as the
+  # data and die with them. They are the fast path, not the durable one — that
+  # is what backup-homelab-k8s is for.
+  cron: "0 */6 * * *"
+  task: snapshot
+  # The same set the backup job covers. Caches, netboot and observability stay
+  # out of both: they are rebuilt empty and snapshotting them would spend
+  # replica space on data nobody would restore.
+  groups:
+    - media
+  # Four at six hours apart is a day of history. Longhorn snapshots are
+  # copy-on-write, so the cost is the data that changed, not four full copies —
+  # but it is still replica space on three nodes, and kubernetes-1 and -2 have
+  # ~280 GiB free each.
+  retain: 4
+  concurrency: 1
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: system-backup-homelab-k8s
+  namespace: longhorn-system
+spec:
+  # Sunday 22:30 UTC, ahead of the nightly volume backup so a system backup and
+  # the volumes it describes land in the same night rather than a day apart.
+  cron: "30 22 * * 0"
+  task: system-backup
+  # Not volume data. This captures Longhorn's own state — settings, volume and
+  # PV/PVC definitions, the recurring jobs themselves — into the same backup
+  # target. Without it a rebuilt cluster gets its replica counts, backup target,
+  # storage classes and these three jobs re-entered by hand, from memory, at the
+  # worst possible moment.
+  #
+  # Groups are meaningless for this task: it is cluster-scoped, not per-volume.
+  # The field is required by the CRD, so `default` is the group every volume
+  # already carries.
+  groups:
+    - default
+  retain: 2
+  concurrency: 1
