@@ -53,6 +53,6 @@ on both.
 
 ## Not covered here
 
-The weekly Synology copy is still an `rsync --delete` push originating on
-`pve-2`, so that leg remains destroyable from there. Flipping it to a pull is
-the remaining half of Week 2 in `docs/plan-2026-09.md`.
+The weekly Synology copy was flipped to a pull on 2026-09-07. `pve-2` now holds
+no credential for either target: it can add here and cannot delete, and the NAS
+reaches in over `rrsync -ro` rather than being pushed to.
