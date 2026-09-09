@@ -80,6 +80,45 @@ If the task is ever lost, this runs only when started by hand, and the
 `pve-push-synology` healthcheck (period 1 week, grace 1 day) goes red — which is
 the intended behaviour, not a bug.
 
+## ⚠️ `documents/` — do not delete, it is not a copy of anything
+
+Every other directory under `/volume1/NetBackup` mirrors a category that exists
+on `pve-2` and is refreshed by the weekly pull. `documents/` is not: the source
+category was removed from `pve-2` some time before 2026-08-02, so the pull no
+longer discovers it, its retention never runs, and restic has never seen it.
+
+It holds ~30 GB, newest copy 2026-07-26. Compared against Nextcloud on
+2026-09-09:
+
+| In `documents/` | Elsewhere |
+|---|---|
+| `Cloud/Apartment` 491M | ✅ Nextcloud `Documente/Apartament` |
+| `Cloud/Joplin-backup` 5.5M | ✅ Nextcloud `Documente/Joplin` |
+| `BAC/` 584K | ✅ Nextcloud `Documente/BAC` |
+| `IT/` 4.4G | ✅ Nextcloud `Documente/IT`, 6.1G — a superset |
+| `Win10_22H2_x64.iso` 5.8G | Re-downloadable |
+| **`Cloud/iPhone` 12G** | **Not found** |
+| **`Cloud/Projects` 3.0G** | **Not found** |
+| **`Cloud/Memories` 1006M** | **Not found** |
+| `T212_2fa.odoc` 4K | **Not found** |
+
+The three unmatched directories may be in Immich, which stores by hash rather
+than by original folder, so a name comparison cannot tell. `Projects` does not
+read like photos.
+
+**Until someone checks, this is the only copy of ~16 GB.** Resolve it one of
+two ways:
+
+- **It is duplicated** → delete `documents/`, and 30 GB comes back.
+- **It is not** → move what is missing into `/media/backups/` on `pve-2`. It
+  then enters restic and this pull automatically, with no configuration —
+  anything under `/media/backups` is backed up. Note the off-site repository has
+  ~77 GiB of headroom on a free tier that cannot grow, so 16 GB is a real share
+  of it.
+
+`vm-backups/` is orphaned the same way, and is safe to delete: it holds images
+of `home-assistant` and `ollama`, both VMs deleted on 2026-09-09.
+
 ## Stale keys, not touched
 
 `~/.ssh/authorized_keys` still trusts `root@pve`, two `root@solex` entries and
