@@ -8,7 +8,7 @@ repo — rebuild guide in [DEPLOY.md](../DEPLOY.md), service index in the
 | Host | Playbook | What it is |
 |---|---|---|
 | `vps01`, us-phoenix-1 | `site.yml` → `make setup` | The off-site stack. Everything behind the Cloudflare tunnel, no open inbound ports |
-| `edge-fra`, eu-frankfurt-1 | `edge.yml` → `make edge-setup` | Public TLS edge for Jellyfin only. Stateless, borrowed tenancy, [design](../docs/jellyfin-public-exposure.md) |
+| ~~`edge-fra`, eu-frankfurt-1~~ | `edge.yml` → `make edge-setup` | **Deleted 2026-09-08.** The role remains and would rebuild it; nothing runs it. [What it was](../docs/jellyfin-public-exposure.md) |
 
 Three deployment modes:
 

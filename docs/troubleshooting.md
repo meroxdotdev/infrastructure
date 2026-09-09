@@ -102,4 +102,4 @@ curl -sk --resolve <host>:443:100.72.22.38 -o /dev/null -w '%{http_code}\n' http
 ```
 
 A whole-host version of this bug is written up in
-[jellyfin-public-exposure.md](jellyfin-public-exposure.md#the-entrypoint-split-on-vps01-retired).
+[jellyfin-public-exposure.md](jellyfin-public-exposure.md#what-it-cost-while-it-stood).

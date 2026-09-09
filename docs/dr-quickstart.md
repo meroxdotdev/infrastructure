@@ -83,7 +83,6 @@ nothing else:
 
 ```
 jellyfin              Pending
-jellyfin-public       Pending
 nvidia-device-plugin  Init:CrashLoopBackOff
 ```
 

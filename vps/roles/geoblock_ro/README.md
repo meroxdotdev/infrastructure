@@ -4,13 +4,15 @@ Restricts Traefik's public entrypoint to prefixes announced by Romanian
 consumer ISPs, plus anything in `geoblock_extra_allow`. Everything else is
 dropped in the kernel, before the TLS handshake.
 
-It exists because `studio.merox.dev` is the only thing served directly on a
-public address — see
-[`docs/jellyfin-public-exposure.md`](../../../docs/jellyfin-public-exposure.md).
+⚠️ **Nothing runs this today.** It existed for `studio.merox.dev`, the only
+thing ever served on a public address here, and went off with it on 2026-09-08:
+`geoblock_enabled: false` on `vps01`, and the Frankfurt edge is deleted. The
+role is kept because a public listener would need it again on the first day —
+[what it guarded](../../../docs/jellyfin-public-exposure.md).
 
-The role runs on both hosts that have ever served it. What differs is one
-variable: `geoblock_chain`, plus whether the rule carries a destination address.
-See the role defaults for the two answers and why they differ.
+It ran on both hosts that ever served that name. What differed is one variable:
+`geoblock_chain`, plus whether the rule carries a destination address. See the
+role defaults for the two answers and why they differ.
 
 ## Allow by operator, not by country
 

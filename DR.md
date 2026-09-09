@@ -35,10 +35,9 @@ it after a rebuild?", and expect the whole homelab down for the duration.
 request `gpu.intel.com/i915`, which only a node with the Iris Xe passed
 through advertises, so on a DR VM without it they stay `Pending` by design.
 
-**Not part of DR at all:** `edge-fra`, the public TLS edge in Frankfurt. It is
-stateless by design and in no backup set — `cd vps && make edge-setup` rebuilds
-it in ~6 min, and until it exists `studio.merox.dev` simply points back at
-vps01. See [docs/jellyfin-public-exposure.md](docs/jellyfin-public-exposure.md).
+**Not part of DR at all:** nothing here is public. The Frankfurt edge was
+deleted on 2026-09-08 along with the Jellyfin instance it served —
+[what it was and the two lessons kept](docs/jellyfin-public-exposure.md).
 
 ---
 

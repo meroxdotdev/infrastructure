@@ -257,8 +257,8 @@ needed on the Kubernetes side.
 `/etc/exports` on pve-2 lists client IPs one by one, not the subnet — see the
 comment at the top of
 [../proxmox/pve-2/etc/exports](../proxmox/pve-2/etc/exports). A new node is
-not on that list, so every inline NFS mount (Jellyfin, jellyfin-public,
-qbittorrent, radarr-public) fails to mount on it with a permission error that
+not on that list, so every inline NFS mount (Jellyfin, qbittorrent, radarr)
+fails to mount on it with a permission error that
 looks nothing like an ACL problem. Add the node's address to each export line
 and `exportfs -ra`, in the repo copy and on the host both.
 

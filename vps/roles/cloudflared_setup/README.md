@@ -17,7 +17,7 @@ the tunnel that can drift without git noticing):
 
 | Hostname | Service | Notes |
 |---|---|---|
-| `inside.merox.dev` | `https://172.25.10.2:443` | Traefik, over the docker bridge — **not** the published host port. See [docs/jellyfin-public-exposure.md](../../../docs/jellyfin-public-exposure.md) for why (`:443` on the host is reserved for the public Jellyfin entrypoint). |
+| `inside.merox.dev` | `https://172.25.10.2:443` | Traefik, over the docker bridge. Since 2026-09-08 the host port would also work — it publishes on the tailnet address and carries every router — but the bridge needs no published port at all, so it stays. |
 | `sso.merox.dev` | `http://172.25.10.72:9000` | Authentik, directly |
 | `rmt.merox.dev` | `http://172.25.10.72:9000` | Authentik's embedded outpost proxy (Guacamole) |
 | (catch-all) | `http_status:404` | |

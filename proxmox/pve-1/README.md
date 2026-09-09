@@ -10,8 +10,8 @@ It stopped being the whole homelab on 2026-09-04, when `kubernetes-2` and
 box no longer stops the cluster: quorum holds on the other two and pods
 reschedule in about six minutes, drilled by cutting its power —
 [../../talos/THREE-NODE.md](../../talos/THREE-NODE.md). What does not survive
-is **hardware transcoding**: the Iris Xe is only here, so Jellyfin and
-jellyfin-public stay `Pending` until this host is back.
+is **hardware transcoding**: the Iris Xe is only here, so Jellyfin stays
+`Pending` until this host is back.
 
 `pve-2` still keeps the disks — media and its NFS exports, the Garage S3 LXC
 that Longhorn backs into, Nextcloud, and every backup leg — and no amount of

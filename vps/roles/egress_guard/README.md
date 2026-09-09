@@ -79,5 +79,6 @@ It will be re-applied within the hour unless `egress_guard_cut_tb` is raised.
 
 Geographic filtering on the same port lives in
 [`geoblock_ro`](../geoblock_ro/README.md); both write to the same chain, and
-both take it from a variable for the same reason.
-Context in [`docs/jellyfin-public-exposure.md`](../../../docs/jellyfin-public-exposure.md).
+both take it from a variable for the same reason. That one is disabled since
+2026-09-08 — this one is not, and now cuts everything through the proxy rather
+than streaming alone, because streaming is what left.

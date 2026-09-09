@@ -1,8 +1,7 @@
 # GPU Transcoding
 
 Jellyfin hardware transcoding runs on **Intel QuickSync**, on the Beelink's
-Iris Xe passed through to `kubernetes-1`. Both instances — `jellyfin`
-and `jellyfin-public` — use it.
+Iris Xe passed through to `kubernetes-1`.
 
 It ran on an Nvidia Quadro P2200 from 2026-07-17 to 2026-09-01. That stack is
 gone; see the last section for what remains.
