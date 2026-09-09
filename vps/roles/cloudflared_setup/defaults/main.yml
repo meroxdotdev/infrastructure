@@ -1,3 +1,5 @@
 ---
 cloudflared_docker_dir: /srv/docker/cloudflared
-cloudflared_image: "cloudflare/cloudflared:latest"
+# renovate: datasource=docker depName=cloudflare/cloudflared
+cloudflared_version: "2026.8.2"
+cloudflared_image: "cloudflare/cloudflared:{{ cloudflared_version }}"

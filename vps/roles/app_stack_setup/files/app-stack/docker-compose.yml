@@ -1,7 +1,7 @@
 services:
   # Secrets are loaded from .env (gitignored) — copy from .env.example to get started
   homepage:
-    image: ghcr.io/gethomepage/homepage:latest
+    image: ghcr.io/gethomepage/homepage:v2.2.0
     container_name: homepage
     dns:
       - 1.1.1.1
@@ -38,7 +38,7 @@ services:
   # no docker.sock, no kubeconfig, no env_file. Full detail lives on the
   # `homepage` service above, reachable only via homepage.cloud.merox.dev (tailnet).
   homepage-public:
-    image: ghcr.io/gethomepage/homepage:latest
+    image: ghcr.io/gethomepage/homepage:v2.2.0
     container_name: homepage-public
     volumes:
       - ./config-public:/app/config
@@ -63,7 +63,7 @@ services:
   # no Traefik labels, no published port. iDRAC/Proxmox credentials never
   # touch this container; it only ever reads the already-derived JSON off disk.
   homelab-stats-server:
-    image: nginx:alpine
+    image: nginx:1.31.5-alpine
     container_name: homelab-stats-server
     volumes:
       - ./homelab-stats:/usr/share/nginx/html:ro
@@ -73,7 +73,7 @@ services:
         ipv4_address: 172.25.10.12
 
   portainer:
-    image: portainer/portainer-ee:latest
+    image: portainer/portainer-ee@sha256:18750221de87f489fffc3d52a23799e9c6a83aab0f1a5337824c81e12bf552b5
     container_name: portainer
     restart: unless-stopped
     dns:
@@ -100,7 +100,7 @@ services:
 
   unbound:
     container_name: unbound
-    image: klutchell/unbound:latest
+    image: klutchell/unbound@sha256:5020cfe1218aeda38777f88279220162e602c3a44efc684550dbf46137106a16
     restart: unless-stopped
     networks:
       network-cloud-merox:
@@ -108,7 +108,7 @@ services:
 
   pihole:
     container_name: pihole
-    image: pihole/pihole:latest
+    image: pihole/pihole:2026.07.2
     depends_on:
       - unbound
     ports:
@@ -164,7 +164,7 @@ services:
         ipv4_address: 172.25.10.60
 
   joplin-server:
-    image: joplin/server:latest
+    image: joplin/server:3.7.1
     container_name: joplin-server
     restart: unless-stopped
     depends_on:

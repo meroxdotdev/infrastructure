@@ -157,3 +157,41 @@ Traefik forward auth (for Oracle services):
           ├── valid session → forward to service
           └── no session    → redirect to sso.merox.dev/login
 ```
+
+## If Authentik comes up with "password authentication failed for user authentik"
+
+`POSTGRES_PASSWORD` initialises the database **once**, when the data directory is
+first created. After that it is read and ignored. So the password in `.env` and
+the password stored in Postgres can drift apart silently, and nothing notices
+until the containers are recreated — at which point `authentik-server` starts
+using the current `.env` against a database that still holds the old one, and
+every route behind SSO returns 502.
+
+That happened on 2026-09-09. The volume dates from 2026-05-18, `.env` was last
+written 2026-09-05, and the containers had been running since before that change,
+each holding the old password in its own environment. Recreating them for an
+unrelated reason — pinning image tags — was what surfaced it. A reboot or a
+Docker upgrade would have done the same thing on its own schedule.
+
+Fix by making the database agree with `.env`, not the other way round:
+
+```bash
+PW=$(sudo docker inspect authentik-postgresql \
+      --format '{{range .Config.Env}}{{println .}}{{end}}' \
+      | grep '^POSTGRES_PASSWORD=' | cut -d= -f2-)
+ESC=${PW//\'/\'\'}                       # double any single quotes for SQL
+printf "ALTER USER authentik WITH PASSWORD '%s';\n" "$ESC" > /tmp/fixpw.sql
+sudo docker cp /tmp/fixpw.sql authentik-postgresql:/tmp/fixpw.sql
+sudo docker exec authentik-postgresql psql -U authentik -d authentik \
+  -v ON_ERROR_STOP=1 -f /tmp/fixpw.sql
+sudo docker exec authentik-postgresql rm -f /tmp/fixpw.sql && rm -f /tmp/fixpw.sql
+```
+
+⚠️ Do not test the result with `psql -h 127.0.0.1`. `pg_hba.conf` in this image
+grants `trust` to `local` and `127.0.0.1/32`, so a loopback connection succeeds
+whatever password you hand it and proves nothing. Only `host all all all` uses
+`scram-sha-256`, which is the path `authentik-server` takes from the Docker
+network. Verify by watching the server log for "Running migrations" instead.
+
+No data is touched: the role's password becomes the database's password, and
+the encrypted contents are unaffected.

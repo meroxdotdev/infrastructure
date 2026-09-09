@@ -1,7 +1,9 @@
 ---
 traefik_docker_dir: /srv/docker/oracle-cloud/traefik
 traefik_compose_version: "3.8"
-traefik_image: "traefik:latest"
+# renovate: datasource=docker depName=traefik
+traefik_version: "v3.7.13"
+traefik_image: "traefik:{{ traefik_version }}"
 traefik_network_name: network-cloud-merox
 traefik_network_subnet: 172.25.0.0/16
 traefik_network_gateway: 172.25.0.1

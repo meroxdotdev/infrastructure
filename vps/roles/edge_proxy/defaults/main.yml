@@ -2,7 +2,9 @@
 # Traefik on the edge: one entrypoint, one router, one backend. Anything else
 # needing a reverse proxy belongs on vps01 behind the Cloudflare tunnel.
 edge_proxy_dir: /srv/docker/edge/traefik
-edge_proxy_image: "traefik:latest"
+# renovate: datasource=docker depName=traefik
+edge_proxy_traefik_version: "v3.7.13"
+edge_proxy_image: "traefik:{{ edge_proxy_traefik_version }}"
 
 # network_mode: host means every listener is a host listener, so ping is pinned
 # to loopback rather than left on 0.0.0.0.

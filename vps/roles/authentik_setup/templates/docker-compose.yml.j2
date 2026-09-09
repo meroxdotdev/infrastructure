@@ -20,7 +20,7 @@ services:
         ipv4_address: {{ authentik_pg_ip }}
 
   authentik-redis:
-    image: docker.io/library/redis:alpine
+    image: docker.io/library/redis:{{ authentik_redis_version }}-alpine
     container_name: authentik-redis
     restart: unless-stopped
     command: --save 60 1 --loglevel warning
