@@ -14,5 +14,4 @@ resources:
   # Logging Stack
   - ./loki/ks.yaml
   - ./alloy/ks.yaml
-  - ./promtail/ks.yaml
 

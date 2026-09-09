@@ -59,7 +59,7 @@ if they have drifted apart.
 | n8n | default | Workflow automation. No longer in the alerting path — Alertmanager and Flux both speak Telegram natively and now do, since 2026-09-07 |
 | Headlamp | default | Kubernetes dashboard |
 | Authentik outpost | default | SSO proxy |
-| Prometheus + Grafana · Loki + Promtail · AlertManager | observability | Metrics, logs, alerts |
+| Prometheus + Grafana · Loki + Alloy · AlertManager | observability | Metrics, logs, alerts |
 | Longhorn | storage | Persistent volumes, backed up to the Garage S3 LXC |
 | Cilium | kube-system | CNI + Gateway API + L2 LoadBalancer |
 | cert-manager | cert-manager | Automated TLS |
