@@ -61,7 +61,7 @@ disks once, together.
 | 03:03 | etcd snapshot | pve-2 |
 | 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve-2 |
 | 03:10 | restic push → Oracle | pve-2 |
-| 03:20 | nightly checks — disk health, spin-down, git drift | pve-2 |
+| 03:20 | nightly checks — disk health, spin-down, git drift, vzdump age | pve-2 |
 | weekly | Relay → Synology (cold storage) | pve-2 |
 | 03:40 1st/mo | `media` scrub | pve-2 |
 | 05:00 1st/mo | restic restore drill | pve-2 |
@@ -413,20 +413,52 @@ systemctl restart nut-server nut-monitor    # restart, not reload - upsd caches 
 
 Everything reports to **healthchecks.io**, nothing to local mail.
 
-The three host checks share one healthcheck, not three. They run in sequence
+The four host checks share one healthcheck, not four. They run in sequence
 from `nightly-checks.sh`, are silent unless something is wrong, and are all
-investigated the same way — three separate checks would be three places to
+investigated the same way — four separate checks would be four places to
 look for one answer. Each sub-check just exits non-zero; the wrapper names
-whichever failed.
+whichever failed: SAS health, spin-down drift, git drift, vzdump age.
 
 `mail root` is a black hole on this host: no `/etc/aliases`, no `relayhost`,
 and a test message on 2026-08-29 vanished without reaching a queue or a log.
 The SAS health check and the spin-down drift check had used it since they
 were written, so neither had ever reached a human. Both moved on 2026-08-29.
 
-Proxmox's own jobs use a different, working path (`/etc/pve/notifications.cfg`
-→ an SMTP relay plus a ProxMobo webhook). That stays as it is — it is PVE's
-internal mechanism, not something the scripts should reach into.
+### Proxmox's own notifications go to Telegram
+
+PVE has its own mechanism (`/etc/pve/notifications.cfg`) and the scripts should
+not reach into it. Since 2026-09-09 it points at the same Telegram chat
+Alertmanager and Flux already use, so there is one place to look rather than
+three.
+
+It used to send to an SMTP relay and a ProxMobo webhook, both replicated from
+`px-0`. ProxMobo is gone: it registers a node by name, the 2026-09-04 rename from
+`pve` to `pve-2` broke it, and nobody found out for five days because no
+notification needed sending in between. The first one that did — a manual vzdump
+on 2026-09-09 — returned HTTP 500. The app has since been uninstalled.
+
+Recreate the target with the bot token and chat id from `PRIVATE-NOTES.md`.
+Every value except the URL is base64, including the secret — passing the token
+raw gets `could not decode base64 value with key 'token'`:
+
+```bash
+BODY=$(printf '{"chat_id":"<CHAT_ID>","text":"{{ escape title }}\n{{ escape message }}"}' | base64 -w0)
+pvesh create /cluster/notifications/endpoints/webhook \
+  --name telegram --method post \
+  --url 'https://api.telegram.org/bot{{ secrets.token }}/sendMessage' \
+  --header "name=Content-Type,value=$(printf 'application/json' | base64 -w0)" \
+  --body "$BODY" \
+  --secret "name=token,value=$(printf '<BOT_TOKEN>' | base64 -w0)"
+pvesh set /cluster/notifications/matchers/default-matcher --target telegram
+pvesh create /cluster/notifications/targets/telegram/test    # silence means it worked
+```
+
+`{{ secrets.token }}` keeps the token in `/etc/pve/priv/notifications.cfg`
+(0600) rather than the world-readable config. The file is not in this repo: its
+body carries the chat id, and base64 is not encryption.
+
+`mail-from-cloud` stays defined but unmatched — an SMTP relay one line away from
+being a fallback if the bot token is ever revoked. Nothing routes to it today.
 
 healthchecks.io is also the only one of the three that reports a check which
 stops running at all, which is the failure mode that matters most here.
