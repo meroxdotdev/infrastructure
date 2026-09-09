@@ -215,10 +215,32 @@ spec:
               # Same blind spot, slower axis: elections trickling in over hours
               # never reach the bundled rule's 4-per-15m. Zero is the healthy
               # value for a 3-node cluster that is not being disturbed.
+              #
+              # max, not sum. The counter is "leader changes *seen by this
+              # member*", so one election increments all three and a sum reports
+              # roughly three times the truth. It also resets when an etcd
+              # process restarts, which sum() across members with different
+              # restart histories turns into elections that never happened.
+              #
+              # This fired on 2026-09-09 reporting "3 raft leader elections",
+              # which was one — increase() extrapolates, so a single election
+              # lands just over a threshold of 3 and prints back as 3. etcd was
+              # healthy throughout: WAL fsync p99 7.8/3.9/2.0 ms against a 10 ms
+              # bar, backend commit 8.0/4.0/2.0 ms against 25 ms, zero failed
+              # proposals in 24 h. The elections came from members joining on
+              # 2026-09-04 and from pod restarts, not from disk stalls.
+              #
+              # > 1 on the max means two genuine elections in six hours. One is
+              # what any rolling restart produces — a Talos upgrade, a
+              # reschedule — and paging on that teaches the phone to be ignored.
+              #
+              # No second alert on fsync latency: EtcdSlowFsyncBurst above
+              # already watches the cause, and counts slow fsyncs rather than
+              # quantiling them for the reason written there.
               - alert: EtcdLeaderElectionsCreeping
                 annotations:
-                  summary: "etcd: {{ $value | printf \"%.0f\" }} raft leader elections in 6h - normally zero."
-                expr: sum(increase(etcd_server_leader_changes_seen_total[6h])) > 3
+                  summary: "etcd: {{ $value | printf \"%.0f\" }} raft leader elections seen by one member in 6h - normally zero."
+                expr: max(increase(etcd_server_leader_changes_seen_total[6h])) > 1
                 for: 10m
                 labels:
                   severity: warning
