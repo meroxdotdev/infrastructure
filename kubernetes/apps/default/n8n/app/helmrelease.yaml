@@ -36,13 +36,16 @@ spec:
               N8N_PROTOCOL: "https"
               N8N_PORT: &port 8080
               N8N_HOST: &hostName "n8n.k8s.merox.dev"
-              # Without this, n8n derives its externally-advertised webhook
-              # base URL from N8N_HOST:N8N_PORT (n8n.k8s.merox.dev:8080) -
-              # Telegram's setWebhook rejects that port outright ("can be
-              # set up only on ports 80, 88, 443 or 8443"). Point it at the
-              # dedicated webhook hostname/route instead, which is served
-              # over 443 through the external Gateway.
-              WEBHOOK_URL: "https://n8n-webhook.k8s.merox.dev/"
+              # Without this, n8n derives its webhook base URL from
+              # N8N_HOST:N8N_PORT (n8n.k8s.merox.dev:8080), and a port outside
+              # 80/88/443/8443 is rejected by callers that validate it.
+              #
+              # It used to point at a dedicated hostname on the external
+              # Gateway. That route went on 2026-09-09: the four webhook
+              # workflows were its only callers, and the one workflow left runs
+              # on a schedule. An endpoint reachable from the internet that
+              # nothing calls is attack surface for no benefit.
+              WEBHOOK_URL: "https://n8n.k8s.merox.dev/"
               N8N_LOG_LEVEL: "info"
               N8N_LOG_OUTPUT: "console"
               # n8n blocks $env access from node expressions by default
@@ -129,18 +132,6 @@ spec:
           - name: internal
             namespace: kube-system
             sectionName: https
-      webhooks:
-        hostnames:
-          - "n8n-webhook.k8s.merox.dev"
-        parentRefs:
-          - name: external
-            namespace: kube-system
-            sectionName: https
-        rules:
-          - matches:
-              - path:
-                  value: /webhook
-            backendRefs: [{}]
     persistence:
       data:
         existingClaim: n8n
