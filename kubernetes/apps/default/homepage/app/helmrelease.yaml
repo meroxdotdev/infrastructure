@@ -115,6 +115,12 @@ spec:
             subPath: docker.yaml
           - path: /app/config/bookmarks.yaml
             subPath: bookmarks.yaml
+          - path: /app/config/proxmox.yaml
+            subPath: proxmox.yaml
+          - path: /app/config/custom.css
+            subPath: custom.css
+          - path: /app/config/custom.js
+            subPath: custom.js
       logs:
         type: emptyDir
         globalMounts:

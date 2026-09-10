@@ -60,7 +60,14 @@ data:
     # In-cluster: the widget uses the ServiceAccount token, no kubeconfig.
     mode: cluster
 
+  # Homepage copies any missing skeleton file into /app/config at boot. That
+  # directory is read-only here — every file comes from this ConfigMap — so a
+  # file it expects and does not find crashes the container with EACCES rather
+  # than degrading. All nine skeleton names must therefore exist, even empty.
   docker.yaml: ""
+  proxmox.yaml: ""
+  custom.css: ""
+  custom.js: ""
   bookmarks.yaml: "[]"
 
   services.yaml: |
