@@ -45,7 +45,7 @@ on pve-2 also fails if the host has drifted from this repo.
 | Pi-hole + Unbound | pihole.cloud.merox.dev/admin |
 | Joplin | joplin.cloud.merox.dev |
 | Guacamole | rmt.merox.dev |
-| Homepage | inside.merox.dev — public, curated, credential-free |
+| Homepage | inside.merox.dev — public contents page for the [homelab tour](https://merox.dev/blog/homelab-tour) |
 | Portainer | portainer.cloud.merox.dev |
 | restic rest-server | :8000, append-only |
 

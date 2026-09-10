@@ -1,19 +1,4 @@
 ---
-- Merox:
-    - Portfolio:
-        - abbr: MX
-          href: https://merox.dev
-          icon: mdi-web
-          description: Main website & blog
-
-    - GitHub:
-        - abbr: GH
-          href: https://github.com/meroxdotdev
-          icon: mdi-github
-          description: Source code & projects
-
-    - Blog:
-        - abbr: BL
-          href: https://merox.dev/blog
-          icon: mdi-post-outline
-          description: Homelab write-ups
+# Empty on purpose. merox.dev, the repo and the tour are in the masthead and
+# footer (custom.js); a bookmarks column would be the third place saying it.
+[]

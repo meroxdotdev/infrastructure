@@ -1,6 +1,16 @@
 ---
-title: merox.dev
-description: Homelab Overview
+# The public dashboard. It is the table of contents of the homelab tour:
+# https://merox.dev/blog/homelab-tour
+#
+# Groups below are that post's chapters, in the post's order. A card links to
+# the section or the post that explains it, so the page is an index into
+# writing that already exists rather than a second description of the same
+# stack drifting away from the first.
+#
+# Nothing here pings anything. No widgets, no docker.sock, no kubeconfig, no
+# env_file — that is what makes it safe to serve publicly.
+title: Inside merox.dev
+description: The homelab, chapter by chapter
 
 theme: dark
 color: zinc
@@ -9,44 +19,44 @@ iconStyle: flat
 favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
 
 layout:
-  # Groups follow the README's own six-line summary, in the same order: what
-  # it plays, what it stores, what runs it, what keeps it, how it is reached,
-  # who it lets in, and how it is watched. columns is min(items, 4), the cap
-  # set by maxGroupColumns below.
-  Media:
+  # columns is min(items, 4). No group icons: the colored rule in custom.css
+  # already separates the sections, and an icon next to a one-word heading is
+  # the second thing saying the same thing.
+  Network:
     style: column
     columns: 4
-    icon: mdi-filmstrip
-
-  Files & Photos:
-    style: column
-    columns: 3
-    icon: mdi-folder-multiple-image
 
   Compute:
     style: column
-    columns: 4
-    icon: mdi-server
+    columns: 3
 
-  Storage & Backup:
+  Storage:
+    style: column
+    columns: 3
+
+  Kubernetes:
+    style: column
+    columns: 3
+
+  Media:
     style: column
     columns: 4
-    icon: mdi-database
 
-  Network & Access:
+  Photos & Platform:
     style: column
     columns: 4
-    icon: mdi-server-network
-
-  Identity & Ops:
-    style: column
-    columns: 4
-    icon: mdi-shield-account
 
   Observability:
     style: column
     columns: 4
-    icon: mdi-monitor-dashboard
+
+  VPS:
+    style: column
+    columns: 4
+
+  Backup:
+    style: column
+    columns: 4
 
 fullWidth: false
 maxGroupColumns: 4
@@ -54,7 +64,7 @@ disableCollapse: true
 groupsInitiallyCollapsed: false
 useEqualHeights: false
 
-headerStyle: underlined
+headerStyle: clean
 
 quicklaunch:
   searchDescriptions: false
@@ -65,7 +75,6 @@ quicklaunch:
   mobileButtonPosition: bottom-right
 
 showStats: false
-statusStyle: dot
 
 hideVersion: true
 language: en

@@ -1,8 +1,4 @@
 ---
-- datetime:
-    text_size: xl
-    format:
-      dateStyle: long
-      timeStyle: short
-      hour12: false
-      locale: ro-RO
+# No clock, no live tiles. This page is an index into writing, and a widget
+# is the one thing on it that could be wrong without anyone noticing.
+[]

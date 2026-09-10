@@ -1,215 +1,180 @@
 ---
-# Showcase only — names, icons, descriptions. No live pinging and no widgets:
-# this container is deliberately credential-free (no docker.sock, no
-# kubeconfig, no env_file) and cannot reach the internal network anyway.
-# Every card links to the blog post that actually explains that piece.
+# Chapters of https://merox.dev/blog/homelab-tour, in that post's order.
+# Each card links to the post that explains it, or to the tour's own section
+# where no dedicated post exists. Descriptions stay one line: this page says
+# what runs, the post says why.
 #
-# Rewritten 2026-09-05. The previous version described a single-node cluster,
-# one Proxmox host and a Home Assistant VM that was retired 2026-08-29, and
-# pointed all twenty cards at the same homelab-tour post.
-#
-# Ground truth for anything below: the top-level README.md table, plus
-# talos/THREE-NODE.md for the cluster layout.
+# Showcase only — no widgets, no pings, no credentials. Ground truth for the
+# names below is the top-level README.md.
 
-# ============================================================================
-# MEDIA
-# ============================================================================
-- Media:
-    - Jellyfin:
-        icon: jellyfin.png
-        href: https://merox.dev/blog/kubernetes-media-server
-        description: Media server, Intel QuickSync transcoding
+- Network:
+    - pfSense:
+        icon: pfsense.png
+        href: https://merox.dev/blog/pfsense-boot-troubleshooting
+        description: Router, firewall, DHCP. No port forwards
 
-    - Jellyseerr:
-        icon: jellyseerr.png
-        href: https://merox.dev/blog/kubernetes-media-server
-        description: Request management, SSO-gated when public
+    - Tailscale:
+        icon: tailscale.png
+        href: https://merox.dev/blog/tailscale-site-to-site
+        description: The only way in — rack and cloud on one mesh
 
-    - Radarr:
-        icon: radarr.png
-        href: https://merox.dev/blog/kubernetes-media-server
-        description: Movie automation
+    - Cloudflare Tunnel:
+        icon: mdi-cloud-outline
+        href: https://merox.dev/blog/homelab-tour#network
+        description: Outbound-only ingress, three routes
 
-    - Sonarr:
-        icon: sonarr.png
-        href: https://merox.dev/blog/kubernetes-media-server
-        description: TV automation
+    - Pi-hole + Unbound:
+        icon: sh-pi-hole
+        href: https://merox.dev/blog/homelab-tour#network
+        description: Filtering DNS with its own recursive resolver
 
-    - Prowlarr:
-        icon: prowlarr.png
-        href: https://merox.dev/blog/kubernetes-media-server
-        description: Indexer manager
-
-    - qBittorrent:
-        icon: qbittorrent.png
-        href: https://merox.dev/blog/kubernetes-media-server
-        description: Torrent client, VPN-routed
-
-# ============================================================================
-# FILES & PHOTOS
-# ============================================================================
-- Files & Photos:
-    - Immich:
-        icon: mdi-image-multiple
-        href: https://merox.dev/blog/homelab-tour
-        description: Photo & video library, machine-learning search
-
-    - Nextcloud:
-        icon: nextcloud.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Multi-user files & office, AIO on its own VM
-
-    - Joplin Server:
-        icon: joplin.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Notes sync, PostgreSQL-backed
-
-# ============================================================================
-# COMPUTE
-# ============================================================================
-# Three standalone Proxmox hosts joined through Proxmox Datacenter Manager,
-# never corosync. No HA, deliberately — talos/THREE-NODE.md.
 - Compute:
     - pve-1 — Beelink GTi13:
         icon: proxmox.png
         href: https://merox.dev/blog/proxmox-gpu-passthrough
-        description: Runs kubernetes-1, Iris Xe passed through
+        description: Iris Xe passed through. The only GPU
 
     - pve-2 — Dell R730xd:
         icon: proxmox.png
         href: https://merox.dev/blog/sas-disk-spindown
-        description: Holds the disks — media array, backups, Nextcloud
+        description: The disks — media array, backups, Nextcloud
 
     - pve-3 — OptiPlex 3050:
         icon: proxmox.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Third etcd vote on a power-loss-protected SSD
+        href: https://merox.dev/blog/homelab-tour#compute
+        description: Third etcd vote, power-loss-protected SSD
 
-    - Datacenter Manager:
-        icon: mdi-view-dashboard-outline
-        href: https://merox.dev/blog/homelab-tour
-        description: One pane over three standalone hosts
+- Storage:
+    - ZFS:
+        icon: mdi-harddisk
+        href: https://merox.dev/blog/sas-disk-spindown
+        description: Three pools, ~6 TB. Twelve SAS disks park when idle
 
-    - Talos Kubernetes:
+    - Longhorn:
+        icon: longhorn.png
+        href: https://merox.dev/blog/longhorn-backup-restore
+        description: Cluster block storage, three replicas
+
+    - Garage S3:
+        icon: mdi-bucket-outline
+        href: https://merox.dev/blog/migrate-from-minio-to-garage
+        description: Self-hosted S3 — where Longhorn backups land
+
+- Kubernetes:
+    - Talos Linux:
         icon: kubernetes.png
         href: https://merox.dev/blog/homelab-as-code
-        description: Three control-plane nodes, immutable API-driven OS
+        description: Immutable, API-managed, no shell. One node per host
 
     - Flux CD:
         icon: mdi-source-branch
         href: https://merox.dev/blog/homelab-as-code
         description: Git push is the deploy — the cluster reconciles itself
 
-# ============================================================================
-# STORAGE & BACKUP
-# ============================================================================
-- Storage & Backup:
-    - ZFS media array:
-        icon: mdi-harddisk
-        href: https://merox.dev/blog/sas-disk-spindown
-        description: Twelve SAS disks, two raidz2 vdevs, parked when idle
-
-    - Longhorn:
-        icon: longhorn.png
-        href: https://merox.dev/blog/longhorn-backup-restore
-        description: Distributed block storage for the cluster
-
-    - Garage S3:
-        icon: mdi-bucket-outline
-        href: https://merox.dev/blog/migrate-from-minio-to-garage
-        description: Self-hosted S3 — where Longhorn snapshots land
-
-    - restic → Oracle:
-        icon: mdi-backup-restore
-        href: https://merox.dev/blog/3-2-1-backup-strategy
-        description: Nightly encrypted off-site leg
-
-    - Synology:
-        icon: synology.png
-        href: https://merox.dev/blog/synology-backup-oracle-cloud
-        description: Weekly plain-file copy, asleep the rest of the week
-
-# ============================================================================
-# NETWORK & ACCESS
-# ============================================================================
-- Network & Access:
-    - pfSense:
-        icon: pfsense.png
-        href: https://merox.dev/blog/pfsense-boot-troubleshooting
-        description: Router, firewall, DHCP and split-horizon DNS
-
     - Cilium:
         icon: mdi-lan
-        href: https://merox.dev/blog/homelab-as-code
-        description: eBPF CNI, Gateway API and L2 load balancing
+        href: https://merox.dev/blog/homelab-tour#kubernetes
+        description: eBPF CNI, Gateway API, L2 announcement
 
-    - Cloudflare Tunnel:
-        icon: mdi-cloud-outline
-        href: https://merox.dev/blog/jellyfin-public-without-home-ip
-        description: Outbound-only ingress — zero ports forwarded
+- Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: https://merox.dev/blog/kubernetes-media-server
+        description: Personal 4K, Intel QuickSync transcoding
 
-    - Tailscale:
-        icon: tailscale.png
-        href: https://merox.dev/blog/tailscale-site-to-site
-        description: The only way in — site-to-site between home and cloud
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: https://merox.dev/blog/kubernetes-media-server
+        description: Requests, the one route that faces out
 
-    - Pi-hole + Unbound:
-        icon: sh-pi-hole
-        href: https://merox.dev/blog/homelab-tour
-        description: Ad-blocking DNS with its own recursive resolver
+    - Radarr · Sonarr:
+        icon: radarr.png
+        href: https://merox.dev/blog/kubernetes-media-server
+        description: Film and TV automation
 
-# ============================================================================
-# IDENTITY & OPS
-# ============================================================================
-- Identity & Ops:
-    - Authentik:
-        icon: authentik.png
-        href: https://merox.dev/blog/authentik-sso-homelab
-        description: SSO and identity provider for everything
+    - Prowlarr · qBittorrent:
+        icon: qbittorrent.png
+        href: https://merox.dev/blog/kubernetes-media-server
+        description: Indexing and download, VPN-routed
 
-    - Traefik:
-        icon: traefik.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Reverse proxy, ACME certificates
+- Photos & Platform:
+    - Immich:
+        icon: mdi-image-multiple
+        href: https://merox.dev/blog/homelab-tour#cluster
+        description: Photo library, own Postgres, machine-learning search
 
-    - Guacamole:
-        icon: guacamole.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Remote desktop gateway behind SSO
+    - Nextcloud:
+        icon: nextcloud.png
+        href: https://merox.dev/blog/homelab-tour#cluster
+        description: Files and office. AIO on its own VM, off-cluster
 
-    - Portainer:
-        icon: portainer.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Container management for the Docker hosts
+    - Joplin:
+        icon: joplin.png
+        href: https://merox.dev/blog/homelab-tour#vps
+        description: Notes sync, PostgreSQL-backed
 
     - n8n:
         icon: n8n.png
         href: https://merox.dev/blog/homelab-ai-agent
-        description: Workflow automation and alert routing
+        description: One workflow — the daily news digest
 
-# ============================================================================
-# OBSERVABILITY
-# ============================================================================
 - Observability:
     - Prometheus:
         icon: prometheus.png
-        href: https://merox.dev/blog/homelab-tour
-        description: Metrics collection and alert rules
+        href: https://merox.dev/blog/homelab-tour#alerting
+        description: Metrics and alert rules, hosts and cluster
 
     - Grafana:
         icon: grafana.png
-        href: https://merox.dev/blog/homelab-tour
+        href: https://merox.dev/blog/homelab-tour#alerting
         description: Dashboards over metrics and logs
 
     - Loki:
         icon: mdi-text-box-search
-        href: https://merox.dev/blog/homelab-tour
-        description: Log aggregation, shipped by Alloy
+        href: https://merox.dev/blog/homelab-tour#alerting
+        description: Logs, shipped by Alloy
 
     - Alertmanager:
         icon: mdi-bell-alert
-        href: https://merox.dev/blog/homelab-tour
-        description: Alert routing and deduplication
+        href: https://merox.dev/blog/homelab-tour#alerting
+        description: Straight to Telegram, critical and warning only
+
+- VPS:
+    - Traefik:
+        icon: traefik.png
+        href: https://merox.dev/blog/homelab-tour#vps
+        description: Reverse proxy, ACME certificates
+
+    - Authentik:
+        icon: authentik.png
+        href: https://merox.dev/blog/authentik-sso-homelab
+        description: Single sign-on for everything behind it
+
+    - Guacamole:
+        icon: guacamole.png
+        href: https://merox.dev/blog/homelab-tour#vps
+        description: Remote desktop in a browser tab
+
+    - Portainer:
+        icon: portainer.png
+        href: https://merox.dev/blog/homelab-tour#vps
+        description: The VPS containers, nothing in the cluster
+
+- Backup:
+    - Longhorn → Garage:
+        icon: longhorn.png
+        href: https://merox.dev/blog/longhorn-backup-restore
+        description: Nightly, cluster volumes to S3 on pve-2
+
+    - pve-2 → Oracle:
+        icon: mdi-backup-restore
+        href: https://merox.dev/blog/synology-backup-oracle-cloud
+        description: Nightly restic, append-only. Off-site copy
+
+    - pve-2 → Synology:
+        icon: synology.png
+        href: https://merox.dev/blog/3-2-1-backup-strategy
+        description: Weekly pull, read-only. Asleep the rest of the week
 
     - healthchecks.io:
         icon: mdi-heart-pulse

@@ -1,7 +1,8 @@
 /*
- * inside.merox.dev — mirrors merox.dev design system
- * (config/custom.css is the private twin; keep both in step)
- * Column-first layout, editorial feel, IBM Plex family
+ * inside.merox.dev — mirrors merox.dev's design system.
+ * Column-first, editorial, IBM Plex. The page reads as the homelab-tour
+ * post's contents page, so it borrows that post's type scale, not a
+ * dashboard's.
  */
 
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
@@ -10,7 +11,6 @@
 :root {
   --bg:       #111111;
   --surface:  #191919;
-  --surface2: #222222;
   --surface3: #2a2a2a;
   --border:   #3a3a3a;
   --border-h: #484848;
@@ -19,20 +19,23 @@
   --fg:       #eeeeee;
   --font:     'IBM Plex Sans', system-ui, sans-serif;
   --mono:     'IBM Plex Mono', ui-monospace, monospace;
-  --r:        0.25rem;
   --track:    -0.015em;
   --ease:     cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* ── Group accents — one hue per functional domain, so the eye learns
-     "this color = this kind of thing" instead of scanning gray-on-gray.
-     Order must match settings.yaml's layout: block exactly. ── */
-  --accent-1: #d93d7a; /* Media */
-  --accent-2: #d9b83d; /* Files & Photos — documents, warm */
-  --accent-3: #d97a3d; /* Compute — echoes Proxmox orange */
-  --accent-4: #3d8ed9; /* Storage & Backup — data at rest */
-  --accent-5: #3dd9c8; /* Network & Access */
-  --accent-6: #8b5cf6; /* Identity & Ops — echoes Authentik purple */
-  --accent-7: #3dd97a; /* Observability — health/status */
+  /* ── Chapter accents. One hue per group, walking the wheel in group order
+     so the ramp itself reads as progress down the page — the colors mean
+     "you have moved to the next chapter", nothing more. Order must match
+     settings.yaml's layout: block; these are positional (see nth-of-type
+     below), because Homepage exposes no per-group class. ── */
+  --accent-1: #3dd9c8; /* Network */
+  --accent-2: #3db8d9; /* Compute */
+  --accent-3: #3d8ed9; /* Storage */
+  --accent-4: #5d6fe0; /* Kubernetes */
+  --accent-5: #9b5fe0; /* Media */
+  --accent-6: #d95fd0; /* Photos & Platform */
+  --accent-7: #d93d7a; /* Observability */
+  --accent-8: #d97a3d; /* VPS */
+  --accent-9: #d9b83d; /* Backup */
 }
 
 /* ── Global typography — matches merox.dev tracking ── */
@@ -44,17 +47,143 @@
   -moz-osx-font-smoothing: grayscale !important;
 }
 
-/* ── Background ── */
 #page-wrapper {
   background: var(--bg) !important;
 }
 
-/* ── Page width — match site's --grid-max-width ── */
+/* ── Page width — match the site's --grid-max-width ── */
 #page-wrapper > * {
   max-width: 72rem !important;
 }
 
-/* ── Service cards — list-item feel, not boxy ── */
+/* ══ Masthead (injected by custom.js) ══════════════════════════════════ */
+
+#merox-intro {
+  margin:        0 auto !important;
+  padding:       3.5rem 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.intro-eyebrow {
+  font-family:    var(--mono) !important;
+  font-size:      0.625rem;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
+  color:          var(--muted);
+}
+
+.intro-title {
+  margin:         0.75rem 0 0;
+  font-size:      1.875rem;
+  font-weight:    300;
+  line-height:    1.15;
+  letter-spacing: -0.025em !important;
+  color:          var(--fg);
+}
+
+.intro-lede {
+  margin:      0.875rem 0 0;
+  max-width:   44rem;
+  font-size:   0.9375rem;
+  line-height: 1.65;
+  color:       var(--sub);
+}
+
+/* Same six numbers as the post's spec sheet, in the same order. */
+.intro-specs {
+  display:   flex;
+  flex-wrap: wrap;
+  gap:       1.75rem 2.5rem;
+  margin:    2rem 0 0;
+}
+
+.intro-specs dt {
+  font-family:    var(--mono) !important;
+  font-size:      0.5625rem;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase;
+  color:          var(--muted);
+}
+
+.intro-specs dd {
+  margin:      0.375rem 0 0;
+  font-family: var(--mono) !important;
+  font-size:   0.9375rem;
+  font-weight: 500;
+  color:       var(--fg);
+}
+
+.intro-cta {
+  display:         inline-block;
+  margin-top:      2rem;
+  padding-bottom:  0.1875rem;
+  border-bottom:   1px solid var(--border-h);
+  font-family:     var(--mono) !important;
+  font-size:       0.6875rem;
+  letter-spacing:  0.1em !important;
+  text-transform:  uppercase;
+  color:           var(--sub);
+  text-decoration: none;
+  transition:      color 0.1s var(--ease), border-color 0.1s var(--ease);
+}
+
+.intro-cta::after { content: ' →'; }
+
+.intro-cta:hover {
+  color:        var(--fg);
+  border-color: var(--fg);
+}
+
+@media (max-width: 48rem) {
+  #merox-intro     { padding: 2.5rem 0 1.75rem; }
+  .intro-title     { font-size: 1.5rem; }
+  .intro-specs     { gap: 1.25rem 2rem; }
+}
+
+/* ══ Chapters ══════════════════════════════════════════════════════════ */
+
+/* Real breathing room plus a colored top rule, so the groups read as nine
+   sections rather than one continuous wall. Every group gets the same
+   margin, with no first-child exception: these are flex items, so a
+   different margin on one of them lifts it above the others rather than
+   only closing the gap under the masthead. That spacing lives on
+   #merox-intro's margin-bottom instead. */
+.services-group {
+  margin-top:  2.75rem !important;
+  padding-top: 1rem !important;
+  border-top:  2px solid var(--border) !important;
+}
+
+.service-group-name {
+  font-family:    var(--font) !important;
+  font-size:      0.8125rem !important;
+  font-weight:    500 !important;
+  letter-spacing: var(--track) !important;
+  text-transform: none !important;
+  color:          var(--sub) !important;
+}
+
+.services-group:nth-of-type(1) { border-top-color: var(--accent-1) !important; }
+.services-group:nth-of-type(2) { border-top-color: var(--accent-2) !important; }
+.services-group:nth-of-type(3) { border-top-color: var(--accent-3) !important; }
+.services-group:nth-of-type(4) { border-top-color: var(--accent-4) !important; }
+.services-group:nth-of-type(5) { border-top-color: var(--accent-5) !important; }
+.services-group:nth-of-type(6) { border-top-color: var(--accent-6) !important; }
+.services-group:nth-of-type(7) { border-top-color: var(--accent-7) !important; }
+.services-group:nth-of-type(8) { border-top-color: var(--accent-8) !important; }
+.services-group:nth-of-type(9) { border-top-color: var(--accent-9) !important; }
+
+.services-group:nth-of-type(1) .service-group-name { color: var(--accent-1) !important; }
+.services-group:nth-of-type(2) .service-group-name { color: var(--accent-2) !important; }
+.services-group:nth-of-type(3) .service-group-name { color: var(--accent-3) !important; }
+.services-group:nth-of-type(4) .service-group-name { color: var(--accent-4) !important; }
+.services-group:nth-of-type(5) .service-group-name { color: var(--accent-5) !important; }
+.services-group:nth-of-type(6) .service-group-name { color: var(--accent-6) !important; }
+.services-group:nth-of-type(7) .service-group-name { color: var(--accent-7) !important; }
+.services-group:nth-of-type(8) .service-group-name { color: var(--accent-8) !important; }
+.services-group:nth-of-type(9) .service-group-name { color: var(--accent-9) !important; }
+
+/* ── Cards — list entries, not boxes ── */
 .service-card {
   background:    transparent !important;
   border:        none !important;
@@ -71,14 +200,12 @@
   transform:    none !important;
 }
 
-/* ── Service name — like a list entry title ── */
 .service-name {
   color:       var(--fg) !important;
   font-size:   0.9375rem !important;
   font-weight: 500 !important;
 }
 
-/* ── Description — like entry-meta on the site ── */
 .service-description {
   color:       var(--sub) !important;
   font-size:   0.8125rem !important;
@@ -86,96 +213,13 @@
   opacity:     1 !important;
 }
 
-/* ── Group / section headers — like h2 in prose-content ── */
-.service-group-name {
-  font-family:    var(--font) !important;
-  font-size:      0.8125rem !important;
-  font-weight:    500 !important;
-  letter-spacing: var(--track) !important;
-  text-transform: none !important;
-  color:          var(--sub) !important;
-}
+/* ══ Chrome ════════════════════════════════════════════════════════════ */
 
-/* ── Group header icons — strip zinc-blue tint, force neutral gray ── */
-.service-group-icon img {
-  filter: grayscale(1) brightness(0.75) !important;
-}
-
-/* ── Section separation — every group gets real breathing room and a
-   colored top rule, not just the first one. This is the fix for groups
-   reading as one continuous wall instead of distinct sections. ── */
-.services-group {
-  margin-top:    2.25rem !important;
-  padding-top:   1rem !important;
-  border-top:    2px solid var(--border) !important;
-}
-
-.services-group:first-child {
-  margin-top: 0 !important;
-}
-
-/* ── Group accent — colored top rule + matching header text, one per
-   domain (see --accent-N tokens above). Position-based (nth-of-type)
-   since Homepage doesn't expose a per-group class/id hook - if groups are
-   reordered in settings.yaml, renumber these to match. ── */
-.services-group:nth-of-type(1) { border-top-color: var(--accent-1) !important; }
-.services-group:nth-of-type(2) { border-top-color: var(--accent-2) !important; }
-.services-group:nth-of-type(3) { border-top-color: var(--accent-3) !important; }
-.services-group:nth-of-type(4) { border-top-color: var(--accent-4) !important; }
-.services-group:nth-of-type(5) { border-top-color: var(--accent-5) !important; }
-.services-group:nth-of-type(6) { border-top-color: var(--accent-6) !important; }
-.services-group:nth-of-type(7) { border-top-color: var(--accent-7) !important; }
-
-.services-group:nth-of-type(1) .service-group-name { color: var(--accent-1) !important; }
-.services-group:nth-of-type(2) .service-group-name { color: var(--accent-2) !important; }
-.services-group:nth-of-type(3) .service-group-name { color: var(--accent-3) !important; }
-.services-group:nth-of-type(4) .service-group-name { color: var(--accent-4) !important; }
-.services-group:nth-of-type(5) .service-group-name { color: var(--accent-5) !important; }
-.services-group:nth-of-type(6) .service-group-name { color: var(--accent-6) !important; }
-.services-group:nth-of-type(7) .service-group-name { color: var(--accent-7) !important; }
-
-/* ── Widget data area ── */
-.widget-container {
-  background:    transparent !important;
-  border-top:    1px solid var(--border) !important;
-  border-radius: 0 !important;
-}
-
-.primary-text {
-  color:          var(--fg) !important;
-  font-family:    var(--mono) !important;
-  font-size:      0.8125rem !important;
-  font-weight:    500 !important;
-  letter-spacing: 0.02em !important;
-}
-
-.secondary-text {
-  color:          var(--muted) !important;
-  font-family:    var(--mono) !important;
-  font-size:      0.625rem !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-}
-
-/* ── Header info widgets ── */
-#information-widgets {
-  border-bottom: 1px solid var(--border) !important;
-  padding-bottom: 0.75rem !important;
-  margin-bottom: 0.5rem !important;
-}
-
-/* ── Status dot — muted green ── */
-.bg-emerald-500 {
-  background-color: #3d6b4f !important;
-}
-
-/* ── Selection ── */
 ::selection {
   background: var(--surface3) !important;
   color:      var(--fg) !important;
 }
 
-/* ── Scrollbar ── */
 ::-webkit-scrollbar       { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -184,18 +228,18 @@
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-h); }
 
-/* ── Page footer ── */
 #merox-footer {
   display:         flex;
   align-items:     center;
   justify-content: center;
+  flex-wrap:       wrap;
   gap:             0.75rem;
-  padding:         1.25rem 1rem 2rem;
-  margin-top:      1.5rem;
+  padding:         1.25rem 1rem 2.5rem;
+  margin-top:      2.5rem;
   border-top:      1px solid var(--border);
   font-family:     var(--mono) !important;
   font-size:       0.625rem !important;
-  letter-spacing:  0.08em !important;
+  letter-spacing:  0.1em !important;
   text-transform:  uppercase !important;
   color:           var(--muted) !important;
 }
@@ -206,14 +250,10 @@
   transition:      color 0.1s var(--ease) !important;
 }
 
-#merox-footer a:hover {
-  color: var(--sub) !important;
-}
-
-#merox-footer .footer-sep {
-  color: var(--border-h) !important;
-}
+#merox-footer a:hover     { color: var(--sub) !important; }
+#merox-footer .footer-sep { color: var(--border-h) !important; }
 
 @media (prefers-reduced-motion: reduce) {
-  .service-card { transition: none !important; }
+  .service-card,
+  .intro-cta { transition: none !important; }
 }
