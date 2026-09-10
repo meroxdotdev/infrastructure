@@ -19,9 +19,10 @@ iconStyle: flat
 favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
 
 layout:
-  # columns is min(items, 4). No group icons: the colored rule in custom.css
-  # already separates the sections, and an icon next to a one-word heading is
-  # the second thing saying the same thing.
+  # columns is min(items, 4). No group icons: custom.css numbers the chapters
+  # and spaces them apart, and an icon next to a one-word heading is a second
+  # thing saying what the heading already says. The order below is the chapter
+  # numbering, since the counter runs over these groups in this order.
   Network:
     style: column
     columns: 4

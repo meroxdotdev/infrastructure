@@ -1,44 +1,40 @@
 /*
- * inside.merox.dev — mirrors merox.dev's design system.
- * Column-first, editorial, IBM Plex. The page reads as the homelab-tour
- * post's contents page, so it borrows that post's type scale, not a
- * dashboard's.
+ * inside.merox.dev — the homelab-tour post's contents page.
+ *
+ * Tokens below are merox.dev's own (src/styles/color.css, dark scale), copied
+ * rather than approximated so the two pages cannot drift apart by a shade.
+ *
+ * One rule governs colour here: the service icons are the only things allowed
+ * to have any. They arrive in a dozen brand colours already, so chrome that
+ * also carries colour competes with them and the page reads as noise. Chapters
+ * are told apart by a number and by space, which is free.
  */
 
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap');
 
-/* ── Design tokens — merox.dev color.css (dark) ── */
 :root {
-  --bg:       #111111;
-  --surface:  #191919;
-  --surface3: #2a2a2a;
-  --border:   #3a3a3a;
-  --border-h: #484848;
-  --muted:    #6e6e6e;
-  --sub:      #b4b4b4;
-  --fg:       #eeeeee;
-  --font:     'IBM Plex Sans', system-ui, sans-serif;
-  --mono:     'IBM Plex Mono', ui-monospace, monospace;
-  --track:    -0.015em;
-  --ease:     cubic-bezier(0.16, 1, 0.3, 1);
+  --gray-1:  #18191b; /* background */
+  --gray-2:  #202124; /* surface */
+  --gray-3:  #292a2d; /* surface, raised */
+  --gray-4:  #333438; /* hairlines */
+  --gray-5:  #3e3f43;
+  --gray-6:  #4a4b50; /* borders */
+  --gray-7:  #606167;
+  --gray-8:  #77787e;
+  --gray-10: #9d9ea3;
+  --gray-11: #b9babf; /* secondary text */
+  --gray-12: #f1f1f2; /* primary text */
 
-  /* ── Chapter accents. One hue per group, walking the wheel in group order
-     so the ramp itself reads as progress down the page — the colors mean
-     "you have moved to the next chapter", nothing more. Order must match
-     settings.yaml's layout: block; these are positional (see nth-of-type
-     below), because Homepage exposes no per-group class. ── */
-  --accent-1: #3dd9c8; /* Network */
-  --accent-2: #3db8d9; /* Compute */
-  --accent-3: #3d8ed9; /* Storage */
-  --accent-4: #5d6fe0; /* Kubernetes */
-  --accent-5: #9b5fe0; /* Media */
-  --accent-6: #d95fd0; /* Photos & Platform */
-  --accent-7: #d93d7a; /* Observability */
-  --accent-8: #d97a3d; /* VPS */
-  --accent-9: #d9b83d; /* Backup */
+  --accent:       #79b8ff;
+  --accent-hover: #a6d3ff;
+
+  --font:  'IBM Plex Sans', system-ui, sans-serif;
+  --mono:  'IBM Plex Mono', ui-monospace, monospace;
+  --width: 75.94rem;  /* --grid-max-width */
+  --track: -0.015em;
+  --ease:  cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── Global typography — matches merox.dev tracking ── */
 #page-wrapper,
 #page-wrapper * {
   font-family:             var(--font) !important;
@@ -47,213 +43,191 @@
   -moz-osx-font-smoothing: grayscale !important;
 }
 
-#page-wrapper {
-  background: var(--bg) !important;
-}
-
-/* ── Page width — match the site's --grid-max-width ── */
-#page-wrapper > * {
-  max-width: 72rem !important;
-}
+#page-wrapper       { background: var(--gray-1) !important; }
+#page-wrapper > *   { max-width: var(--width) !important; }
 
 /* ══ Masthead (injected by custom.js) ══════════════════════════════════ */
 
 #merox-intro {
-  margin:        0 auto !important;
-  padding:       3.5rem 0 1.5rem;
-  border-bottom: 1px solid var(--border);
+  margin:  0 auto !important;
+  padding: 4rem 0 2.5rem;
 }
 
 .intro-eyebrow {
   font-family:    var(--mono) !important;
-  font-size:      0.625rem;
-  letter-spacing: 0.1em !important;
+  font-size:      0.6875rem;
+  letter-spacing: 0.12em !important;
   text-transform: uppercase;
-  color:          var(--muted);
+  color:          var(--gray-8);
 }
 
 .intro-title {
-  margin:         0.75rem 0 0;
-  font-size:      1.875rem;
+  margin:         1rem 0 0;
+  font-size:      clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
   font-weight:    300;
-  line-height:    1.15;
-  letter-spacing: -0.025em !important;
-  color:          var(--fg);
+  line-height:    1.1;
+  letter-spacing: -0.03em !important;
+  color:          var(--gray-12);
 }
 
 .intro-lede {
-  margin:      0.875rem 0 0;
-  max-width:   44rem;
-  font-size:   0.9375rem;
-  line-height: 1.65;
-  color:       var(--sub);
+  margin:      1.125rem 0 0;
+  max-width:   46rem;
+  font-size:   1rem;
+  line-height: 1.7;
+  color:       var(--gray-11);
 }
 
-/* Same six numbers as the post's spec sheet, in the same order. */
+/* The post's spec sheet, same six numbers in the same order. */
 .intro-specs {
-  display:   flex;
-  flex-wrap: wrap;
-  gap:       1.75rem 2.5rem;
-  margin:    2rem 0 0;
+  display:               grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap:                   1.5rem 2rem;
+  margin:                2.75rem 0 0;
+  padding:               1.5rem 0;
+  border-top:            1px solid var(--gray-4);
+  border-bottom:         1px solid var(--gray-4);
 }
 
 .intro-specs dt {
   font-family:    var(--mono) !important;
-  font-size:      0.5625rem;
-  letter-spacing: 0.1em !important;
+  font-size:      0.625rem;
+  letter-spacing: 0.12em !important;
   text-transform: uppercase;
-  color:          var(--muted);
+  color:          var(--gray-8);
 }
 
 .intro-specs dd {
-  margin:      0.375rem 0 0;
+  margin:      0.5rem 0 0;
   font-family: var(--mono) !important;
-  font-size:   0.9375rem;
-  font-weight: 500;
-  color:       var(--fg);
+  font-size:   1.0625rem;
+  font-weight: 400;
+  color:       var(--gray-12);
 }
 
 .intro-cta {
   display:         inline-block;
-  margin-top:      2rem;
-  padding-bottom:  0.1875rem;
-  border-bottom:   1px solid var(--border-h);
+  margin-top:      1.75rem;
   font-family:     var(--mono) !important;
-  font-size:       0.6875rem;
-  letter-spacing:  0.1em !important;
-  text-transform:  uppercase;
-  color:           var(--sub);
+  font-size:       0.75rem;
+  letter-spacing:  0.06em !important;
+  color:           var(--accent);
   text-decoration: none;
-  transition:      color 0.1s var(--ease), border-color 0.1s var(--ease);
+  transition:      color 0.15s var(--ease);
 }
 
-.intro-cta::after { content: ' →'; }
-
-.intro-cta:hover {
-  color:        var(--fg);
-  border-color: var(--fg);
+.intro-cta::after {
+  content:    ' →';
+  display:    inline-block;
+  transition: transform 0.15s var(--ease);
 }
 
-@media (max-width: 48rem) {
-  #merox-intro     { padding: 2.5rem 0 1.75rem; }
-  .intro-title     { font-size: 1.5rem; }
-  .intro-specs     { gap: 1.25rem 2rem; }
-}
+.intro-cta:hover           { color: var(--accent-hover); }
+.intro-cta:hover::after    { transform: translateX(0.1875rem); }
 
 /* ══ Chapters ══════════════════════════════════════════════════════════ */
 
-/* Real breathing room plus a colored top rule, so the groups read as nine
-   sections rather than one continuous wall. Every group gets the same
-   margin, with no first-child exception: these are flex items, so a
-   different margin on one of them lifts it above the others rather than
-   only closing the gap under the masthead. That spacing lives on
-   #merox-intro's margin-bottom instead. */
+/* Numbered, so the order is legible as an order — this page is a contents
+   page, and a contents page that does not count is just a list. Homepage
+   exposes no per-group hook, so the numbering is a CSS counter over the
+   groups in DOM order, which is settings.yaml's layout: order. */
+#page-wrapper { counter-reset: chapter; }
+
 .services-group {
-  margin-top:  2.75rem !important;
-  padding-top: 1rem !important;
-  border-top:  2px solid var(--border) !important;
+  margin-top:  3.25rem !important;
+  padding-top: 1.125rem !important;
+  border-top:  1px solid var(--gray-4) !important;
 }
 
 .service-group-name {
-  font-family:    var(--font) !important;
-  font-size:      0.8125rem !important;
-  font-weight:    500 !important;
-  letter-spacing: var(--track) !important;
-  text-transform: none !important;
-  color:          var(--sub) !important;
+  font-family:    var(--mono) !important;
+  font-size:      0.6875rem !important;
+  font-weight:    400 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color:          var(--gray-10) !important;
 }
 
-.services-group:nth-of-type(1) { border-top-color: var(--accent-1) !important; }
-.services-group:nth-of-type(2) { border-top-color: var(--accent-2) !important; }
-.services-group:nth-of-type(3) { border-top-color: var(--accent-3) !important; }
-.services-group:nth-of-type(4) { border-top-color: var(--accent-4) !important; }
-.services-group:nth-of-type(5) { border-top-color: var(--accent-5) !important; }
-.services-group:nth-of-type(6) { border-top-color: var(--accent-6) !important; }
-.services-group:nth-of-type(7) { border-top-color: var(--accent-7) !important; }
-.services-group:nth-of-type(8) { border-top-color: var(--accent-8) !important; }
-.services-group:nth-of-type(9) { border-top-color: var(--accent-9) !important; }
+.service-group-name::before {
+  counter-increment: chapter;
+  content:           counter(chapter, decimal-leading-zero);
+  margin-right:      0.875rem;
+  color:             var(--gray-7);
+}
 
-.services-group:nth-of-type(1) .service-group-name { color: var(--accent-1) !important; }
-.services-group:nth-of-type(2) .service-group-name { color: var(--accent-2) !important; }
-.services-group:nth-of-type(3) .service-group-name { color: var(--accent-3) !important; }
-.services-group:nth-of-type(4) .service-group-name { color: var(--accent-4) !important; }
-.services-group:nth-of-type(5) .service-group-name { color: var(--accent-5) !important; }
-.services-group:nth-of-type(6) .service-group-name { color: var(--accent-6) !important; }
-.services-group:nth-of-type(7) .service-group-name { color: var(--accent-7) !important; }
-.services-group:nth-of-type(8) .service-group-name { color: var(--accent-8) !important; }
-.services-group:nth-of-type(9) .service-group-name { color: var(--accent-9) !important; }
-
-/* ── Cards — list entries, not boxes ── */
+/* ── Cards ── */
 .service-card {
-  background:    transparent !important;
-  border:        none !important;
-  border-top:    1px solid var(--border) !important;
-  border-radius: 0 !important;
+  background:    var(--gray-2) !important;
+  border:        1px solid var(--gray-4) !important;
+  border-radius: 0.25rem !important;
   box-shadow:    none !important;
-  transition:    background 0.1s var(--ease) !important;
+  transition:    background 0.15s var(--ease), border-color 0.15s var(--ease) !important;
 }
 
 .service-card:hover {
-  background:   var(--surface) !important;
-  border-color: var(--border) !important;
+  background:   var(--gray-3) !important;
+  border-color: var(--gray-6) !important;
   box-shadow:   none !important;
   transform:    none !important;
 }
 
 .service-name {
-  color:       var(--fg) !important;
-  font-size:   0.9375rem !important;
+  color:       var(--gray-12) !important;
+  font-size:   0.875rem !important;
   font-weight: 500 !important;
 }
 
 .service-description {
-  color:       var(--sub) !important;
-  font-size:   0.8125rem !important;
+  color:       var(--gray-10) !important;
+  font-size:   0.78125rem !important;
   font-weight: 400 !important;
+  line-height: 1.5 !important;
   opacity:     1 !important;
 }
 
 /* ══ Chrome ════════════════════════════════════════════════════════════ */
 
 ::selection {
-  background: var(--surface3) !important;
-  color:      var(--fg) !important;
+  background: var(--gray-5) !important;
+  color:      var(--gray-12) !important;
 }
 
 ::-webkit-scrollbar       { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background:    var(--border);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover { background: var(--border-h); }
+::-webkit-scrollbar-thumb { background: var(--gray-5); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-7); }
 
 #merox-footer {
   display:         flex;
   align-items:     center;
   justify-content: center;
   flex-wrap:       wrap;
-  gap:             0.75rem;
-  padding:         1.25rem 1rem 2.5rem;
-  margin-top:      2.5rem;
-  border-top:      1px solid var(--border);
+  gap:             0.875rem;
+  padding:         1.5rem 1rem 3rem;
+  margin-top:      3.5rem;
+  border-top:      1px solid var(--gray-4);
   font-family:     var(--mono) !important;
-  font-size:       0.625rem !important;
-  letter-spacing:  0.1em !important;
-  text-transform:  uppercase !important;
-  color:           var(--muted) !important;
+  font-size:       0.6875rem !important;
+  letter-spacing:  0.08em !important;
+  color:           var(--gray-8) !important;
 }
 
 #merox-footer a {
-  color:           var(--muted) !important;
+  color:           var(--gray-8) !important;
   text-decoration: none !important;
-  transition:      color 0.1s var(--ease) !important;
+  transition:      color 0.15s var(--ease) !important;
 }
 
-#merox-footer a:hover     { color: var(--sub) !important; }
-#merox-footer .footer-sep { color: var(--border-h) !important; }
+#merox-footer a:hover     { color: var(--accent) !important; }
+#merox-footer .footer-sep { color: var(--gray-5) !important; }
+
+@media (max-width: 48rem) {
+  #merox-intro    { padding: 2.75rem 0 2rem; }
+  .services-group { margin-top: 2.5rem !important; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .service-card,
-  .intro-cta { transition: none !important; }
+  .intro-cta,
+  .intro-cta::after { transition: none !important; }
 }
