@@ -22,6 +22,61 @@
 # training to ignore the ones that mean something.
 
 # ============================================================================
+# STATUS — the only group that answers "does anything need me right now?"
+# ============================================================================
+# Added 2026-09-10. Everything below this group is navigation: links to open
+# once you already know where you are going. This group is the dashboard.
+#
+# Two cards, because two is all this host can honestly answer. From vps01 only
+# SSH to pve-2 crosses the tailnet — 8006, 443 and DNS on 53 are dropped by
+# pfSense — so anything needing Prometheus or the Proxmox API is dead here, and
+# had been for months without showing it.
+#
+# Cluster and storage moved to home.k8s.merox.dev, which runs in the cluster
+# where that data is local. What is left are the two things vps01 can see:
+#   - healthchecks.io — did every scheduled job run? Reached over the internet,
+#     so it is also the only source that survives the house losing power.
+#   - homelab-stats — vps01's own disk and memory, collected locally.
+- Status:
+    - Backups:
+        icon: mdi-shield-check
+        description: Every scheduled job, one number
+        href: https://healthchecks.io/projects/
+        # No uuid, so the widget reports up/down across every check rather than
+        # one. That is the right shape: the question is "did anything fail",
+        # not "how is restic doing". Any down at all is the alarm.
+        widget:
+          type: healthchecks
+          url: https://healthchecks.io
+          key: "{{HOMEPAGE_VAR_HEALTHCHECKS_KEY}}"
+
+    - Off-site:
+        icon: mdi-cloud-lock
+        description: Oracle headroom, on a tier that cannot grow
+        href: https://portainer.cloud.merox.dev
+        # From vps01 itself: Prometheus does not scrape it. This is the number
+        # that decides how long the off-site copy keeps working — the restic
+        # repository sits at ~67 GiB against ~77 GiB free, on a tenancy already
+        # at its Always Free block-storage limit.
+        #
+        # "Updated" is here so a stale collector is visible on the card rather
+        # than being mistaken for stable numbers.
+        widget:
+          type: customapi
+          url: http://homelab-stats-server/homelab-stats.json
+          refreshInterval: 300000
+          mappings:
+            - field: storage_summary.fullest_pct
+              label: VPS disk
+              format: percent
+            - field: vps.mem_pct
+              label: Memory
+              format: percent
+            - field: updated_at
+              label: Updated
+              format: relativeDate
+
+# ============================================================================
 # COMPUTE & HARDWARE
 # ============================================================================
 # Three standalone Proxmox hosts, joined through PDM rather than corosync.

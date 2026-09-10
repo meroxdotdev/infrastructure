@@ -1,2 +1,6 @@
 ---
 app_stack_dir: /srv/docker/oracle-cloud
+
+# healthchecks.io read-only API key, for the Status > Backups card. Empty here;
+# the real value belongs in the vault. Project Settings -> API keys -> read-only.
+homepage_healthchecks_api_key: ""

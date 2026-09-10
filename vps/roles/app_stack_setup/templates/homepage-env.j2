@@ -11,3 +11,9 @@ HOMEPAGE_VAR_JELLYFIN_KEY={{ homepage_jellyfin_api_key }}
 HOMEPAGE_VAR_JELLYSEERR_KEY={{ homepage_jellyseerr_api_key }}
 HOMEPAGE_VAR_QBIT_USER={{ homepage_qbittorrent_username }}
 HOMEPAGE_VAR_QBIT_PASS={{ homepage_qbittorrent_password }}
+
+# Read-only API key from the healthchecks.io project settings. Read-only is
+# enough: the Status card only lists check states, it never pings or edits.
+# Empty until set, and the card then shows an error rather than silently
+# reporting healthy — which is the safe direction for a backup indicator.
+HOMEPAGE_VAR_HEALTHCHECKS_KEY={{ homepage_healthchecks_api_key | default('') }}

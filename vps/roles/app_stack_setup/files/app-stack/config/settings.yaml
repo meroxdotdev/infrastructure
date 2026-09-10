@@ -22,6 +22,14 @@ favicon: https://merox.dev/assets/img/favicons/favicon-32x32.png
 # Update the count here when a group gains or loses an entry.
 layout:
 
+  # First and always open. Four cards, one row, no icons competing with the
+  # numbers — this is the only group meant to be read rather than clicked.
+  Status:
+    style: row
+    columns: 2
+    icon: mdi-heart-pulse
+    useEqualHeights: true
+
   Compute & Hardware:
     style: row
     columns: 3

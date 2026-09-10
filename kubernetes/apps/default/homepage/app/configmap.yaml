@@ -1,0 +1,184 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+data:
+  # ==========================================================================
+  # The internal dashboard. One question: does anything need me right now?
+  # ==========================================================================
+  # It runs in the cluster rather than on vps01 because that is where the data
+  # is. From the VPS, only SSH to pve-2 crosses the tailnet — 8006, 443 and
+  # even DNS on 53 are dropped by pfSense — so every widget pointed at
+  # Prometheus or the Proxmox API there had been silently dead, including the
+  # Alertmanager card added long before this one. Moving the dashboard was the
+  # alternative to opening those ports, and the plan's Week 4 is about closing
+  # segmentation gaps, not widening them.
+  #
+  # vps01 keeps its own Homepage. That one is the public, curated view.
+  settings.yaml: |
+    title: Homelab
+    description: Status first, links second
+    theme: dark
+    color: slate
+    headerStyle: clean
+    hideVersion: true
+    disableCollapse: false
+    layout:
+      Status:
+        style: row
+        columns: 4
+        icon: mdi-heart-pulse
+      Links:
+        style: row
+        columns: 4
+        icon: mdi-link-variant
+
+  widgets.yaml: |
+    - resources:
+        label: Cluster
+        cpu: true
+        memory: true
+        expanded: true
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: k8s
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - search:
+        provider: duckduckgo
+        target: _blank
+
+  kubernetes.yaml: |
+    # In-cluster: the widget uses the ServiceAccount token, no kubeconfig.
+    mode: cluster
+
+  docker.yaml: ""
+  bookmarks.yaml: "[]"
+
+  services.yaml: |
+    # Four cards, one question each. All four read flat on a healthy day, so a
+    # glance is enough and anything not flat is the thing to open.
+    #
+    # Every query below was run against this Prometheus before being written
+    # here. A card that always errors trains you to ignore the ones that mean
+    # something.
+    - Status:
+        - Backups:
+            icon: mdi-shield-check
+            description: Every scheduled job, one number
+            href: https://healthchecks.io/projects/
+            # No uuid, so this reports up/down across every check rather than
+            # one. The question is "did anything fail", not "how is restic
+            # doing". healthchecks.io is also the only source here that
+            # survives the house losing power.
+            widget:
+              type: healthchecks
+              url: https://healthchecks.io
+              key: {{HOMEPAGE_VAR_HEALTHCHECKS_KEY}}
+
+        - Cluster:
+            icon: kubernetes.png
+            description: Alerts, nodes, Flux
+            href: https://headlamp.k8s.merox.dev
+            widget:
+              type: prometheusmetric
+              url: http://kube-prometheus-stack-prometheus.observability:9090
+              refreshInterval: 60000
+              metrics:
+                # Watchdog is excluded deliberately: it fires permanently by
+                # design, as the dead-man's switch proving Alertmanager is
+                # alive. Counting it would mean this never reads zero.
+                - label: Alerts
+                  query: count(ALERTS{alertstate="firing",alertname!="Watchdog"}) or vector(0)
+                  format:
+                    type: number
+                - label: Nodes ready
+                  query: count(kube_node_status_condition{condition="Ready",status="true"} == 1)
+                  format:
+                    type: number
+                - label: Flux failing
+                  query: count(gotk_reconcile_condition{type="Ready",status="False"}) or vector(0)
+                  format:
+                    type: number
+
+        - Storage:
+            icon: mdi-database
+            description: Fullest pool, oldest backup
+            href: https://longhorn.k8s.merox.dev
+            widget:
+              type: prometheusmetric
+              url: http://kube-prometheus-stack-prometheus.observability:9090
+              refreshInterval: 300000
+              metrics:
+                # Every Proxmox storage on every host, worst one wins. Adding a
+                # host or a pool needs no change here.
+                - label: Fullest pool
+                  query: max(pve_disk_usage_bytes / pve_disk_size_bytes) * 100
+                  format:
+                    type: percent
+                # What LonghornBackupStale alerts on at 36h. Watching it climb
+                # is the early version of that alert.
+                - label: Oldest backup
+                  query: time() - min(longhorn_volume_last_backup_at != 0)
+                  format:
+                    type: duration
+                - label: Longhorn used
+                  query: min(longhorn_node_storage_usage_bytes / longhorn_node_storage_capacity_bytes) * 100
+                  format:
+                    type: percent
+
+        - Hosts:
+            icon: mdi-server
+            description: Proxmox guests and uptime
+            href: https://10.57.57.250:8006
+            widget:
+              type: prometheusmetric
+              url: http://kube-prometheus-stack-prometheus.observability:9090
+              refreshInterval: 300000
+              metrics:
+                - label: Guests running
+                  query: count(pve_up{id=~"(qemu|lxc)/.*"} == 1)
+                  format:
+                    type: number
+                - label: Guests stopped
+                  query: count(pve_up{id=~"(qemu|lxc)/.*"} == 0) or vector(0)
+                  format:
+                    type: number
+                - label: pve-2 uptime
+                  query: max(pve_uptime_seconds{id="node/pve-2"})
+                  format:
+                    type: duration
+
+    - Links:
+        - Longhorn:
+            icon: longhorn.png
+            href: https://longhorn.k8s.merox.dev
+        - Grafana:
+            icon: grafana.png
+            href: https://grafana.k8s.merox.dev
+        - Immich:
+            icon: immich.png
+            href: https://photos.k8s.merox.dev
+        - Jellyfin:
+            icon: jellyfin.png
+            href: https://jellyfin.k8s.merox.dev
+        - Proxmox pve-2:
+            icon: proxmox.png
+            href: https://10.57.57.250:8006
+        - Nextcloud:
+            icon: nextcloud.png
+            href: https://cloud.merox.dev
+        - Public dashboard:
+            icon: mdi-earth
+            href: https://homepage.cloud.merox.dev
+        - Alertmanager:
+            icon: alertmanager.png
+            href: https://alertmanager.k8s.merox.dev
