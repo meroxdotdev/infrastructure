@@ -75,6 +75,11 @@ spec:
               capabilities:
                 drop: [ALL]
     defaultPodOptions:
+      # Not the default here, and the kubernetes widget needs it: without the
+      # projected token the pod has the RBAC but nothing to authenticate with,
+      # and Homepage reports "Error getting nodes: NaN undefined undefined"
+      # rather than an auth failure.
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
