@@ -82,7 +82,7 @@ data:
             widget:
               type: healthchecks
               url: https://healthchecks.io
-              key: {{HOMEPAGE_VAR_HEALTHCHECKS_KEY}}
+              key: "{{HOMEPAGE_VAR_HEALTHCHECKS_KEY}}"
 
         - Cluster:
             icon: kubernetes.png
