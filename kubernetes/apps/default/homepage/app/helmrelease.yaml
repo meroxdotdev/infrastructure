@@ -53,6 +53,13 @@ spec:
                   httpGet:
                     path: /api/healthcheck
                     port: &port 3000
+                    # kubelet sends the pod IP as Host, which HOMEPAGE_ALLOWED_HOSTS
+                    # rejects — the probe then fails while the app is fine. Send the
+                    # real hostname instead of widening the allow-list, which is the
+                    # setting that makes it safe to serve this without its own auth.
+                    httpHeaders:
+                      - name: Host
+                        value: home.k8s.merox.dev
                   initialDelaySeconds: 10
                   periodSeconds: 30
               readiness: *probes
