@@ -59,6 +59,10 @@ data:
   kubernetes.yaml: |
     # In-cluster: the widget uses the ServiceAccount token, no kubeconfig.
     mode: cluster
+    # This cluster serves everything through Gateway API. Left on, Homepage
+    # polls for Ingress objects that will never exist and logs an error every
+    # refresh — noise that trains you to skip the log.
+    ingress: false
 
   # Homepage copies any missing skeleton file into /app/config at boot. That
   # directory is read-only here — every file comes from this ConfigMap — so a
