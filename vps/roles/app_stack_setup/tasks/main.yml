@@ -23,7 +23,7 @@
 # have their own dedicated role + template (garage_setup, guacamole_setup,
 # traefik_setup) deploying into the same subdirectories, and
 # the old git-clone merge was silently overwriting them on every run.
-- name: Deploy static app-stack files (root compose, Homepage config, Pi-hole lists)
+- name: Deploy static app-stack files (compose, public dashboard, Pi-hole lists)
   ansible.builtin.copy:
     src: app-stack/
     dest: "{{ app_stack_dir }}/"
@@ -41,13 +41,14 @@
   become: yes
   notify: Restart app stack
 
-- name: Deploy Homepage widget secrets (homepage.env)
-  template:
-    src: homepage-env.j2
-    dest: "{{ app_stack_dir }}/homepage.env"
-    mode: '0600'
-    owner: root
-    group: root
+# homepage.env held the widget credentials — Synology, Jellyfin, qBittorrent,
+# pfSense, Pi-hole, Proxmox, Cloudflare. Only the private dashboard used them,
+# and it is gone: the public one has no widgets at all, and the internal one
+# runs in the cluster. Removing the file takes a dozen API keys off this disk.
+- name: Remove Homepage widget secrets, no dashboard here uses them
+  ansible.builtin.file:
+    path: "{{ app_stack_dir }}/homepage.env"
+    state: absent
   become: yes
   notify: Restart app stack
 
@@ -66,21 +67,6 @@
   become: yes
   notify: Restart app stack
 
-- name: Remove superseded idrac-stats cron entry (renamed to homelab-stats)
-  ansible.builtin.cron:
-    name: "idrac-stats"
-    state: absent
-  become: yes
-
-- name: Remove superseded idrac-stats script and output dir
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /usr/local/bin/idrac-stats.sh
-    - "{{ app_stack_dir }}/idrac-stats"
-  become: yes
-
 # homelab-stats.sh no longer uses this key, so remove the now-orphaned
 # private key from disk rather than leaving stale credential material around.
 - name: Remove superseded UPS status SSH private key
@@ -90,30 +76,30 @@
   become: yes
   no_log: true
 
-- name: Ensure homelab-stats output directory exists
-  ansible.builtin.file:
-    path: "{{ app_stack_dir }}/homelab-stats"
-    state: directory
-    mode: '0755'
+# homelab-stats collected iDRAC power, fan RPM and Proxmox pool usage from
+# this host every five minutes. From vps01 none of that is reachable: pfSense
+# drops 8006, 443 and DNS on 53 from the tailnet, so the script had been logging
+# a curl timeout every five minutes and writing nulls. Its only consumer was the
+# private Homepage, now replaced by home.k8s.merox.dev inside the cluster, where
+# Prometheus already holds every one of those readings. Its alerts went through
+# n8n webhooks, removed 2026-09-09.
+#
+# It also kept the iDRAC password and the Telegram bot token in cleartext in a
+# file on disk, which is reason enough on its own.
+- name: Remove the homelab-stats collector, its cron entry and its output
   become: yes
-
-- name: Deploy R730xd iDRAC + Proxmox storage stats script
-  template:
-    src: homelab-stats.sh.j2
-    dest: /usr/local/bin/homelab-stats.sh
-    owner: root
-    group: root
-    mode: '0700'
-  become: yes
-  no_log: true
-
-- name: Schedule homelab stats refresh (every 5 min)
-  ansible.builtin.cron:
-    name: "homelab-stats"
-    minute: "*/5"
-    job: "/usr/local/bin/homelab-stats.sh >> /var/log/homelab-stats.log 2>&1"
-    user: root
-  become: yes
+  block:
+    - ansible.builtin.cron:
+        name: "homelab-stats"
+        state: absent
+        user: root
+    - ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /usr/local/bin/homelab-stats.sh
+        - /var/log/homelab-stats.log
+        - "{{ app_stack_dir }}/homelab-stats"
 
 - name: Start app stack containers (root compose)
   community.docker.docker_compose_v2:

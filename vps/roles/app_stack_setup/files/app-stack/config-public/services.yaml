@@ -20,11 +20,6 @@
         href: https://merox.dev/blog/kubernetes-media-server
         description: Media server, Intel QuickSync transcoding
 
-    - Jellyfin Public:
-        icon: jellyfin.png
-        href: https://merox.dev/blog/jellyfin-public-without-home-ip
-        description: Curated library on its own edge, no home IP exposed
-
     - Jellyseerr:
         icon: jellyseerr.png
         href: https://merox.dev/blog/kubernetes-media-server
@@ -153,11 +148,6 @@
         href: https://merox.dev/blog/jellyfin-public-without-home-ip
         description: Outbound-only ingress — zero ports forwarded
 
-    - Frankfurt edge:
-        icon: mdi-earth
-        href: https://merox.dev/blog/jellyfin-public-without-home-ip
-        description: Stateless TLS terminator, 30 ms instead of 165 ms
-
     - Tailscale:
         icon: tailscale.png
         href: https://merox.dev/blog/tailscale-site-to-site
@@ -214,7 +204,7 @@
     - Loki:
         icon: mdi-text-box-search
         href: https://merox.dev/blog/homelab-tour
-        description: Log aggregation, shipped by Promtail
+        description: Log aggregation, shipped by Alloy
 
     - Alertmanager:
         icon: mdi-bell-alert

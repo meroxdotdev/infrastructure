@@ -45,7 +45,7 @@ on pve-2 also fails if the host has drifted from this repo.
 | Pi-hole + Unbound | pihole.cloud.merox.dev/admin |
 | Joplin | joplin.cloud.merox.dev |
 | Guacamole | rmt.merox.dev |
-| Homepage | homepage.cloud.merox.dev · inside.merox.dev |
+| Homepage | inside.merox.dev — public, curated, credential-free |
 | Portainer | portainer.cloud.merox.dev |
 | restic rest-server | :8000, append-only |
 
@@ -57,6 +57,7 @@ on pve-2 also fails if the host has drifted from this repo.
 | Immich | default |
 | n8n — one workflow, the news digest | default |
 | Headlamp · Authentik outpost | default |
+| Homepage — `home.k8s.merox.dev`, the internal dashboard | default |
 | Prometheus · Grafana · Loki · Alloy · Alertmanager | observability |
 | Longhorn | longhorn-system |
 | Cilium | kube-system |

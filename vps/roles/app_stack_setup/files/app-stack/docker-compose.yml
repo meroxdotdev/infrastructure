@@ -1,42 +1,10 @@
 services:
   # Secrets are loaded from .env (gitignored) — copy from .env.example to get started
-  homepage:
-    image: ghcr.io/gethomepage/homepage:v2.2.0
-    container_name: homepage
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
-      - 100.72.22.38
-    extra_hosts:
-      - "traefik.cloud.merox.dev:100.72.22.38"
-    ports:
-      - "127.0.0.1:3000:3000"
-    volumes:
-      - ./config:/app/config
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./config/kubeconfig.yaml:/app/config/kubeconfig.yaml:ro
-    env_file:
-      - homepage.env
-    environment:
-      PUID: 1000
-      PGID: 1000
-      HOMEPAGE_ALLOWED_HOSTS: "homepage.cloud.merox.dev"
-      KUBECONFIG: /app/config/kubeconfig.yaml
-    restart: unless-stopped
-    networks:
-      network-cloud-merox:
-        ipv4_address: 172.25.10.10
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.homepage.rule=Host(`homepage.cloud.merox.dev`)"
-      - "traefik.http.routers.homepage.entrypoints=https"
-      - "traefik.http.routers.homepage.tls.certresolver=cloudflare"
-      - "traefik.http.routers.homepage.middlewares=default-headers@file"
-      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
-
-  # Public, curated overview for inside.merox.dev — deliberately credential-free:
-  # no docker.sock, no kubeconfig, no env_file. Full detail lives on the
-  # `homepage` service above, reachable only via homepage.cloud.merox.dev (tailnet).
+  # The public dashboard, and the only one on this host. Deliberately
+  # credential-free: no docker.sock, no kubeconfig, no env_file, no widgets —
+  # every card links to a blog post rather than to a service, so there is
+  # nothing here to leak. Internal detail lives on home.k8s.merox.dev, inside
+  # the cluster, which is the only place that can actually read it.
   homepage-public:
     image: ghcr.io/gethomepage/homepage:v2.2.0
     container_name: homepage-public
@@ -57,20 +25,6 @@ services:
       - "traefik.http.routers.homepage-public.tls.certresolver=cloudflare"
       - "traefik.http.routers.homepage-public.middlewares=default-headers@file"
       - "traefik.http.services.homepage-public.loadbalancer.server.port=3000"
-
-  # Serves homelab-stats.json (written by the homelab-stats.sh cron job) to
-  # the private `homepage` service over plain HTTP - internal network only,
-  # no Traefik labels, no published port. iDRAC/Proxmox credentials never
-  # touch this container; it only ever reads the already-derived JSON off disk.
-  homelab-stats-server:
-    image: nginx:1.31.5-alpine
-    container_name: homelab-stats-server
-    volumes:
-      - ./homelab-stats:/usr/share/nginx/html:ro
-    restart: unless-stopped
-    networks:
-      network-cloud-merox:
-        ipv4_address: 172.25.10.12
 
   portainer:
     image: portainer/portainer-ee@sha256:18750221de87f489fffc3d52a23799e9c6a83aab0f1a5337824c81e12bf552b5
