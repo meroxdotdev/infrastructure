@@ -34,3 +34,6 @@ talosconfig
 .DS_Store
 Thumbs.db
 .pytest_cache/
+# Python bytecode from the dashboard generators - never source, never commit
+__pycache__/
+*.pyc

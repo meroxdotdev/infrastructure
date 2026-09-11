@@ -950,7 +950,7 @@
     {
       "id": 15,
       "type": "row",
-      "title": "Internet",
+      "title": "Kubernetes",
       "collapsed": false,
       "gridPos": {
         "h": 1,
@@ -963,6 +963,291 @@
     {
       "id": 16,
       "type": "stat",
+      "title": "CPU",
+      "description": "Used by every container, against what the three nodes can allocate.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "percentunit",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"\",image!=\"\"}[5m])) / sum(kube_node_status_allocatable{resource=\"cpu\"})",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Memory",
+      "description": "Working set of every container, against allocatable memory. Working set is what the OOM killer counts.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 15
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "percentunit",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.75
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum(container_memory_working_set_bytes{container!=\"\",image!=\"\"}) / sum(kube_node_status_allocatable{resource=\"memory\"})",
+          "range": false,
+          "instant": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Apps",
+      "description": "Ready against desired replicas for every app in the default namespace. `platform` is everything else \u2014 Flux, Cilium, Longhorn, cert-manager, observability, their DaemonSets included \u2014 Up only while none of it is short.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 20,
+        "x": 4,
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "none",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            },
+            {
+              "type": "range",
+              "options": {
+                "from": 0.01,
+                "to": 0.99,
+                "result": {
+                  "text": "Degraded",
+                  "color": "orange",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.01
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 13,
+          "valueSize": 15
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "kube_deployment_status_replicas_available{namespace=\"default\"} / (kube_deployment_spec_replicas{namespace=\"default\"} > 0)",
+          "range": false,
+          "instant": true,
+          "refId": "A",
+          "legendFormat": "{{deployment}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "kube_statefulset_status_replicas_ready{namespace=\"default\"} / (kube_statefulset_replicas{namespace=\"default\"} > 0)",
+          "range": false,
+          "instant": true,
+          "refId": "B",
+          "legendFormat": "{{statefulset}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "((count((kube_deployment_status_replicas_available{namespace!=\"default\"} / (kube_deployment_spec_replicas{namespace!=\"default\"} > 0)) < 1) or vector(0)) + (count((kube_statefulset_status_replicas_ready{namespace!=\"default\"} / (kube_statefulset_replicas{namespace!=\"default\"} > 0)) < 1) or vector(0)) + (count((kube_daemonset_status_number_ready{namespace!=\"default\"} / (kube_daemonset_status_desired_number_scheduled{namespace!=\"default\"} > 0)) < 1) or vector(0))) == bool 0",
+          "range": false,
+          "instant": true,
+          "refId": "C",
+          "legendFormat": "platform"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "row",
+      "title": "Internet",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "stat",
       "title": "Download",
       "description": "Last Ookla speedtest. Runs every 4 h \u2014 each run moves ~1.8 GB.",
       "datasource": {
@@ -973,7 +1258,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 11
+        "y": 20
       },
       "fieldConfig": {
         "defaults": {
@@ -1025,7 +1310,7 @@
       ]
     },
     {
-      "id": 17,
+      "id": 21,
       "type": "stat",
       "title": "Upload",
       "description": "Last Ookla speedtest. Runs every 4 h \u2014 each run moves ~1.8 GB.",
@@ -1037,7 +1322,7 @@
         "h": 4,
         "w": 8,
         "x": 8,
-        "y": 11
+        "y": 20
       },
       "fieldConfig": {
         "defaults": {
@@ -1089,7 +1374,7 @@
       ]
     },
     {
-      "id": 18,
+      "id": 22,
       "type": "stat",
       "title": "Round trip",
       "description": "TCP handshake to the nearer of 1.1.1.1 / 8.8.8.8, measured constantly.",
@@ -1101,7 +1386,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 11
+        "y": 20
       },
       "fieldConfig": {
         "defaults": {
@@ -1161,7 +1446,7 @@
       ]
     },
     {
-      "id": 19,
+      "id": 23,
       "type": "timeseries",
       "title": "Throughput history",
       "description": "One point per test, every 4 h, so the line steps rather than curves.",
@@ -1173,7 +1458,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 15
+        "y": 24
       },
       "fieldConfig": {
         "defaults": {
@@ -1265,7 +1550,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 24,
       "type": "timeseries",
       "title": "Round trip history",
       "description": "Gaps are outages: a failed probe has no round trip to plot.",
@@ -1277,7 +1562,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 15
+        "y": 24
       },
       "fieldConfig": {
         "defaults": {
@@ -1357,7 +1642,7 @@
       ]
     },
     {
-      "id": 21,
+      "id": 25,
       "type": "row",
       "title": "Hosts",
       "collapsed": false,
@@ -1365,12 +1650,12 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 31
       },
       "panels": []
     },
     {
-      "id": 22,
+      "id": 26,
       "type": "timeseries",
       "title": "CPU",
       "description": "",
@@ -1382,7 +1667,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 23
+        "y": 32
       },
       "fieldConfig": {
         "defaults": {
@@ -1463,7 +1748,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 27,
       "type": "timeseries",
       "title": "Memory",
       "description": "",
@@ -1475,7 +1760,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 23
+        "y": 32
       },
       "fieldConfig": {
         "defaults": {
@@ -1556,7 +1841,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 28,
       "type": "bargauge",
       "title": "Temperature",
       "description": "Hottest hwmon sensor per host \u2014 CPU cores and NVMe. The R730xd's fans follow drive temperature, not this.",
@@ -1568,7 +1853,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 23
+        "y": 32
       },
       "fieldConfig": {
         "defaults": {
@@ -1634,7 +1919,7 @@
       ]
     },
     {
-      "id": 25,
+      "id": 29,
       "type": "bargauge",
       "title": "Storage fill",
       "description": "Every Proxmox storage on every host. PveStorageNearFull fires at 80 %, Critical at 90 %.",
@@ -1646,7 +1931,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 31
+        "y": 40
       },
       "fieldConfig": {
         "defaults": {
@@ -1712,7 +1997,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 30,
       "type": "bargauge",
       "title": "SSD wear",
       "description": "Rated endurance used. pve-1's nvme1n1 is the QLC drive that took 3.5x write amplification under a ZFS zvol until 2026-09-07 \u2014 the one to watch. SAS disks are not here: they are parked, and sas-health-check.sh reads them nightly.",
@@ -1724,7 +2009,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 31
+        "y": 40
       },
       "fieldConfig": {
         "defaults": {
@@ -1790,7 +2075,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 31,
       "type": "row",
       "title": "Power \u2014 CyberPower VP700ELCD",
       "collapsed": false,
@@ -1798,12 +2083,12 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 39
+        "y": 48
       },
       "panels": []
     },
     {
-      "id": 28,
+      "id": 32,
       "type": "stat",
       "title": "Battery",
       "description": "",
@@ -1815,7 +2100,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 40
+        "y": 49
       },
       "fieldConfig": {
         "defaults": {
@@ -1875,7 +2160,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 33,
       "type": "stat",
       "title": "Runtime left",
       "description": "NUT shuts every host down at 300 s (battery.runtime.low).",
@@ -1887,7 +2172,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 40
+        "y": 49
       },
       "fieldConfig": {
         "defaults": {
@@ -1947,7 +2232,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 34,
       "type": "stat",
       "title": "Estate draw",
       "description": "Everything behind the UPS. Derived: it reports load only as a percentage of 390 W.",
@@ -1959,7 +2244,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 40
+        "y": 49
       },
       "fieldConfig": {
         "defaults": {
@@ -2019,7 +2304,7 @@
       ]
     },
     {
-      "id": 31,
+      "id": 35,
       "type": "stat",
       "title": "R730xd",
       "description": "PSU reading from iDRAC. 112 W is the tuned baseline with the SAS disks parked.",
@@ -2031,7 +2316,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 40
+        "y": 49
       },
       "fieldConfig": {
         "defaults": {
@@ -2083,7 +2368,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 36,
       "type": "timeseries",
       "title": "Draw history",
       "description": "The gap between the two lines is pve-1, pve-3 and the switch.",
@@ -2095,7 +2380,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 44
+        "y": 53
       },
       "fieldConfig": {
         "defaults": {
@@ -2188,7 +2473,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 37,
       "type": "timeseries",
       "title": "Runtime history",
       "description": "Estimated on mains. Drifting down over months is how the battery announces its age.",
@@ -2200,7 +2485,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 44
+        "y": 53
       },
       "fieldConfig": {
         "defaults": {
@@ -2296,6 +2581,6 @@
   "timezone": "browser",
   "title": "Homelab Overview",
   "uid": "homelab-overview",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }

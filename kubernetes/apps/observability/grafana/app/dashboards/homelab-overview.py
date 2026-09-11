@@ -5,7 +5,7 @@ drill-down: Kubernetes Views, Proxmox via Prometheus, Node Exporter Full,
 Longhorn, ZFS. This page answers "is the estate healthy" in one screen and is
 deliberately short - a panel earns its place only if a bad value on it would
 change what happens next. Rows run top to bottom by urgency: yes/no status,
-backups and certificates, internet, hosts, power.
+backups and certificates, Kubernetes, internet, hosts, power.
 
 Not imported from grafana.com. Every published homelab overview assumes
 equipment this estate does not have (UniFi, SNMP PDUs, Ceph), and the UPS half
@@ -173,70 +173,113 @@ P.append(stat("Certificates", 'min(certmanager_certificate_expiration_timestamp_
               desc=("Until the soonest certificate expires. Let's Encrypt shortlived: ~6.7 days, "
                     "renewed at ~2.2 days left, so anything above 2 days is normal.")))
 
-# 3 ------------------------------------------------------------ internet
-P.append(row("Internet", 10))
-P.append(stat("Download", "speedtest_download_bits_per_second" + OK, 0, 11, w=8, unit="bps", decimals=0,
+# 3 ---------------------------------------------------------- kubernetes
+# One tile per app, plus one for everything that is not an app. A workload
+# deliberately scaled to 0 is left out (`> 0` on the desired count) - a
+# disabled app is a decision in git, not an outage.
+UP_MAP = [{"type": "value", "options": {
+              "1": {"text": "Up", "color": "green", "index": 0},
+              "0": {"text": "Down", "color": "red", "index": 1}}},
+          {"type": "range", "options": {"from": 0.01, "to": 0.99,
+              "result": {"text": "Degraded", "color": "orange", "index": 2}}}]
+
+def broken(ns_sel):
+    # count of workloads in these namespaces with fewer ready than desired
+    return ("(count((kube_deployment_status_replicas_available{%s} / (kube_deployment_spec_replicas{%s} > 0)) < 1) or vector(0))"
+            " + (count((kube_statefulset_status_replicas_ready{%s} / (kube_statefulset_replicas{%s} > 0)) < 1) or vector(0))"
+            " + (count((kube_daemonset_status_number_ready{%s} / (kube_daemonset_status_desired_number_scheduled{%s} > 0)) < 1) or vector(0))"
+            % ((ns_sel,) * 6))
+
+P.append(row("Kubernetes", 10))
+P.append(stat("CPU", 'sum(rate(container_cpu_usage_seconds_total{container!="",image!=""}[5m])) / sum(kube_node_status_allocatable{resource="cpu"})',
+              0, 11, w=4, unit="percentunit", decimals=0,
+              steps=[GREEN, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.9}],
+              desc="Used by every container, against what the three nodes can allocate."))
+P.append(stat("Memory", 'sum(container_memory_working_set_bytes{container!="",image!=""}) / sum(kube_node_status_allocatable{resource="memory"})',
+              0, 15, w=4, unit="percentunit", decimals=0,
+              steps=[GREEN, {"color": "yellow", "value": 0.75}, {"color": "red", "value": 0.9}],
+              desc="Working set of every container, against allocatable memory. Working set is what the OOM killer counts."))
+apps = stat("Apps", "", 4, 11, w=20, h=8,
+            desc=("Ready against desired replicas for every app in the default namespace. "
+                  "`platform` is everything else — Flux, Cilium, Longhorn, cert-manager, "
+                  "observability, their DaemonSets included — Up only while none of it is short."))
+apps["fieldConfig"]["defaults"]["mappings"] = UP_MAP
+apps["fieldConfig"]["defaults"]["thresholds"]["steps"] = [{"color": "red", "value": None}, {"color": "orange", "value": 0.01}, GREEN | {"value": 1}]
+apps["options"].update({"colorMode": "background_solid", "textMode": "value_and_name",
+                        "orientation": "auto", "text": {"titleSize": 13, "valueSize": 15}})
+apps["targets"] = [
+    tgt('kube_deployment_status_replicas_available{namespace="default"} / (kube_deployment_spec_replicas{namespace="default"} > 0)',
+        "{{deployment}}", instant=True, ref="A"),
+    tgt('kube_statefulset_status_replicas_ready{namespace="default"} / (kube_statefulset_replicas{namespace="default"} > 0)',
+        "{{statefulset}}", instant=True, ref="B"),
+    tgt("(" + broken('namespace!="default"') + ") == bool 0", "platform", instant=True, ref="C"),
+]
+P.append(apps)
+
+# 4 ------------------------------------------------------------ internet
+P.append(row("Internet", 19))
+P.append(stat("Download", "speedtest_download_bits_per_second" + OK, 0, 20, w=8, unit="bps", decimals=0,
               desc="Last Ookla speedtest. Runs every 4 h — each run moves ~1.8 GB."))
-P.append(stat("Upload", "speedtest_upload_bits_per_second" + OK, 8, 11, w=8, unit="bps", decimals=0,
+P.append(stat("Upload", "speedtest_upload_bits_per_second" + OK, 8, 20, w=8, unit="bps", decimals=0,
               desc="Last Ookla speedtest. Runs every 4 h — each run moves ~1.8 GB."))
-P.append(stat("Round trip", "min(" + WAN_RTT + ")", 16, 11, w=8, unit="s", decimals=1,
+P.append(stat("Round trip", "min(" + WAN_RTT + ")", 16, 20, w=8, unit="s", decimals=1,
               steps=[GREEN, {"color": "yellow", "value": 0.05}, {"color": "red", "value": 0.15}],
               desc="TCP handshake to the nearer of 1.1.1.1 / 8.8.8.8, measured constantly."))
 P.append(ts("Throughput history", targets(
     ("speedtest_download_bits_per_second" + OK, "download"),
     ("speedtest_upload_bits_per_second" + OK, "upload")),
-    0, 15, unit="bps", minv=0, step=True,
+    0, 24, unit="bps", minv=0, step=True,
     desc="One point per test, every 4 h, so the line steps rather than curves."))
-P.append(ts("Round trip history", targets((WAN_RTT, "{{instance}}")), 12, 15, unit="s", minv=0,
+P.append(ts("Round trip history", targets((WAN_RTT, "{{instance}}")), 12, 24, unit="s", minv=0,
             desc="Gaps are outages: a failed probe has no round trip to plot."))
 
-# 4 --------------------------------------------------------------- hosts
-P.append(row("Hosts", 22))
+# 5 --------------------------------------------------------------- hosts
+P.append(row("Hosts", 31))
 P.append(ts("CPU", targets(
     ('pve_cpu_usage_ratio{id=~"node/.*"} * on(id, instance) group_left(name) pve_node_info', "{{name}}")),
-    0, 23, w=8, h=8, unit="percentunit", minv=0, maxv=1))
+    0, 32, w=8, h=8, unit="percentunit", minv=0, maxv=1))
 P.append(ts("Memory", targets(
     ('(pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"}) '
      '* on(id, instance) group_left(name) pve_node_info', "{{name}}")),
-    8, 23, w=8, h=8, unit="percentunit", minv=0, maxv=1))
+    8, 32, w=8, h=8, unit="percentunit", minv=0, maxv=1))
 P.append(bargauge("Temperature", 'max by (host) (node_hwmon_temp_celsius{job="pve-node"})', "{{host}}",
-                  16, 23, w=8, h=8, unit="celsius", decimals=0, maxv=100,
+                  16, 32, w=8, h=8, unit="celsius", decimals=0, maxv=100,
                   steps=[GREEN, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}],
                   desc="Hottest hwmon sensor per host — CPU cores and NVMe. The R730xd's fans follow drive temperature, not this."))
 P.append(bargauge(
     "Storage fill",
     'sort_desc(pve_disk_usage_bytes{id=~"storage/.*"} / pve_disk_size_bytes{id=~"storage/.*"})',
-    "{{id}}", 0, 31, maxv=1,
+    "{{id}}", 0, 40, maxv=1,
     steps=[GREEN, {"color": "yellow", "value": 0.8}, {"color": "red", "value": 0.9}],
     desc="Every Proxmox storage on every host. PveStorageNearFull fires at 80 %, Critical at 90 %."))
 P.append(bargauge(
     "SSD wear",
     ('sort_desc(label_replace(nvme_percentage_used_ratio{job="pve-node"}, "disk", "", "device", "(.*)") '
      'or ((100 - smartmon_media_wearout_indicator_value{job="pve-node", type="sat"}) / 100))'),
-    "{{host}} {{disk}}", 12, 31, maxv=1,
+    "{{host}} {{disk}}", 12, 40, maxv=1,
     steps=[GREEN, {"color": "yellow", "value": 0.6}, {"color": "red", "value": 0.8}],
     desc=("Rated endurance used. pve-1's nvme1n1 is the QLC drive that took 3.5x write "
           "amplification under a ZFS zvol until 2026-09-07 — the one to watch. SAS disks are "
           "not here: they are parked, and sas-health-check.sh reads them nightly.")))
 
-# 5 --------------------------------------------------------------- power
+# 6 --------------------------------------------------------------- power
 R730 = 'node_ipmi_power_watts{sensor="Pwr Consumption"}'
-P.append(row("Power — CyberPower VP700ELCD", 39))
-P.append(stat("Battery", "network_ups_tools_battery_charge", 0, 40, w=6, unit="percent", decimals=0,
+P.append(row("Power — CyberPower VP700ELCD", 48))
+P.append(stat("Battery", "network_ups_tools_battery_charge", 0, 49, w=6, unit="percent", decimals=0,
               steps=[{"color": "red", "value": None}, {"color": "yellow", "value": 40}, GREEN | {"value": 90}]))
-P.append(stat("Runtime left", "network_ups_tools_battery_runtime", 6, 40, w=6, unit="s", decimals=0,
+P.append(stat("Runtime left", "network_ups_tools_battery_runtime", 6, 49, w=6, unit="s", decimals=0,
               steps=[{"color": "red", "value": None}, {"color": "yellow", "value": 360}, GREEN | {"value": 480}],
               desc="NUT shuts every host down at 300 s (battery.runtime.low)."))
-P.append(stat("Estate draw", DRAW, 12, 40, w=6, unit="watt", decimals=0,
+P.append(stat("Estate draw", DRAW, 12, 49, w=6, unit="watt", decimals=0,
               steps=[GREEN, {"color": "yellow", "value": 280}, {"color": "red", "value": 330}],
               desc="Everything behind the UPS. Derived: it reports load only as a percentage of 390 W."))
-P.append(stat("R730xd", R730, 18, 40, w=6, unit="watt", decimals=0, steps=[GREEN],
+P.append(stat("R730xd", R730, 18, 49, w=6, unit="watt", decimals=0, steps=[GREEN],
               desc="PSU reading from iDRAC. 112 W is the tuned baseline with the SAS disks parked."))
 P.append(ts("Draw history", targets((DRAW, "estate (UPS)"), (R730, "R730xd (iDRAC)")),
-            0, 44, unit="watt", decimals=0, minv=0,
+            0, 53, unit="watt", decimals=0, minv=0,
             desc="The gap between the two lines is pve-1, pve-3 and the switch."))
 P.append(ts("Runtime history", targets(("network_ups_tools_battery_runtime", "runtime")),
-            12, 44, unit="s", minv=0,
+            12, 53, unit="s", minv=0,
             desc="Estimated on mains. Drifting down over months is how the battery announces its age."))
 
 dash = {
@@ -248,7 +291,7 @@ dash = {
     "refresh": "1m", "schemaVersion": 39, "tags": ["homelab"],
     "templating": {"list": []}, "time": {"from": "now-24h", "to": "now"},
     "timepicker": {}, "timezone": "browser", "title": "Homelab Overview",
-    "uid": "homelab-overview", "version": 3, "weekStart": ""}
+    "uid": "homelab-overview", "version": 4, "weekStart": ""}
 
 # refuse to emit the bug that prompted this rewrite
 for p in P:
