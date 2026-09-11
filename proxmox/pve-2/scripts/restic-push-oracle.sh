@@ -59,4 +59,15 @@ else
   restic check
 fi
 
+# Reaching this line means backup and check both succeeded (set -e), so this
+# is the moment worth recording. Written for Grafana through node_exporter's
+# textfile collector: the Homelab Overview shows how long ago the off-site copy
+# last completed. Healthchecks.io still does the alerting; this is visibility.
+#
+# `|| true` is load-bearing. A metric that cannot be written must never reach
+# the ERR trap above and report a successful backup as failed. The .tmp name
+# is invisible to the collector, which only reads *.prom, and mv is atomic.
+PROM=/var/lib/prometheus/node-exporter/backup-offsite.prom
+{ printf '# HELP backup_last_success_timestamp_seconds Unix time a backup leg last completed.\n# TYPE backup_last_success_timestamp_seconds gauge\nbackup_last_success_timestamp_seconds{leg="offsite"} %s\n' "$(date +%s)" > "$PROM.tmp" && mv "$PROM.tmp" "$PROM"; } 2>/dev/null || true
+
 [ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true

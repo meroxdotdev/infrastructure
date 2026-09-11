@@ -210,11 +210,15 @@ kind: ScrapeConfig
 metadata:
   name: &name pve-node
 spec:
+  # One group per host so every series carries a `host` label. Without it the
+  # dashboard can only say 10.57.57.254:9100, and nobody reads that as pve-1.
   staticConfigs:
-    - targets:
-        - 10.57.57.254:9100
-        - 10.57.57.250:9100
-        - 10.57.57.253:9100
+    - targets: ["10.57.57.254:9100"]
+      labels: { host: pve-1 }
+    - targets: ["10.57.57.250:9100"]
+      labels: { host: pve-2 }
+    - targets: ["10.57.57.253:9100"]
+      labels: { host: pve-3 }
   metricsPath: /metrics
   relabelings:
     - action: replace

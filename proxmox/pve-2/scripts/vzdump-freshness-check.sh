@@ -40,6 +40,14 @@ fi
 ts=${newest%% *}
 path=${newest#* }
 age_days=$(( ( $(date +%s) - ${ts%.*} ) / 86400 ))
+
+# The image's own mtime, published for Grafana through node_exporter's textfile
+# collector. Written before the staleness verdict on purpose: a stale image is
+# exactly what the dashboard should show aging. When no image exists at all the
+# previous value is left alone, so the tile keeps counting up from the last one
+# seen instead of going blank — blank reads as "fine" far too easily.
+PROM=/var/lib/prometheus/node-exporter/backup-vm-image.prom
+{ printf '# HELP backup_last_success_timestamp_seconds Unix time a backup leg last completed.\n# TYPE backup_last_success_timestamp_seconds gauge\nbackup_last_success_timestamp_seconds{leg="vm-image"} %s\n' "${ts%.*}" > "$PROM.tmp" && mv "$PROM.tmp" "$PROM"; } 2>/dev/null || true
 size=$(du -h "$path" 2>/dev/null | cut -f1)
 
 if [ "$age_days" -gt "$MAX_AGE_DAYS" ]; then

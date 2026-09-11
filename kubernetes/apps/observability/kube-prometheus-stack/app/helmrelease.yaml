@@ -144,6 +144,27 @@ spec:
       enabled: false
       forceDeployDashboards: true
     additionalPrometheusRulesMap:
+      cert-rules:
+        groups:
+          - name: certificates
+            rules:
+              # The ClusterIssuer uses Let's Encrypt's `shortlived` profile:
+              # ~160 h certificates that cert-manager renews with a third of
+              # their life left, ~53 h. So a certificate is normally between
+              # 53 h and 160 h from expiry, and below 36 h means renewal has
+              # been failing for most of a day. With certificates this short
+              # there is no slack to discover that by browser warning — every
+              # internal HTTPS route dies within a day and a half after.
+              #
+              # Nothing watched this before 2026-09-11: cert-manager was
+              # scraped, and no rule read the metric.
+              - alert: CertificateRenewalFailing
+                annotations:
+                  summary: "Certificate {{ $labels.exported_namespace }}/{{ $labels.name }} expires in {{ $value | humanizeDuration }} — cert-manager is not renewing it."
+                expr: certmanager_certificate_expiration_timestamp_seconds - time() < 129600
+                for: 1h
+                labels:
+                  severity: critical
       dockerhub-rules:
         groups:
           - name: dockerhub

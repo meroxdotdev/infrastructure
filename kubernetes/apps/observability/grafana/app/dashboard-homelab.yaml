@@ -672,7 +672,7 @@ data:
           {
             "id": 10,
             "type": "row",
-            "title": "Data safety",
+            "title": "Backups & certificates",
             "collapsed": false,
             "gridPos": {
               "h": 1,
@@ -684,16 +684,16 @@ data:
           },
           {
             "id": 11,
-            "type": "bargauge",
-            "title": "Longhorn backup age",
-            "description": "Since each volume's last backup reached Garage. LonghornBackupStale fires at 36 h; the job runs nightly at 23:50. Tier-3 volumes are absent by design \u2014 the exemption list lives in the LonghornVolumeNeverBackedUp alert.",
+            "type": "stat",
+            "title": "Local backup",
+            "description": "Oldest last-backup among the Longhorn volumes that are backed up \u2014 to Garage on pve-2, nightly at 23:50. Per-volume detail is in the Longhorn dashboard.",
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
             },
             "gridPos": {
-              "h": 9,
-              "w": 12,
+              "h": 4,
+              "w": 6,
               "x": 0,
               "y": 6
             },
@@ -703,8 +703,6 @@ data:
                   "mode": "thresholds"
                 },
                 "unit": "s",
-                "min": 0,
-                "decimals": 1,
                 "mappings": [],
                 "thresholds": {
                   "mode": "absolute",
@@ -722,20 +720,19 @@ data:
                       "value": 129600
                     }
                   ]
-                }
+                },
+                "decimals": 1,
+                "noValue": "no report"
               },
               "overrides": []
             },
             "options": {
-              "displayMode": "gradient",
-              "orientation": "horizontal",
-              "showUnfilled": true,
-              "valueMode": "color",
-              "namePlacement": "left",
-              "sizing": "auto",
-              "minVizWidth": 8,
-              "minVizHeight": 14,
-              "maxVizHeight": 24,
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "center",
+              "orientation": "auto",
+              "textMode": "value",
+              "wideLayout": true,
               "reduceOptions": {
                 "calcs": [
                   "lastNotNull"
@@ -751,27 +748,26 @@ data:
                   "uid": "prometheus"
                 },
                 "editorMode": "code",
-                "expr": "sort_desc((time() - longhorn_volume_last_backup_at) and (longhorn_volume_last_backup_at != 0))",
+                "expr": "max((time() - longhorn_volume_last_backup_at) and (longhorn_volume_last_backup_at != 0))",
                 "range": false,
                 "instant": true,
-                "refId": "A",
-                "legendFormat": "{{pvc}}"
+                "refId": "A"
               }
             ]
           },
           {
             "id": 12,
-            "type": "bargauge",
-            "title": "Storage fill",
-            "description": "Every Proxmox storage on every host. PveStorageNearFull fires at 80 %, Critical at 90 %.",
+            "type": "stat",
+            "title": "Off-site",
+            "description": "Last completed restic push to Oracle, nightly at 03:10, append-only. This is the copy that carries the Immich library, Nextcloud files and /media/photos. Healthchecks.io alerts if it stops; this tile shows it.",
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
             },
             "gridPos": {
-              "h": 9,
-              "w": 12,
-              "x": 12,
+              "h": 4,
+              "w": 6,
+              "x": 6,
               "y": 6
             },
             "fieldConfig": {
@@ -779,9 +775,7 @@ data:
                 "color": {
                   "mode": "thresholds"
                 },
-                "unit": "percentunit",
-                "min": 0,
-                "decimals": 1,
+                "unit": "s",
                 "mappings": [],
                 "thresholds": {
                   "mode": "absolute",
@@ -792,28 +786,26 @@ data:
                     },
                     {
                       "color": "yellow",
-                      "value": 0.8
+                      "value": 93600
                     },
                     {
                       "color": "red",
-                      "value": 0.9
+                      "value": 180000
                     }
                   ]
                 },
-                "max": 1
+                "decimals": 1,
+                "noValue": "no report"
               },
               "overrides": []
             },
             "options": {
-              "displayMode": "gradient",
-              "orientation": "horizontal",
-              "showUnfilled": true,
-              "valueMode": "color",
-              "namePlacement": "left",
-              "sizing": "auto",
-              "minVizWidth": 8,
-              "minVizHeight": 14,
-              "maxVizHeight": 24,
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "center",
+              "orientation": "auto",
+              "textMode": "value",
+              "wideLayout": true,
               "reduceOptions": {
                 "calcs": [
                   "lastNotNull"
@@ -829,16 +821,160 @@ data:
                   "uid": "prometheus"
                 },
                 "editorMode": "code",
-                "expr": "sort_desc(pve_disk_usage_bytes{id=~\"storage/.*\"} / pve_disk_size_bytes{id=~\"storage/.*\"})",
+                "expr": "time() - max(backup_last_success_timestamp_seconds{leg=\"offsite\"})",
                 "range": false,
                 "instant": true,
-                "refId": "A",
-                "legendFormat": "{{id}}"
+                "refId": "A"
               }
             ]
           },
           {
             "id": 13,
+            "type": "stat",
+            "title": "VM image",
+            "description": "Newest vzdump image of VM 1000 (Nextcloud), weekly on Saturday at 22:00.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 12,
+              "y": 6
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "s",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 691200
+                    },
+                    {
+                      "color": "red",
+                      "value": 864000
+                    }
+                  ]
+                },
+                "decimals": 1,
+                "noValue": "no report"
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "center",
+              "orientation": "auto",
+              "textMode": "value",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "time() - max(backup_last_success_timestamp_seconds{leg=\"vm-image\"})",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 14,
+            "type": "stat",
+            "title": "Certificates",
+            "description": "Until the soonest certificate expires. Let's Encrypt shortlived: ~6.7 days, renewed at ~2.2 days left, so anything above 2 days is normal.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 18,
+              "y": 6
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "s",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 86400
+                    },
+                    {
+                      "color": "green",
+                      "value": 172800
+                    }
+                  ]
+                },
+                "decimals": 1
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "center",
+              "orientation": "auto",
+              "textMode": "value",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "min(certmanager_certificate_expiration_timestamp_seconds - time())",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 15,
             "type": "row",
             "title": "Internet",
             "collapsed": false,
@@ -846,12 +982,12 @@ data:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 15
+              "y": 10
             },
             "panels": []
           },
           {
-            "id": 14,
+            "id": 16,
             "type": "stat",
             "title": "Download",
             "description": "Last Ookla speedtest. Runs every 4 h \u2014 each run moves ~1.8 GB.",
@@ -863,7 +999,7 @@ data:
               "h": 4,
               "w": 8,
               "x": 0,
-              "y": 16
+              "y": 11
             },
             "fieldConfig": {
               "defaults": {
@@ -915,7 +1051,7 @@ data:
             ]
           },
           {
-            "id": 15,
+            "id": 17,
             "type": "stat",
             "title": "Upload",
             "description": "Last Ookla speedtest. Runs every 4 h \u2014 each run moves ~1.8 GB.",
@@ -927,7 +1063,7 @@ data:
               "h": 4,
               "w": 8,
               "x": 8,
-              "y": 16
+              "y": 11
             },
             "fieldConfig": {
               "defaults": {
@@ -979,7 +1115,7 @@ data:
             ]
           },
           {
-            "id": 16,
+            "id": 18,
             "type": "stat",
             "title": "Round trip",
             "description": "TCP handshake to the nearer of 1.1.1.1 / 8.8.8.8, measured constantly.",
@@ -991,7 +1127,7 @@ data:
               "h": 4,
               "w": 8,
               "x": 16,
-              "y": 16
+              "y": 11
             },
             "fieldConfig": {
               "defaults": {
@@ -1051,9 +1187,9 @@ data:
             ]
           },
           {
-            "id": 17,
+            "id": 19,
             "type": "timeseries",
-            "title": "Throughput",
+            "title": "Throughput history",
             "description": "One point per test, every 4 h, so the line steps rather than curves.",
             "datasource": {
               "type": "prometheus",
@@ -1063,7 +1199,7 @@ data:
               "h": 7,
               "w": 12,
               "x": 0,
-              "y": 20
+              "y": 15
             },
             "fieldConfig": {
               "defaults": {
@@ -1155,9 +1291,9 @@ data:
             ]
           },
           {
-            "id": 18,
+            "id": 20,
             "type": "timeseries",
-            "title": "Round trip",
+            "title": "Round trip history",
             "description": "Gaps are outages: a failed probe has no round trip to plot.",
             "datasource": {
               "type": "prometheus",
@@ -1167,7 +1303,7 @@ data:
               "h": 7,
               "w": 12,
               "x": 12,
-              "y": 20
+              "y": 15
             },
             "fieldConfig": {
               "defaults": {
@@ -1247,7 +1383,7 @@ data:
             ]
           },
           {
-            "id": 19,
+            "id": 21,
             "type": "row",
             "title": "Hosts",
             "collapsed": false,
@@ -1255,14 +1391,14 @@ data:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 27
+              "y": 22
             },
             "panels": []
           },
           {
-            "id": 20,
+            "id": 22,
             "type": "timeseries",
-            "title": "Host CPU",
+            "title": "CPU",
             "description": "",
             "datasource": {
               "type": "prometheus",
@@ -1272,7 +1408,7 @@ data:
               "h": 8,
               "w": 8,
               "x": 0,
-              "y": 28
+              "y": 23
             },
             "fieldConfig": {
               "defaults": {
@@ -1353,9 +1489,9 @@ data:
             ]
           },
           {
-            "id": 21,
+            "id": 23,
             "type": "timeseries",
-            "title": "Host memory",
+            "title": "Memory",
             "description": "",
             "datasource": {
               "type": "prometheus",
@@ -1365,7 +1501,7 @@ data:
               "h": 8,
               "w": 8,
               "x": 8,
-              "y": 28
+              "y": 23
             },
             "fieldConfig": {
               "defaults": {
@@ -1446,19 +1582,19 @@ data:
             ]
           },
           {
-            "id": 22,
-            "type": "stat",
-            "title": "Hottest sensor",
-            "description": "Across all three hosts. The R730xd's fans follow drive temperature, not this.",
+            "id": 24,
+            "type": "bargauge",
+            "title": "Temperature",
+            "description": "Hottest hwmon sensor per host \u2014 CPU cores and NVMe. The R730xd's fans follow drive temperature, not this.",
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
             },
             "gridPos": {
-              "h": 4,
+              "h": 8,
               "w": 8,
               "x": 16,
-              "y": 28
+              "y": 23
             },
             "fieldConfig": {
               "defaults": {
@@ -1466,6 +1602,8 @@ data:
                   "mode": "thresholds"
                 },
                 "unit": "celsius",
+                "min": 0,
+                "decimals": 0,
                 "mappings": [],
                 "thresholds": {
                   "mode": "absolute",
@@ -1484,17 +1622,20 @@ data:
                     }
                   ]
                 },
-                "decimals": 0
+                "max": 100
               },
               "overrides": []
             },
             "options": {
-              "colorMode": "value",
-              "graphMode": "none",
-              "justifyMode": "center",
-              "orientation": "auto",
-              "textMode": "value",
-              "wideLayout": true,
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "showUnfilled": true,
+              "valueMode": "color",
+              "namePlacement": "left",
+              "sizing": "auto",
+              "minVizWidth": 8,
+              "minVizHeight": 14,
+              "maxVizHeight": 24,
               "reduceOptions": {
                 "calcs": [
                   "lastNotNull"
@@ -1510,34 +1651,37 @@ data:
                   "uid": "prometheus"
                 },
                 "editorMode": "code",
-                "expr": "max(node_hwmon_temp_celsius{job=\"pve-node\"})",
+                "expr": "max by (host) (node_hwmon_temp_celsius{job=\"pve-node\"})",
                 "range": false,
                 "instant": true,
-                "refId": "A"
+                "refId": "A",
+                "legendFormat": "{{host}}"
               }
             ]
           },
           {
-            "id": 23,
-            "type": "stat",
-            "title": "Guests running",
-            "description": "",
+            "id": 25,
+            "type": "bargauge",
+            "title": "Storage fill",
+            "description": "Every Proxmox storage on every host. PveStorageNearFull fires at 80 %, Critical at 90 %.",
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
             },
             "gridPos": {
-              "h": 4,
-              "w": 8,
-              "x": 16,
-              "y": 32
+              "h": 9,
+              "w": 12,
+              "x": 0,
+              "y": 31
             },
             "fieldConfig": {
               "defaults": {
                 "color": {
                   "mode": "thresholds"
                 },
-                "unit": "none",
+                "unit": "percentunit",
+                "min": 0,
+                "decimals": 1,
                 "mappings": [],
                 "thresholds": {
                   "mode": "absolute",
@@ -1545,19 +1689,31 @@ data:
                     {
                       "color": "green",
                       "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.8
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.9
                     }
                   ]
-                }
+                },
+                "max": 1
               },
               "overrides": []
             },
             "options": {
-              "colorMode": "value",
-              "graphMode": "none",
-              "justifyMode": "center",
-              "orientation": "auto",
-              "textMode": "value",
-              "wideLayout": true,
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "showUnfilled": true,
+              "valueMode": "color",
+              "namePlacement": "left",
+              "sizing": "auto",
+              "minVizWidth": 8,
+              "minVizHeight": 14,
+              "maxVizHeight": 24,
               "reduceOptions": {
                 "calcs": [
                   "lastNotNull"
@@ -1573,15 +1729,94 @@ data:
                   "uid": "prometheus"
                 },
                 "editorMode": "code",
-                "expr": "count(pve_up{id=~\"(qemu|lxc)/.*\"} == 1) or vector(0)",
+                "expr": "sort_desc(pve_disk_usage_bytes{id=~\"storage/.*\"} / pve_disk_size_bytes{id=~\"storage/.*\"})",
                 "range": false,
                 "instant": true,
-                "refId": "A"
+                "refId": "A",
+                "legendFormat": "{{id}}"
               }
             ]
           },
           {
-            "id": 24,
+            "id": 26,
+            "type": "bargauge",
+            "title": "SSD wear",
+            "description": "Rated endurance used. pve-1's nvme1n1 is the QLC drive that took 3.5x write amplification under a ZFS zvol until 2026-09-07 \u2014 the one to watch. SAS disks are not here: they are parked, and sas-health-check.sh reads them nightly.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 9,
+              "w": 12,
+              "x": 12,
+              "y": 31
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "percentunit",
+                "min": 0,
+                "decimals": 1,
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.6
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.8
+                    }
+                  ]
+                },
+                "max": 1
+              },
+              "overrides": []
+            },
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "showUnfilled": true,
+              "valueMode": "color",
+              "namePlacement": "left",
+              "sizing": "auto",
+              "minVizWidth": 8,
+              "minVizHeight": 14,
+              "maxVizHeight": 24,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "sort_desc(label_replace(nvme_percentage_used_ratio{job=\"pve-node\"}, \"disk\", \"\", \"device\", \"(.*)\") or ((100 - smartmon_media_wearout_indicator_value{job=\"pve-node\", type=\"sat\"}) / 100))",
+                "range": false,
+                "instant": true,
+                "refId": "A",
+                "legendFormat": "{{host}} {{disk}}"
+              }
+            ]
+          },
+          {
+            "id": 27,
             "type": "row",
             "title": "Power \u2014 CyberPower VP700ELCD",
             "collapsed": false,
@@ -1589,12 +1824,12 @@ data:
               "h": 1,
               "w": 24,
               "x": 0,
-              "y": 36
+              "y": 39
             },
             "panels": []
           },
           {
-            "id": 25,
+            "id": 28,
             "type": "stat",
             "title": "Battery",
             "description": "",
@@ -1604,9 +1839,9 @@ data:
             },
             "gridPos": {
               "h": 4,
-              "w": 8,
+              "w": 6,
               "x": 0,
-              "y": 37
+              "y": 40
             },
             "fieldConfig": {
               "defaults": {
@@ -1666,7 +1901,7 @@ data:
             ]
           },
           {
-            "id": 26,
+            "id": 29,
             "type": "stat",
             "title": "Runtime left",
             "description": "NUT shuts every host down at 300 s (battery.runtime.low).",
@@ -1676,9 +1911,9 @@ data:
             },
             "gridPos": {
               "h": 4,
-              "w": 8,
-              "x": 8,
-              "y": 37
+              "w": 6,
+              "x": 6,
+              "y": 40
             },
             "fieldConfig": {
               "defaults": {
@@ -1738,19 +1973,19 @@ data:
             ]
           },
           {
-            "id": 27,
+            "id": 30,
             "type": "stat",
-            "title": "Draw",
-            "description": "Derived: this UPS reports load only as a percentage of its 390 W nominal.",
+            "title": "Estate draw",
+            "description": "Everything behind the UPS. Derived: it reports load only as a percentage of 390 W.",
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
             },
             "gridPos": {
               "h": 4,
-              "w": 8,
-              "x": 16,
-              "y": 37
+              "w": 6,
+              "x": 12,
+              "y": 40
             },
             "fieldConfig": {
               "defaults": {
@@ -1810,10 +2045,74 @@ data:
             ]
           },
           {
-            "id": 28,
+            "id": 31,
+            "type": "stat",
+            "title": "R730xd",
+            "description": "PSU reading from iDRAC. 112 W is the tuned baseline with the SAS disks parked.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 18,
+              "y": 40
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "watt",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                },
+                "decimals": 0
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "center",
+              "orientation": "auto",
+              "textMode": "value",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "node_ipmi_power_watts{sensor=\"Pwr Consumption\"}",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 32,
             "type": "timeseries",
-            "title": "Draw",
-            "description": "Everything behind the UPS: the three hosts and the switch.",
+            "title": "Draw history",
+            "description": "The gap between the two lines is pve-1, pve-3 and the switch.",
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
@@ -1822,7 +2121,7 @@ data:
               "h": 7,
               "w": 12,
               "x": 0,
-              "y": 41
+              "y": 44
             },
             "fieldConfig": {
               "defaults": {
@@ -1898,15 +2197,27 @@ data:
                 "range": true,
                 "instant": false,
                 "refId": "A",
-                "legendFormat": "whole estate"
+                "legendFormat": "estate (UPS)"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "node_ipmi_power_watts{sensor=\"Pwr Consumption\"}",
+                "range": true,
+                "instant": false,
+                "refId": "B",
+                "legendFormat": "R730xd (iDRAC)"
               }
             ]
           },
           {
-            "id": 29,
+            "id": 33,
             "type": "timeseries",
-            "title": "Battery",
-            "description": "A runtime estimate that drifts down over months is how this battery announces its age.",
+            "title": "Runtime history",
+            "description": "Estimated on mains. Drifting down over months is how the battery announces its age.",
             "datasource": {
               "type": "prometheus",
               "uid": "prometheus"
@@ -1915,14 +2226,14 @@ data:
               "h": 7,
               "w": 12,
               "x": 12,
-              "y": 41
+              "y": 44
             },
             "fieldConfig": {
               "defaults": {
                 "color": {
                   "mode": "palette-classic"
                 },
-                "unit": "none",
+                "unit": "s",
                 "mappings": [],
                 "thresholds": {
                   "mode": "absolute",
@@ -1986,23 +2297,11 @@ data:
                   "uid": "prometheus"
                 },
                 "editorMode": "code",
-                "expr": "network_ups_tools_battery_charge",
+                "expr": "network_ups_tools_battery_runtime",
                 "range": true,
                 "instant": false,
                 "refId": "A",
-                "legendFormat": "charge %"
-              },
-              {
-                "datasource": {
-                  "type": "prometheus",
-                  "uid": "prometheus"
-                },
-                "editorMode": "code",
-                "expr": "network_ups_tools_battery_runtime / 60",
-                "range": true,
-                "instant": false,
-                "refId": "B",
-                "legendFormat": "runtime (min)"
+                "legendFormat": "runtime"
               }
             ]
           }
@@ -2023,6 +2322,6 @@ data:
         "timezone": "browser",
         "title": "Homelab Overview",
         "uid": "homelab-overview",
-        "version": 2,
+        "version": 3,
         "weekStart": ""
       }

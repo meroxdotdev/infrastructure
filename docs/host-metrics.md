@@ -46,8 +46,43 @@ systemctl restart prometheus-node-exporter
 ```
 
 Keeping `--collector.textfile.directory` matters: it is the Debian default,
-and dropping it would quietly remove the one hook the nightly scripts could
-use later to publish their own results as metrics.
+and dropping it silently removes everything in the next section.
+
+## What apt brings along
+
+`apt-get install prometheus-node-exporter` also pulls in
+`prometheus-node-exporter-collectors` as a Recommends. It was not asked for,
+and it turned out to be worth keeping — systemd timers that write `.prom`
+files into the textfile directory:
+
+| File | What it adds | Where |
+|---|---|---|
+| `smartmon.prom` | SMART health and SSD wear | pve-2, pve-3 |
+| `nvme.prom` | NVMe wear (`nvme_percentage_used_ratio`), media errors | all three |
+| `ipmitool_sensor.prom` | PSU draw, inlet/exhaust temperature, fan RPM from iDRAC | pve-2 |
+| `apt.prom` | pending upgrades, reboot required | all three |
+
+⚠️ **The first worry on pve-2 is the SAS spin-down, and it holds.** `smartmon`
+polls every disk every 15 minutes, and a SMART query can spin up a parked
+drive — which is what produced the etcd stalls of 2026-08. Checked 2026-09-11:
+it reports all twelve SAS disks as `smartmon_device_active 0` (standby) and
+skips them, and the UPS draw stayed flat at 164 W across a run. SMART on the
+SAS disks therefore stays with `sas-health-check.sh`, inside the nightly wake
+window, and this collector covers the SSDs. **If a future package version
+stops respecting standby, mask `prometheus-node-exporter-smartmon.timer` on
+pve-2** — do not remove the package, the other three collectors are fine.
+
+The same directory carries two files of this repo's own, written by the
+nightly scripts on pve-2 when they succeed:
+
+| File | Written by | Leg |
+|---|---|---|
+| `backup-offsite.prom` | `restic-push-oracle.sh` | restic → Oracle, nightly |
+| `backup-vm-image.prom` | `vzdump-freshness-check.sh` | vzdump of VM 1000, weekly |
+
+Both publish `backup_last_success_timestamp_seconds{leg=...}`, which is what
+the Homelab Overview's backup tiles read. Healthchecks.io remains the alert for
+both legs — these are visibility, not a second pager.
 
 The `zfs` and `hwmon` collectors are on by default and need no flag — they
 activate where the kernel exposes them, which is why `pve-3` will simply
@@ -70,6 +105,7 @@ kubectl -n observability port-forward svc/prometheus-operated 9090:9090
 curl -s --data-urlencode 'query=up{job="pve-node"}' localhost:9090/api/v1/query
 ```
 
-Three series, all `1`. The Grafana dashboard **Node Exporter Full** picks the
-hosts up on its own once the job reports — it is driven by a job variable, not
-a hardcoded name.
+Three series, all `1`, each carrying a `host` label (`pve-1`, `pve-2`,
+`pve-3`) set by the ScrapeConfig. The Grafana dashboard **Node Exporter Full**
+picks the hosts up on its own once the job reports — it is driven by a job
+variable, not a hardcoded name.
