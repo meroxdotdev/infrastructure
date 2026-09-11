@@ -56,6 +56,10 @@ pve-1:
 `verify_ssl: false` because these hosts serve the Proxmox default
 self-signed certificate.
 
+The pod picks the change up on its own: Reloader restarts it when the Secret
+changes. Without that it would not — `pve.yml` is a `subPath` mount, and those
+never receive updates.
+
 Verify from inside the cluster once Flux has reconciled:
 
 ```bash

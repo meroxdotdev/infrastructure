@@ -23,6 +23,12 @@ spec:
   values:
     controllers:
       pve-exporter:
+        # pve.yml is mounted with subPath, and subPath mounts never receive
+        # secret updates - the pod keeps reading the file it started with.
+        # Found 2026-09-11: the pve-1/pve-3 modules reached the Secret and
+        # the running pod ignored them until restarted by hand.
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
