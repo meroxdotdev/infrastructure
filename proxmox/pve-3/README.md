@@ -113,3 +113,9 @@ kernel, so a plain `apt` kernel upgrade is enough. Check `grub.cfg` before
 rebooting; nothing here can be fixed remotely if it boots wrong.
 
 A stale `Windows Boot Manager` entry remains in NVRAM from before. Harmless.
+
+## Related
+
+[../pve-1/README.md](../pve-1/README.md) ·
+[../pve-2/README.md](../pve-2/README.md) ·
+[../../docs/host-metrics.md](../../docs/host-metrics.md) — node_exporter on this host

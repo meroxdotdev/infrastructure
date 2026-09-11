@@ -298,7 +298,10 @@ spec:
                   severity: critical
       pve-rules:
         groups:
-          - name: pve-2
+          # Was `pve-2` while that was the only host scraped. All three are
+          # scraped since 2026-09-11; the rules were already written to
+          # join on (id, instance) for exactly this.
+          - name: pve
             rules:
               # pve_uptime_seconds resetting (not pve_up==0) is what actually
               # answers "did a VM/LXC restart" - pve_up==0 alone would also
@@ -368,6 +371,82 @@ spec:
                 for: 15m
                 labels:
                   severity: critical
+      ups-rules:
+        groups:
+          - name: ups
+            rules:
+              # Nothing watched the UPS until 2026-09-11 — NUT shuts every
+              # host down on low battery and the only proof it was still
+              # working was running `upsc` by hand. Metrics come from
+              # nut-exporter reading upsd on pve-2 over the LAN.
+              #
+              # ups.status is a set of flags, so each is its own label on
+              # network_ups_tools_ups_status rather than a value to compare.
+              # The exporter forces the unset ones to 0, so `== 1` is safe
+              # and these never go stale-absent.
+              - alert: UpsOnBattery
+                annotations:
+                  summary: "UPS {{ $labels.ups }} is on battery — mains is gone."
+                expr: network_ups_tools_ups_status{flag="OB"} == 1
+                for: 1m
+                labels:
+                  severity: critical
+              # LB is what upsmon acts on: once this is set the shutdown
+              # sequence is imminent. No `for` — by the time it repeats the
+              # hosts are already going down.
+              - alert: UpsBatteryLow
+                annotations:
+                  summary: "UPS {{ $labels.ups }} battery is low — NUT is about to shut the hosts down."
+                expr: network_ups_tools_ups_status{flag="LB"} == 1
+                labels:
+                  severity: critical
+              - alert: UpsReplaceBattery
+                annotations:
+                  summary: "UPS {{ $labels.ups }} reports its battery needs replacing."
+                expr: network_ups_tools_ups_status{flag="RB"} == 1
+                for: 1h
+                labels:
+                  severity: warning
+              # The estimate while on mains is the only early warning that the
+              # battery is aging or that the load grew. 300 s is NUT's own
+              # battery.runtime.low on this UPS, i.e. the point it would treat
+              # as "low" — reaching it while still online means a real outage
+              # would start there. Measured 2026-09-11: 535 s at 42 % load.
+              # 30m so a load spike does not page anyone.
+              - alert: UpsRuntimeShort
+                annotations:
+                  summary: "UPS {{ $labels.ups }} estimates only {{ $value | humanizeDuration }} of runtime while on mains."
+                # `on(instance, ups)` is mandatory: bare `and` matches only
+                # identical label sets, and the status series carries an
+                # extra `flag` label, so the whole rule would silently never
+                # fire.
+                expr: network_ups_tools_battery_runtime < 300 and on(instance, ups) network_ups_tools_ups_status{flag="OL"} == 1
+                for: 30m
+                labels:
+                  severity: warning
+              # Load is a percentage of ups.realpower.nominal (390 W here).
+              # Above 80 % the runtime estimate collapses non-linearly, so
+              # this is really an early warning about the number above.
+              - alert: UpsOverloaded
+                annotations:
+                  summary: "UPS {{ $labels.ups }} at {{ $value }} % load — runtime is shrinking."
+                expr: network_ups_tools_ups_load > 80
+                for: 15m
+                labels:
+                  severity: warning
+              # Losing sight of the UPS is itself the alert: upsd not
+              # answering usually means the driver died or the USB device
+              # dropped for good, and that is also the path by which the
+              # automatic shutdown stops working. The device re-enumerates
+              # every ~11 s by design on this chassis (see
+              # proxmox/pve-2/known-issues.md), so 10m of silence, not 2.
+              - alert: UpsUnreachable
+                annotations:
+                  summary: "NUT on pve-2 has not answered for 10m — the UPS is unmonitored and may no longer shut the hosts down."
+                expr: up{job="nut"} == 0
+                for: 10m
+                labels:
+                  severity: critical
       vps-rules:
         groups:
           - name: vps
@@ -381,21 +460,26 @@ spec:
                 for: 3m
                 labels:
                   severity: critical
-      # ZFS rules stay off, but NOT for the reason the old comment gave
-      # ("nu ai ZFS") — pve-2 has two ZFS pools, rpool and media. The real
-      # reason is the metric: node_zfs_zpool_state comes from node_exporter,
-      # which runs on the Talos nodes (no ZFS there) and not on pve. Pool
-      # capacity is covered by PveStorageNearFull above instead; pool *health*
-      # is covered by sas-health-check.sh on pve-2, which mails on zpool
-      # READ/WRITE/CKSUM errors. To enable these rules, node_exporter would
-      # have to run on pve-2 itself.
-      # zfs-rules:
-      #   groups:
-      #     - name: zfs
-      #       rules:
-      #         - alert: ZfsUnexpectedPoolState
-      #           annotations:
-      #             summary: ZFS pool {{$labels.zpool}} on {{$labels.instance}} is in a unexpected state {{$labels.state}}
-      #           expr: node_zfs_zpool_state{state!="online"} > 0
-      #           labels:
-      #             severity: critical
+      # Off until 2026-09-11, and the comment that sat here said exactly why:
+      # node_zfs_zpool_state comes from node_exporter, which ran on the Talos
+      # guests (no ZFS) and not on the hosts that actually hold the pools.
+      # Enabled together with node_exporter on all three hosts — the install
+      # is docs/host-metrics.md. The rule is silent until that is done: no
+      # series, nothing to compare, no alert. It does not fail loudly, so
+      # check the pve-node targets in Prometheus rather than trusting quiet.
+      #
+      # This does not replace sas-health-check.sh on pve-2 — that mails on
+      # READ/WRITE/CKSUM error counters, which a pool reports while still
+      # ONLINE. This catches the state change the counters do not: DEGRADED,
+      # FAULTED, SUSPENDED. Different failure, same pool.
+      zfs-rules:
+        groups:
+          - name: zfs
+            rules:
+              - alert: ZfsUnexpectedPoolState
+                annotations:
+                  summary: "ZFS pool {{ $labels.zpool }} on {{ $labels.instance }} is {{ $labels.state }}, not online."
+                expr: node_zfs_zpool_state{state!="online"} > 0
+                for: 5m
+                labels:
+                  severity: critical

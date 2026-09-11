@@ -206,4 +206,5 @@ generate a new one and write it into both files.
 
 [../pve-2/README.md](../pve-2/README.md) ·
 [../../talos/talconfig.yaml](../../talos/talconfig.yaml) ·
-[../../docs/operations.md](../../docs/operations.md) — adding a worker node
+[../../docs/operations.md](../../docs/operations.md) — adding a worker node ·
+[../../docs/host-metrics.md](../../docs/host-metrics.md) — node_exporter on this host

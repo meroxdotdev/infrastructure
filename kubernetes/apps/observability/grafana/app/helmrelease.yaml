@@ -95,9 +95,13 @@ spec:
               path: /var/lib/grafana/dashboards/default
     dashboards:
       default:
-        # Disabled - the UPS here is CyberPower, not APC (see
-        # proxmox/pve-2/README.md's UPS section), this SNMP dashboard
-        # doesn't apply.
+        # Disabled - the UPS here is CyberPower on USB, not APC over SNMP
+        # (see proxmox/pve-2/README.md's UPS section). The published NUT
+        # dashboards do not fit either: 14371, the popular one, queries
+        # nut_* metrics from HON95's exporter, and this cluster runs
+        # DRuggeri's, which emits network_ups_tools_*. Rather than import a
+        # dashboard and rewrite every panel, the UPS lives on the Homelab
+        # Overview dashboard in ./dashboard-homelab.yaml.
         # apc-ups:
         #   # renovate: depName="APC UPS (SNMP)"
         #   gnetId: 12340
@@ -195,6 +199,17 @@ spec:
           gnetId: 19105
           revision: 7
           datasource: Prometheus
+        # pve-exporter has been collecting these metrics since it was
+        # deployed and nothing ever displayed them - the only consumer was
+        # the pve-rules alerts. Filters on `instance`, which is the host
+        # address set by the ScrapeConfig relabelings, so all three hosts
+        # appear in its dropdown.
+        proxmox:
+          # renovate: depName="Proxmox via Prometheus"
+          gnetId: 10347
+          revision: 5
+          datasource:
+            - { name: DS_PROMETHEUS, value: Prometheus }
         # Disabled - smartctl-exporter isn't deployed anywhere in this
         # cluster (disk health is watched by proxmox/pve-2/scripts/
         # sas-health-check.sh on pve-2 instead).
@@ -241,17 +256,17 @@ spec:
         #   datasource:
         #     - { name: DS_PROMETHEUS, value: Prometheus }
         #     - { name: VAR_REPLICATIONDESTNAME, value: .*-dst }
-        # Disabled - not because there's no ZFS (pve-2 has two pools, rpool
-        # and media) but because node_exporter's ZFS metrics only come from
-        # nodes it runs on (the Talos nodes, no ZFS there), not from pve-2
-        # itself - same reasoning as kube-prometheus-stack's disabled
-        # zfs-rules. Pool capacity is covered by the PveStorageNearFull
-        # alert instead; pool health by sas-health-check.sh on pve.
-        # zfs:
-        #   # renovate: depName="ZFS"
-        #   gnetId: 7845
-        #   revision: 4
-        #   datasource: Prometheus
+        # Enabled 2026-09-11, paired with node_exporter on the Proxmox hosts
+        # themselves - see docs/host-metrics.md, which is also the install.
+        # It was off because ZFS metrics come only from nodes node_exporter
+        # runs on, and it ran on the Talos guests, which have no ZFS. Until
+        # that install is done on the hosts this dashboard stays empty.
+        zfs:
+          # renovate: depName="ZFS"
+          gnetId: 7845
+          revision: 4
+          datasource:
+            - { name: DS_PROMETHEUS, value: Prometheus }
     sidecar:
       image:
         registry: ghcr.io

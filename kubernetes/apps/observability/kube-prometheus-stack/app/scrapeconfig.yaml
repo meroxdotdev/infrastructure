@@ -53,6 +53,115 @@ spec:
       targetLabel: job
       replacement: *name
 ---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# pve-1 (Beelink GTi13 Ultra). Added 2026-09-11 — until then pve-exporter
+# scraped only pve-2, so PveNodeDown and friends covered one host out of
+# three while all three carry a control plane (docs/architecture.md).
+# Standalone hosts, so this needs its own API token and its own `pve-1`
+# section in pve-exporter-secret's pve.yml; it cannot share pve-2's.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name pve-1
+spec:
+  staticConfigs:
+    - targets:
+        - 10.57.57.254
+  metricsPath: /pve
+  params:
+    module: ["pve-1"]
+  relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: pve-exporter.observability.svc.cluster.local:9221
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# pve-3 (OptiPlex 3050). Same reasoning as pve-1 above.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name pve-3
+spec:
+  staticConfigs:
+    - targets:
+        - 10.57.57.253
+  metricsPath: /pve
+  params:
+    module: ["pve-3"]
+  relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: pve-exporter.observability.svc.cluster.local:9221
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# The UPS, read from NUT on pve-2 through nut-exporter. The `server` query
+# parameter carries the NUT host and the port stays the exporter's default
+# 3493, so the target is a bare address — passing host:port here would send
+# "10.57.57.250:3493" as a hostname and fail to resolve.
+#
+# The `ups` label is set statically because the exporter does not emit one:
+# its metrics carry no UPS identity at all, only the values.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name nut
+spec:
+  staticConfigs:
+    - targets:
+        - 10.57.57.250
+      labels:
+        ups: cyberpower
+  metricsPath: /ups_metrics
+  params:
+    ups: ["cyberpower"]
+  relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_server
+    - sourceLabels: [__param_server]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: nut-exporter.observability.svc.cluster.local:9199
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# The three Proxmox hosts themselves. node_exporter ran only on the Talos
+# guests until 2026-09-11, so every hardware number came from inside a VM:
+# no ZFS pool state, no drive or chassis temperature, no per-disk latency.
+# See docs/host-metrics.md for the install and the reasoning.
+#
+# Job name is deliberately not `node-exporter` — that one belongs to the
+# in-cluster DaemonSet, and merging the two would put guests and hypervisors
+# in the same series with no way to tell them apart.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name pve-node
+spec:
+  staticConfigs:
+    - targets:
+        - 10.57.57.254:9100
+        - 10.57.57.250:9100
+        - 10.57.57.253:9100
+  metricsPath: /metrics
+  relabelings:
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
 # Everything below was dead code: this file was never referenced from
 # kustomization.yaml (found + fixed 2026-08-03), so none of it was ever
 # actually applied. Confirmed with user on the same date that none of these

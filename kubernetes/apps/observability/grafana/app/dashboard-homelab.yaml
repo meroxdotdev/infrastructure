@@ -1,0 +1,1560 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/core/configmap_v1.json
+# The one dashboard to open first. Everything else in this Grafana is a
+# drill-down: Kubernetes Views, Proxmox via Prometheus, Node Exporter Full,
+# Longhorn, ZFS. This page answers "is the estate healthy" in one screen and
+# is deliberately short — a panel earns its place here only if a bad value
+# on it would change what happens next.
+#
+# Not imported from grafana.com. Every published homelab overview assumes
+# equipment this estate does not have (UniFi, SNMP PDUs, Ceph), and the UPS
+# half could not be imported at all: the popular NUT dashboard queries a
+# different exporter's metric names. See ./helmrelease.yaml.
+#
+# Picked up by the Grafana sidecar through the grafana_dashboard label, not
+# by the Helm values - so editing this file is the way to change it, and a
+# change made in the Grafana UI will be overwritten.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-homelab
+  labels:
+    grafana_dashboard: "true"
+  annotations:
+    grafana_folder: Homelab
+data:
+  homelab-overview.json: |-
+      {
+        "annotations": {
+          "list": [
+            {
+              "builtIn": 1,
+              "datasource": {
+                "type": "grafana",
+                "uid": "-- Grafana --"
+              },
+              "enable": true,
+              "hide": true,
+              "iconColor": "rgba(0, 211, 255, 1)",
+              "name": "Annotations & Alerts",
+              "type": "dashboard"
+            }
+          ]
+        },
+        "editable": true,
+        "graphTooltip": 1,
+        "links": [],
+        "panels": [
+          {
+            "id": 1,
+            "type": "row",
+            "title": "Power \u2014 CyberPower VP700ELCD on pve-2",
+            "collapsed": false,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 0
+            },
+            "panels": []
+          },
+          {
+            "id": 2,
+            "type": "stat",
+            "title": "Mains",
+            "description": "ups.status OL flag. 0 means the estate is running on battery.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 0,
+              "y": 1
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "none",
+                "mappings": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "On mains",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "ON BATTERY",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 32
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "network_ups_tools_ups_status{flag=\"OL\"}",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "type": "stat",
+            "title": "Draw",
+            "description": "Derived: this UPS reports load only as a percentage of its 390 W nominal.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 6,
+              "y": 1
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "watt",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 280
+                    },
+                    {
+                      "color": "red",
+                      "value": 330
+                    }
+                  ]
+                },
+                "decimals": 0
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "network_ups_tools_ups_load / 100 * network_ups_tools_ups_realpower_nominal",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "type": "stat",
+            "title": "Battery",
+            "description": "",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 12,
+              "y": 1
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "percent",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 40
+                    },
+                    {
+                      "color": "green",
+                      "value": 90
+                    }
+                  ]
+                },
+                "decimals": 0
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "network_ups_tools_battery_charge",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 5,
+            "type": "stat",
+            "title": "Runtime left",
+            "description": "NUT shuts every host down at 300 s (battery.runtime.low).",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 18,
+              "y": 1
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "s",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 360
+                    },
+                    {
+                      "color": "green",
+                      "value": 480
+                    }
+                  ]
+                },
+                "decimals": 0
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "network_ups_tools_battery_runtime",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 6,
+            "type": "timeseries",
+            "title": "Draw",
+            "description": "Everything behind the UPS: pve-1, pve-2, pve-3 and the switch.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 12,
+              "x": 0,
+              "y": 5
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "unit": "watt",
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 12,
+                  "gradientMode": "opacity",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                },
+                "mappings": [],
+                "min": 0,
+                "decimals": 0
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [
+                  "lastNotNull",
+                  "max"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "network_ups_tools_ups_load / 100 * network_ups_tools_ups_realpower_nominal",
+                "range": true,
+                "instant": false,
+                "refId": "A",
+                "legendFormat": "whole estate"
+              }
+            ]
+          },
+          {
+            "id": 7,
+            "type": "timeseries",
+            "title": "Battery",
+            "description": "A runtime estimate that drifts down over months is how this battery announces its age.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 12,
+              "x": 12,
+              "y": 5
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "unit": "none",
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 12,
+                  "gradientMode": "opacity",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                },
+                "mappings": [],
+                "min": 0
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [
+                  "lastNotNull",
+                  "max"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "network_ups_tools_battery_charge",
+                "range": true,
+                "instant": false,
+                "refId": "A",
+                "legendFormat": "charge %"
+              },
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "network_ups_tools_battery_runtime / 60",
+                "range": true,
+                "instant": false,
+                "refId": "A",
+                "legendFormat": "runtime (min)"
+              }
+            ]
+          },
+          {
+            "id": 8,
+            "type": "row",
+            "title": "Hosts \u2014 Proxmox",
+            "collapsed": false,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 12
+            },
+            "panels": []
+          },
+          {
+            "id": 9,
+            "type": "stat",
+            "title": "Hosts up",
+            "description": "pve-1, pve-2, pve-3. Each carries one control plane, so two is already a quorum of one away.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 0,
+              "y": 13
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "none",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 2
+                    },
+                    {
+                      "color": "green",
+                      "value": 3
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "sum(pve_up{id=~\"node/.*\"})",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 10,
+            "type": "stat",
+            "title": "Guests running",
+            "description": "",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 6,
+              "y": 13
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "none",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "count(pve_up{id=~\"(qemu|lxc)/.*\"} == 1) or vector(0)",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 11,
+            "type": "stat",
+            "title": "ZFS pools not online",
+            "description": "DEGRADED, FAULTED or SUSPENDED. Error counters on a still-ONLINE pool are a different alarm \u2014 sas-health-check.sh mails those.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 12,
+              "y": 13
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "none",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "sum(node_zfs_zpool_state{state!=\"online\"}) or vector(0)",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 12,
+            "type": "stat",
+            "title": "Hottest sensor",
+            "description": "Across all three hosts. The R730xd's fans are driven by drive temperature, not this.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 18,
+              "y": 13
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "celsius",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 70
+                    },
+                    {
+                      "color": "red",
+                      "value": 85
+                    }
+                  ]
+                },
+                "decimals": 0
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "max(node_hwmon_temp_celsius{job=\"pve-node\"})",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 13,
+            "type": "timeseries",
+            "title": "Host CPU",
+            "description": "",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 8,
+              "x": 0,
+              "y": 17
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "unit": "percentunit",
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 12,
+                  "gradientMode": "opacity",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                },
+                "mappings": [],
+                "min": 0,
+                "max": 1
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [
+                  "lastNotNull",
+                  "max"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "pve_cpu_usage_ratio{id=~\"node/.*\"} * on(id, instance) group_left(name) pve_node_info",
+                "range": true,
+                "instant": false,
+                "refId": "A",
+                "legendFormat": "{{name}}"
+              }
+            ]
+          },
+          {
+            "id": 14,
+            "type": "timeseries",
+            "title": "Host memory",
+            "description": "",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 8,
+              "x": 8,
+              "y": 17
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "palette-classic"
+                },
+                "unit": "percentunit",
+                "custom": {
+                  "axisBorderShow": false,
+                  "axisCenteredZero": false,
+                  "axisColorMode": "text",
+                  "axisLabel": "",
+                  "axisPlacement": "auto",
+                  "barAlignment": 0,
+                  "drawStyle": "line",
+                  "fillOpacity": 12,
+                  "gradientMode": "opacity",
+                  "hideFrom": {
+                    "legend": false,
+                    "tooltip": false,
+                    "viz": false
+                  },
+                  "insertNulls": false,
+                  "lineInterpolation": "smooth",
+                  "lineWidth": 2,
+                  "pointSize": 5,
+                  "scaleDistribution": {
+                    "type": "linear"
+                  },
+                  "showPoints": "never",
+                  "spanNulls": true,
+                  "stacking": {
+                    "group": "A",
+                    "mode": "none"
+                  },
+                  "thresholdsStyle": {
+                    "mode": "off"
+                  }
+                },
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    }
+                  ]
+                },
+                "mappings": [],
+                "min": 0,
+                "max": 1
+              },
+              "overrides": []
+            },
+            "options": {
+              "legend": {
+                "calcs": [
+                  "lastNotNull",
+                  "max"
+                ],
+                "displayMode": "table",
+                "placement": "bottom",
+                "showLegend": true
+              },
+              "tooltip": {
+                "mode": "multi",
+                "sort": "desc"
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "(pve_memory_usage_bytes{id=~\"node/.*\"} / pve_memory_size_bytes{id=~\"node/.*\"}) * on(id, instance) group_left(name) pve_node_info",
+                "range": true,
+                "instant": false,
+                "refId": "A",
+                "legendFormat": "{{name}}"
+              }
+            ]
+          },
+          {
+            "id": 15,
+            "type": "bargauge",
+            "title": "Storage fill",
+            "description": "PveStorageNearFull fires at 80 %, PveStorageCritical at 90 %.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 7,
+              "w": 8,
+              "x": 16,
+              "y": 17
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "percentunit",
+                "min": 0,
+                "max": 1,
+                "decimals": 1,
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0.8
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.9
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "showUnfilled": true,
+              "valueMode": "color",
+              "minVizWidth": 8,
+              "minVizHeight": 16,
+              "maxVizHeight": 300,
+              "namePlacement": "auto",
+              "sizing": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "pve_disk_usage_bytes{id=~\"storage/.*\"} / pve_disk_size_bytes{id=~\"storage/.*\"}",
+                "range": false,
+                "instant": true,
+                "refId": "A",
+                "legendFormat": "{{id}}"
+              }
+            ]
+          },
+          {
+            "id": 16,
+            "type": "row",
+            "title": "Cluster and off-site",
+            "collapsed": false,
+            "gridPos": {
+              "h": 1,
+              "w": 24,
+              "x": 0,
+              "y": 24
+            },
+            "panels": []
+          },
+          {
+            "id": 17,
+            "type": "stat",
+            "title": "Nodes ready",
+            "description": "Three, one per chassis. Two is a working quorum; one is not.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 0,
+              "y": 25
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "none",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 2
+                    },
+                    {
+                      "color": "green",
+                      "value": 3
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 18,
+            "type": "stat",
+            "title": "Pods not running",
+            "description": "",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 6,
+              "y": 25
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "none",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 5
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "sum(kube_pod_status_phase{phase=~\"Pending|Failed|Unknown\"}) or vector(0)",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 19,
+            "type": "stat",
+            "title": "VPS",
+            "description": "TCP connect to inside.merox.dev \u2014 the off-site backup target and the public edge.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 12,
+              "y": 25
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "none",
+                "mappings": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Reachable",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "UNREACHABLE",
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 32
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "probe_success{job=\"blackbox-vps\"}",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 20,
+            "type": "stat",
+            "title": "Alerts firing",
+            "description": "",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 4,
+              "w": 6,
+              "x": 18,
+              "y": 25
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "none",
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "colorMode": "value",
+              "graphMode": "none",
+              "justifyMode": "auto",
+              "orientation": "auto",
+              "textMode": "auto",
+              "wideLayout": true,
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              },
+              "text": {
+                "valueSize": 42
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "count(ALERTS{alertstate=\"firing\", alertname!~\"Watchdog|InfoInhibitor\"}) or vector(0)",
+                "range": false,
+                "instant": true,
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 21,
+            "type": "bargauge",
+            "title": "Longhorn backup age",
+            "description": "Time since each volume's last backup reached Garage. LonghornBackupStale fires at 36 h; the recurring job runs nightly at 23:50. Volumes that are backed up by nothing on purpose (tier 3) are absent here by design \u2014 the exemption list lives in the LonghornVolumeNeverBackedUp alert.",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            },
+            "gridPos": {
+              "h": 9,
+              "w": 24,
+              "x": 0,
+              "y": 29
+            },
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "unit": "s",
+                "decimals": 1,
+                "min": 0,
+                "mappings": [],
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 86400
+                    },
+                    {
+                      "color": "red",
+                      "value": 129600
+                    }
+                  ]
+                }
+              },
+              "overrides": []
+            },
+            "options": {
+              "displayMode": "gradient",
+              "orientation": "horizontal",
+              "showUnfilled": true,
+              "valueMode": "color",
+              "minVizWidth": 8,
+              "minVizHeight": 16,
+              "maxVizHeight": 300,
+              "namePlacement": "auto",
+              "sizing": "auto",
+              "reduceOptions": {
+                "calcs": [
+                  "lastNotNull"
+                ],
+                "fields": "",
+                "values": false
+              }
+            },
+            "targets": [
+              {
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prometheus"
+                },
+                "editorMode": "code",
+                "expr": "sort_desc((time() - longhorn_volume_last_backup_at) and (longhorn_volume_last_backup_at != 0))",
+                "range": false,
+                "instant": true,
+                "refId": "A",
+                "legendFormat": "{{pvc}}"
+              }
+            ]
+          }
+        ],
+        "refresh": "1m",
+        "schemaVersion": 39,
+        "tags": [
+          "homelab"
+        ],
+        "templating": {
+          "list": []
+        },
+        "time": {
+          "from": "now-24h",
+          "to": "now"
+        },
+        "timepicker": {},
+        "timezone": "browser",
+        "title": "Homelab Overview",
+        "uid": "homelab-overview",
+        "version": 1,
+        "weekStart": ""
+      }
