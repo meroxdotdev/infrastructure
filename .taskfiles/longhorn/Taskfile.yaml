@@ -515,7 +515,11 @@ tasks:
           echo "  ✓ $PVC created (fresh, no backup)"
         }
 
-        create_fresh_pvc "prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0" "15Gi"
+        # Must match the Prometheus volumeClaimTemplate in
+        # kubernetes/apps/observability/kube-prometheus-stack/app/helmrelease.yaml.
+        # A disk smaller than the retentionSize there does not fail at restore
+        # time — it fills up weeks later and Prometheus crashes on a full disk.
+        create_fresh_pvc "prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0" "40Gi"
         create_fresh_pvc "alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0" "1Gi"
     silent: true
 

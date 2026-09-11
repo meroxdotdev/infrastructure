@@ -94,13 +94,19 @@ spec:
         ruleSelectorNilUsesHelmValues: false
         scrapeConfigSelectorNilUsesHelmValues: false
         serviceMonitorSelectorNilUsesHelmValues: false
-        retention: 14d
-        # Must stay comfortably BELOW the PVC below (15Gi = 16.1GB), or the
+        # 30 days so the Homelab Overview can always look back a month.
+        # Nothing here is backed up (tier 3), so this is a disk decision, not a
+        # data one: measured 2026-09-11 at 0.73 GB/day, a month is ~22 GB.
+        retention: 30d
+        # Must stay comfortably BELOW the PVC below (40Gi = 42.9GB), or the
         # size guard can never fire — the volume fills first and Prometheus
-        # crashes on a full disk, with only `retention` saving it. Was 20GB,
-        # i.e. larger than the disk it was meant to protect; actual usage had
-        # already reached 17G. Raise the PVC first if this ever needs to grow.
-        retentionSize: 12GB
+        # crashes on a full disk, with only `retention` saving it. It was once
+        # 20GB on a 15Gi disk, larger than the disk it was meant to protect.
+        # 32GB is ~44 days at today's rate, so time, not size, is what trims:
+        # the month holds even as exporters are added. Growing this means
+        # raising the PVC first — and the DR task that recreates it, in
+        # .taskfiles/longhorn/Taskfile.yaml create-statefulset-pvcs.
+        retentionSize: 32GB
         resources:
           requests:
             cpu: 100m
@@ -113,7 +119,7 @@ spec:
               storageClassName: longhorn
               resources:
                 requests:
-                  storage: 15Gi
+                  storage: 40Gi
     prometheus-node-exporter:
       fullnameOverride: node-exporter
       prometheus:
