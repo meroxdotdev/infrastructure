@@ -12,6 +12,7 @@ resources:
   - ./pve-exporter/ks.yaml
   - ./blackbox-exporter/ks.yaml
   - ./nut-exporter/ks.yaml
+  - ./speedtest-exporter/ks.yaml
   # Logging Stack
   - ./loki/ks.yaml
   - ./alloy/ks.yaml

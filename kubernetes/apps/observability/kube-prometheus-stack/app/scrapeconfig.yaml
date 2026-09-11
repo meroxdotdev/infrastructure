@@ -28,6 +28,65 @@ spec:
       replacement: *name
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# WAN reachability and round-trip time, every scrape. The hourly speedtest
+# measures throughput and costs a burst of traffic each run; this costs one
+# TCP handshake, so it can run constantly and catch the short outages an
+# hourly test would sample straight past.
+#
+# Two unrelated anycast targets so one provider's bad day does not read as
+# the line being down. TCP connect rather than ICMP because ICMP needs
+# NET_RAW, and blackbox-exporter runs with every capability dropped.
+#
+# No alert on this on purpose: when the WAN is down, Alertmanager cannot
+# reach Telegram either. It is a record to look back at, not a pager.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name blackbox-wan
+spec:
+  staticConfigs:
+    - targets:
+        - 1.1.1.1:443
+        - 8.8.8.8:443
+  metricsPath: /probe
+  params:
+    module: ["tcp_connect"]
+  relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: blackbox-exporter.observability.svc.cluster.local:9115
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# WAN throughput. The exporter runs the real test at most every 4 h and
+# answers every other scrape from cache, so scraping each minute costs
+# nothing and keeps the series from going stale between runs.
+#
+# The timeout is long because one scrape in 240 is the one that actually runs
+# the test (~30 s). With the default 10 s, that scrape would be abandoned and
+# `up` would blip to 0 once every run.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name speedtest
+spec:
+  scrapeInterval: 1m
+  scrapeTimeout: 55s
+  staticConfigs:
+    - targets:
+        - speedtest-exporter.observability.svc.cluster.local:9798
+  metricsPath: /metrics
+  relabelings:
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
 # pve-2 (R730xd), standalone host - queried through pve-exporter's blackbox-
 # style /pve endpoint. `module: default` picks the matching section in
 # pve-exporter-secret's pve.yml.
