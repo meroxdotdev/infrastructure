@@ -114,6 +114,14 @@ rebooting; nothing here can be fixed remotely if it boots wrong.
 
 A stale `Windows Boot Manager` entry remains in NVRAM from before. Harmless.
 
+## What this directory deploys
+
+`etc/` mirrors real paths on the host, as on pve-1.
+
+| File | Host path | After copying |
+|---|---|---|
+| `etc/default-prometheus-node-exporter` | `/etc/default/prometheus-node-exporter` | `apt install prometheus-node-exporter` **first**, then `systemctl restart prometheus-node-exporter` — see [host-metrics.md](../../docs/host-metrics.md) |
+
 ## Related
 
 [../pve-1/README.md](../pve-1/README.md) ·

@@ -485,9 +485,9 @@ spec:
       # node_zfs_zpool_state comes from node_exporter, which ran on the Talos
       # guests (no ZFS) and not on the hosts that actually hold the pools.
       # Enabled together with node_exporter on all three hosts — the install
-      # is docs/host-metrics.md. The rule is silent until that is done: no
-      # series, nothing to compare, no alert. It does not fail loudly, so
-      # check the pve-node targets in Prometheus rather than trusting quiet.
+      # is docs/host-metrics.md. The rule has nothing to evaluate on a host
+      # without node_exporter, but that host is not quiet: its pve-node
+      # target is down, and kube-prometheus-stack's default TargetDown fires.
       #
       # This does not replace sas-health-check.sh on pve-2 — that mails on
       # READ/WRITE/CKSUM error counters, which a pool reports while still

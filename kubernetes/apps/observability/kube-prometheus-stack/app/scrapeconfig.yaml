@@ -224,6 +224,14 @@ spec:
     - action: replace
       targetLabel: job
       replacement: *name
+  # The Debian package enables the systemd collector, which reports every unit
+  # in each of five states: 3225 series, 30 % of this job, measured 2026-09-11,
+  # and nothing reads them. Only `failed` is kept — the one state worth ever
+  # alerting on (a dead nut-monitor or fan-control), at one series per unit.
+  metricRelabelings:
+    - sourceLabels: [__name__, state]
+      regex: node_systemd_unit_state;(activating|active|deactivating|inactive)
+      action: drop
 ---
 # Everything below was dead code: this file was never referenced from
 # kustomization.yaml (found + fixed 2026-08-03), so none of it was ever

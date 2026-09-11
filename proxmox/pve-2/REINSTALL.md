@@ -127,3 +127,15 @@ window. Restore it from `PRIVATE-NOTES.md`, inside that window.
 No `CRON_TZ`: Debian's cron ignores it silently, so jobs keep local time while
 looking moved. Tried 2026-08-20, reverted next morning — it put restic ahead of
 its sources.
+
+## 10. Monitoring token
+
+`reinstall.sh` brings node_exporter back. The Proxmox API token pve-exporter
+reads this host with does not: it lived in the old `/etc/pve`. Until it is
+recreated the pve-2 scrape fails, and `PveNodeDown` and the storage alerts are
+blind to this host.
+
+Recreate it and put the new value in the **`default`** module of
+`pve-exporter-secret` — pve-2's module is named `default`, not `pve-2`, for
+historical reasons. The commands are in
+[pve-exporter/README.md](../../kubernetes/apps/observability/pve-exporter/README.md#adding-a-host).

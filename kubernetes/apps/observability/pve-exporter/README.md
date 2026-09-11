@@ -26,9 +26,9 @@ control plane. The ScrapeConfigs for `pve-1` and `pve-3` are now in
 [`../kube-prometheus-stack/app/scrapeconfig.yaml`](../kube-prometheus-stack/app/scrapeconfig.yaml).
 
 **Do the token and the secret first.** A ScrapeConfig whose module does not
-exist in `pve.yml` fails every scrape, and no alert fires on that — it is only
-a red target in Prometheus, which is exactly the kind of quiet failure this
-repo tries not to create.
+exist in `pve.yml` fails every scrape, and kube-prometheus-stack's default
+`TargetDown` fires on it after ten minutes — a page for getting two steps in
+the wrong order.
 
 On the new host, as root — read-only, `PVEAuditor` and nothing more:
 

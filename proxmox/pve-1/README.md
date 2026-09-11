@@ -131,9 +131,10 @@ last column.
 | `etc/modprobe.d/zfs.conf` | same | ARC capped at 4 GB |
 | `etc/modules` | same | as above |
 | `etc/default-grub` | the `GRUB_CMDLINE_*` lines of `/etc/default/grub` | `update-grub` and reboot |
+| `etc/default-prometheus-node-exporter` | `/etc/default/prometheus-node-exporter` | `apt install prometheus-node-exporter` **first**, then `systemctl restart prometheus-node-exporter` — see [host-metrics.md](../../docs/host-metrics.md) |
 
 There is no drift check for this host. pve-2 has one because it carries dozens
-of files and every backup script; eight files did not justify a second
+of files and every backup script; nine files did not justify a second
 mechanism. Add one if this grows.
 
 ## CPU power policy

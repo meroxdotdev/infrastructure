@@ -21,7 +21,8 @@ FAIL=0
 # Run from inside the repo checkout: every file this applies is a sibling.
 # Copying just the script somewhere else silently applies the wrong paths.
 for need in etc/crontab etc/exports etc/storage.cfg install-spindown.sh \
-            scripts/fan-control.sh etc/fan-control.service; do
+            scripts/fan-control.sh etc/fan-control.service \
+            etc/default-prometheus-node-exporter; do
   [ -f "$REPO/$need" ] || {
     printf 'Run this from the repo checkout — %s is missing next to the script.\n' "$need"
     exit 1
@@ -50,7 +51,7 @@ fi
 
 # --- packages --------------------------------------------------------------
 say "Packages"
-PKGS="nfs-kernel-server sg3-utils smartmontools ipmitool restic rsync bc borgbackup"
+PKGS="nfs-kernel-server sg3-utils smartmontools ipmitool restic rsync bc borgbackup prometheus-node-exporter"
 MISSING=""
 for p in $PKGS; do
   dpkg -s "$p" >/dev/null 2>&1 || MISSING="$MISSING $p"
@@ -130,6 +131,17 @@ else
   warn "fan-control.service is not running; the box stays on iDRAC's algorithm (loud, safe)"
 fi
 
+# --- host metrics ----------------------------------------------------------
+# node_exporter, bound to the LAN address only (docs/host-metrics.md). The
+# package pulls in prometheus-node-exporter-collectors, whose timers publish
+# SMART, NVMe, IPMI and apt state, and whose directory the nightly restic and
+# vzdump scripts write their backup timestamps into. Without it the Homelab
+# Overview's backup tiles read "no report" and the ZFS pool rule has nothing
+# to evaluate — nothing the host itself needs, so a warning, not a stop.
+say "Host metrics"
+run install -m 644 "$REPO/etc/default-prometheus-node-exporter" /etc/default/prometheus-node-exporter
+run systemctl restart prometheus-node-exporter
+
 # --- nextcloud borg receiver ----------------------------------------------
 say "Nextcloud borg receiver"
 if id borg-nextcloud >/dev/null 2>&1; then
@@ -156,6 +168,8 @@ E=$(grep -c '^[0-9*]' "$REPO/etc/crontab")
                   || bad "cron jobs: $N, expected at least $E"
 systemctl is-active --quiet nfs-server && ok "nfs-server running" || bad "nfs-server not running"
 systemctl is-active --quiet fan-control && ok "fan-control running" || warn "fan-control not running — fans on iDRAC's algorithm"
+systemctl is-active --quiet prometheus-node-exporter && ok "node_exporter running on 10.57.57.250:9100" \
+  || warn "node_exporter not running — no host metrics, backup tiles go blank"
 if [ -f /root/.restic-oracle-password ]; then
   ok "restic password present"
 else

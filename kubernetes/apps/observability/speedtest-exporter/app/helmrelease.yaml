@@ -4,7 +4,7 @@
 # are blackbox-wan's job (scrapeconfig.yaml) — that one is cheap and runs
 # constantly; this one is not.
 #
-# Every run costs ~1.8 GB. Measured 2026-09-11 on the Orange line: 938 Mbps
+# Every run costs ~1.8 GB. Measured 2026-09-11 on this line: 938 Mbps
 # down / 660 up moved 1045 MB and 790 MB. Hourly would be ~1.3 TB a month and
 # a saturated link for ~20 s every hour, so it runs every 4 h (~330 GB a
 # month). SPEEDTEST_CACHE_FOR is what spaces the runs: Prometheus scrapes

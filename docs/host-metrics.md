@@ -35,14 +35,17 @@ apt-get install -y prometheus-node-exporter
 Then bind it to the LAN address. **Not `0.0.0.0`** — every one of these hosts
 also carries a Tailscale interface, and host metrics have no business being
 served there. This is the same reasoning as the two explicit `LISTEN` lines in
-[`pve-2`'s `upsd.conf`](../proxmox/pve-2/etc/nut/upsd.conf):
+[`pve-2`'s `upsd.conf`](../proxmox/pve-2/etc/nut/upsd.conf).
+
+The config for each host is in git, one line each:
+`proxmox/pve-{1,2,3}/etc/default-prometheus-node-exporter`. On pve-2,
+[`reinstall.sh`](../proxmox/pve-2/reinstall.sh) installs the package and the
+file. On the other two, copy it from a checkout:
 
 ```bash
-# pve-1: 10.57.57.254   pve-2: 10.57.57.250   pve-3: 10.57.57.253
-cat >/etc/default/prometheus-node-exporter <<'CONF'
-ARGS="--web.listen-address=10.57.57.250:9100 --collector.textfile.directory=/var/lib/prometheus/node-exporter"
-CONF
-systemctl restart prometheus-node-exporter
+# pve-1 shown; pve-3 is the same with its own directory and 10.57.57.253
+scp proxmox/pve-1/etc/default-prometheus-node-exporter root@10.57.57.254:/etc/default/prometheus-node-exporter
+ssh root@10.57.57.254 systemctl restart prometheus-node-exporter
 ```
 
 Keeping `--collector.textfile.directory` matters: it is the Debian default,
