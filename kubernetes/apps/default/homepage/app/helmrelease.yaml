@@ -29,7 +29,7 @@ spec:
           app:
             image:
               repository: ghcr.io/gethomepage/homepage
-              tag: v2.2.0
+              tag: v2.3.0
             env:
               TZ: Europe/Bucharest
               # Required since v1. Homepage refuses requests whose Host header

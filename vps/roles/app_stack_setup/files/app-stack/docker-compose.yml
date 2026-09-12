@@ -6,7 +6,7 @@ services:
   # nothing here to leak. Internal detail lives on home.k8s.merox.dev, inside
   # the cluster, which is the only place that can actually read it.
   homepage-public:
-    image: ghcr.io/gethomepage/homepage:v2.2.0
+    image: ghcr.io/gethomepage/homepage:v2.3.0
     container_name: homepage-public
     volumes:
       - ./config-public:/app/config
