@@ -118,7 +118,7 @@ services:
         ipv4_address: 172.25.10.60
 
   joplin-server:
-    image: joplin/server:3.7.1
+    image: joplin/server:3.7.2
     container_name: joplin-server
     restart: unless-stopped
     depends_on:
