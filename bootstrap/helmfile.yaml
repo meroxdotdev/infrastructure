@@ -40,7 +40,7 @@ releases:
     namespace: observability
     atomic: true
     chart: oci://ghcr.io/prometheus-community/charts/prometheus-operator-crds
-    version: 31.0.1
+    version: 32.0.0
     needs: ['cert-manager/cert-manager']
 
   - name: flux-operator
