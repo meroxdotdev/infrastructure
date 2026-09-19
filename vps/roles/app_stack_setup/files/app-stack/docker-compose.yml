@@ -54,7 +54,7 @@ services:
 
   unbound:
     container_name: unbound
-    image: klutchell/unbound@sha256:5020cfe1218aeda38777f88279220162e602c3a44efc684550dbf46137106a16
+    image: klutchell/unbound@sha256:9a3939ca33d6d3b42b81a70391bb8e43f0a08d2bd7a3fdffb43d427493345c36
     restart: unless-stopped
     networks:
       network-cloud-merox:
