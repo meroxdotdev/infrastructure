@@ -19,6 +19,8 @@ spec:
   values:
     controllers:
       qbittorrent:
+        # Two Pods must never share the netns-scoped WireGuard ip rules.
+        strategy: Recreate
         containers:
           gluetun:
             image:
@@ -53,6 +55,16 @@ spec:
                   initialDelaySeconds: 30
                   periodSeconds: 30
                   failureThreshold: 3
+            # The ip rules for table 51820 live in the Pod netns, which outlives
+            # a container restart, so every restart after the first one died on
+            # "adding ip rule 101: file exists". Clear them before Gluetun looks.
+            lifecycle:
+              postStart:
+                exec:
+                  command:
+                    - /bin/sh
+                    - -c
+                    - (ip rule del table 51820; ip -6 rule del table 51820) || true
             securityContext:
               runAsNonRoot: false
               runAsUser: 0
