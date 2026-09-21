@@ -1,0 +1,55 @@
+#!/bin/bash
+# Telegram alert when home stops answering on the tailnet, and again when it is
+# back. It has to run off-site: when the WAN is down, nothing at home can send
+# anything, and Alertmanager only delivers after the link returns.
+#
+# Runs every minute from homelab-watch.timer. State lives in /var/lib/homelab-watch:
+#   first_fail  epoch of the first failed check in the current streak
+#   fails       length of that streak
+#   notified    present once the "offline" message got through
+set -uo pipefail
+
+TARGET="{{ homelab_watch_target }}"
+FAIL_AFTER={{ homelab_watch_fail_after }}
+STATE=/var/lib/homelab-watch
+mkdir -p "$STATE"
+
+send() {
+    curl -fsS -m 15 -o /dev/null \
+        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+        --data-urlencode "text=$1"
+}
+
+# A broken tailscaled on this side would read as home being down. Say nothing
+# rather than something wrong.
+if ! tailscale status >/dev/null 2>&1; then
+    echo "tailscaled not running here; skipping"
+    exit 0
+fi
+
+now=$(date +%s)
+fails=$(cat "$STATE/fails" 2>/dev/null || echo 0)
+
+# --until-direct=false: a pong relayed over DERP still proves home is online.
+if tailscale ping --until-direct=false -c 2 --timeout 5s "$TARGET" >/dev/null 2>&1; then
+    if [ -f "$STATE/notified" ]; then
+        first=$(cat "$STATE/first_fail")
+        mins=$(( (now - first) / 60 ))
+        # Kept on failure, so the next minute retries the message.
+        send "✅ RESOLVED — Homelab back online after ${mins} min (offline since $(date -d "@$first" '+%d.%m %H:%M'))." \
+            && rm -f "$STATE/notified"
+    fi
+    [ -f "$STATE/notified" ] || rm -f "$STATE/fails" "$STATE/first_fail"
+    exit 0
+fi
+
+fails=$((fails + 1))
+echo "$fails" > "$STATE/fails"
+[ "$fails" -eq 1 ] && echo "$now" > "$STATE/first_fail"
+echo "no answer from $TARGET ($fails in a row)"
+
+if [ "$fails" -ge "$FAIL_AFTER" ] && [ ! -f "$STATE/notified" ]; then
+    send "🔴 FIRING — Homelab offline: pfSense has not answered on the tailnet for ${fails} min. Internet down, or mains gone past the UPS." \
+        && touch "$STATE/notified"
+fi

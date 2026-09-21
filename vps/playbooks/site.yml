@@ -61,6 +61,11 @@
     - role: vps_backup
       tags: ['backup', 'services']
 
+    # Telegram when home drops off the tailnet — the only alert that can
+    # leave while the home WAN is down.
+    - role: homelab_watch
+      tags: ['homelab-watch', 'monitoring', 'services']
+
   post_tasks:
     - name: Display completion message
       ansible.builtin.debug:

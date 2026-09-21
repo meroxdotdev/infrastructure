@@ -495,6 +495,11 @@ can report that). `/root/scripts/heartbeat-ping.sh`, cron `*/5 * * * *`,
 pings healthchecks.io `homelab-heartbeat` (period 5min, grace 10min,
 alerts via Email to hello@merox.dev — independent of the Telegram channel).
 
+The faster half of the same job runs off-site: `homelab-watch` on vps01
+(`vps/roles/homelab_watch`) pings pfSense over the tailnet every minute and
+sends to Telegram after 3 missed minutes, and again on recovery. It cannot tell
+WAN loss from a power cut either — `UpsOnBattery` arrives once the link is back.
+
 ## Drives without SES temperature reporting make the fans scream
 
 If all chassis fans suddenly ramp to ~8900 RPM with nothing actually hot: a

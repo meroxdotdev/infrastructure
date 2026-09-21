@@ -1,0 +1,9 @@
+[Unit]
+Description=Check that home answers on the tailnet; Telegram on change
+After=tailscaled.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/homelab-watch.env
+ExecStart=/usr/local/sbin/homelab-watch.sh

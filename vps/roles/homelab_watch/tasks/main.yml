@@ -1,0 +1,38 @@
+---
+- name: Install the check script
+  ansible.builtin.template:
+    src: homelab-watch.sh.j2
+    dest: /usr/local/sbin/homelab-watch.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+# The bot token only, root-readable. The file this role's predecessor kept
+# (homelab-stats) was world-readable and held the iDRAC password too.
+- name: Install the Telegram credentials
+  ansible.builtin.template:
+    src: homelab-watch.env.j2
+    dest: /etc/homelab-watch.env
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Install the units
+  ansible.builtin.copy:
+    src: "{{ role_path }}/templates/{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - homelab-watch.service
+    - homelab-watch.timer
+  notify: Reload systemd
+
+- name: Enable the timer
+  ansible.builtin.systemd:
+    name: homelab-watch.timer
+    enabled: true
+    state: started
+    daemon_reload: true

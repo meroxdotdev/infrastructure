@@ -1,0 +1,15 @@
+---
+# pfSense's tailnet address (merox-homelab). It is the one device at home that
+# is on the tailnet, on the UPS, and between everything else and the internet,
+# so not answering means the site is cut off: WAN down, or mains gone past what
+# the UPS covers. From out here the two look identical — Alertmanager's
+# UpsOnBattery, delivered once the link is back, tells them apart.
+homelab_watch_target: 100.99.34.94
+
+# Consecutive failed minutes before the alert goes out. A single lost ping, or a
+# pfSense reboot for an update, should not page anyone.
+homelab_watch_fail_after: 3
+
+# Same bot and chat as Alertmanager, Flux and Proxmox — one place to look.
+homelab_watch_telegram_token: "{{ vault_telegram_bot_token }}"
+homelab_watch_telegram_chat_id: "{{ vault_telegram_chat_id }}"
