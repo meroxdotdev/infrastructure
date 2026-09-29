@@ -1,0 +1,4 @@
+# root's crontab on pve-1. Times are local (Europe/Bucharest).
+
+# Site-alive heartbeat — see ../README.md#site-alive-heartbeat.
+*/5 * * * * /root/scripts/heartbeat-ping.sh >> /var/log/heartbeat-ping.log 2>&1

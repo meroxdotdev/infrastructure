@@ -40,10 +40,11 @@ Eleven of the twenty-three Longhorn volumes are tier 3 and are backed up by
 nothing on purpose; the exemption list lives in the `LonghornVolumeNeverBackedUp`
 alert so that adding to it is a decision in a diff, and forgetting is not.
 
-etcd is the one deliberate exception. Strictly it is tier 3 — Flux rebuilds the
-cluster from this repository, and the secrets are here under SOPS. It is
-snapshotted anyway because it turns a 71-minute rebuild into minutes, which
-makes it an RTO optimisation rather than a backup.
+etcd is tier 3 and is not backed up. Three members in three chassis rebuild a
+lost one from its peers; losing all three at once is a DR rebuild from this
+repository (secrets under SOPS) plus Longhorn restores, drilled on 2026-08-29.
+A nightly snapshot ran until 2026-09-29 and was removed: it saved minutes in
+that one scenario and cost a cron job and a yearly-expiring credential.
 
 ## How a backup reaches three places
 
@@ -53,7 +54,6 @@ not need to know what is in it.
 
 ```
 Longhorn volumes ─┐
-etcd snapshots    │
 Immich database   ├─→ /media/backups ─┬─→ restic ──→ Oracle  (append-only)
 Nextcloud data    │   on pve-2        │
 pfSense config    │                   └─→ Synology (pull, weekly)

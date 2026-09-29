@@ -175,8 +175,6 @@ if [ -f /root/.restic-oracle-password ]; then
 else
   warn "restic password missing — restore /root first (REINSTALL.md §Secrets)"
 fi
-[ -f /root/.talos-etcd-backup ] && ok "etcd backup credential present" \
-  || warn "etcd credential missing — reissue it, REINSTALL.md has the command"
 
 printf '\n'
 if [ "$CHECK" = 1 ]; then

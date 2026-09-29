@@ -197,6 +197,23 @@ upsc -c ups                       # connected secondaries
 The `nut-common-tmpfiles.conf` warning in `journalctl -u nut-monitor` is a
 Debian packaging artefact and is harmless.
 
+## Site-alive heartbeat
+
+Dead-man's switch for a total site outage — power, WAN, or every host down at
+once, which nothing inside the site can report. [`scripts/heartbeat-ping.sh`](scripts/heartbeat-ping.sh),
+cron `*/5` ([`etc/crontab`](etc/crontab)), pings healthchecks.io
+`homelab-heartbeat` (period 5 min, grace 10 min), which alerts by email to
+hello@merox.dev — independent of Telegram. On this host since 2026-09-29: it
+has to run on a machine that is always on, and it sits next to the UPS.
+
+The faster half of the same job runs off-site: `homelab-watch` on vps01
+(`vps/roles/homelab_watch`) pings pfSense over the tailnet every minute and
+sends to Telegram after 3 missed minutes. Neither can tell WAN loss from a
+power cut; `UpsOnBattery` arrives once the link is back.
+
+The URL in git is `REPLACE-ME-SEE-PRIVATE-NOTES` — a healthchecks URL is a
+capability token and this repo is public.
+
 ## Related
 
 [../pve-2/README.md](../pve-2/README.md) ·

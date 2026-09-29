@@ -59,7 +59,6 @@ disks once, together.
 | 03:00 (00:00 UTC) | VPS → pve-2 backup push | → pve-2 |
 | 03:01 | Garage meta copy (SSD → media) | pve-2 |
 | 03:02 (00:02 UTC) | Immich Postgres pg_dump | K8s |
-| 03:03 | etcd snapshot | pve-2 |
 | 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve-2 |
 | 03:10 | restic push → Oracle | pve-2 |
 | 03:20 | nightly checks — disk health, spin-down, git drift, vzdump age | pve-2 |
@@ -439,18 +438,6 @@ being a fallback if the bot token is ever revoked. Nothing routes to it today.
 
 healthchecks.io is also the only one of the three that reports a check which
 stops running at all, which is the failure mode that matters most here.
-
-## Site-alive heartbeat
-
-Dead-man's switch for total site outage (power/WAN/pve down — nothing else
-can report that). `/root/scripts/heartbeat-ping.sh`, cron `*/5 * * * *`,
-pings healthchecks.io `homelab-heartbeat` (period 5min, grace 10min,
-alerts via Email to hello@merox.dev — independent of the Telegram channel).
-
-The faster half of the same job runs off-site: `homelab-watch` on vps01
-(`vps/roles/homelab_watch`) pings pfSense over the tailnet every minute and
-sends to Telegram after 3 missed minutes, and again on recovery. It cannot tell
-WAN loss from a power cut either — `UpsOnBattery` arrives once the link is back.
 
 ## Drives without SES temperature reporting make the fans scream
 
