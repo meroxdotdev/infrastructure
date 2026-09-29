@@ -114,6 +114,7 @@ Everything else is reproducible: SOPS/age for K8s, Ansible Vault for the VPS,
 | Run day-to-day things | [docs/operations.md](docs/operations.md) |
 | Fix something broken | [docs/troubleshooting.md](docs/troubleshooting.md) · [DR known issues](docs/dr-known-issues.md) |
 | See what is still planned | [docs/plan-2026-09.md](docs/plan-2026-09.md) |
+| Know where the hardware is heading | [docs/plan-nas-hot-r730-cold.md](docs/plan-nas-hot-r730-cold.md) |
 
 **After a fire, rebuild in this order** — each layer needs the one before it:
 

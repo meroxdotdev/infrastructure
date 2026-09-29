@@ -341,7 +341,7 @@ The SFTP path this replaced was revoked on 2026-09-07 and now returns
 new LXC on `pve-2`, or the VPS temporarily — with the recovered
 `data`/`meta` bind-mounted in. Reuse `vps/roles/garage_setup`, setting
 `garage_webui_enabled` per host, same as
-`vps/playbooks/garage-setup-r730xd.yml`.
+`vps/playbooks/garage-setup.yml`.
 
 **4. Repoint Longhorn at it:**
 
