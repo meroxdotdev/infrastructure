@@ -469,7 +469,7 @@ spec:
               # proxmox/pve-2/known-issues.md), so 10m of silence, not 2.
               - alert: UpsUnreachable
                 annotations:
-                  summary: "NUT on pve-2 has not answered for 10m — the UPS is unmonitored and may no longer shut the hosts down."
+                  summary: "NUT on pve-1 has not answered for 10m — the UPS is unmonitored and may no longer shut the hosts down."
                 expr: up{job="nut"} == 0
                 for: 10m
                 labels:

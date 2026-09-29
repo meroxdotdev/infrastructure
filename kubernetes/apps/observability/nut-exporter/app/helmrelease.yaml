@@ -1,13 +1,13 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
-# Reads the CyberPower VP700ELCD over the network from NUT on pve-2. Nothing
-# watched the UPS before this: NUT shuts the whole estate down on low battery,
-# and the only evidence it was still healthy was `upsc` run by hand.
+# Reads the CyberPower VP700ELCD over the network from NUT on pve-1, which has
+# the UPS on its USB since 2026-09-29. Nothing watched the UPS before this: NUT
+# shuts the whole estate down on low battery, and the only evidence it was
+# still healthy was `upsc` run by hand.
 #
-# No agent is added to pve-2 and no credential is needed. upsd already listens
-# on 10.57.57.250:3493 (netserver mode, so pve-1 can read it as a slave — see
-# proxmox/pve-2/etc/nut/upsd.conf), and NUT serves LIST VAR anonymously;
-# upsd.users guards commands and upsmon logins, not reads. Verified 2026-09-11.
+# No agent and no credential: upsd listens on 10.57.57.254:3493 for the other
+# hosts and the NAS anyway, and NUT serves LIST VAR anonymously; upsd.users
+# guards upsmon logins, not reads. See proxmox/pve-1/etc/nut/.
 #
 # Scraped blackbox-style like pve-exporter — the NUT server is a query
 # parameter, so one deployment covers a second UPS if one ever exists.

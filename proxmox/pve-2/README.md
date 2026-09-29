@@ -374,65 +374,17 @@ Recover:
 ⚠️ Pruning parses the date **from the snapshot name**, never `find -mtime`.
 Snapshot mtime is meaningless here.
 
-## UPS-triggered shutdown
+## UPS
 
-The UPS (CyberPower VP700ELCD) is on **pve-2's own USB**, monitored by **NUT**.
-`upsmon` shuts this host down locally on low battery — no second machine, no
-SSH hop, no forced-command key.
+Since 2026-09-29 this host is a NUT **secondary** of pve-1, which has the UPS on
+its USB. `nut.conf` is `netclient`, and `upsmon.conf` monitors
+`ups@10.57.57.254` as `upsslave`. `nut-server` and the drivers are disabled
+here. Everything about the UPS itself — driver, users, power-cycle behaviour,
+the monitoring — is in [../pve-1/README.md](../pve-1/README.md#nut--this-host-is-the-primary).
 
-```bash
-upsc cyberpower                 # full status
-systemctl status nut-monitor    # the thing that actually pulls the trigger
-```
-
-Config: `/etc/nut/ups.conf` (driver), `/etc/nut/upsmon.conf` (MONITOR +
-`SHUTDOWNCMD`), `/etc/nut/upsd.users` (generated password). Shutdown fires on
-`LB`, which this UPS reports at `battery.runtime.low = 300` — five minutes of
-runtime left, against a measured total of ~12 minutes at 35% load.
-
-NUT is used instead of PowerPanel (`powerpanel` is installed but
-**masked/disabled** — leave it that way, the two fight over the same device)
-because of a USB controller quirk specific to this chassis — do not
-"simplify" this choice away without reading
-[known-issues.md](known-issues.md#why-nut-not-powerpanel-for-the-ups) first.
-
-Snapshots of both config files are in [`etc/nut/`](etc/nut/). `upsd.users` is
-**not** here — it holds a generated password. Reissue it on a rebuild and put
-the same string in `upsmon.conf`'s `MONITOR` line, or `upsmon` logs
-`ERR ACCESS-DENIED` and silently never fires:
-
-```bash
-pw=$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)
-printf '[upsmon]\n    password = %s\n    upsmon master\n' "$pw" > /etc/nut/upsd.users
-sed -i "s/REDACTED-SEE-upsd.users/$pw/" /etc/nut/upsmon.conf
-chown root:nut /etc/nut/upsd.users /etc/nut/upsmon.conf
-chmod 640 /etc/nut/upsd.users /etc/nut/upsmon.conf
-systemctl restart nut-server nut-monitor    # restart, not reload - upsd caches the users file
-```
-
-### The UPS is now monitored, not just acted on
-
-Until 2026-09-11 nothing recorded UPS state — `upsmon` would shut this host
-down on `LB` and the only way to know the battery was still healthy was to run
-`upsc` by hand. Prometheus now scrapes it through `nut-exporter` in the
-cluster, which reads `upsd` here over the LAN.
-
-Nothing was installed on this host for it. `upsd` already listens on
-`10.57.57.250:3493` because pve-1 monitors it as a slave, and NUT answers
-`LIST VAR` without authentication — `upsd.users` guards commands and `upsmon`
-logins, not reads. No new port, no new credential, no agent.
-
-The alerts that came with it are in
-[`kube-prometheus-stack/app/helmrelease.yaml`](../../kubernetes/apps/observability/kube-prometheus-stack/app/helmrelease.yaml)
-under `ups-rules`: on battery, low battery, replace battery, runtime estimate
-below 300 s while still on mains, load over 80 %, and `upsd` going silent for
-ten minutes. That last one matters most — `upsd` not answering is also how the
-automatic shutdown above stops working, and it used to fail silently.
-
-**Watts are derived, not reported.** This UPS gives load only as a percentage
-of `ups.realpower.nominal` (390 W), so power is
-`network_ups_tools_ups_load / 100 * network_ups_tools_ups_realpower_nominal`.
-Measured 2026-09-11: 42 % → ~164 W for the whole estate, 535 s of runtime.
+The USB controller quirk that made NUT the only option on this chassis
+([known-issues.md](known-issues.md#why-nut-not-powerpanel-for-the-ups)) no longer
+applies: the UPS is not on this chassis's USB any more.
 
 ## Alerting
 

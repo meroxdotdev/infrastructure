@@ -163,45 +163,39 @@ qm set 810 --hostpci0 0000:00:02.0
 The VM needs `--machine q35` and `--bios ovmf`. Inside the guest the device
 appears at `0000:06:10.0`.
 
-## NUT
+## NUT — this host is the primary
 
-The CyberPower VP700ELCD is on **pve-2's** USB. pve-1 is on the same UPS but has
-no data connection to it, so without this it takes a hard cut on every mains
-failure while pve-2 shuts down cleanly — the worst case for ZFS on QLC.
+The CyberPower VP700ELCD is on **this host's USB** since 2026-09-29. It moved
+off pve-2, the R730xd, which is becoming a vault that is off most of the day —
+a UPS master cannot live on a machine that is off.
 
-Proxmox does **not** ship NUT: this host had no `nut` package, no `/etc/nut`
-and no `upsc` until 2026-09-01. Install `nut-client` before copying anything —
-`nut-server` is not wanted here, there is no UPS on this machine's USB.
+| File | What |
+|---|---|
+| [`etc/nut/ups.conf`](etc/nut/ups.conf) | `usbhid-ups`; the UPS is named `ups`, because DSM hardcodes that name |
+| [`etc/nut/upsd.conf`](etc/nut/upsd.conf) | listens on `127.0.0.1` and `10.57.57.254` |
+| [`etc/nut/upsd.users`](etc/nut/upsd.users) | `upsmon` (local primary), `upsslave` (Proxmox hosts, vault), `monuser` (DSM) — redacted |
+| [`etc/nut/upsmon.conf`](etc/nut/upsmon.conf) | primary; `POWERDOWNFLAG` so the UPS cuts its output at the end |
+| [`etc/nut/nut.conf`](etc/nut/nut.conf) | `netserver`, `POWEROFF_WAIT=600` |
 
-`nut.conf` here is `MODE=netclient`: upsmon only, no driver, no upsd. It
-monitors `cyberpower@10.57.57.250` as a slave and shuts this host down on
-battery. Coming back up needs nothing *from this host* — `State After G3` is
-`S0`, verified by hand on 2026-09-03: unplug the cord with the box shut down,
-plug it back in, it boots.
+Proxmox does not ship NUT: `apt install nut-server` (it pulls `nut-client`).
 
-⚠️ That is not enough on its own. On 2026-09-03 a real power cut took both hosts
-down cleanly and only pve-2 came back; this one sat off for 46 minutes. `S0` needs
-a G3 to act on, and NUT was shutting the hosts down without ever telling the UPS
-to cut its own output — so there was no power cycle to react to. Fixed on the
-pve-2 side, in `proxmox/pve-2/etc/nut/` (`offdelay`/`ondelay`, `POWERDOWNFLAG`,
-`POWEROFF_WAIT`). **Not yet proven by a drill** — the battery was at 18% that
-night.
+On low battery the primary waits for every secondary to log out, then commands
+the UPS off. `offdelay`/`ondelay` and `POWEROFF_WAIT` make mains return a real
+power cycle, so every host with `State After G3 = S0` boots by itself — the
+failure of 2026-09-03, when hosts stayed off for 46 minutes, is explained in
+`nut.conf`. **Not yet proven by a drill.**
 
-Verify from this host, not from pve-2 — a working `upsc` here proves the whole
-path, listener and credentials included:
+Secondaries point at `ups@10.57.57.254` with the `upsslave` user. Synology DSM
+uses Hardware & Power → UPS → *Synology UPS server* `10.57.57.254`, and logs in
+as `monuser`/`secret`, which it cannot be told otherwise.
 
 ```bash
-upsc cyberpower@10.57.57.250 ups.status     # expect OL
+upsc ups@localhost ups.status     # expect OL
+upsc -c ups                       # connected secondaries
 ```
 
-pve-2 logs the login as `User upsslave@10.57.57.254 logged into UPS`. The
-`nut-common-tmpfiles.conf` warning in `journalctl -u nut-monitor` is a Debian
-packaging artefact and is harmless.
-
-pve-2 serves it via `proxmox/pve-2/etc/nut/{nut.conf,upsd.conf,upsd.users}`:
-`MODE=netserver`, a `LISTEN` on the LAN address, and an `upsslave` user. That
-password guards read-only status on the LAN and nothing else — if lost,
-generate a new one and write it into both files.
+The `nut-common-tmpfiles.conf` warning in `journalctl -u nut-monitor` is a
+Debian packaging artefact and is harmless.
 
 ## Related
 

@@ -1,0 +1,19 @@
+# Passwords are redacted — this repo is public. The real values are in
+# /etc/nut/upsd.users on this host. They guard UPS logins on the LAN; reads
+# (LIST VAR) are anonymous in NUT. If lost, generate new ones and write them
+# here and in each client's upsmon.conf. Nothing needs restoring.
+
+# Local monitor on pve-1, which runs the driver.
+[upsmon]
+    password = REDACTED
+    upsmon primary
+
+# Proxmox hosts and the vault.
+[upsslave]
+    password = REDACTED
+    upsmon secondary
+
+# Synology DSM hardcodes this user and password; it cannot be changed there.
+[monuser]
+    password = secret
+    upsmon secondary

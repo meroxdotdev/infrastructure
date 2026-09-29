@@ -96,7 +96,7 @@ spec:
     dashboards:
       default:
         # Disabled - the UPS here is CyberPower on USB, not APC over SNMP
-        # (see proxmox/pve-2/README.md's UPS section). The published NUT
+        # (see proxmox/pve-1/README.md's NUT section). The published NUT
         # dashboards do not fit either: 14371, the popular one, queries
         # nut_* metrics from HON95's exporter, and this cluster runs
         # DRuggeri's, which emits network_ups_tools_*. Rather than import a

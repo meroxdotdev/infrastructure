@@ -107,7 +107,7 @@
       "id": 3,
       "type": "stat",
       "title": "Mains",
-      "description": "ups.status OL flag from the UPS on pve-2.",
+      "description": "ups.status OL flag from the UPS on pve-1.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
