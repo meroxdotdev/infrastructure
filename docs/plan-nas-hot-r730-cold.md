@@ -309,17 +309,18 @@ actually run.
 **Gate:** Jellyfin plays, an ARR import is a hardlink (`stat` link count 2),
 qBittorrent seeds.
 
-### 6 — Nextcloud → Synology Drive · ~4 h + 2 weeks parallel
+### 6 — Nextcloud → Synology Drive · ~4 h + 48 h parallel
 
 Create 3 DSM users, copy the files out of Nextcloud's datadir, set up Drive
 clients and phone apps, calendar/contacts if used. Remote access over the
 Tailscale package already on the NAS — not a tunnel to DSM's login page.
-Keep Nextcloud running read-only for two weeks.
+Keep Nextcloud running read-only for 48 hours (decided 2026-09-29; the last
+borg archive stays in the vault for 90 days as the safety net).
 
 **Then:** keep the last borg archive in the vault for 90 days, delete VM 1000,
 the tunnel, the Cloudflare DNS record, the Nextcloud manifests.
 
-**Gate:** all three users have used Drive for two weeks without falling back.
+**Gate:** all three users have used Drive for 48 hours without falling back.
 
 ### 7 — R730xd → TrueNAS vault · ~6 h
 
@@ -345,7 +346,8 @@ Update the healthchecks, Homepage, Grafana tiles that name pve-2.
 
 ## Estimate
 
-~34 h of work, 4-6 weeks with the Nextcloud parallel run. Order is fixed by
+~34 h of work, 2-3 weeks in the calendar; the vault's seven-night gate is the
+longest wait. Order is fixed by
 dependencies: 1 → 2 → 3 → (4, 5, 6 in any order) → 7 → 8.
 
 ## Power, rough
