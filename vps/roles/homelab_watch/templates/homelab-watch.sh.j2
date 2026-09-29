@@ -1,24 +1,58 @@
 #!/bin/bash
-# Telegram alert when home stops answering on the tailnet, and again when it is
-# back. It has to run off-site: when the WAN is down, nothing at home can send
-# anything, and Alertmanager only delivers after the link returns.
+# Telegram alerts about home, sent from off-site. Nothing at home can report its
+# own outage: when the WAN, the switch or the cluster is down, Alertmanager only
+# delivers once things are back. Runs every minute from homelab-watch.timer.
 #
-# Runs every minute from homelab-watch.timer. State lives in /var/lib/homelab-watch:
+# Two checks, in order — the second only when the first passes, so one outage
+# never pages twice:
+#   site     pfSense answers on the tailnet        → WAN and power at home
+#   cluster  the cluster gateway accepts TCP/443   → LAN, switch, Kubernetes
+#
+# A switch outage was the case that motivated the second check (2026-09-29):
+# pfSense stayed up and answered, so the first check alone saw nothing.
+#
+# State per check in /var/lib/homelab-watch/<check>/:
 #   first_fail  epoch of the first failed check in the current streak
 #   fails       length of that streak
-#   notified    present once the "offline" message got through
+#   notified    present once the "down" message got through
 set -uo pipefail
 
-TARGET="{{ homelab_watch_target }}"
+SITE_TARGET="{{ homelab_watch_target }}"
+CLUSTER_HOST="{{ homelab_watch_cluster_host }}"
+CLUSTER_PORT="{{ homelab_watch_cluster_port }}"
 FAIL_AFTER={{ homelab_watch_fail_after }}
 STATE=/var/lib/homelab-watch
-mkdir -p "$STATE"
 
 send() {
     curl -fsS -m 15 -o /dev/null \
         "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
         --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
         --data-urlencode "text=$1"
+}
+
+# record <check> <ok:0|1> <down message> <up message>
+record() {
+    local dir="$STATE/$1" ok=$2 down=$3 up=$4 now fails first mins
+    mkdir -p "$dir"
+    now=$(date +%s)
+    if [ "$ok" = 1 ]; then
+        if [ -f "$dir/notified" ]; then
+            first=$(cat "$dir/first_fail")
+            mins=$(( (now - first) / 60 ))
+            # Kept on failure, so the next minute retries the message.
+            send "✅ RESOLVED — ${up} after ${mins} min (down since $(date -d "@$first" '+%d.%m %H:%M'))." \
+                && rm -f "$dir/notified"
+        fi
+        [ -f "$dir/notified" ] || rm -f "$dir/fails" "$dir/first_fail"
+        return
+    fi
+    fails=$(( $(cat "$dir/fails" 2>/dev/null || echo 0) + 1 ))
+    echo "$fails" > "$dir/fails"
+    [ "$fails" -eq 1 ] && echo "$now" > "$dir/first_fail"
+    echo "$1: failed ($fails in a row)"
+    if [ "$fails" -ge "$FAIL_AFTER" ] && [ ! -f "$dir/notified" ]; then
+        send "🔴 FIRING — ${down} (${fails} min)." && touch "$dir/notified"
+    fi
 }
 
 # A broken tailscaled on this side would read as home being down. Say nothing
@@ -28,28 +62,16 @@ if ! tailscale status >/dev/null 2>&1; then
     exit 0
 fi
 
-now=$(date +%s)
-fails=$(cat "$STATE/fails" 2>/dev/null || echo 0)
-
 # --until-direct=false: a pong relayed over DERP still proves home is online.
-if tailscale ping --until-direct=false -c 2 --timeout 5s "$TARGET" >/dev/null 2>&1; then
-    if [ -f "$STATE/notified" ]; then
-        first=$(cat "$STATE/first_fail")
-        mins=$(( (now - first) / 60 ))
-        # Kept on failure, so the next minute retries the message.
-        send "✅ RESOLVED — Homelab back online after ${mins} min (offline since $(date -d "@$first" '+%d.%m %H:%M'))." \
-            && rm -f "$STATE/notified"
-    fi
-    [ -f "$STATE/notified" ] || rm -f "$STATE/fails" "$STATE/first_fail"
+if tailscale ping --until-direct=false -c 2 --timeout 5s "$SITE_TARGET" >/dev/null 2>&1; then
+    record site 1 "" "Homelab back online"
+else
+    record site 0 "Homelab offline: pfSense does not answer on the tailnet. Internet down, or mains gone past the UPS" ""
     exit 0
 fi
 
-fails=$((fails + 1))
-echo "$fails" > "$STATE/fails"
-[ "$fails" -eq 1 ] && echo "$now" > "$STATE/first_fail"
-echo "no answer from $TARGET ($fails in a row)"
-
-if [ "$fails" -ge "$FAIL_AFTER" ] && [ ! -f "$STATE/notified" ]; then
-    send "🔴 FIRING — Homelab offline: pfSense has not answered on the tailnet for ${fails} min. Internet down, or mains gone past the UPS." \
-        && touch "$STATE/notified"
+if timeout 5 bash -c "</dev/tcp/${CLUSTER_HOST}/${CLUSTER_PORT}" 2>/dev/null; then
+    record cluster 1 "" "Cluster reachable again"
+else
+    record cluster 0 "Home is online but the cluster does not answer on ${CLUSTER_HOST}:${CLUSTER_PORT}. Switch, LAN or Kubernetes down" ""
 fi

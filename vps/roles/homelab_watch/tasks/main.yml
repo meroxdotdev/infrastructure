@@ -30,6 +30,13 @@
     - homelab-watch.timer
   notify: Reload systemd
 
+# State moved into one directory per check on 2026-09-29.
+- name: Remove the single-check state files
+  ansible.builtin.file:
+    path: "/var/lib/homelab-watch/{{ item }}"
+    state: absent
+  loop: [fails, first_fail, notified]
+
 - name: Enable the timer
   ansible.builtin.systemd:
     name: homelab-watch.timer

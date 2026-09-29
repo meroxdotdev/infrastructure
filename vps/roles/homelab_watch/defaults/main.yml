@@ -6,6 +6,12 @@
 # UpsOnBattery, delivered once the link is back, tells them apart.
 homelab_watch_target: 100.99.34.94
 
+# The cluster's internal gateway, reached through pfSense's subnet route. It
+# answering means the switch, the LAN and Kubernetes are all up. Needs the
+# tailnet grant tag:vps-proxy → 10.57.57.101 tcp:443.
+homelab_watch_cluster_host: 10.57.57.101
+homelab_watch_cluster_port: 443
+
 # Consecutive failed minutes before the alert goes out. A single lost ping, or a
 # pfSense reboot for an update, should not page anyone.
 homelab_watch_fail_after: 3
