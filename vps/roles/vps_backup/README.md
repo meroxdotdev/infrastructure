@@ -17,7 +17,7 @@ for the pve-2 side of this alignment.
 | `nightly-backup.sh` | 23:45 | Runs the three below in order and pings once. Stops at the first failure — the push has nothing to send if a producer died. |
 | `backup-joplin.sh` | by the wrapper |  Joplin DB dump into `/srv/backups/`. |
 | `backup-vps-extras.sh` | by the wrapper | Tars small service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), Homepage config (`kubeconfig.yaml`/`kube.config` excluded), Portainer state. 7-day retention. |
-| `backup-push-r730xd.sh` | by the wrapper | Off-site sync to R730xd (`pve-2`, `10.57.57.250`): **pushes** `/srv/backups/` straight to `/media/backups/oracle-vps/srv-backups/` on pve-2 over plain SSH rsync — lands ~03:00 EEST. Deliberately excludes this VPS's own local Garage instance — see below. |
+| `backup-push.sh` | by the wrapper | Pushes `/srv/backups/` to the NAS, `backups/oracle-vps/`, as the non-admin DSM user `vps` over rsync+SSH (see [synology/README.md](../../../synology/README.md#users)). Latest copy only; history is the vault's. Until phase 7 of `docs/plan-nas-hot-r730-cold.md` it also pushes to the R730xd, whose restic run is still the off-site path. |
 | `restore-drill.sh` | monthly, 1st @ 04:00 | Proves the latest Authentik/Joplin dumps actually restore — imports each into a throwaway `--rm` postgres container, checks the schema has tables, tears down. Never touches live DBs. See "Restore drill" below. |
 
 Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via the
@@ -25,7 +25,7 @@ Authentik/Joplin DB dumps land in the same `/srv/backups/` staging via the
 UTC) and ride along in the 00:00 sync.
 
 One further script is DR-only (no cron) — see "Restore" below:
-`restore-pull-from-r730xd.sh`.
+`restore-pull.sh`, which pulls the latest copy back from the NAS.
 
 ## Why push, and why no daemon indirection
 

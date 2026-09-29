@@ -10,7 +10,7 @@
 
   tasks:
     - name: Pull backup copies back from R730xd (DBs, extras, Garage)
-      ansible.builtin.command: /usr/local/bin/restore-pull-from-r730xd.sh
+      ansible.builtin.command: /usr/local/bin/restore-pull.sh
       register: pull_result
       changed_when: true
 

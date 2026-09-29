@@ -48,10 +48,10 @@
     mode: "0700"
   tags: backup
 
-- name: Deploy R730xd backup push SSH private key
+- name: Deploy the backup push SSH private key
   copy:
     content: "{{ vault_oracle_vps_to_r730xd_ssh_key }}"
-    dest: "{{ vps_backup_r730xd_ssh_key }}"
+    dest: "{{ vps_backup_ssh_key }}"
     owner: root
     group: root
     mode: "0600"
@@ -76,19 +76,19 @@
     mode: "0700"
   tags: backup
 
-- name: Deploy R730xd push script
+- name: Deploy the push script
   template:
-    src: backup-push-r730xd.sh.j2
-    dest: /usr/local/bin/backup-push-r730xd.sh
+    src: backup-push.sh.j2
+    dest: /usr/local/bin/backup-push.sh
     owner: root
     group: root
     mode: "0700"
   tags: backup
 
-- name: Deploy restore-pull-from-r730xd script (DR)
+- name: Deploy the restore-pull script (DR)
   template:
-    src: restore-pull-from-r730xd.sh.j2
-    dest: /usr/local/bin/restore-pull-from-r730xd.sh
+    src: restore-pull.sh.j2
+    dest: /usr/local/bin/restore-pull.sh
     owner: root
     group: root
     mode: "0700"
@@ -122,16 +122,25 @@
   tags: backup
 
 # Was three cron entries and three healthchecks for one 15-minute sequence.
-# They fail as a unit and are investigated as a unit. Timed so the push lands
-# on pve-2 alongside pfSense's fixed 03:00 EEST push, keeping the nightly SAS
-# window compact for spin-down.
-- name: Schedule the nightly backup chain (Joplin, extras, push to R730xd)
+# They fail as a unit and are investigated as a unit.
+- name: Schedule the nightly backup chain (Joplin, extras, push to the NAS)
   cron:
     name: "nightly-backup"
     minute: "45"
     hour: "23"
     job: "/usr/local/bin/nightly-backup.sh >> /var/log/nightly-backup.log 2>&1"
     user: root
+  tags: backup
+
+# Renamed 2026-09-29 when the push moved to the NAS.
+- name: Remove the files the rename replaced
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/local/bin/backup-push-r730xd.sh
+    - /usr/local/bin/restore-pull-from-r730xd.sh
+    - /root/.ssh/oracle-vps-to-r730xd
   tags: backup
 
 - name: Remove the three cron entries the wrapper replaced

@@ -1,0 +1,15 @@
+#!/bin/bash
+# DR: pull the VPS service backups back from the NAS onto a fresh VPS, before
+# restore-db.sh or restore-extras.sh run (both read from {{ vps_backup_root }},
+# which is empty on a fresh VPS). The NAS holds the latest copy; an older one
+# comes from the vault's snapshots.
+# Deployed by ansible (vps_backup role).
+set -euo pipefail
+
+SSH_OPTS="ssh -i {{ vps_backup_ssh_key }} -o BatchMode=yes -o StrictHostKeyChecking=accept-new"
+
+mkdir -p "{{ vps_backup_root }}"
+rsync -rlt -e "$SSH_OPTS" \
+  "{{ vps_backup_nas_user }}@{{ vps_backup_nas_host }}:{{ vps_backup_nas_path }}/" "{{ vps_backup_root }}/"
+
+echo "$(date -Is) restore pull from the NAS completed"

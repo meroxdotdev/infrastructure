@@ -164,7 +164,7 @@ restore-joplin:
 	/usr/local/bin/restore-db.sh joplin
 
 restore-pull-r730xd:
-	/usr/local/bin/restore-pull-from-r730xd.sh
+	/usr/local/bin/restore-pull.sh
 
 restore-auto:
 	/usr/local/bin/restore-db.sh --yes all
