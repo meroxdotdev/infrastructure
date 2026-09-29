@@ -49,7 +49,7 @@ allowed there and only there; no app gets a host path outside `vault/lab`. The
 backup datasets are written by one thing, the nightly pull.
 
 Powering it on by hand is safe: `touch /mnt/vault/ops/HOLD` keeps it up past
-the nightly run, and the 04:00 IPMI power-on is a no-op on a running host, so
+the nightly run, and the IPMI power-on at `W` is a no-op on a running host, so
 the nightly run happens next to whatever is being tested.
 
 ### Why ~40 minutes, not 2-3 hours or 6-8
@@ -69,12 +69,14 @@ at a clock time — see [the chain](#6--the-nightly-chain).
 
 ### When
 
-**Wake at 04:00 local.** Every producer is done by then in both seasons: the
-latest is pfSense at 03:00, and the UTC-scheduled
+**Wake at `W`**, a local time kept in `vault/ops/PRIVATE-NOTES.md` and not in
+this public repository — the hours a machine holding the offline copies is
+reachable are the one thing worth hiding about it. `W` must fall after every
+producer has finished in both seasons; the UTC-scheduled
 ones (Longhorn, Immich, VPS) move *earlier* in winter, never later. The
 UTC-vs-EEST problem does not exist in this design.
 
-If the fans at POST are audible from a bedroom, move the wake to 19:00. That
+If the fans at POST are audible from a bedroom, move `W` to the evening. That
 pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
 
 ---
@@ -218,7 +220,7 @@ workstation.
 
 One script, in git at `truenas/scripts/vault-nightly.sh`, copied to
 `/mnt/vault/ops/scripts/`. Run from the TrueNAS UI (System → Advanced → Cron
-Jobs) as root, **04:05 daily**. Not on the root filesystem — TrueNAS replaces
+Jobs) as root, **`W` + 5 min, daily**. Not on the root filesystem — TrueNAS replaces
 it on every update.
 
 ```
@@ -238,14 +240,14 @@ it on every update.
 The **power-off gate** — shut down only when all of these hold:
 
 - no file `/mnt/vault/ops/HOLD` (manual work — see [Restores](#restores))
-- no scrub running — past 06:00 local, `zpool scrub -p` pauses it; it resumes
+- no scrub running — past `W` + 2 h, `zpool scrub -p` pauses it; it resumes
   on the next boot, so a long scrub spreads over several nights by itself
-- no SMART self-test running — past 06:00, let it abort; TrueNAS alerts on the
+- no SMART self-test running — past `W` + 2 h, let it abort; TrueNAS alerts on the
   missed test and the next month retries
 
 then `midclt call system.shutdown`.
 
-A second TrueNAS cron job at **07:00** runs the gate alone — the backstop if
+A second TrueNAS cron job at **`W` + 3 h** runs the gate alone — the backstop if
 step 2-8 hangs.
 
 Why a script and not TrueNAS's own *Rsync Task*: in module mode the task has
@@ -268,8 +270,8 @@ Do not depend on whatever TrueNAS ships.
 | Task | Setting |
 |---|---|
 | Periodic snapshot × 5 | per the dataset table; schedule **disabled**, run by the chain (step 5); retention by TrueNAS |
-| Scrub `vault` | first Sunday, 04:10 |
-| S.M.A.R.T. | SHORT weekly Sunday 04:10; LONG first Sunday 04:10 |
+| Scrub `vault` | first Sunday, `W` + 10 min |
+| S.M.A.R.T. | SHORT weekly Sunday, LONG first Sunday, both `W` + 10 min |
 | Alert services | Telegram; level WARNING+ |
 | Init script | POSTINIT: `/mnt/vault/ops/scripts/fan-control.sh` (from `proxmox/pve-2/scripts/`, `ipmitool` is in TrueNAS) |
 | SSH service | on, key-only, root login off |
@@ -280,7 +282,7 @@ Do not depend on whatever TrueNAS ships.
 
 `pool.snapshottask.run <id>` exists in the TrueNAS API. Untested: whether it runs
 a task whose schedule is disabled. If not, give each task a schedule inside the
-window (05:30) — the chain's run comes first, and the later scheduled one only
+window (`W` + 90 min) — the chain's run comes first, and the later scheduled one only
 adds a snapshot of the same state.
 
 ## 8 — Wake from pve-3 · ~10 min
@@ -300,7 +302,7 @@ Manual wake: same command, or iDRAC → Power → On.
 | Remove | Add |
 |---|---|
 | Prometheus targets on `10.57.57.250` (node_exporter, pve-exporter pve-2) | healthchecks `vault-nightly`: period 1 day, grace 4 h |
-| healthchecks `pve-push-synology`, `nightly-checks`, `restic-push` (pve-2) | healthchecks `vault-offline`: pinged by the power-off gate — a vault that stays up past 08:00 is a failure too |
+| healthchecks `pve-push-synology`, `nightly-checks`, `restic-push` (pve-2) | healthchecks `vault-offline`: pinged by the power-off gate — a vault still up at `W` + 4 h is a failure too |
 | UPS panels bound to pve-2 | TrueNAS → Telegram for pool/SMART/scrub |
 
 Rule 4 of [architecture.md](architecture.md) applies: an alert that assumes a
@@ -309,9 +311,9 @@ silence it.
 
 ## 10 — Gate
 
-Seven consecutive days: wakes at 04:00, `vault-nightly` green, `restic
-snapshots --host vault` shows a new snapshot, the host is off by 05:00
-(08:00 on the first Sunday), zero manual steps. Then the first monthly day with
+Seven consecutive days: wakes at `W`, `vault-nightly` green, `restic
+snapshots --host vault` shows a new snapshot, the host is off by `W` + 1 h
+(`W` + 4 h on the first Sunday), zero manual steps. Then the first monthly day with
 scrub and SMART long completes or pauses cleanly.
 
 ---
@@ -362,14 +364,14 @@ Local time, Europe/Bucharest. UTC jobs are shown with their summer local time.
 | Nextcloud borg | VM 1000 02:40 | — | **deleted** |
 | Longhorn backup | k8s 02:50 | unchanged | target = Garage on NAS |
 | Longhorn snapshot / system-backup | k8s */6 h, Mon 01:30 | unchanged | — |
-| Immich `pg_dump` | k8s 03:02 | unchanged | `NFS_SERVER` → NAS |
-| pfSense config push | pfSense 03:00 | unchanged | → NAS `backups/pfsense`; rename script `backup-to-nas.sh` |
+| Immich `pg_dump` | k8s 03:02 | unchanged | → NAS `backups/immich-postgres`, via `NAS_SERVER` (done 2026-09-29) |
+| pfSense config push | pfSense 03:00 | unchanged | → NAS `backups/pfsense`, script `backup.sh` (done 2026-09-29) |
 | VPS backup wrapper | VPS 02:45 | unchanged | → NAS `backups/oracle-vps` |
 | VPS restore drill, restic retention | VPS | unchanged | — |
 | NAS weekly pull `pull-from-pve2.sh` | DSM Task Scheduler | — | **deleted** |
 | NAS RTC wake / scheduled poweroff | DSM | — | **deleted** |
-| **Vault wake** | — | pve-3 04:00 | **new** |
-| **Vault chain + gate** | — | vault 04:05, backstop 07:00 | **new** |
+| **Vault wake** | — | pve-3 at `W` | **new** |
+| **Vault chain + gate** | — | vault `W` + 5 min, backstop `W` + 3 h | **new** |
 
 Net: 14 scripts and 7 cron lines on pve-2, plus 2 DSM tasks, become **one chain
 script, one wake line, and built-in TrueNAS tasks**.

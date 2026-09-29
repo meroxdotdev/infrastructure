@@ -32,7 +32,7 @@ can be off without anything noticing except its own healthcheck.
 Longhorn ──→ Garage ─┐
 Immich pg_dump       │
 etcd snapshot        ├─→ NAS /backups ──┐
-pfSense config       │   (landing)      │  04:00, pull-only
+pfSense config       │   (landing)      │  nightly, pull-only
 VPS services         ┘                  ├─→ R730xd vault ──→ restic ──→ Oracle
 NAS /drive  (Drive, was Nextcloud) ─────┤   ZFS snapshots      (append-only)
 NAS /media  (library, 1.2 TB) ──────────┘   long retention
@@ -136,7 +136,7 @@ TrueNAS task. Full before → after table in
   testing, spare capacity if a host dies, and Terraform and the DR runbook
   assume every node is a VM. Bare-metal Talos was considered and rejected.
 - **`fan-control.sh`.** More important than before — the vault now runs in the
-  at night; if POST is audible from a bedroom, the runbook moves the wake to 19:00. TrueNAS runs it as a post-init script;
+  at night; if POST is audible from a bedroom, the runbook moves the wake to the evening. TrueNAS runs it as a post-init script;
   `ipmitool` is included.
 
 ---
@@ -328,7 +328,7 @@ pool import (`media` → `vault`, no copy needed), datasets, credentials, the
 nightly chain, wake from pve-3, monitoring, restores, and every scheduled job
 before → after.
 
-Summary: wake 04:00 from pve-3 over IPMI, pull read-only from the NAS,
+Summary: woken nightly from pve-3 over IPMI, pull read-only from the NAS,
 snapshot, restic to Oracle, power off when done — ~40 min a night, longer on
 the first Sunday for scrub and SMART long. No spin-down, no shares, no apps.
 
