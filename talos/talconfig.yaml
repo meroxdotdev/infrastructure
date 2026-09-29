@@ -58,10 +58,11 @@ nodes:
         mtu: 1500
         vip:
           ip: "10.57.57.88"
-  # Second control plane, VM 811 on pve-2 (R730xd). No GPU, so no i915 in the
-  # schematic — just intel-ucode and the two extensions Longhorn needs. This is
-  # where workloads land if pve-1 dies: 251 GB of RAM behind it, and one of the
-  # two Longhorn replicas lives here.
+  # Second control plane, VM 811 on pve-2 — an OptiPlex 3050 identical to
+  # pve-3 since 2026-09-29 (it was on the R730xd). Its disk is a raw Intel
+  # D3-S4510 passed straight through, like kubernetes-3's. Same MAC as before,
+  # so this entry did not change with the move. No GPU, so no i915 in the
+  # schematic — just intel-ucode and the two extensions Longhorn needs.
   - hostname: "kubernetes-2"
     ipAddress: "10.57.57.82"
     installDisk: "/dev/sda"

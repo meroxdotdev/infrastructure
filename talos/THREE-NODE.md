@@ -5,7 +5,7 @@ The cluster is three nodes, one per physical machine, since 2026-09-04:
 | Node | Address | Runs on | Carries |
 |---|---|---|---|
 | `kubernetes-1` | 10.57.57.80 | VM 810 on `pve-1` (Beelink) | etcd, workloads, a Longhorn replica, Iris Xe for transcoding |
-| `kubernetes-2` | 10.57.57.82 | VM 811 on `pve-2` (R730xd) | etcd, workloads, a Longhorn replica |
+| `kubernetes-2` | 10.57.57.82 | VM 811 on `pve-2` (OptiPlex 3050, since 2026-09-29) | etcd, workloads, a Longhorn replica |
 | `kubernetes-3` | 10.57.57.83 | VM 812 on `pve-3` (OptiPlex) | etcd, a Longhorn replica |
 
 Three etcd votes in three chassis, three power supplies, three motherboards.
@@ -37,9 +37,10 @@ That is no longer the arrangement — see [below](#longhorn-keeps-one-replica-pe
 
 | Dies | Result |
 |---|---|
-| `pve-1` | Quorum holds. Pods reschedule onto `pve-2`, and its Longhorn replicas are covered by the other two. **Jellyfin loses hardware transcoding** — the Iris Xe is only here, and the Nvidia extensions for `pve-2`'s Quadro P2200 were dropped on 2026-09-01. |
+| `pve-1` | Quorum holds. Pods reschedule onto `pve-2` and `pve-3`, and its Longhorn replicas are covered by the other two. **Jellyfin loses hardware transcoding** — the Iris Xe is only here. The UPS primary is here too: while pve-1 is down, nothing shuts the other hosts down on low battery. |
 | `pve-3` | Nothing. It holds a vote and a replica; both are redundant, and the two surviving nodes still have a copy of every volume. |
-| `pve-2` | Cluster survives, but the media NFS exports, the Garage S3 LXC that Longhorn backs into, and the Nextcloud VM all go with it. Jellyfin and the \*arr stack keep running with no data underneath them. **No amount of Kubernetes HA fixes this** — a twelve-disk SAS array does not replicate to a mini PC. |
+| `pve-2` | Nothing. Same as `pve-3`: a vote and a replica, both redundant. |
+| R730xd | Not a node any more, but until the NAS migration finishes it still serves the media NFS exports, Garage and the Nextcloud VM. Those go with it; the cluster does not. See `docs/plan-nas-hot-r730-cold.md`. |
 
 ## etcd sits on three very different disks
 
@@ -49,7 +50,7 @@ slowest. That matters more than the redundancy:
 | Member | Disk | fsync |
 |---|---|---|
 | `kubernetes-3` | Intel D3-S4510, power-loss protection | best in the fleet |
-| `kubernetes-2` | `rpool`, mirrored SSD | good |
+| `kubernetes-2` | Intel D3-S4510, power-loss protection | best in the fleet |
 | `kubernetes-1` | Crucial P3 Plus, QLC, DRAM-less, 34% worn | worst |
 
 While the cluster was one node, every fsync stall on that QLC was a cluster
