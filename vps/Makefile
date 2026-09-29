@@ -10,7 +10,7 @@
         terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
         dr-verify-phase1 dr-verify-phase2 \
         restore restore-authentik restore-joplin \
-        restore-pull-r730xd restore-extras restore-auto dr-restore \
+        restore-pull restore-extras restore-auto dr-restore \
         vault-edit vault-show-required view-vault
 
 help:
@@ -53,7 +53,7 @@ help:
 	@echo "Backups:"
 	@echo "  db-backups-setup   Deploy backup scripts + crons (DB dumps, extras, NAS sync)"
 	@echo "  backup-sync-now    Run extras backup + NAS sync immediately"
-	@echo "  restore-pull-r730xd DR: pull R730xd backup copies back to /srv/backups + garage"
+	@echo "  restore-pull       DR: pull the latest VPS backups back from the NAS into /srv/backups"
 	@echo "  restore            Restore Authentik + Joplin DBs from latest dump (interactive)"
 	@echo "  restore-auto       DR: restore Authentik + Joplin DBs from latest dump (non-interactive)"
 	@echo "  restore-extras     DR: restore Guacamole/Traefik/Pi-hole/Homepage/Portainer/etc from /srv/backups (non-interactive)"
@@ -163,7 +163,7 @@ restore-authentik:
 restore-joplin:
 	/usr/local/bin/restore-db.sh joplin
 
-restore-pull-r730xd:
+restore-pull:
 	/usr/local/bin/restore-pull.sh
 
 restore-auto:
