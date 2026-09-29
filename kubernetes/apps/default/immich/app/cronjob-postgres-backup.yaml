@@ -3,14 +3,12 @@
 # holds real metadata (albums, face tags, favorites, sharing links) that
 # isn't just derived from the photo files — worth a real backup even though
 # a full HA operator (CNPG) wasn't justified for a single-instance DB.
-# Schedule is UTC (K8s cluster nodes run UTC, not pve-2's EEST) — 0:02 UTC =
-# 03:02 EEST, right after pfSense's own fixed 03:00 push to pve. Keeps the
-# whole nightly SAS backup window compact (~02:55-03:20) so hd-idle only
-# spins the media pool disks up once a night instead of cycling on gaps.
-# Got this wrong once already (set "2 3" thinking it was already EEST -
-# actually landed at 06:02 EEST, 3h late, so restic's 03:10 offsite push
-# was always grabbing yesterday's dump). Verify against real EEST wall
-# clock time after any change, not just the cron string.
+# 00:02 UTC. The time no longer has to line up with anything: the dump lands on
+# the NAS, which is always on, and the vault pulls whatever is newest.
+#
+# The NAS keeps the latest dump only, written atomically (.part, then mv) so an
+# interrupted run never replaces a good dump with half of one. History is the
+# vault's job — see docs/plan-nas-hot-r730-cold.md.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -59,23 +57,26 @@ spec:
                 - |
                   set -e
                   trap '[ -n "$HC_URL" ] && wget -q -T 10 -O /dev/null "$HC_URL/fail"' ERR
-                  DEST=/backups/immich-postgres
-                  # `mkdir -p` on an already-existing dir can return EACCES
-                  # instead of a no-op on this NFS share (ACL denies creating
-                  # new subdirectories for this uid, even though writing files
-                  # into an existing one is fine) — only call mkdir when the
-                  # dir is actually missing.
-                  [ -d "$DEST" ] || mkdir -p "$DEST"
-                  FILE="$DEST/immich-$(date +%Y-%m-%d).sql.gz"
-                  pg_dump | gzip > "$FILE"
-                  find "$DEST" -name '*.sql.gz' -mtime +30 -delete
+                  pg_dump | gzip > /nas/immich-postgres/immich.sql.gz.part
+                  mv /nas/immich-postgres/immich.sql.gz.part /nas/immich-postgres/immich.sql.gz
+                  # TEMPORARY, remove in phase 7 with the r730xd volume: the
+                  # R730xd's restic run is still the off-site path. Dated
+                  # copies, 30 days, as before.
+                  cp /nas/immich-postgres/immich.sql.gz "/r730xd/immich-postgres/immich-$(date +%Y-%m-%d).sql.gz"
+                  find /r730xd/immich-postgres -name '*.sql.gz' -mtime +30 -delete
                   [ -n "$HC_URL" ] && wget -q -T 10 -O /dev/null "$HC_URL"
                   exit 0
               volumeMounts:
-                - name: backups
-                  mountPath: /backups
+                - name: nas
+                  mountPath: /nas
+                - name: r730xd
+                  mountPath: /r730xd
           volumes:
-            - name: backups
+            - name: nas
+              nfs:
+                server: ${NAS_SERVER}
+                path: /volume1/backups
+            - name: r730xd
               nfs:
                 server: ${NFS_SERVER}
                 path: /media/backups

@@ -14,9 +14,11 @@ data:
   # (the original cluster-template source). Keep them in sync.
   # -----------------------------------------------------------------------
 
-  # -- NAS / NFS server (app-specific, not in cluster.yaml)
-  # R730xd (pve-2) as of the Synology->SAS media migration — was 10.57.57.201
-  # (Synology). Synology is now cold-backup only, no longer the media host.
+  # -- Storage servers (app-specific, not in cluster.yaml)
+  # The Synology NAS: primary storage and the landing spot for every backup.
+  NAS_SERVER: "10.57.57.201"
+  # The R730xd, still serving the media library until phase 5 of
+  # docs/plan-nas-hot-r730-cold.md moves it to NAS_SERVER; then this goes.
   NFS_SERVER: "10.57.57.250"
 
   # -- Cilium LoadBalancer IPs (must be within the pool in cilium/app/networks.yaml)
