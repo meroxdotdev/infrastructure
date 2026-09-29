@@ -375,15 +375,15 @@ Snapshot mtime is meaningless here.
 
 ## UPS
 
-Since 2026-09-29 this host is a NUT **secondary** of pve-1, which has the UPS on
-its USB. `nut.conf` is `netclient`, and `upsmon.conf` monitors
-`ups@10.57.57.254` as `upsslave`. `nut-server` and the drivers are disabled
-here. Everything about the UPS itself — driver, users, power-cycle behaviour,
-the monitoring — is in [../pve-1/README.md](../pve-1/README.md#nut--this-host-is-the-primary).
+**The R730xd is not on the UPS** since 2026-09-29, and NUT is removed from it.
+It draws ~110 W of the UPS's 390 W; without it the runtime for everything else
+went from ~8 to ~36 minutes. As the vault it is off most of the day, and a
+power cut mid-copy only means the copy runs again the next night.
 
-The USB controller quirk that made NUT the only option on this chassis
-([known-issues.md](known-issues.md#why-nut-not-powerpanel-for-the-ups)) no longer
-applies: the UPS is not on this chassis's USB any more.
+[`etc/nut/`](etc/nut/) describes the **new pve-2**, the OptiPlex at
+`10.57.57.252` that took over `kubernetes-2`: a NUT secondary of pve-1, like
+pve-3. Everything about the UPS itself is in
+[../pve-1/README.md](../pve-1/README.md#nut--this-host-is-the-primary).
 
 ## Alerting
 
