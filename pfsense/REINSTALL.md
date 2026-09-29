@@ -19,7 +19,7 @@ entry** for the nightly backup. It restores nothing under `/root`:
 | Item | In `config.xml`? |
 |---|---|
 | Cron entry calling the backup script | ✅ yes |
-| `/root/scripts/backup-to-r730xd.sh` | ❌ no |
+| `/root/scripts/backup.sh` | ❌ no |
 | `/root/.ssh/pfsense-backup` (private key) | ❌ no |
 
 Net effect: a restored pfSense firewalls perfectly while its own backup
@@ -28,9 +28,10 @@ rebuild day. Steps 3 and 4 exist for this.
 
 ## 1. Install and restore the config
 
-Install pfSense, then Diagnostics → Backup & Restore → restore the newest
-`config-*.xml.gz` from `/media/backups/pfsense/` on pve-2 (gunzip first if
-the UI wants plain XML). Reboot.
+Install pfSense, then Diagnostics → Backup & Restore → restore
+`backups/pfsense/config.xml.gz` from the NAS (gunzip first if the UI wants
+plain XML). An older version: the vault's snapshots, or until phase 7 the dated
+copies in `/media/backups/pfsense/` on pve-2. Reboot.
 
 ## 2. Confirm the basics before moving on
 
@@ -43,22 +44,31 @@ WAN → `10.57.57.1:41641` — see
 
 ```sh
 mkdir -p /root/scripts
-# copy from this repo: pfsense/scripts/backup-to-r730xd.sh
-chmod +x /root/scripts/backup-to-r730xd.sh
+# copy from this repo: pfsense/scripts/backup.sh
+chmod 700 /root/scripts/backup.sh
 ```
 
-## 4. New SSH key, and authorise it on pve-2
+## 4. New SSH key, and authorise it on the NAS
 
 The old private key is gone and is not worth recovering — generate a fresh
 pair:
 
 ```sh
-ssh-keygen -t ed25519 -f /root/.ssh/pfsense-backup -N "" -C "pfsense-backup-to-r730xd"
+ssh-keygen -t ed25519 -f /root/.ssh/pfsense-backup -N "" -C "pfsense-backup"
 cat /root/.ssh/pfsense-backup.pub
 ```
 
-On pve-2, add **one** line to `/root/.ssh/authorized_keys` — the forced
-command is what limits this key to dropping files in one directory:
+On the NAS it is the only line in the `pfsense` user's
+`/volume1/homes/pfsense/.ssh/authorized_keys`, owned by `pfsense`, mode 600
+(installing it needs root once — see [synology/README.md](../synology/README.md#users)):
+
+```
+restrict,from="10.57.57.1" ssh-ed25519 <new pubkey> pfsense-backup
+```
+
+Until phase 7 the script also pushes to pve-2. There, add **one** line to
+`/root/.ssh/authorized_keys` — the forced command is what limits this key to
+dropping files in one directory:
 
 ```
 command="/root/pfsense-backup-receive.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 <new pubkey> pfsense-backup-to-r730xd
@@ -74,7 +84,7 @@ receiver in
 ## 5. Verify the loop actually closes
 
 ```sh
-/root/scripts/backup-to-r730xd.sh && echo OK     # on pfSense
+/root/scripts/backup.sh && echo OK     # on pfSense
 ```
 
 ```bash

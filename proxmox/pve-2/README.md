@@ -219,7 +219,7 @@ proprietary vault needs a working DSM; the restic leg replaced it.
 ### pfSense → pve-2
 
 - Push runs on the firewall:
-  [`pfsense/scripts/backup-to-r730xd.sh`](../../pfsense/scripts/backup-to-r730xd.sh)
+  [`pfsense/scripts/backup.sh`](../../pfsense/scripts/backup.sh)
 - pve-2 pins the key to a receiver:
   [`scripts/pfsense-backup-receive.sh`](scripts/pfsense-backup-receive.sh)
   — does the `scp -t` **and** the 30-day prune
