@@ -1,7 +1,63 @@
 # Synology DS — `storage`, `10.57.57.201`
 
 DSM 7.3. Holds the second copy of `pve-2`'s backup set under
-`/volume1/NetBackup`, 276 GB of 1.8 TB.
+`/volume1/NetBackup`.
+
+## Layout, since 2026-09-29
+
+The NAS is becoming primary storage — see
+[docs/plan-nas-hot-r730-cold.md](../docs/plan-nas-hot-r730-cold.md). It is on
+24/7: no power schedule, no drive hibernation, *Restart automatically when
+power supply issue is fixed* on, and it is a NUT client of pve-1 (DSM → UPS →
+Synology UPS server `10.57.57.254`).
+
+| Share | Holds | Recycle bin | Checksum |
+|---|---|---|---|
+| `media` | `library/` + `downloads/` — one share, or ARR hardlink imports break | off | on |
+| `backups` | the landing: one folder per producer, latest version only | off | on |
+| `homes` | Synology Drive; `merox/VMs/` holds VirtualBox images, outside Drive | default | — |
+| `NetBackup` | the old weekly pull from pve-2; deleted in phase 7 | — | — |
+
+### NFS
+
+NFSv4.1. `media` and `backups` each have one rule per Kubernetes node
+(`10.57.57.80`, `.82`, `.83`), never the subnet:
+
+| Setting | Value | Why |
+|---|---|---|
+| Privilege | Read/Write | |
+| Squash | **Map all users to admin** | pods write as UID 1000, which is no DSM user, so DSM's ACL refused every write under *No mapping*. Mapping everyone to `admin` is the standard way to give Kubernetes clients one owner the ACLs recognise |
+| Security | sys | |
+| Asynchronous | on for `media`, **off** for `backups` | a backup must be on disk when the writer is told it is |
+| Mounted subfolders | on | the `crossmnt` equivalent |
+
+Verified 2026-09-29 from all three nodes as UID 1000: write, read, and a
+hardlink (link count 2) on both shares.
+
+### Users
+
+One user per job, none in `administrators` except `admin`:
+
+| User | Can | Quota |
+|---|---|---|
+| `admin` | administration | — |
+| `merox`, `vicky` | Synology Drive | — |
+| `pfsense` | SFTP only, `backups` read/write | 1 GB |
+| `vps` | SFTP + rsync, `backups` read/write | 10 GB |
+
+`pfsense` and `vps` authenticate with their existing backup keys, restricted to
+`from="10.57.57.1"` — pfSense itself, and the VPS arriving through pfSense's
+NAT. Installing a key for a non-admin user needs root once: sshd refuses a key
+file the user does not own and a home that is group-writable, and DSM creates
+homes `777`.
+
+Traps found while setting this up:
+
+- rsync over SSH needs the full path, `vps@nas:/volume1/backups/…`;
+  `/backups/…` is read as an rsync module and fails with no message.
+- `rsync -a` replaces DSM's ACL with Unix modes; push with
+  `--no-perms --no-owner --no-group --chmod=D755,F644`.
+- Legacy `scp -O` does not work for a non-admin user; plain `scp` (SFTP) does.
 
 ## It pulls; it is not pushed to
 
@@ -80,41 +136,17 @@ If the task is ever lost, this runs only when started by hand, and the
 `pve-push-synology` healthcheck (period 1 week, grace 1 day) goes red — which is
 the intended behaviour, not a bug.
 
-## ⚠️ `documents/` — do not delete, it is not a copy of anything
+## `documents/` — removed 2026-09-29
 
-Every other directory under `/volume1/NetBackup` mirrors a category that exists
-on `pve-2` and is refreshed by the weekly pull. `documents/` is not: the source
-category was removed from `pve-2` some time before 2026-08-02, so the pull no
-longer discovers it, its retention never runs, and restic has never seen it.
+It was the last copy of the old `synology-home` tree, not a mirror of anything
+on `pve-2`. Every file was compared by SHA-1 against Immich's files on disk,
+Nextcloud's datadir and the git history of the blog repositories: 99 % existed
+elsewhere. The 30 files that did not (personal PDFs, merox.dev notes) were
+copied into Nextcloud under `Documente/` and verified by hash; the rest was
+deleted.
 
-It holds ~30 GB, newest copy 2026-07-26. Compared against Nextcloud on
-2026-09-09:
-
-| In `documents/` | Elsewhere |
-|---|---|
-| `Cloud/Apartment` 491M | ✅ Nextcloud `Documente/Apartament` |
-| `Cloud/Joplin-backup` 5.5M | ✅ Nextcloud `Documente/Joplin` |
-| `BAC/` 584K | ✅ Nextcloud `Documente/BAC` |
-| `IT/` 4.4G | ✅ Nextcloud `Documente/IT`, 6.1G — a superset |
-| `Win10_22H2_x64.iso` 5.8G | Re-downloadable |
-| **`Cloud/iPhone` 12G** | **Not found** |
-| **`Cloud/Projects` 3.0G** | **Not found** |
-| **`Cloud/Memories` 1006M** | **Not found** |
-| `T212_2fa.odoc` 4K | **Not found** |
-
-The three unmatched directories may be in Immich, which stores by hash rather
-than by original folder, so a name comparison cannot tell. `Projects` does not
-read like photos.
-
-**Until someone checks, this is the only copy of ~16 GB.** Resolve it one of
-two ways:
-
-- **It is duplicated** → delete `documents/`, and 30 GB comes back.
-- **It is not** → move what is missing into `/media/backups/` on `pve-2`. It
-  then enters restic and this pull automatically, with no configuration —
-  anything under `/media/backups` is backed up. Note the off-site repository has
-  ~77 GiB of headroom on a free tier that cannot grow, so 16 GB is a real share
-  of it.
+Immich's database checksum cannot be used for this comparison: for assets in an
+external library it hashes the path, not the content. Hash the files on disk.
 
 `vm-backups/` is orphaned the same way, and is safe to delete: it holds images
 of `home-assistant` and `ollama`, both VMs deleted on 2026-09-09.
