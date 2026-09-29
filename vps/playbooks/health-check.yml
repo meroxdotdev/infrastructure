@@ -79,7 +79,7 @@
       register: authentik_health
       ignore_errors: yes
 
-    # Garage runs on the R730xd LXC (garage-setup-r730xd.yml, r730xd_garage
+    # Garage runs on the R730xd LXC (garage-setup.yml, r730xd_garage
     # inventory group), not on this host - nothing here to check.
 
     # Portainer binds to the Tailscale IP only (see docker-compose.yml), never

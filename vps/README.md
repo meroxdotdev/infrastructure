@@ -29,7 +29,7 @@ Its hostname routing table lives in the Cloudflare dashboard, not git — see
 [roles/cloudflared_setup/README.md](roles/cloudflared_setup/README.md).
 
 Garage S3 doesn't run on this VPS at all — it's an independent LXC on R730xd
-(`garage-setup-r730xd.yml`, see
+(`garage-setup.yml`, see
 [proxmox/pve-2/README.md](../proxmox/pve-2/README.md#garage-longhorns-backup-target)),
 untouched by anything in this directory. See
 [DR.md](../DR.md#r730xd--garage-total-loss-fallback) for its own recovery path.

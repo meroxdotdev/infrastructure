@@ -15,12 +15,6 @@
     update_cache: yes
   tags: ['docker', 'setup']
 
-- name: Add Docker GPG apt Key
-  ansible.builtin.apt_key:
-    url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
-    state: present
-  tags: ['docker', 'setup']
-
 # edge-fra is arm64. A hardcoded arch=amd64 fetches an index with no
 # installable packages, and docker-ce then fails with an unrelated-looking error.
 - name: Read the dpkg architecture
@@ -28,12 +22,25 @@
   register: dpkg_architecture
   changed_when: false
 
-- name: Add Docker Repository
-  ansible.builtin.apt_repository:
-    repo: deb [arch={{ dpkg_architecture.stdout }}] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
-    state: present
-    filename: docker
-    update_cache: yes
+# deb822 with the key referenced by URL (Signed-By). apt-key is gone from
+# Debian 13, and it trusted the key for every repository, not just this one.
+- name: Add the Docker repository
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: deb
+    uris: "https://download.docker.com/linux/{{ ansible_distribution | lower }}"
+    suites: "{{ ansible_distribution_release }}"
+    components: stable
+    architectures: "{{ dpkg_architecture.stdout }}"
+    signed_by: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+  tags: ['docker', 'setup']
+
+# Hosts set up before 2026-09-29 carry the one-line form as well; two
+# definitions of one repository make apt warn on every update.
+- name: Remove the old one-line Docker repository
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/docker.list
+    state: absent
   tags: ['docker', 'setup']
 
 - name: Install Docker packages

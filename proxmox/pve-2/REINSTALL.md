@@ -91,7 +91,7 @@ Stateless, so rebuilt:
 
 ```bash
 cd <repo>/vps
-ansible-playbook -i inventories/production/hosts playbooks/garage-setup-r730xd.yml
+ansible-playbook -i inventories/production/hosts playbooks/garage-setup.yml
 ```
 
 Data survived on `media/backups/longhorn-garage/data`. Meta was on `rpool` —

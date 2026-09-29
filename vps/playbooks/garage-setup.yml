@@ -1,6 +1,6 @@
 ---
-- name: Install Docker on the R730xd backup LXC
-  hosts: r730xd_garage
+- name: Install Docker on the Garage LXC (CT 103 on pve-3)
+  hosts: garage
   become: yes
   gather_facts: yes
 
@@ -8,8 +8,8 @@
     - role: docker_setup
       tags: ['docker']
 
-- name: Setup Garage S3-compatible object storage (R730xd, LAN-only)
-  hosts: r730xd_garage
+- name: Setup Garage S3-compatible object storage (LAN-only)
+  hosts: garage
   become: yes
   gather_facts: yes
 
