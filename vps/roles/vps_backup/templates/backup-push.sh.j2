@@ -19,9 +19,4 @@ SSH_OPTS="ssh -i {{ vps_backup_ssh_key }} -o BatchMode=yes -o StrictHostKeyCheck
 rsync -rlt --delete --chmod=D755,F644 -e "$SSH_OPTS" \
   "{{ vps_backup_root }}/" "{{ vps_backup_nas_user }}@{{ vps_backup_nas_host }}:{{ vps_backup_nas_path }}/"
 
-# TEMPORARY, remove in phase 7: the R730xd's restic run is still the off-site
-# path until the vault takes over. rrsync there roots this key at
-# /media/backups/oracle-vps, so the remote path is relative to it.
-rsync -a --delete -e "$SSH_OPTS" "{{ vps_backup_root }}/" "root@{{ vps_backup_r730xd_host }}:/srv-backups/"
-
 echo "$(date -Is) backup push to the NAS completed"

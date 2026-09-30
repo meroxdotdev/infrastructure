@@ -36,9 +36,7 @@ read what lands.
 
 The NAS keeps the latest copy only. History is the vault's job.
 
-**Until phase 7** the script also pushes to the R730xd, whose restic run is
-still the off-site path. That second rsync, `vps_backup_r730xd_host`, and the
-grant `tag:vps-proxy → 10.57.57.250 tcp:22` all go together then.
+Off-site: the vault pulls `backups/` from the NAS and pushes it to Oracle.
 
 ## Alerting
 
