@@ -8,6 +8,7 @@ Back to the runbook: [../DR.md](../DR.md).
 
 | Symptom | Root cause | Fix applied |
 |---|---|---|
+| **Data loss:** Immich would come back with an empty database after a DR (found 2026-09-30, never hit) | Immich moved to PVC `immich-postgres-17` on 2026-09-05; `pvs.yaml` and the restore list still named `immich-postgres`/`immich-postgres-restored`, and the volume list lived in five places in the Taskfile | One name per volume; the restore reads its list from `pvs.yaml`, finds backups by volume name; `dr-preflight.sh` checks label/PV parity both ways. Drilled: restored DB held 4 512 assets, same as live |
 | DR nodes get `.206/.207/.208` in maintenance mode | Talos always uses DHCP before config is applied | `dr:apply-talos-configs` scans subnet by MAC → applies config → nodes reboot with static IPs |
 | Longhorn disks not created on fresh DR nodes | `createDefaultDiskLabeledNodes: true` requires a node label that DR nodes don't have | Set to `false` in HelmRelease — disks created on all nodes automatically |
 | `restore-volume` prints "no backup URL" and skips | Longhorn 1.12.0 removed `lastBackupURL` | Fixed: use `lastBackupName` → lookup `Backup.status.url` |
