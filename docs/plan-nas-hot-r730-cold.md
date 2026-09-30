@@ -281,10 +281,12 @@ The backup store today holds **22 backup volumes for the 10 volumes actually bac
 The new Garage starts with an **empty bucket**. The old store is already on the
 vault-to-be; it is kept 30 days and then deleted. Sequence:
 
-1. Tier-3 caches (`jellyfin-cache`, `radarr-cache`, `sonarr-cache`,
-   `jellyseerr-cache`) → `emptyDir`. They leave Longhorn entirely.
-2. Recurring groups renamed: `backup` (tier 1-2), `none` (tier 3). Every
-   volume carries exactly one.
+1. The tier-3 caches stay persistent volumes, unbacked-up, as they are.
+   Considered and dropped (2026-09-30): moving them to `emptyDir`. They are
+   1.4 GB in total, and `emptyDir` would wipe posters and metadata on every
+   pod restart, i.e. every Renovate update.
+2. The recurring-job group `media` is renamed `backup`, as each volume is
+   recreated in step 4 — the new PVCs carry the new label from the start.
 3. Backup target → new Garage. Run the `backup` job once.
 4. Per app, one at a time: scale to 0 → restore its fresh backup as
    `<app>` (`immich-library`, `immich-postgres`, `jellyfin`, …) → point the
