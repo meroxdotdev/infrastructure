@@ -17,3 +17,6 @@
     - role: garage_setup
       vars:
         garage_webui_enabled: false
+        # Meta lives on pve-3's local NVMe; these snapshots land on the NAS
+        # next to the data, so losing pve-3 does not make the store unreadable.
+        garage_meta_snapshot_interval: "6h"

@@ -9,6 +9,7 @@
     - "{{ garage_docker_dir }}"
     - "{{ garage_docker_dir }}/meta"
     - "{{ garage_docker_dir }}/data"
+    - "{{ garage_docker_dir }}/meta-snapshots"
 
 - name: Deploy Garage configuration file
   template:

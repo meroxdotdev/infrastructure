@@ -26,3 +26,7 @@ traefik_network_name: network-cloud-merox
 # false, matching the only deployment there is. Longhorn talks to Garage over
 # the S3 API; the UI was never part of that path.
 garage_webui_enabled: false
+# Empty disables metadata snapshots. When set (e.g. "6h"), Garage snapshots its
+# metadata DB into {{ garage_docker_dir }}/meta-snapshots, which must be storage
+# that is backed up together with the data directory.
+garage_meta_snapshot_interval: ""

@@ -211,145 +211,68 @@ for two days.
 
 ## Backup schedule
 
-Canonical schedules: [VPS side](vps/roles/vps_backup/README.md) ·
-[R730xd side](proxmox/pve-2/README.md#downstream-legs).
+The whole flow, and why it has the shape it has:
+[docs/plan-nas-hot-r730-cold.md](docs/plan-nas-hot-r730-cold.md). Short
+version, as of 2026-09-30:
 
-Short version:
+| Source | Lands on the NAS, `backups/` | When (local) |
+|---|---|---|
+| Longhorn, 10 volumes | `longhorn/` via Garage on pve-3 | 02:50 |
+| Garage metadata snapshots | `longhorn/meta-snapshots/` | every 6 h |
+| Immich `pg_dump` | `immich-postgres/immich.sql.gz` | 03:02 |
+| pfSense config | `pfsense/config.xml.gz` | 03:00 |
+| VPS services | `oracle-vps/` | 02:40 |
 
-1. Longhorn → Garage on the R730xd (`10.57.57.61:3900`, bucket `longhorn`),
-   nightly. Media/ARR config volumes. Not the VPS anymore.
-2. R730xd → Synology, weekly, curated copy, cold storage.
-3. R730xd → Oracle, nightly, restic over SFTP. Open format, no DSM
-   dependency — replaced the Synology→Oracle Hyper Backup relay (retired
-   2026-07-26) once proven with a real restore drill.
+The NAS keeps the latest version only. **Until phase 7** of the plan the
+R730xd is still the off-site path: pfSense, the VPS and Immich also send it a
+dated copy, it reads `longhorn/` from the NAS over a read-only NFS mount, and
+its nightly restic run pushes all of it to Oracle (append-only). After phase
+7 the vault replaces the R730xd in that role.
 
-Not backed up, accepted as lost in DR: observability history and caches.
-
-- **Alerting** — VPS backup scripts and the Immich pg_dump CronJob ping
-  healthchecks.io on success/failure, same account as the cluster Watchdog.
-  [Detail](vps/roles/vps_backup/README.md#alerting-healthchecksio)
-- **Restore drill** — monthly cron restores the latest Authentik/Joplin
-  dumps into throwaway containers, proving they're valid and not merely
-  present. [Detail](vps/roles/vps_backup/README.md#restore-drill-monthly)
+Not backed up, accepted as lost in DR: observability history, caches, and
+the film library (tier 3).
 
 ```bash
-# Check last backup time for each volume
-kubectl get backupvolumes.longhorn.io -n longhorn-system | awk '{print $1, $6}'
+# Last backup of each volume
+kubectl -n longhorn-system get backupvolumes.longhorn.io | awk '{print $1, $6}'
 ```
 
-### Immich Postgres backup
+### Immich
 
-Postgres holds albums, face tags, favorites and sharing links — the
-metadata, not the files. **Two independent paths, deliberately:**
+Two independent paths, deliberately: the three Immich volumes go through
+Longhorn like everything else, and the nightly `pg_dump` is storage-format
+agnostic — it survives Longhorn or Garage having a bad day. Restore procedure
+and the one-time VectorChord setup a fresh Postgres needs:
+[docs/immich-post-restore.md](docs/immich-post-restore.md).
 
-1. **Longhorn → Garage S3** — same mechanism as the ARR apps. The
-   `immich-postgres` PVC carries the `media` recurring-job-group label, so
-   `task longhorn:restore` picks it up automatically.
-2. **Nightly `pg_dump`** — CronJob `immich-postgres-backup`, 03:02, gzipped
-   to `/media/backups/immich-postgres/`, 30-day retention. Storage-format
-   agnostic, survives Longhorn/Garage having a bad day. Restore procedure +
-   the one-time VectorChord setup a fresh Postgres needs:
-   [docs/immich-post-restore.md](docs/immich-post-restore.md).
+## Longhorn backup store — total loss fallback
 
-**Photo/video files** moved off the SAS pool 2026-08-06 → now
-`immich-library-ssd` / `immich-external-library-ssd`, Longhorn PVCs on
-rpool (SSD). Same `media` label, so Longhorn → Garage is their primary
-protection too.
+The store is Garage in CT 103 on pve-3 (`10.57.57.62:3900`, bucket
+`longhorn`). Its **data** is on the NAS (`backups/longhorn/data`); its
+**metadata** is on pve-3's local disk, with snapshots every 6 hours on the NAS
+(`backups/longhorn/meta-snapshots/<timestamp>/db.lmdb`). The data directory
+cannot be read without the metadata — that is why the snapshots exist.
 
-⚠️ `/media/photos` is a **stale leftover**, not live Immich data. No longer
-NFS-exported (its only consumer, Filebrowser, was removed), but the weekly
-Synology and nightly restic legs still copy it directly from disk. Fine as
-a second safety net — do not treat it as current.
-
-## R730xd / Garage total loss fallback
-
-**Drilled 2026-08-29 on pve-1**, with nothing carried over from pve. What it
-measured, end to end:
-
-| Step | Result |
+| Lost | Recover from |
 |---|---|
-| Reach the restic repo without pve-2's key | Works — authorise a fresh key on the VPS, see [proxmox/pve-2/README.md](proxmox/pve-2/README.md#pve--oracle-restic) |
-| Restore `longhorn-garage` from Oracle | 17.4 GiB in **29 min** (~11 MB/s), 56 541 files, byte-identical to the source |
-| Start Garage on the restored tree | Healthy node, one command |
-| Bucket intact | `longhorn`, **17.6 GiB, 11 296 objects**, `longhorn-key` present with RWO |
+| pve-3 only | NAS: `data/` + newest meta snapshot |
+| the NAS only | Longhorn replicas are intact; nothing to restore. Rebuild the NAS, let the next backup run |
+| NAS and pve-3 | Oracle: restic path `/mnt/pve/nas-backups/longhorn` (after phase 7: the vault's snapshots first, then Oracle) |
 
-From there it is the ordinary [quickstart](docs/dr-quickstart.md) — the cluster
-restoring from Garage is drilled separately and twice.
+**Rebuild Garage on the recovered tree:**
 
-**Pull from the Synology first when the house is intact.** It holds the same
-tree at LAN speed instead of 29 minutes over the internet, at the cost of
-being up to a week stale — the push is weekly. Oracle is for the case where
-both on-prem machines are gone.
-
-Longhorn's backup target (Garage LXC 103) sits on the same physical host as
-`kubernetes-1`. R730xd being both a live cluster node and the
-backup hub is an accepted blast-radius tradeoff.
-
-Mitigations:
-
-- **ZFS snapshots** on `media/backups`, daily — cover corruption and
-  deletion propagating outward, *not* R730xd loss.
-- **Downstream copies** below — cover R730xd loss.
-
-If R730xd is gone, `task longhorn:restore` has nothing to read until a
-Garage instance is rebuilt from one of those copies. In order of
-preference:
-
-**1. Synology's copy** (fastest, most complete, no decryption needed):
-
-```bash
-# Wake Synology if asleep (it sleeps outside a short weekly window - wake
-# schedule and WoL MAC are in /root/PRIVATE-NOTES.md on pve-2, deliberately
-# not in this public repo):
-wakeonlan <MAC-from-private-notes>
-# wait ~1-2 min, then confirm it's up:
-ping 10.57.57.201
-
-# The data:
-ssh admin@10.57.57.201 "ls /volume1/NetBackup/longhorn-garage/"
-# Pick the latest dated folder, e.g. 2026-07-23 — copy data/ and meta/ from
-# it to wherever the new Garage instance (step 3 below) will read from:
-scp -r admin@10.57.57.201:/volume1/NetBackup/longhorn-garage/<latest-date>/ \
-  /tmp/garage-recovered/
-```
-
-**2. Oracle's restic copy, if Synology is ALSO gone.** Needs only the
-`restic` binary (any OS) and the repo password — no DSM, no Virtual DSM, no
-restore wizard. The old Hyper Backup path (proprietary chunked vault,
-required a working DSM to read) was retired 2026-07-26.
-
-Read it on the VPS, not from a rebuilt pve-2. The endpoint pve-2 pushes through
-needs `/root/.restic-rest-password`, which lives only on pve-2 — inside the
-backup it would be opening. On the VPS the repository is a directory, and the
-only secret is the repo password from the password manager. Verified 2026-09-09.
-
-```bash
-# on the VPS (100.72.22.38 over Tailscale), as a sudoer
-sudo docker run --rm -u 999:987 \
-  -v /srv/restic-repo/data:/repo -v /etc/restic/repo-password:/pw:ro \
-  -e RESTIC_REPOSITORY=/repo -e RESTIC_PASSWORD_FILE=/pw \
-  restic/restic:0.18.0 \
-  restore latest --include /media/backups/longhorn-garage --target /restore
-# bind-mount somewhere real for --target; data/ and meta/ land under
-# <target>/media/backups/longhorn-garage/
-```
-
-The SFTP path this replaced was revoked on 2026-09-07 and now returns
-`Permission denied (publickey)`.
-
-**3. Stand up a fresh Garage instance** anywhere the cluster can reach — a
-new LXC on `pve-2`, or the VPS temporarily — with the recovered
-`data`/`meta` bind-mounted in. Reuse `vps/roles/garage_setup`, setting
-`garage_webui_enabled` per host, same as
-`vps/playbooks/garage-setup.yml`.
-
-**4. Repoint Longhorn at it:**
+1. Provision a fresh CT 103 with `vps/playbooks/garage-setup.yml`, mounting the
+   recovered `data/` as the data directory.
+2. Stop Garage, copy the newest snapshot's `db.lmdb` to
+   `meta/db.lmdb/data.mdb`, start it.
+3. The node has a new ID: `garage layout assign` it with the same capacity,
+   `garage layout apply`, then `garage bucket list` must show `longhorn`.
+4. Repoint Longhorn if the address changed, then restore:
 
 ```bash
 export SOPS_AGE_KEY_FILE=./age.key
-sops -d -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
-# edit AWS_ENDPOINTS to the new instance's address:port
-sops -e -i kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml
+sops set kubernetes/apps/storage/longhorn/app/minio-secret.sops.yaml \
+  '["stringData"]["AWS_ENDPOINTS"]' '"http://<new-address>:3900"'
 kubectl -n longhorn-system patch backuptargets.longhorn.io default --type=merge \
   -p "{\"spec\":{\"syncRequestedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}}"
 kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.status.available}'
@@ -357,7 +280,11 @@ kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.
 task longhorn:restore
 ```
 
-⚠️ **Not drilled end-to-end.** Treat this section as a documented starting
-point, not a tested runbook, until it's rehearsed once. Path 1 (Synology
-reachable) is the realistic case; path 2 (R730xd *and* Synology gone) is
-the untested edge case.
+Reading the restic repository needs no host from this site: on the VPS, as a
+sudoer, with the repo password from the password manager — see
+[proxmox/pve-2/README.md](proxmox/pve-2/README.md#pve-2--oracle-restic).
+
+Drilled: a restore from the new store into a scratch volume, 2026-09-30
+(Prowlarr, config and SQLite database intact). **Not yet drilled:** rebuilding
+Garage from a metadata snapshot. Do it once before trusting steps 2-3; the
+vault's first month is the natural moment.

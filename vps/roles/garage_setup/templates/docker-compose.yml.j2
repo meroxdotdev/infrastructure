@@ -8,6 +8,9 @@ services:
       - ./garage.toml:/etc/garage.toml
       - ./meta:/var/lib/garage/meta
       - ./data:/var/lib/garage/data
+{% if garage_meta_snapshot_interval %}
+      - ./meta-snapshots:/var/lib/garage/meta-snapshots
+{% endif %}
 {% if garage_webui_enabled %}
 
   webui:

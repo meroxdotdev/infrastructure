@@ -1,6 +1,13 @@
 metadata_dir = "/var/lib/garage/meta"
 data_dir = "/var/lib/garage/data"
 db_engine = "lmdb"
+{% if garage_meta_snapshot_interval %}
+# The data directory alone cannot be read back: Garage needs its metadata to
+# know which block belongs to which object. Consistent snapshots of it go to a
+# directory that is backed up with the data.
+metadata_auto_snapshot_interval = "{{ garage_meta_snapshot_interval }}"
+metadata_snapshots_dir = "/var/lib/garage/meta-snapshots"
+{% endif %}
 
 replication_factor = {{ garage_replication_factor }}
 
