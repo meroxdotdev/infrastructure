@@ -104,7 +104,7 @@ pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
       (phase 4 gate). `diff <(ls /media/backups) <(ls on NAS)`.
 - [ ] iDRAC: *IPMI over LAN* enabled, a new user `vaultwake` with **Operator**
       privilege, password in the password manager. Test from pve-3:
-      `ipmitool -I lanplus -H <idrac> -U vaultwake -E chassis status`.
+      `ipmitool -I lanplus -H <idrac> -U vaultwake -L OPERATOR -f /root/.ipmi-vaultwake chassis status`.
 - [ ] iDRAC virtual console opens (HTML5, firmware 2.84) — or have a USB stick
       and a monitor.
 
@@ -304,11 +304,14 @@ adds a snapshot of the same state.
 
 ```
 # /etc/cron.d/vault-wake on pve-3 — in git under proxmox/pve-3/etc/
-M H * * *  root  ipmitool -I lanplus -H <idrac> -U vaultwake -f /root/.ipmi-vaultwake chassis power on
+M H * * *  root  ipmitool -I lanplus -H <idrac> -U vaultwake -L OPERATOR -f /root/.ipmi-vaultwake chassis power on
 ```
 
 `M H` is `W`, filled in on pve-3 only: the line in git stays a placeholder and
 the real one lives in `/etc/cron.d/vault-wake` there.
+
+`-L OPERATOR` is required: ipmitool asks for an Administrator session by
+default, which iDRAC refuses to an Operator user.
 
 `chassis power on` on an already-running host is a no-op, so a manual session
 is never cut short.
