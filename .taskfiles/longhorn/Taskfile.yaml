@@ -110,8 +110,12 @@ tasks:
             LAST=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} -o json 2>/dev/null \
               | jq -r --arg v "$VOL" '.items[] | select(.spec.volumeName == $v) | .status.lastBackupName // empty' | head -1)
             URL=""
-            [ -n "$LAST" ] && URL=$(kubectl get backups.longhorn.io "$LAST" -n {{.LONGHORN_NS}} -o jsonpath='{.status.url}' 2>/dev/null)
-            [ -z "$URL" ] && MISSING="$MISSING $VOL"
+            if [ -n "$LAST" ]; then
+              URL=$(kubectl get backups.longhorn.io "$LAST" -n {{.LONGHORN_NS}} -o jsonpath='{.status.url}' 2>/dev/null)
+            fi
+            # An `if`, not `[ ] && ...`: as the loop's last command a false test
+            # would end the loop with status 1, and errexit aborts the task.
+            if [ -z "$URL" ]; then MISSING="$MISSING $VOL"; fi
           done
           if [ -z "$MISSING" ]; then
             echo "  ✓ every volume in pvs.yaml has a backup"
@@ -169,14 +173,14 @@ tasks:
         vars: { NAME: '{{.ITEM}}' }
 
   restore-volume:
-    internal: true
-    desc: Restore one volume from its latest backup, under its own name
+    desc: Restore one volume from its latest backup (TARGET=<other name> for a drill that leaves the live volume alone)
     vars:
       NAME: '{{.NAME}}'
+      TARGET: '{{.TARGET | default .NAME}}'
     cmds:
       - |
-        echo "→ Restoring {{.NAME}}..."
-        if kubectl get volumes.longhorn.io {{.NAME}} -n {{.LONGHORN_NS}} &>/dev/null; then
+        echo "→ Restoring {{.NAME}} as {{.TARGET}}..."
+        if kubectl get volumes.longhorn.io {{.TARGET}} -n {{.LONGHORN_NS}} &>/dev/null; then
           echo "  ✓ Volume already exists, skipping"
           exit 0
         fi
@@ -185,7 +189,9 @@ tasks:
         LAST=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} -o json \
           | jq -r --arg v "{{.NAME}}" '.items[] | select(.spec.volumeName == $v) | .status.lastBackupName // empty' | head -1)
         URL=""
-        [ -n "$LAST" ] && URL=$(kubectl get backups.longhorn.io "$LAST" -n {{.LONGHORN_NS}} -o jsonpath='{.status.url}')
+        if [ -n "$LAST" ]; then
+          URL=$(kubectl get backups.longhorn.io "$LAST" -n {{.LONGHORN_NS}} -o jsonpath='{.status.url}')
+        fi
         if [ -z "$URL" ]; then
           # Fail, do not skip: a skipped volume comes back empty and looks fine.
           echo "  ✗ No backup for {{.NAME}}. kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
@@ -203,7 +209,7 @@ tasks:
         apiVersion: longhorn.io/v1beta2
         kind: Volume
         metadata:
-          name: {{.NAME}}
+          name: {{.TARGET}}
           namespace: {{.LONGHORN_NS}}
         spec:
           numberOfReplicas: $REPLICAS
@@ -213,7 +219,7 @@ tasks:
           accessMode: rwo
           dataEngine: v1
         EOF
-        echo "  ✓ Volume {{.NAME}} restore initiated"
+        echo "  ✓ Volume {{.TARGET}} restore initiated"
     silent: true
 
   wait-for-replicas:
