@@ -10,7 +10,6 @@
 #   - the Proxmox installer itself (rpool mirror on the two Intel SSDs)
 #   - zpool import -f media
 #   - restic restore of /root (needs the repo password typed in)
-#   - authorising AIO's borg key (AIO generates it interactively)
 # REINSTALL.md covers those, and only those.
 set -uo pipefail
 
@@ -51,7 +50,7 @@ fi
 
 # --- packages --------------------------------------------------------------
 say "Packages"
-PKGS="nfs-kernel-server sg3-utils smartmontools ipmitool restic rsync bc borgbackup prometheus-node-exporter"
+PKGS="nfs-kernel-server sg3-utils smartmontools ipmitool restic rsync bc prometheus-node-exporter"
 MISSING=""
 for p in $PKGS; do
   dpkg -s "$p" >/dev/null 2>&1 || MISSING="$MISSING $p"
@@ -141,22 +140,6 @@ fi
 say "Host metrics"
 run install -m 644 "$REPO/etc/default-prometheus-node-exporter" /etc/default/prometheus-node-exporter
 run systemctl restart prometheus-node-exporter
-
-# --- nextcloud borg receiver ----------------------------------------------
-say "Nextcloud borg receiver"
-if id borg-nextcloud >/dev/null 2>&1; then
-  ok "borg-nextcloud user exists"
-else
-  run useradd --system --create-home --home-dir /var/lib/borg-nextcloud \
-      --shell /bin/bash borg-nextcloud
-  ok "borg-nextcloud created"
-fi
-run bash -c "zfs create media/backups/nextcloud 2>/dev/null || true"
-run chown borg-nextcloud:borg-nextcloud /media/backups/nextcloud
-run chmod 700 /media/backups/nextcloud
-run install -d -m 700 -o borg-nextcloud -g borg-nextcloud /var/lib/borg-nextcloud/.ssh
-ok "repository directory and ssh dir in place"
-warn "AIO's borg key is authorised by hand — REINSTALL.md has the forced-command line"
 
 # --- verify ----------------------------------------------------------------
 say "Verify"

@@ -970,7 +970,7 @@
       "id": 16,
       "type": "stat",
       "title": "Local backup",
-      "description": "Oldest last-backup among the Longhorn volumes that are backed up \u2014 to Garage on pve-2, nightly at 23:50. Per-volume detail is in the Longhorn dashboard.",
+      "description": "Oldest last-backup among the Longhorn volumes that are backed up \u2014 to Garage on pve-3 (data on the NAS), nightly at 23:50. Per-volume detail is in the Longhorn dashboard.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1043,7 +1043,7 @@
       "id": 17,
       "type": "stat",
       "title": "Off-site",
-      "description": "Last completed restic push to Oracle, nightly at 03:10, append-only. This is the copy that carries the Immich library, Nextcloud files and /media/photos. Healthchecks.io alerts if it stops; this tile shows it.",
+      "description": "Last completed restic push to Oracle, nightly at 03:10, append-only. This is the copy that carries the Longhorn backups, the NAS landing and /media/photos. Healthchecks.io alerts if it stops; this tile shows it.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1115,79 +1115,6 @@
     {
       "id": 18,
       "type": "stat",
-      "title": "VM image",
-      "description": "Newest vzdump image of VM 1000 (Nextcloud), weekly on Saturday at 22:00.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 11
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "unit": "s",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 691200
-              },
-              {
-                "color": "red",
-                "value": 864000
-              }
-            ]
-          },
-          "decimals": 1,
-          "noValue": "no report"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "textMode": "value",
-        "wideLayout": true,
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "time() - max(backup_last_success_timestamp_seconds{leg=\"vm-image\"})",
-          "range": false,
-          "instant": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 19,
-      "type": "stat",
       "title": "Certificates",
       "description": "Until the soonest certificate expires. Let's Encrypt shortlived: ~6.7 days, renewed at ~2.2 days left, so anything above 2 days is normal.",
       "datasource": {
@@ -1196,8 +1123,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
-        "x": 18,
+        "w": 12,
+        "x": 12,
         "y": 11
       },
       "fieldConfig": {
@@ -1258,7 +1185,7 @@
       ]
     },
     {
-      "id": 20,
+      "id": 19,
       "type": "row",
       "title": "Kubernetes",
       "collapsed": false,
@@ -1271,7 +1198,7 @@
       "panels": []
     },
     {
-      "id": 21,
+      "id": 20,
       "type": "stat",
       "title": "CPU",
       "description": "Used by every container, against what the three nodes can allocate.",
@@ -1343,7 +1270,7 @@
       ]
     },
     {
-      "id": 22,
+      "id": 21,
       "type": "stat",
       "title": "Memory",
       "description": "Working set of every container, against allocatable memory. Working set is what the OOM killer counts.",
@@ -1415,7 +1342,7 @@
       ]
     },
     {
-      "id": 23,
+      "id": 22,
       "type": "stat",
       "title": "Apps",
       "description": "Ready against desired replicas for every app in the default namespace. `platform` is everything else \u2014 Flux, Cilium, Longhorn, cert-manager, observability, their DaemonSets included \u2014 Up only while none of it is short.",
@@ -1543,7 +1470,7 @@
       ]
     },
     {
-      "id": 24,
+      "id": 23,
       "type": "row",
       "title": "Internet",
       "collapsed": false,
@@ -1556,7 +1483,7 @@
       "panels": []
     },
     {
-      "id": 25,
+      "id": 24,
       "type": "stat",
       "title": "Download",
       "description": "Last Ookla speedtest. Runs every 4 h \u2014 each run moves ~1.8 GB.",
@@ -1620,7 +1547,7 @@
       ]
     },
     {
-      "id": 26,
+      "id": 25,
       "type": "stat",
       "title": "Upload",
       "description": "Last Ookla speedtest. Runs every 4 h \u2014 each run moves ~1.8 GB.",
@@ -1684,7 +1611,7 @@
       ]
     },
     {
-      "id": 27,
+      "id": 26,
       "type": "stat",
       "title": "Round trip",
       "description": "TCP handshake to the nearer of 1.1.1.1 / 8.8.8.8, measured constantly.",
@@ -1756,7 +1683,7 @@
       ]
     },
     {
-      "id": 28,
+      "id": 27,
       "type": "timeseries",
       "title": "Throughput history",
       "description": "One point per test, every 4 h, so the line steps rather than curves.",
@@ -1860,7 +1787,7 @@
       ]
     },
     {
-      "id": 29,
+      "id": 28,
       "type": "timeseries",
       "title": "Round trip history",
       "description": "Gaps are outages: a failed probe has no round trip to plot.",
@@ -1952,7 +1879,7 @@
       ]
     },
     {
-      "id": 30,
+      "id": 29,
       "type": "row",
       "title": "Hosts",
       "collapsed": false,
@@ -1965,7 +1892,7 @@
       "panels": []
     },
     {
-      "id": 31,
+      "id": 30,
       "type": "timeseries",
       "title": "CPU",
       "description": "",
@@ -2058,7 +1985,7 @@
       ]
     },
     {
-      "id": 32,
+      "id": 31,
       "type": "timeseries",
       "title": "Memory",
       "description": "",
@@ -2151,7 +2078,7 @@
       ]
     },
     {
-      "id": 33,
+      "id": 32,
       "type": "bargauge",
       "title": "Temperature",
       "description": "Hottest hwmon sensor per host \u2014 CPU cores and NVMe. The R730xd's fans follow drive temperature, not this.",
@@ -2229,7 +2156,7 @@
       ]
     },
     {
-      "id": 34,
+      "id": 33,
       "type": "bargauge",
       "title": "Storage fill",
       "description": "Every Proxmox storage on every host. PveStorageNearFull fires at 80 %, Critical at 90 %.",
@@ -2307,7 +2234,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 34,
       "type": "bargauge",
       "title": "SSD wear",
       "description": "Rated endurance used. pve-1's nvme1n1 is the QLC drive that took 3.5x write amplification under a ZFS zvol until 2026-09-07 \u2014 the one to watch. SAS disks are not here: they are parked, and sas-health-check.sh reads them nightly.",
@@ -2385,7 +2312,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 35,
       "type": "row",
       "title": "Power \u2014 CyberPower VP700ELCD",
       "collapsed": false,
@@ -2398,7 +2325,7 @@
       "panels": []
     },
     {
-      "id": 37,
+      "id": 36,
       "type": "stat",
       "title": "Battery",
       "description": "",
@@ -2470,7 +2397,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 37,
       "type": "stat",
       "title": "Runtime left",
       "description": "NUT shuts every host down at 300 s (battery.runtime.low).",
@@ -2542,7 +2469,7 @@
       ]
     },
     {
-      "id": 39,
+      "id": 38,
       "type": "stat",
       "title": "Estate draw",
       "description": "Everything behind the UPS. Derived: it reports load only as a percentage of 390 W.",
@@ -2614,7 +2541,7 @@
       ]
     },
     {
-      "id": 40,
+      "id": 39,
       "type": "stat",
       "title": "R730xd",
       "description": "PSU reading from iDRAC. 112 W is the tuned baseline with the SAS disks parked.",
@@ -2678,7 +2605,7 @@
       ]
     },
     {
-      "id": 41,
+      "id": 40,
       "type": "timeseries",
       "title": "Draw history",
       "description": "The gap between the two lines is pve-1, pve-3 and the switch.",
@@ -2783,7 +2710,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 41,
       "type": "timeseries",
       "title": "Runtime history",
       "description": "Estimated on mains. Drifting down over months is how the battery announces its age.",

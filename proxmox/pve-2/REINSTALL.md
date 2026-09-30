@@ -8,7 +8,7 @@ Host only. The cluster on top is [`DR.md`](../../DR.md).
 password. The last two are unrecoverable from any backup.
 
 **Survives:** `media` (12× SAS) — import, never recreate.
-**Does not:** `rpool`, and the Nextcloud VM with it.
+**Does not:** `rpool`, which holds nothing that is not rebuilt from this repo.
 
 ## 1. Firmware
 
@@ -68,30 +68,7 @@ A freshly installed host is loud: iDRAC's algorithm asks for ~3800 RPM whatever
 the temperatures are, and stays there until `fan-control.service` is enabled by
 the step above. That is the expected order — never quiet before it is safe.
 
-## 5. Nextcloud borg key
-
-The script makes the user and dirs. The key is manual — AIO generates it on
-first backup and shows it in its UI. Without the forced command it is a shell
-login on this host.
-
-```
-command="borg serve --restrict-to-repository /media/backups/nextcloud",restrict ssh-ed25519 AAAA…
-```
-
-`0600`, owned by `borg-nextcloud`. Verify from the VM — borg should answer,
-not a shell:
-
-```bash
-ssh -i <aio key> borg-nextcloud@10.57.57.250   # → "Borg 1.4.0: Got connection close…"
-```
-
-## 6. VMs
-
-| VM | How |
-|---|---|
-| 1000 nextcloud | Its borg archive — [`nextcloud/README.md`](nextcloud/README.md) §6 |
-
-## 7. Two crontab caveats
+## 5. Two crontab caveats
 
 The weekly Synology line is redacted in git — its schedule reveals the NAS wake
 window. Restore it from `PRIVATE-NOTES.md`, inside that window.
@@ -100,7 +77,7 @@ No `CRON_TZ`: Debian's cron ignores it silently, so jobs keep local time while
 looking moved. Tried 2026-08-20, reverted next morning — it put restic ahead of
 its sources.
 
-## 8. Monitoring token
+## 6. Monitoring token
 
 `reinstall.sh` brings node_exporter back. The Proxmox API token pve-exporter
 reads this host with does not: it lived in the old `/etc/pve`. Until it is

@@ -184,9 +184,6 @@ data:
         - Proxmox pve-2:
             icon: proxmox.png
             href: https://10.57.57.250:8006
-        - Nextcloud:
-            icon: nextcloud.png
-            href: https://cloud.merox.dev
         - Public dashboard:
             icon: mdi-earth
             href: https://homepage.cloud.merox.dev

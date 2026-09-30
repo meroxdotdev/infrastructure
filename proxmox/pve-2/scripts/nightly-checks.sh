@@ -14,7 +14,7 @@ set -uo pipefail
 HC_URL="https://hc-ping.com/REPLACE-ME-SEE-PRIVATE-NOTES"
 FAILED=""
 
-for c in sas-health-check spindown-drift-check git-drift-check vzdump-freshness-check; do
+for c in sas-health-check spindown-drift-check git-drift-check; do
   s="/root/scripts/$c.sh"
   if [ ! -x "$s" ]; then
     FAILED="$FAILED $c(missing)"
@@ -31,5 +31,5 @@ if [ -n "$FAILED" ]; then
   exit 1
 fi
 
-echo "$(date '+%F %T') ok (disk health, spin-down, git drift, vzdump age)"
+echo "$(date '+%F %T') ok (disk health, spin-down, git drift)"
 curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true

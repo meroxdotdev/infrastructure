@@ -197,19 +197,15 @@ P.append(age("Local backup",
              'max((time() - longhorn_volume_last_backup_at) and (longhorn_volume_last_backup_at != 0))',
              0, 11, warn=86400, crit=129600,
              desc=("Oldest last-backup among the Longhorn volumes that are backed up — to Garage on "
-                   "pve-2, nightly at 23:50. Per-volume detail is in the Longhorn dashboard.")))
+                   "pve-3 (data on the NAS), nightly at 23:50. Per-volume detail is in the Longhorn dashboard.")))
 P.append(age("Off-site",
              'time() - max(backup_last_success_timestamp_seconds{leg="offsite"})',
              6, 11, warn=26 * 3600, crit=50 * 3600,
              desc=("Last completed restic push to Oracle, nightly at 03:10, append-only. This is the "
-                   "copy that carries the Immich library, Nextcloud files and /media/photos. "
+                   "copy that carries the Longhorn backups, the NAS landing and /media/photos. "
                    "Healthchecks.io alerts if it stops; this tile shows it.")))
-P.append(age("VM image",
-             'time() - max(backup_last_success_timestamp_seconds{leg="vm-image"})',
-             12, 11, warn=8 * 86400, crit=10 * 86400,
-             desc="Newest vzdump image of VM 1000 (Nextcloud), weekly on Saturday at 22:00."))
 P.append(stat("Certificates", 'min(certmanager_certificate_expiration_timestamp_seconds - time())',
-              18, 11, w=6, unit="s", decimals=1,
+              12, 11, w=12, unit="s", decimals=1,
               steps=[{"color": "red", "value": None}, {"color": "yellow", "value": 86400},
                      GREEN | {"value": 172800}],
               desc=("Until the soonest certificate expires. Let's Encrypt shortlived: ~6.7 days, "

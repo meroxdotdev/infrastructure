@@ -37,7 +37,7 @@
     - pve-2 — Dell R730xd:
         icon: proxmox.png
         href: https://merox.dev/blog/sas-disk-spindown
-        description: The disks — media array, backups, Nextcloud
+        description: The backup vault
 
     - pve-3 — OptiPlex 3050:
         icon: proxmox.png
@@ -102,11 +102,6 @@
         icon: mdi-image-multiple
         href: https://merox.dev/blog/homelab-tour#cluster
         description: Photo library, own Postgres, machine-learning search
-
-    - Nextcloud:
-        icon: nextcloud.png
-        href: https://merox.dev/blog/homelab-tour#cluster
-        description: Files and office. AIO on its own VM, off-cluster
 
     - Joplin:
         icon: joplin.png
