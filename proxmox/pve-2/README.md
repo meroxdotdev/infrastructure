@@ -57,7 +57,6 @@ disks once, together.
 | 02:50 (23:50 UTC) | Longhorn → Garage backup (ARR/Jellyfin configs, Immich library) | K8s |
 | 03:00 | pfSense config push (fixed, external) | → pve-2 |
 | 03:00 (00:00 UTC) | VPS → pve-2 backup push | → pve-2 |
-| 03:01 | Garage meta copy (SSD → media) | pve-2 |
 | 03:02 (00:02 UTC) | Immich Postgres pg_dump | K8s |
 | 03:05 | ZFS snapshot `media/backups` (14-day retention) | pve-2 |
 | 03:10 | restic push → Oracle | pve-2 |
@@ -124,7 +123,7 @@ automatic on its own and the loop reapplies within one cycle.
 ## Storage layout
 
 `rpool`: ZFS mirror, 2× 960GB Intel SATA SSD (backplane slots 0-1). Boot
-pool, every VM/LXC disk, `rpool/garage-meta`, `rpool/jellyfin-public`. 888G,
+pool, every VM/LXC disk, `rpool/jellyfin-public`. 888G,
 51% full (453G allocated, 2026-08-28). Was a 4-disk RAID10 until 2026-08-27,
 when `mirror-1` was evacuated online and its two SSDs were pulled for the
 OptiPlex nodes.
@@ -176,7 +175,6 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
 │                      by the VM over a forced-command SSH key
 │                      (borg-nextcloud account). See nextcloud/README.md.
 ├── pfsense/           config.xml.gz, nightly 03:00 (mode 0700)
-├── longhorn-garage/   Garage data (live) + meta (nightly copy from SSD)
 ├── immich-postgres/   pg_dump, nightly 03:02 (k8s schedules in UTC), 30-day retention
 ├── oracle-vps/        VPS service backups, pushed nightly (receive-only)
 └── tools/             Vendor binaries needed to rebuild this host (storcli .deb).
@@ -185,23 +183,13 @@ it (`exportfs -ra` / nfs-kernel-server restart do not).
                        legs, so it survives total loss.
 ```
 
-## Garage (Longhorn backup target, LXC 103)
+## Garage — no longer here
 
-- Debian LXC `garage-r730xd`, `10.57.57.61` (pfSense DHCP reservation, MAC
-  `bc:24:11:8b:b7:e9`), 2 vCPU / 2GB, unprivileged, `nesting=1`.
-- Provision: `ansible-playbook -i inventories/production/hosts
-  playbooks/garage-setup.yml` (reuses `garage_setup` role,
-  `garage_webui_enabled=false`).
-- S3: `http://10.57.57.61:3900`, region `us-east-1`, bucket `longhorn`.
-  Credentials: `docker exec garage /garage key info longhorn-key
-  --show-secret`; consumed via `minio-secret.sops.yaml` in the Longhorn app.
-- **Data** on `media/backups/longhorn-garage/data` (bind mount mp0, host
-  UID 100000). **Meta** on `rpool/garage-meta` — SSD, mp1 — because its
-  constant LMDB/heartbeat writes kept waking the SAS pool
-  ([spindown-setup.md](spindown-setup.md)). Nightly 03:01 cron copies meta
-  back under `media/backups/longhorn-garage/meta/` so all downstream legs
-  cover it.
-- LXC itself is stateless — not in any vzdump job.
+The Longhorn backup target moved to CT 103 `garage` on pve-3 on 2026-09-29,
+with its data on the NAS. The LXC that ran here (`garage-r730xd`,
+`10.57.57.61`), `media/backups/longhorn-garage`, `rpool/garage-meta` and
+`garage-meta-nightly-copy.sh` were removed on 2026-09-30, after a restore from
+the new store succeeded. Setup: `vps/playbooks/garage-setup.yml`.
 
 ## Downstream legs
 

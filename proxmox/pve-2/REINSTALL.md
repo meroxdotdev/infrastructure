@@ -8,7 +8,7 @@ Host only. The cluster on top is [`DR.md`](../../DR.md).
 password. The last two are unrecoverable from any backup.
 
 **Survives:** `media` (12× SAS) — import, never recreate.
-**Does not:** `rpool`, taking `rpool/garage-meta` and the Garage LXC with it.
+**Does not:** `rpool`, and the Nextcloud VM with it.
 
 ## 1. Firmware
 
@@ -85,27 +85,13 @@ not a shell:
 ssh -i <aio key> borg-nextcloud@10.57.57.250   # → "Borg 1.4.0: Got connection close…"
 ```
 
-## 6. Garage LXC (103)
-
-Stateless, so rebuilt:
-
-```bash
-cd <repo>/vps
-ansible-playbook -i inventories/production/hosts playbooks/garage-setup.yml
-```
-
-Data survived on `media/backups/longhorn-garage/data`. Meta was on `rpool` —
-copy it back from `media/backups/longhorn-garage/meta/` (mirrored nightly at
-03:01), then re-point Longhorn at the new key (`minio-secret.sops.yaml`).
-
-## 7. VMs
+## 6. VMs
 
 | VM | How |
 |---|---|
-| 811 `kubernetes-2` | Not restored from backup — recreate it as a Talos node and let it rejoin. [`../../talos/THREE-NODE.md`](../../talos/THREE-NODE.md). A total-loss rebuild instead follows [`dr-quickstart.md`](../../docs/dr-quickstart.md), which restores one node |
 | 1000 nextcloud | Its borg archive — [`nextcloud/README.md`](nextcloud/README.md) §6 |
 
-## 8. Two crontab caveats
+## 7. Two crontab caveats
 
 The weekly Synology line is redacted in git — its schedule reveals the NAS wake
 window. Restore it from `PRIVATE-NOTES.md`, inside that window.
@@ -114,7 +100,7 @@ No `CRON_TZ`: Debian's cron ignores it silently, so jobs keep local time while
 looking moved. Tried 2026-08-20, reverted next morning — it put restic ahead of
 its sources.
 
-## 9. Monitoring token
+## 8. Monitoring token
 
 `reinstall.sh` brings node_exporter back. The Proxmox API token pve-exporter
 reads this host with does not: it lived in the old `/etc/pve`. Until it is

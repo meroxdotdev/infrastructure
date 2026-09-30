@@ -15,8 +15,7 @@ ansible_user=root
 
 [garage]
 # CT 103 on pve-3: Garage S3, the Longhorn backup target. Data on the NAS,
-# meta on local NVMe. Reached directly on the LAN. The old garage-r730xd
-# (10.57.57.61) is destroyed at the Longhorn cut-over, phase 4.
+# meta on local NVMe. Reached directly on the LAN.
 garage ansible_host=10.57.57.62
 
 [garage:vars]

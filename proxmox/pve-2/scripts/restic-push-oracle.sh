@@ -29,8 +29,15 @@ trap '[ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL/fail" 
 # a machine image is worth restoring over the LAN, not over the tailnet from
 # Frankfurt. The data inside Nextcloud is backed up separately under
 # /media/backups/nextcloud and does go off-site.
-restic backup /media/backups /media/photos /root --tag nightly \
-  --exclude /media/backups/dump
+#
+# TEMPORARY, remove in phase 7 of docs/plan-nas-hot-r730-cold.md: Longhorn
+# backs up to the Garage on pve-3 since 2026-09-29, and its data lives on the
+# NAS, not here. Until the vault takes over the off-site push, this host reads
+# it from the NAS through a read-only NFS mount (Proxmox storage nas-backups)
+# and sends it along. If the mount is missing the path does not exist and
+# restic fails loudly rather than backing up an empty directory.
+restic backup /media/backups /media/photos /root /mnt/pve/nas-backups/longhorn \
+  --tag nightly --exclude /media/backups/dump
 # No forget, no prune. Both are refused by the append-only endpoint, and that is
 # the entire point of moving to it: this host can add backups and can no longer
 # remove one. Retention runs on vps01 instead, as restic-retention.timer, which
