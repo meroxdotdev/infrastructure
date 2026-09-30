@@ -447,13 +447,15 @@ tasks:
         sleep 5
 
         echo "→ Reconciling app Kustomizations (creates cache PVCs + HelmReleases)..."
-        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich n8n; do
+        # Every backed-up volume is named after its app, and so are its
+        # Kustomization and HelmRelease: one list, no literal to go stale.
+        for app in {{.VOLUMES}}; do
           flux reconcile kustomization $app -n default 2>/dev/null &
         done
         wait
 
         echo "→ Reconciling media stack HelmReleases..."
-        for app in jellyfin jellyseerr prowlarr qbittorrent radarr sonarr immich-postgres immich n8n; do
+        for app in {{.VOLUMES}}; do
           flux reconcile helmrelease $app -n default 2>/dev/null &
         done
         wait
