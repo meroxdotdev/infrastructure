@@ -13,9 +13,8 @@
 # the pod network.
 #
 #
-# App-specific intra-namespace exceptions (immich-server -> immich-postgres/
-# valkey, the *arr stack talking to each other) live next to those apps'
-# own manifests, not here — see immich/app/networkpolicy.yaml,
+# App-specific intra-namespace exceptions (the *arr stack talking to each
+# other) live next to those apps' own manifests, not here — see
 # prowlarr|radarr|sonarr|qbittorrent/app/networkpolicy.yaml.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

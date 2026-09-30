@@ -147,9 +147,9 @@ task longhorn:restore
 **What it does (automatically):**
 1. Patches BackupTarget → S3
 2. Waits for BackupVolumes + Backup CRs to sync from Garage S3 (~60-90s)
-3. Creates restore Volume CRDs for every volume in `restore-all-volumes` —
-   currently 10: `jellyfin`, `prowlarr`, `radarr`, `sonarr`, `jellyseerr`,
-   `qbittorrent`, `immich-postgres`, `n8n`, and both Immich libraries
+3. Creates a restore Volume CRD for every PV in
+   `kubernetes/apps/storage/restore-pvs/pvs.yaml` — currently 7: `jellyfin`,
+   `jellyseerr`, `n8n`, `prowlarr`, `qbittorrent`, `radarr`, `sonarr`
 4. Waits for replica initialization
 5. Applies PV manifests with correct claimRefs
 6. Fixes PVC field ownership (Flux SSA compatibility)
@@ -219,31 +219,24 @@ version, as of 2026-09-30:
 |---|---|---|
 | Longhorn, 10 volumes | `longhorn/` via Garage on pve-3 | 02:50 |
 | Garage metadata snapshots | `longhorn/meta-snapshots/` | every 6 h |
-| Immich `pg_dump` | `immich-postgres/immich.sql.gz` | 03:02 |
 | pfSense config | `pfsense/config.xml.gz` | 03:00 |
 | VPS services | `oracle-vps/` | 02:40 |
 
 The NAS keeps the latest version only. **Until phase 7** of the plan the
-R730xd is still the off-site path: pfSense, the VPS and Immich also send it a
+R730xd is still the off-site path: pfSense and the VPS also send it a
 dated copy, it reads `longhorn/` from the NAS over a read-only NFS mount, and
 its nightly restic run pushes all of it to Oracle (append-only). After phase
 7 the vault replaces the R730xd in that role.
 
-Not backed up, accepted as lost in DR: observability history, caches, and
-the film library (tier 3).
+Not backed up here, accepted as lost in DR: observability history, caches,
+and the film library (tier 3). Photos and documents are not in the cluster:
+they live on the NAS (Synology Photos, Synology Drive) and reach the vault and
+Oracle from there.
 
 ```bash
 # Last backup of each volume
 kubectl -n longhorn-system get backupvolumes.longhorn.io | awk '{print $1, $6}'
 ```
-
-### Immich
-
-Two independent paths, deliberately: the three Immich volumes go through
-Longhorn like everything else, and the nightly `pg_dump` is storage-format
-agnostic — it survives Longhorn or Garage having a bad day. Restore procedure
-and the one-time VectorChord setup a fresh Postgres needs:
-[docs/immich-post-restore.md](docs/immich-post-restore.md).
 
 ## Longhorn backup store — total loss fallback
 

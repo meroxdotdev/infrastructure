@@ -98,11 +98,6 @@
         description: Indexing and download, VPN-routed
 
 - Photos & Platform:
-    - Immich:
-        icon: mdi-image-multiple
-        href: https://merox.dev/blog/homelab-tour#cluster
-        description: Photo library, own Postgres, machine-learning search
-
     - Joplin:
         icon: joplin.png
         href: https://merox.dev/blog/homelab-tour#vps

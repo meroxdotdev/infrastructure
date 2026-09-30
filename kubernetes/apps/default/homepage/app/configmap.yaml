@@ -175,9 +175,6 @@ data:
         - Grafana:
             icon: grafana.png
             href: https://grafana.k8s.merox.dev
-        - Immich:
-            icon: immich.png
-            href: https://photos.k8s.merox.dev
         - Jellyfin:
             icon: jellyfin.png
             href: https://jellyfin.k8s.merox.dev

@@ -17,10 +17,6 @@ data:
   # -- Storage servers (app-specific, not in cluster.yaml)
   # The Synology NAS: primary storage and the landing spot for every backup.
   NAS_SERVER: "10.57.57.201"
-  # TEMPORARY, remove in phase 7 of docs/plan-nas-hot-r730-cold.md: the
-  # R730xd, which still receives a dated copy of the Immich dump because its
-  # restic run is the off-site path until the vault takes over.
-  R730XD_SERVER: "10.57.57.250"
 
   # -- Cilium LoadBalancer IPs (must be within the pool in cilium/app/networks.yaml)
   # LB_IP_GATEWAY_INTERNAL = cluster.yaml: cluster_gateway_addr
@@ -29,10 +25,9 @@ data:
   LB_IP_QBITTORRENT: "10.57.57.102"
   LB_IP_PORTAINER: "10.57.57.103"
   LB_IP_NETBOOTXYZ: "10.57.57.104"
-  # LB_IP_IMMICH / LB_IP_JELLYFIN — dedicated IPs for restricted Tailscale
-  # ACL access (guest device, Immich+Jellyfin only), separate from the
+  # LB_IP_JELLYFIN — dedicated IP for restricted Tailscale ACL access (the
+  # guest device reaches Jellyfin only), separate from the
   # shared internal gateway (10.57.57.101) so ACLs can target one service
-  LB_IP_IMMICH: "10.57.57.106"
   LB_IP_JELLYFIN: "10.57.57.107"
   # Public Jellyfin - the only instance reachable from the internet, reverse
   # proxied by the VPS. Separate address so the Tailscale ACL can grant the VPS

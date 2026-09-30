@@ -64,7 +64,7 @@ check_path() {
 }
 
 check_path /media/backups/pfsense
-check_path /media/backups/immich-postgres
+check_path /media/backups/oracle-vps
 
 if [ "$FAIL" -eq 0 ]; then
   ping_hc ""

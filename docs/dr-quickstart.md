@@ -87,7 +87,7 @@ nvidia-device-plugin  Init:CrashLoopBackOff
 ```
 
 That is the GPU being absent, not a fault. Everything else — including the
-Immich photo library, the ARR configs, `jellyseerr` and `qbittorrent` — must
+ARR configs, `jellyseerr`, `qbittorrent` and `n8n` — must
 come back `Running` with its data.
 
 ## If something is off
