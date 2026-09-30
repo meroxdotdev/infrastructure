@@ -12,8 +12,8 @@ of that is still true, stop here.
 ## What the vault is
 
 A machine that is off unless it is copying. It wakes, pulls from the NAS,
-snapshots, pushes restic to Oracle, and powers itself off. It serves nothing to
-anyone and exports no share.
+snapshots, pushes restic to Oracle, and powers itself off. It exports nothing
+but two SMB shares, `personal` and `work`, to the workstation only.
 
 | | |
 |---|---|
@@ -32,7 +32,7 @@ to stay safe.
 | Layer | Mechanism | What it stops |
 |---|---|---|
 | Reachability | Pull-only: no host holds a credential into the vault. TrueNAS *Allowed IP Addresses* limits UI and SSH to the workstation. 2FA on the admin | a compromised NAS, node or VPS cannot touch the vault |
-| Exposure | Powered off ~22 h/day. No SMB, NFS, iSCSI or S3 service | nothing to attack most of the day, nothing to mount the rest |
+| Exposure | Powered off ~22 h/day. SMB only for `personal` and `work`, only from the workstation; `backup` and `system` are never shared. No NFS, iSCSI or S3 | nothing to attack most of the day; the machine copies are not reachable at all |
 | History | Native periodic snapshots, 30 daily + 12 monthly, retention by TrueNAS | an encrypted NAS gets pulled as a new version; the clean ones stay |
 | Blast radius | `rsync --max-delete=500`: past 500 deletions rsync stops deleting and exits 25 | a wiped or renamed-by-ransomware source is not mirrored; healthchecks alerts |
 | Off-site | restic to `rest-server --append-only`; retention runs on the VPS | even a fully compromised vault cannot delete Oracle's history |
@@ -42,15 +42,27 @@ exempt from retention and piles up until released by hand; holds are for a
 one-off snapshot before a risky change. TrueNAS 26's *Ransomware Defender* is
 still in development; revisit when it ships.
 
-### Your own tests on the vault
+### Layout
 
-Everything experimental lives in `vault/lab`: VMs, apps, scratch data. Apps are
-allowed there and only there; no app gets a host path outside `vault/lab`. The
-backup datasets are written by one thing, the nightly pull.
+Four top-level datasets, split by who writes them:
 
-Powering it on by hand is safe: `touch /mnt/vault/ops/HOLD` keeps it up past
+```
+vault/
+├── backup/      written only by the nightly chain, never shared
+│   ├── nas/       pull of the NAS: backups/ (Longhorn, pfSense, VPS), homes/ (Drive)
+│   └── github/    git mirrors of the repositories
+├── personal/    personal projects; also three films for when the NAS is down
+├── work/        professional projects
+└── system/      scripts, restic binary, secrets (0700), config exports, logs, HOLD
+```
+
+`personal` and `work` are yours: SMB from the workstation, TrueNAS apps and VMs
+with host paths inside them and nowhere else. They are available only while the
+vault is awake — anything that must run all the time belongs on the mini PCs.
+
+Powering it on by hand is safe: `touch /mnt/vault/system/HOLD` keeps it up past
 the nightly run, and the IPMI power-on at `W` is a no-op on a running host, so
-the nightly run happens next to whatever is being tested.
+the nightly run happens next to whatever you are doing.
 
 ### Why ~40 minutes, not 2-3 hours or 6-8
 
@@ -69,11 +81,11 @@ at a clock time — see [the chain](#6--the-nightly-chain).
 
 ### When
 
-**Wake at `W`**, a local time kept in `vault/ops/PRIVATE-NOTES.md` and not in
+**Wake at `W`**, a local time kept in `vault/system/PRIVATE-NOTES.md` and not in
 this public repository — the hours a machine holding the offline copies is
 reachable are the one thing worth hiding about it. `W` must fall after every
 producer has finished in both seasons; the UTC-scheduled
-ones (Longhorn, Immich, VPS) move *earlier* in winter, never later. The
+ones (Longhorn, VPS) move *earlier* in winter, never later. The
 UTC-vs-EEST problem does not exist in this design.
 
 If the fans at POST are audible from a bedroom, move `W` to the evening. That
@@ -90,7 +102,6 @@ pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
       `/root/scripts/*.sh`, the Telegram bot token and chat id.
 - [ ] Every item from `/media/backups` is also on the NAS under `backups/`
       (phase 4 gate). `diff <(ls /media/backups) <(ls on NAS)`.
-- [ ] Kali VM 106: `vzdump` to the NAS or accept losing it.
 - [ ] iDRAC: *IPMI over LAN* enabled, a new user `vaultwake` with **Operator**
       privilege, password in the password manager. Test from pve-3:
       `ipmitool -I lanplus -H <idrac> -U vaultwake -E chassis status`.
@@ -144,45 +155,44 @@ features, and it removes the option of reading these disks from Proxmox again.
 
 If import fails: the NAS already holds everything this pool holds. Wipe the 12
 SAS disks, create `vault` as 2× RAIDZ2 of 6, and let the first pull repopulate
-it (~4 h for the library over 1 GbE).
+it (minutes: ~100 GB of backups, the three films copied by hand).
 
 Pool settings: `compression=lz4` (inherited), `atime=off`.
 
 ## 4 — Datasets · ~15 min
 
-Reuse what is there, rename, drop the rest.
+State on 2026-09-30, before the install: `media/backups` holds dated pfSense and
+VPS copies and `tools/n8n`; `media/library` holds three films; `media/isos` and
+`media/photos` are unused. Nextcloud's archive and the Kali VM are gone.
 
-| Dataset | From | Holds | Snapshots | In restic |
-|---|---|---|---|---|
-| `vault/backups` | `media/backups` | pull of NAS `backups/` | 30 daily + 12 monthly | yes |
-| `vault/drive` | new | pull of NAS `homes/` (Synology Drive's *My Drive*) | 30 daily + 12 monthly | yes, **except `merox/VMs/`** (49 GB of VirtualBox images; Oracle has ~77 GiB) |
-| `vault/library` | `media/library` | pull of NAS `media/library` | 7 daily (tier 3 — only against a bad `--delete`) | **no** — 1.2 T, Oracle has ~77 GiB |
-| `vault/repos` | new | `git clone --mirror` of GitHub repos | 30 daily | yes |
-| `vault/ops` | new | scripts, restic binary, secrets (0700), config exports, logs | 30 daily | yes, except `secrets/` |
-| `vault/lab` | new | your tests: VMs, apps, scratch | none | **no** |
-
-`vault/backups` and `vault/library` already have the right names after the pool
-rename.
+| Dataset | Holds | Snapshots | In restic |
+|---|---|---|---|
+| `vault/backup/nas` | pull of NAS `backups/` and `homes/` | 30 daily + 12 monthly | yes, **except `homes/merox/VMs/`** (49 GB; Oracle has ~77 GiB) |
+| `vault/backup/github` | `git clone --mirror` of the repositories | 30 daily | yes |
+| `vault/personal` | personal projects, `Movies/` (three films) | 30 daily | yes, **except `Movies/` and VM disks** |
+| `vault/work` | professional projects | 30 daily | yes, except VM disks |
+| `vault/system` | scripts, restic binary, secrets (0700), config exports, logs | 30 daily | yes, **except `secrets/`** |
 
 ```sh
-zfs destroy -r vault/isos                        # re-downloadable
-# vault/photos (3.3 G) → confirm it is in Immich or on the NAS, then destroy
-zfs destroy -r vault/backups/nextcloud          # only after the 90-day borg hold, see plan phase 6
-zfs create vault/drive vault/repos vault/ops vault/lab
-zfs set recordsize=1M vault/library vault/backups
+zfs rename vault/library vault/personal          # keeps the three films in place
+zfs create -p vault/backup/nas
+zfs create vault/backup/github vault/work vault/system
+mv /mnt/vault/backups/tools/n8n /mnt/vault/personal/
+zfs destroy -r vault/isos vault/photos           # re-downloadable / already in Synology Photos
 ```
 
-Delete the old `daily-*` snapshots on `vault/backups` once the first TrueNAS
-snapshot exists — the periodic task only prunes its own naming scheme.
+`vault/backups` (the old dated copies) is destroyed after the first chain run
+has pulled into `vault/backup/nas` and pushed to Oracle — Oracle already holds
+its history.
 
 ## 5 — Credentials · ~30 min
 
 | Credential | Where on the vault | Purpose |
 |---|---|---|
-| rsync account `vault-pull` | `vault/ops/secrets/rsync-password` | pull from NAS |
-| restic repo password | `vault/ops/secrets/restic-password` | decrypt/encrypt |
-| rest-server credential | `vault/ops/secrets/rest-password` | auth to Oracle |
-| healthchecks.io URL | `vault/ops/secrets/hc-vault` | dead-man's switch |
+| rsync account `vault-pull` | `vault/system/secrets/rsync-password` | pull from NAS |
+| restic repo password | `vault/system/secrets/restic-password` | decrypt/encrypt |
+| rest-server credential | `vault/system/secrets/rest-password` | auth to Oracle |
+| healthchecks.io URL | `vault/system/secrets/hc-vault` | dead-man's switch |
 | Telegram bot | TrueNAS Alert Service | pool/SMART/scrub alerts |
 
 All five in the password manager too. `chmod 600`, owner root.
@@ -192,7 +202,8 @@ All five in the password manager too. `chmod 600`, owner root.
 works for ordinary users, and share permissions make it read-only.
 
 1. User `vault-pull`, **not** in `administrators`, strong password.
-2. Shared folders: **read-only** on `media`, `backups`, `homes`. Nothing else.
+2. Shared folders: **read-only** on `backups`, `homes`. Nothing else — the
+   media library is not copied.
 3. Control Panel → File Services → rsync → enable rsync service.
    Application Privileges → rsync → allow `vault-pull` only, from
    `10.57.57.250` only.
@@ -219,27 +230,30 @@ workstation.
 ## 6 — The nightly chain
 
 One script, in git at `truenas/scripts/vault-nightly.sh`, copied to
-`/mnt/vault/ops/scripts/`. Run from the TrueNAS UI (System → Advanced → Cron
+`/mnt/vault/system/scripts/`. Run from the TrueNAS UI (System → Advanced → Cron
 Jobs) as root, **`W` + 5 min, daily**. Not on the root filesystem — TrueNAS replaces
 it on every update.
 
 ```
 1. start ping → healthchecks.io
-2. rsync pull (rsync://) NAS backups, homes, media → vault/{backups,drive,library}
+2. rsync pull (rsync://) NAS backups, homes → vault/backup/nas/{backups,homes}
      -aH --delete --max-delete=500 --numeric-ids ; exit 25 = stop, alert, no snapshot
-3. git mirror refresh → vault/repos
-4. TrueNAS config export → vault/ops/config/        (midclt call config.save)
+3. git mirror refresh → vault/backup/github
+4. TrueNAS config export → vault/system/config/     (midclt call config.save)
 5. snapshots: midclt call pool.snapshottask.run <id> for each task
-6. restic backup vault/{backups,drive,repos,ops} → Oracle, host=vault
+6. restic backup vault/{backup,personal,work,system} → Oracle, host=vault,
+     excludes per the dataset table
 7. restic check (read 5 % of data)
-8. 1st of month: restore drill — restore pfsense + immich-postgres, hash-compare
+8. 1st of month: restore drill — restore pfsense + oracle-vps, hash-compare
 9. success ping → healthchecks.io   (or fail ping with the step that failed)
 10. power-off gate
 ```
 
 The **power-off gate** — shut down only when all of these hold:
 
-- no file `/mnt/vault/ops/HOLD` (manual work — see [Restores](#restores))
+- no file `/mnt/vault/system/HOLD` (manual work — see [Restores](#restores))
+- no veto: 5 min before, Telegram gets "vault shuts down at hh:mm" with a
+  **Keep on** button; pressing it creates `HOLD`
 - no scrub running — past `W` + 2 h, `zpool scrub -p` pauses it; it resumes
   on the next boot, so a long scrub spreads over several nights by itself
 - no SMART self-test running — past `W` + 2 h, let it abort; TrueNAS alerts on the
@@ -262,7 +276,7 @@ retention on the VPS, and the drill logic of `restic-restore-drill.sh`. Read
 [proxmox/pve-2/scripts/](../proxmox/pve-2/scripts/) before writing, and keep
 its guardrails.
 
-Pin restic as a static binary in `vault/ops/bin/restic` (checksum in git).
+Pin restic as a static binary in `vault/system/bin/restic` (checksum in git).
 Do not depend on whatever TrueNAS ships.
 
 ## 7 — TrueNAS built-in tasks · ~15 min
@@ -273,10 +287,11 @@ Do not depend on whatever TrueNAS ships.
 | Scrub `vault` | first Sunday, `W` + 10 min |
 | S.M.A.R.T. | SHORT weekly Sunday, LONG first Sunday, both `W` + 10 min |
 | Alert services | Telegram; level WARNING+ |
-| Init script | POSTINIT: `/mnt/vault/ops/scripts/fan-control.sh` (from `proxmox/pve-2/scripts/`, `ipmitool` is in TrueNAS) |
+| Init script | POSTINIT: `/mnt/vault/system/scripts/fan-control.sh` (from `proxmox/pve-2/scripts/`, `ipmitool` is in TrueNAS) |
 | SSH service | on, key-only, root login off |
-| NFS / SMB / iSCSI / S3 | **off** |
-| Apps | allowed, host paths only under `vault/lab` |
+| SMB | shares `personal` and `work` only, *Hosts Allow* = the workstation |
+| NFS / iSCSI / S3 | **off** |
+| Apps, VMs | allowed, host paths only under `vault/personal` and `vault/work` |
 | Allowed IP Addresses | the workstation only (System → General). Pin its address first: pfSense DHCP reservation, and *Private Wi-Fi Address* off for the home network — pfSense already holds three rules for the same MacBook under rotated addresses |
 | Admin 2FA | on |
 
@@ -289,8 +304,11 @@ adds a snapshot of the same state.
 
 ```
 # /etc/cron.d/vault-wake on pve-3 — in git under proxmox/pve-3/etc/
-0 4 * * *  root  ipmitool -I lanplus -H <idrac> -U vaultwake -f /root/.ipmi-vaultwake chassis power on
+M H * * *  root  ipmitool -I lanplus -H <idrac> -U vaultwake -f /root/.ipmi-vaultwake chassis power on
 ```
+
+`M H` is `W`, filled in on pve-3 only: the line in git stays a placeholder and
+the real one lives in `/etc/cron.d/vault-wake` there.
 
 `chassis power on` on an already-running host is a no-op, so a manual session
 is never cut short.
@@ -323,17 +341,17 @@ scrub and SMART long completes or pauses cleanly.
 Manual on purpose. The vault holds no write credential into the NAS, and that
 stays true.
 
-**Keep it awake first:** wake it, then `touch /mnt/vault/ops/HOLD`. Remove the
+**Keep it awake first:** wake it, then `touch /mnt/vault/system/HOLD`. Remove the
 file when done — the next night's gate powers it off.
 
 | Lost | From | How |
 |---|---|---|
-| A file, a folder | vault snapshot | `/mnt/vault/drive/.zfs/snapshot/<name>/…` → `scp` to the Mac → put it back through Drive |
+| A file, a folder | vault snapshot | `/mnt/vault/backup/nas/.zfs/snapshot/<name>/homes/…` → `scp` to the Mac → put it back through Drive |
 | A Longhorn volume | Garage on the NAS | Longhorn UI → Backup → Restore — the vault is not involved |
-| Garage's store itself | vault | `rsync` `vault/backups/longhorn/` → NAS as the DSM admin, restart Garage, restore in Longhorn |
+| Garage's store itself | vault | `rsync` `vault/backup/nas/backups/longhorn/` → NAS as the DSM admin, restart Garage, restore in Longhorn |
 | The NAS entirely | vault | new disks → DSM → shares per plan phase 3 → `rsync` each dataset back as admin |
-| The vault and the NAS | Oracle | `restic restore` on any machine, or on the VPS per [proxmox/pve-2/README.md](../proxmox/pve-2/README.md#pve-2--oracle-restic) — the library is lost (tier 3) |
-| The vault's OS | anywhere | reinstall, import `vault`, upload `vault/ops/config/latest.db`, reapply `ops/secrets` |
+| The vault and the NAS | Oracle | `restic restore` on any machine, or on the VPS per [proxmox/pve-2/README.md](../proxmox/pve-2/README.md#pve-2--oracle-restic) — the three films are lost; the NAS library was never copied |
+| The vault's OS | anywhere | reinstall, import `vault`, upload `vault/system/config/latest.db`, reapply `system/secrets` |
 
 Write-back always uses a **temporary** credential — the DSM admin over SSH,
 typed, never stored on the vault.
@@ -359,12 +377,12 @@ Local time, Europe/Bucharest. UTC jobs are shown with their summer local time.
 | spin-down enforcer, `sas-*.sh` | pve-2 | — | **deleted** |
 | `fan-control.sh` | pve-2 service | vault POSTINIT | moved |
 | `media` scrub | pve-2 1st 03:40 | vault first Sunday | built-in |
-| vzdump VM 1000 | pve-2 Sat 22:00 | — | **deleted** |
+| vzdump VM 1000 | pve-2 Sat 22:00 | — | **deleted** 2026-09-30 with Nextcloud |
 | NUT primary | pve-2 | pve-1 | moved 2026-09-29 |
-| Nextcloud borg | VM 1000 02:40 | — | **deleted** |
+| Nextcloud borg | VM 1000 02:40 | — | **deleted** 2026-09-30 |
 | Longhorn backup | k8s 02:50 | unchanged | target = Garage on NAS |
 | Longhorn snapshot / system-backup | k8s */6 h, Mon 01:30 | unchanged | — |
-| Immich `pg_dump` | k8s 03:02 | unchanged | → NAS `backups/immich-postgres`, via `NAS_SERVER` (done 2026-09-29) |
+| Immich `pg_dump` | k8s 03:02 | — | **deleted** 2026-09-30 with Immich |
 | pfSense config push | pfSense 03:00 | unchanged | → NAS `backups/pfsense`, script `backup.sh` (done 2026-09-29) |
 | VPS backup wrapper | VPS 02:45 | unchanged | → NAS `backups/oracle-vps` |
 | VPS restore drill, restic retention | VPS | unchanged | — |
