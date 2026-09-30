@@ -78,5 +78,5 @@ spec:
                 path: /volume1/backups
             - name: r730xd
               nfs:
-                server: ${NFS_SERVER}
+                server: ${R730XD_SERVER}
                 path: /media/backups

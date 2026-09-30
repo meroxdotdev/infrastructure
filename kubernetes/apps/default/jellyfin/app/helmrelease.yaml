@@ -110,8 +110,8 @@ spec:
           - path: /config/metadata
       media:
         type: nfs
-        server: ${NFS_SERVER}
-        path: /media/library
+        server: ${NAS_SERVER}
+        path: /volume1/media
         globalMounts:
           - path: /media
             readOnly: true

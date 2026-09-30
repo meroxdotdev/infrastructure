@@ -166,7 +166,7 @@ These do **not** need manual intervention after restore:
 | -------------------------------------------------------------------- | ----------------------------------------------- |
 | Intel GPU device (`gpu.intel.com/i915: 1`), which also pins the pod to pve-1 | `helmrelease.yaml` → `resources.limits`   |
 | Video group access (`supplementalGroups: [44]`) — inert on Talos, renderD128 is 0666 | `helmrelease.yaml` → `securityContext` |
-| NFS media mount (read-only from R730xd, `NFS_SERVER` var)            | `helmrelease.yaml` → `persistence.media`        |
+| NFS media mount (the NAS, `NAS_SERVER` var, `/volume1/media`)        | `helmrelease.yaml` → `persistence.media`        |
 | Longhorn PVCs for config + metadata cache                            | `pvc.yaml`                                      |
 | `JELLYFIN_PublishedServerUris` env var                               | `helmrelease.yaml` → `env`                      |
 | TLS + ingress via Cilium Gateway (`media.merox.dev`)                 | `helmrelease.yaml` → `route`                    |

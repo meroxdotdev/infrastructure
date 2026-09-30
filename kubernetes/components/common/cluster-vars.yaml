@@ -17,9 +17,10 @@ data:
   # -- Storage servers (app-specific, not in cluster.yaml)
   # The Synology NAS: primary storage and the landing spot for every backup.
   NAS_SERVER: "10.57.57.201"
-  # The R730xd, still serving the media library until phase 5 of
-  # docs/plan-nas-hot-r730-cold.md moves it to NAS_SERVER; then this goes.
-  NFS_SERVER: "10.57.57.250"
+  # TEMPORARY, remove in phase 7 of docs/plan-nas-hot-r730-cold.md: the
+  # R730xd, which still receives a dated copy of the Immich dump because its
+  # restic run is the off-site path until the vault takes over.
+  R730XD_SERVER: "10.57.57.250"
 
   # -- Cilium LoadBalancer IPs (must be within the pool in cilium/app/networks.yaml)
   # LB_IP_GATEWAY_INTERNAL = cluster.yaml: cluster_gateway_addr

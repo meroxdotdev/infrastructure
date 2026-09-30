@@ -10,7 +10,6 @@ resources:
   - ./cilium/ks.yaml
   - ./coredns/ks.yaml
   # Storage
-  - ./csi-driver-nfs/ks.yaml
   # Hardware
   - ./intel-device-plugin-operator/ks.yaml
   # Utilities

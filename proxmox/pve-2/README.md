@@ -123,7 +123,7 @@ automatic on its own and the loop reapplies within one cycle.
 ## Storage layout
 
 `rpool`: ZFS mirror, 2× 960GB Intel SATA SSD (backplane slots 0-1). Boot
-pool, every VM/LXC disk, `rpool/jellyfin-public`. 888G,
+pool, every VM/LXC disk. 888G,
 51% full (453G allocated, 2026-08-28). Was a 4-disk RAID10 until 2026-08-27,
 when `mirror-1` was evacuated online and its two SSDs were pulled for the
 OptiPlex nodes.
@@ -133,7 +133,7 @@ enforcer script (see [spindown-setup.md](spindown-setup.md)).
 
 | Dataset | NFS export | Consumers |
 |---|---|---|
-| `media/library` | rw | Jellyfin (ro), Sonarr/Radarr/qBittorrent (rw) via `NFS_SERVER` var |
+| `media/library` | rw | nothing since 2026-09-30 — the library moved to the NAS; this copy becomes the vault's |
 | `media/backups` | rw | Immich pg_dump CronJob, backup jobs |
 
 `media/photos` and `media/isos` are no longer NFS-exported — both existed
@@ -146,7 +146,7 @@ storage and never used this export). The datasets themselves are untouched.
   nodes — all pod mounts originate there).
   Adding a client means adding its IP to `/etc/exports`, not widening back
   to `/24`. Previous file kept as `/etc/exports.bak-2026-08-11`.
-- The ARR stack uses the `NFS_SERVER` cluster-var for its `media/library` mount.
+- The media apps mount the NAS (`NAS_SERVER`, `/volume1/media`) since 2026-09-30.
 
 ⚠️ `no_root_squash` is still set on every export — a permitted client can
 still act as root on the exported trees. Removing it is **not** a drop-in
