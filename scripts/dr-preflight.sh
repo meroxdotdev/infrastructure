@@ -132,49 +132,46 @@ else
 fi
 
 # --- Backup/restore parity -------------------------------------------------
-# Every PVC labelled for the nightly `media` job must also appear in
-# restore-all-volumes, or DR throws away data that was backed up all along.
-# This drifted unnoticed for months and cost the entire Immich photo library
-# plus the jellyseerr/qbittorrent configs — see docs/dr-known-issues.md.
+# The DR restore brings back exactly the static PVs in pvs.yaml. Every PVC
+# labelled for the nightly `backup` job must have one there, and every PV there
+# must belong to a backed-up PVC — or DR throws away data that was backed up all
+# along, or waits for a backup that never exists. This drifted unnoticed for
+# months and cost the Immich photo library, then its database.
 echo ""
 echo "Backup/restore parity"
 echo "====================="
 
-TASKFILE="$REPO_ROOT/.taskfiles/longhorn/Taskfile.yaml"
+PVS_FILE="$REPO_ROOT/kubernetes/apps/storage/restore-pvs/pvs.yaml"
 # Parse per-document: a file can hold both labelled and unlabelled PVCs
-# (jellyfin's pvc.yaml carries jellyfin AND jellyfin-cache), so grepping the
-# file and listing every name in it produces false alarms.
-BACKED_UP=$(python3 - "$REPO_ROOT" <<'PYEOF' 2>/dev/null
+# (jellyfin's pvc.yaml carries jellyfin AND jellyfin-cache).
+PARITY=$(python3 - "$REPO_ROOT" "$PVS_FILE" <<'PY' 2>/dev/null
 import sys, pathlib, yaml
-label = "recurring-job-group.longhorn.io/media"
-names = set()
+label = "recurring-job-group.longhorn.io/backup"
+backed = set()
 for f in pathlib.Path(sys.argv[1], "kubernetes/apps").rglob("pvc.yaml"):
     for doc in yaml.safe_load_all(f.read_text()):
-        if not doc or doc.get("kind") != "PersistentVolumeClaim":
-            continue
-        if (doc.get("metadata", {}).get("labels") or {}).get(label) == "enabled":
-            names.add(doc["metadata"]["name"])
-print("\n".join(sorted(names)))
-PYEOF
+        if doc and doc.get("kind") == "PersistentVolumeClaim" and \
+           (doc.get("metadata", {}).get("labels") or {}).get(label) == "enabled":
+            backed.add(doc["metadata"]["name"])
+restored = {d["spec"]["claimRef"]["name"]
+            for d in yaml.safe_load_all(open(sys.argv[2]))
+            if d and d.get("kind") == "PersistentVolume"}
+print("count", len(backed))
+print("unrestored", " ".join(sorted(backed - restored)))
+print("unbacked", " ".join(sorted(restored - backed)))
+PY
 )
 
-# An entry is either "NAME: <pvc>-restored" or carries an explicit PVC_NAME.
-RESTORED=$( { grep -o 'PVC_NAME: [a-z0-9-]*' "$TASKFILE" | awk '{print $2}';
-              grep -o 'NAME: [a-z0-9-]*-restored' "$TASKFILE" | sed 's/NAME: //;s/-restored$//'; \
-            } 2>/dev/null | sort -u)
+COUNT=$(echo "$PARITY" | awk '/^count/{print $2}')
+UNRESTORED=$(echo "$PARITY" | sed -n 's/^unrestored *//p')
+UNBACKED=$(echo "$PARITY" | sed -n 's/^unbacked *//p')
 
-MISSING=""
-for pvc in $BACKED_UP; do
-    echo "$RESTORED" | grep -qx "$pvc" || MISSING="$MISSING $pvc"
-done
-
-if [ -z "$BACKED_UP" ]; then
+if [ -z "$COUNT" ] || [ "$COUNT" = 0 ]; then
     warn "Could not read PVC backup labels — parity not checked"
-elif [ -n "$MISSING" ]; then
-    fail "Backed up nightly but NOT restored on DR:$MISSING"
-    fail "  Add each to restore-all-volumes and pvs.yaml, or drop its media label"
 else
-    ok "Every nightly-backed-up PVC is in the restore list"
+    [ -n "$UNRESTORED" ] && fail "Backed up nightly but NOT in pvs.yaml: $UNRESTORED"
+    [ -n "$UNBACKED" ]   && fail "In pvs.yaml but NOT backed up: $UNBACKED"
+    [ -z "$UNRESTORED$UNBACKED" ] && ok "All $COUNT backed-up PVCs are restored by pvs.yaml, and nothing else is"
 fi
 
 echo ""

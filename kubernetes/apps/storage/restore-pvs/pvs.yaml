@@ -1,132 +1,27 @@
 ---
-# PersistentVolumes pointing to named Longhorn volumes.
-# These are created AFTER running: task longhorn:restore
-# which restores each volume from S3 backup with the exact name in volumeHandle.
+# Every Longhorn volume that is backed up, as a static PersistentVolume.
 #
-# Only media/ARR config volumes are backed up (PVC label
-# recurring-job-group.longhorn.io/media) and therefore restorable.
-# Cache volumes, observability (prometheus/loki/grafana/alertmanager) and
-# netdata are deliberately NOT backed up — they start empty after DR via
-# dynamic provisioning.
-# Post-restore, run: task longhorn:post-restore-jellyfin
-# Jellyfin images re-download automatically in ~10 min after that task runs.
+# One name per volume: the Longhorn volume, this PV and the PVC it is claimed
+# by all carry the app's name. The DR restore (.taskfiles/longhorn) reads its
+# volume list from this file, restores each backup under that name, and binds it
+# here — so this file is the single list of what a DR brings back. A volume
+# that is backed up but missing here would be restored and then silently
+# ignored; that is how the Immich library and later its database were lost on
+# DR runs before.
 #
-# Do NOT edit the numberOfReplicas: "3" below, in either direction.
-# csi.volumeAttributes is immutable on an already-created PV, so changing it
-# here fails the cluster-apps dry-run and wedges Flux for every resource that
-# Kustomization owns. The value is inert anyway: these PVs bind by claimRef to
-# Volume CRDs that already exist by the time this file is applied, so no
-# CreateVolume call ever reads it. The replica count that actually applies is
-# the Volume CRD's spec.numberOfReplicas, set from the live node count by
-# .taskfiles/longhorn/Taskfile.yaml — 3 today, which happens to agree with the
-# line below. It did not always: this said 3 through the single-node period
-# too, and was simply ignored.
-# Changing this line is only safe if the PVs are recreated from scratch.
+# Being here and being backed up go together: each PVC below carries the
+# recurring-job-group.longhorn.io/backup label. Caches and observability are
+# neither, by design; they start empty after a DR.
+#
+# csi.volumeAttributes is immutable on an existing PV. Changing
+# numberOfReplicas here fails the cluster-apps dry-run and wedges Flux. The
+# value is inert anyway: these PVs bind to Longhorn volumes that already exist,
+# and the replica count comes from the Volume itself.
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: immich-postgres-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: immich-postgres
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: immich-postgres-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-# The two Immich library volumes. Restoring them is not enough on its own —
-# without a claimRef'd PV here the PVCs bind to a fresh empty dynamic volume
-# and the restored data sits detached and unused, which is exactly how the
-# whole photo library was lost on every DR before 2026-08-29.
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: immich-library-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 20Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: immich-library-ssd
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: immich-library-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: immich-external-library-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 40Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: immich-external-library-ssd
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: immich-external-library-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: n8n-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 5Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: n8n
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: n8n-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: jellyfin-restored-pv
+  name: jellyfin
 spec:
   accessModes:
     - ReadWriteOnce
@@ -143,94 +38,14 @@ spec:
     volumeAttributes:
       numberOfReplicas: "3"
       staleReplicaTimeout: "30"
-    volumeHandle: jellyfin-restored
+    volumeHandle: jellyfin
   persistentVolumeReclaimPolicy: Retain
   storageClassName: longhorn
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: prowlarr-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 2Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: prowlarr
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: prowlarr-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: radarr-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 5Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: radarr
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: radarr-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: sonarr-restored-pv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 5Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: sonarr
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: sonarr-restored
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn
----
-# DO NOT remove the next two blocks as "dead, not backed up since 2026-07-21"
-# without checking prod first (kubectl get volumes.longhorn.io <name> -n
-# longhorn-system -o jsonpath='{.status.actualSize}'). They only look dead
-# on a *fresh* DR-restore cluster, where they've genuinely never existed.
-# On prod (pve-2/R730xd) these are the live, real, un-backed-up app volumes -
-# this exact "cleanup" deleted them off prod on 2026-08-03, stuck Terminating
-# for 2 days on kubernetes.io/pv-protection, silently breaking both apps
-# until fixed 2026-08-05. See DR.md's Known issues table.
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: jellyseerr-restored-pv
+  name: jellyseerr
 spec:
   accessModes:
     - ReadWriteOnce
@@ -247,14 +62,62 @@ spec:
     volumeAttributes:
       numberOfReplicas: "3"
       staleReplicaTimeout: "30"
-    volumeHandle: jellyseerr-restored
+    volumeHandle: jellyseerr
   persistentVolumeReclaimPolicy: Retain
   storageClassName: longhorn
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: qbittorrent-restored-pv
+  name: n8n
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: n8n
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: n8n
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prowlarr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 2Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: prowlarr
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: prowlarr
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: qbittorrent
 spec:
   accessModes:
     - ReadWriteOnce
@@ -271,6 +134,126 @@ spec:
     volumeAttributes:
       numberOfReplicas: "3"
       staleReplicaTimeout: "30"
-    volumeHandle: qbittorrent-restored
+    volumeHandle: qbittorrent
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: radarr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: radarr
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: radarr
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: sonarr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 5Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: sonarr
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: sonarr
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: immich-postgres
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: immich-postgres
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-library
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 20Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: immich-library
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: immich-library
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: longhorn
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: immich-external-library
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 40Gi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: immich-external-library
+    namespace: default
+  csi:
+    driver: driver.longhorn.io
+    fsType: ext4
+    volumeAttributes:
+      numberOfReplicas: "3"
+      staleReplicaTimeout: "30"
+    volumeHandle: immich-external-library
   persistentVolumeReclaimPolicy: Retain
   storageClassName: longhorn

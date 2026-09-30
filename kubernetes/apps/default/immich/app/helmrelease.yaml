@@ -54,7 +54,7 @@ spec:
     immich:
       persistence:
         library:
-          existingClaim: immich-library-ssd
+          existingClaim: immich-library
 
     server:
       enabled: true
@@ -79,7 +79,7 @@ spec:
       persistence:
         external-library:
           type: persistentVolumeClaim
-          existingClaim: immich-external-library-ssd
+          existingClaim: immich-external-library
           globalMounts:
             - path: /mnt/external-library
               readOnly: true

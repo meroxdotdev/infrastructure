@@ -5,16 +5,16 @@ metadata:
   name: backup-homelab-k8s
   namespace: longhorn-system
 spec:
-  # 23:50 UTC = 02:50 EEST — cluster runs UTC, pve-2 runs EEST. Timed just
-  # before vzdump HA (02:55) so this lands in the same compact nightly SAS
-  # backup window instead of firing at the naive-looking but wrong 05:00 EEST.
+  # 23:50 UTC. Lands on the Garage on pve-3, whose data is on the NAS; the
+  # time no longer has to line up with anything else.
   cron: "50 23 * * *"
   task: backup
-  # Only volumes opted in via PVC labels are backed up (media/ARR configs).
-  # Opt-in: label the PVC with recurring-job.longhorn.io/source: enabled
-  # and recurring-job-group.longhorn.io/media: enabled
+  # Opt-in per PVC: recurring-job.longhorn.io/source: enabled and
+  # recurring-job-group.longhorn.io/backup: enabled. Every such PVC must also
+  # have its static PV in kubernetes/apps/storage/restore-pvs/pvs.yaml, or a DR
+  # restores it and then ignores it.
   groups:
-    - media
+    - backup
   retain: 3
   concurrency: 1
 ---
@@ -34,11 +34,11 @@ spec:
   # is what backup-homelab-k8s is for.
   cron: "0 */6 * * *"
   task: snapshot
-  # The same set the backup job covers. Caches, netboot and observability stay
-  # out of both: they are rebuilt empty and snapshotting them would spend
-  # replica space on data nobody would restore.
+  # The same set the backup job covers. Caches and observability stay out of
+  # both: they are rebuilt empty and snapshotting them would spend replica
+  # space on data nobody would restore.
   groups:
-    - media
+    - backup
   # Four at six hours apart is a day of history. Longhorn snapshots are
   # copy-on-write, so the cost is the data that changed, not four full copies —
   # but it is still replica space on three nodes, and kubernetes-1 and -2 have
@@ -70,7 +70,7 @@ spec:
   parameters:
     # Metadata only. Longhorn's default for a system backup is if-not-present,
     # which takes a volume backup of every volume that lacks a current one —
-    # every volume in the cluster, not the `media` group. Observed on
+    # every volume in the cluster, not the `backup` group. Observed on
     # 2026-09-09 while verifying this: a manual run started backing up the
     # alertmanager PVC and three *-cache volumes, the exact set both other jobs
     # exclude on purpose.

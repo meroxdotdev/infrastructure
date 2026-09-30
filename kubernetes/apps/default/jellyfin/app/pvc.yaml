@@ -6,7 +6,7 @@ metadata:
   namespace: default
   labels:
     recurring-job.longhorn.io/source: enabled
-    recurring-job-group.longhorn.io/media: enabled
+    recurring-job-group.longhorn.io/backup: enabled
 spec:
   accessModes:
     - ReadWriteOnce

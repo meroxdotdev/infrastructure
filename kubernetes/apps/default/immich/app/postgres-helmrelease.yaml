@@ -111,6 +111,6 @@ spec:
             port: 5432
     persistence:
       data:
-        existingClaim: immich-postgres-17
+        existingClaim: immich-postgres
         globalMounts:
           - path: /var/lib/postgresql/data

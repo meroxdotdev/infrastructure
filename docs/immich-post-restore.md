@@ -41,8 +41,8 @@ If this cluster is ever rebuilt from scratch (DR scenario), re-run this after
 
 | Claim                          | Purpose                                              | Backing                          |
 | ------------------------------- | ----------------------------------------------------- | ---------------------------------- |
-| `immich-library-ssd`            | Immich's own library — new uploads, thumbnails, encodes | Longhorn PVC (RWO, rpool/SSD)      |
-| `immich-external-library-ssd`   | Migrated Synology Photos library (read-only import)  | Longhorn PVC (RWO, rpool/SSD), mounted read-only at `/mnt/external-library` |
+| `immich-library`               | Immich's own library — new uploads, thumbnails, encodes | Longhorn PVC (RWO, rpool/SSD)      |
+| `immich-external-library`      | Migrated Synology Photos library (read-only import)  | Longhorn PVC (RWO, rpool/SSD), mounted read-only at `/mnt/external-library` |
 
 Both used to be NFS mounts on the `media` (SAS) pool — moved to Longhorn
 because Immich's random access pattern (phone sync/browsing any time of day)
@@ -50,7 +50,7 @@ defeats the SAS pool's `hd-idle` spin-down, unlike Jellyfin/backups which
 only touch it in scheduled bursts. See
 [proxmox/pve-2/README.md](../proxmox/pve-2/README.md#nightly-schedule-spin-down-aligned).
 Both PVCs are labeled for the nightly Longhorn→Garage recurring backup
-(`recurring-job-group.longhorn.io/media: enabled`), same mechanism as
+(`recurring-job-group.longhorn.io/backup: enabled`), same mechanism as
 `immich-postgres`.
 
 The external library's content originally came from Synology's

@@ -4,6 +4,12 @@ version: "3"
 
 vars:
   LONGHORN_NS: longhorn-system
+  PVS_FILE: kubernetes/apps/storage/restore-pvs/pvs.yaml
+  # The volumes a DR brings back: exactly the static PVs in pvs.yaml. One list,
+  # read from one file — it used to be copied into five places here, and two of
+  # them drifted far enough to lose the Immich library and then its database.
+  VOLUMES:
+    sh: yq ea -r '[select(.kind == "PersistentVolume") | .metadata.name] | .[]' kubernetes/apps/storage/restore-pvs/pvs.yaml | tr '\n' ' '
 
 tasks:
   restore:
@@ -27,18 +33,14 @@ tasks:
 
       After this task: all pods should start within ~5 min.
 
-      NOTE: Only PVCs in the "media" recurring-job-group are backed up (the
-      group name predates Immich; it just means "worth Longhorn-backing-up",
-      not literally media-only). Every one of them is restored here — keep
-      those two lists identical, or DR silently discards data that was
-      backed up every night. Cache volumes and ALL observability volumes
-      (prometheus, loki, grafana, alertmanager, netdata) start empty —
-      history is deliberately not backed up.
+      Restores every volume in pvs.yaml, under its own name — the Longhorn
+      volume, the PV and the PVC all carry the app's name. The backup to
+      restore is found by the name of the volume it was taken from, so
+      nothing depends on how a volume was provisioned.
 
-      Immich's photos ARE covered: immich-library-ssd is the UPLOAD_LOCATION
-      and a plain Longhorn PVC, not an NFS mount. An earlier version of this
-      note claimed otherwise and the restore list matched the claim, so
-      every DR lost the whole photo library. Fixed 2026-08-29.
+      Every PVC labelled recurring-job-group.longhorn.io/backup must have its
+      PV in pvs.yaml, or DR restores nothing for it. Caches and all
+      observability volumes start empty — deliberately not backed up.
 
       After pods are up, run: task longhorn:post-restore-jellyfin
       to re-trigger Jellyfin metadata+image downloads (~10 min).
@@ -98,43 +100,29 @@ tasks:
     silent: true
 
   wait-for-backup-volumes:
-    desc: Wait until BackupVolumes sync from S3 and Backup CRs have URLs (~60-90s after BackupTarget patch)
+    desc: Wait until every volume in pvs.yaml has a BackupVolume with a usable backup URL
     cmds:
       - |
         echo "→ Waiting for BackupVolumes to sync from S3..."
         for i in $(seq 1 30); do
-          COUNT=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep -c "restored" || true)
-          if [ "$COUNT" -ge 5 ]; then
-            echo "  ✓ $COUNT backup volumes found"
-            break
+          MISSING=""
+          for VOL in {{.VOLUMES}}; do
+            LAST=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} -o json 2>/dev/null \
+              | jq -r --arg v "$VOL" '.items[] | select(.spec.volumeName == $v) | .status.lastBackupName // empty' | head -1)
+            URL=""
+            [ -n "$LAST" ] && URL=$(kubectl get backups.longhorn.io "$LAST" -n {{.LONGHORN_NS}} -o jsonpath='{.status.url}' 2>/dev/null)
+            [ -z "$URL" ] && MISSING="$MISSING $VOL"
+          done
+          if [ -z "$MISSING" ]; then
+            echo "  ✓ every volume in pvs.yaml has a backup"
+            exit 0
           fi
-          echo "  ... $COUNT/5+ found, waiting 10s (attempt $i/30)"
+          echo "  ... not synced yet:$MISSING (attempt $i/30)"
           sleep 10
         done
-        COUNT=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep -c "restored" || true)
-        if [ "$COUNT" -lt 5 ]; then
-          echo "  ✗ Only $COUNT backup volumes found after 5 min. Check S3 connectivity."
-          echo "    kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
-          exit 1
-        fi
-
-        echo "→ Waiting for Backup CRs to populate URLs (avoid race condition)..."
-        for i in $(seq 1 20); do
-          BNAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} \
-            --no-headers 2>/dev/null | awk '{print $1}' | grep "^jellyfin-restored-" | head -1)
-          LAST=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} "$BNAME" \
-            -o jsonpath='{.status.lastBackupName}' 2>/dev/null)
-          if [ -n "$LAST" ]; then
-            URL=$(kubectl get backups.longhorn.io "$LAST" -n {{.LONGHORN_NS}} \
-              -o jsonpath='{.status.url}' 2>/dev/null)
-            if [ -n "$URL" ]; then
-              echo "  ✓ Backup CRs ready (jellyfin URL confirmed)"
-              break
-            fi
-          fi
-          echo "  ... Backup CRs not ready yet (attempt $i/20)"
-          sleep 10
-        done
+        echo "  ✗ No backup after 5 min for:$MISSING"
+        echo "    Check S3 connectivity: kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
+        exit 1
     silent: true
 
   clear-stalled-helmreleases:
@@ -174,121 +162,43 @@ tasks:
     silent: true
 
   restore-all-volumes:
-    desc: Create all restore Volume CRDs in longhorn-system
+    desc: Create a restore Volume CRD for every volume in pvs.yaml
     cmds:
-      - task: restore-volume
-        vars: { NAME: jellyfin-restored }
-      - task: restore-volume
-        vars: { NAME: prowlarr-restored }
-      - task: restore-volume
-        vars: { NAME: radarr-restored }
-      - task: restore-volume
-        vars: { NAME: sonarr-restored }
-      - task: restore-volume
-        vars: { NAME: immich-postgres-restored, PVC_NAME: immich-postgres }
-      - task: restore-volume
-        vars: { NAME: n8n-restored, PVC_NAME: n8n }
-      # Restored again since 2026-08-29. The nightly `media` job does back
-      # both up (2 GiB / 5 GiB confirmed in Garage), so the old "dropped
-      # 2026-07-21" note was stale: pvs.yaml shipped static PVs pointing at
-      # Longhorn volumes nothing ever created, and both pods hung in
-      # ContainerCreating on every from-scratch restore.
-      - task: restore-volume
-        vars: { NAME: jellyseerr-restored }
-      - task: restore-volume
-        vars: { NAME: qbittorrent-restored }
-      # The Immich libraries carry the actual photos. Both are labelled for
-      # the nightly `media` job and were present in Garage (21 GiB / 43 GiB)
-      # while the restore ignored them, so a real DR silently lost every
-      # photo and immich-server crashlooped on the empty /data tree.
-      - task: restore-volume
-        vars: { NAME: immich-library-restored, PVC_NAME: immich-library-ssd }
-      - task: restore-volume
-        vars: { NAME: immich-external-library-restored, PVC_NAME: immich-external-library-ssd }
-      # Observability (loki/prometheus/grafana) is no longer backed up —
-      # those PVCs are provisioned fresh (see create-statefulset-pvcs).
+      - for: { var: VOLUMES }
+        task: restore-volume
+        vars: { NAME: '{{.ITEM}}' }
 
   restore-volume:
     internal: true
-    desc: Create a single restore Volume CRD from latest S3 backup
-    summary: |
-      BackupVolume names normally match "{volume-name}-{hash}" for volumes
-      with a pinned Longhorn volume name (jellyfin/prowlarr/radarr/sonarr).
-      Dynamically-provisioned PVCs (StatefulSet/Deployment volumeClaimTemplate,
-      e.g. immich-postgres, n8n) get an auto-generated "pvc-<uuid>-{hash}"
-      BackupVolume name instead — pass PVC_NAME to look those up by the
-      KubernetesStatus.pvcName label instead of by name prefix.
-      Discovered 2026-08-03: without this fallback, a plain no-match grep
-      exits 1 and (under this script's implicit errexit) aborts the whole
-      restore silently after this volume's "Restoring..." line.
+    desc: Restore one volume from its latest backup, under its own name
     vars:
       NAME: '{{.NAME}}'
-      PVC_NAME: '{{.PVC_NAME | default .NAME}}'
     cmds:
       - |
         echo "→ Restoring {{.NAME}}..."
-
-        # Find BackupVolume for this volume (name format: {volume-name}-{hash})
-        BV_NAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} \
-          --no-headers 2>/dev/null | awk '{print $1}' | grep "^{{.NAME}}-" | head -1 || true)
-
-        if [ -z "$BV_NAME" ]; then
-          # Fall back to matching by source PVC name (dynamically-provisioned volumes)
-          BV_NAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} -o json 2>/dev/null | \
-            python3 -c "
-        import json, sys
-        data = json.load(sys.stdin)
-        for item in data.get('items', []):
-            labels = item.get('status', {}).get('labels', {}) or {}
-            ks = labels.get('KubernetesStatus', '')
-            try:
-                if json.loads(ks).get('pvcName') == '{{.PVC_NAME}}':
-                    print(item['metadata']['name'])
-                    break
-            except Exception:
-                continue
-        " || true)
-        fi
-
-        if [ -z "$BV_NAME" ]; then
-          echo "  ✗ No BackupVolume found for {{.NAME}} (pvcName={{.PVC_NAME}}) — skipping"
-          echo "    Check: kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
-          exit 0
-        fi
-
-        # Get latest backup URL from BackupVolume status (Longhorn 1.12.0+: lastBackupURL removed)
-        BACKUP_NAME=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} "$BV_NAME" \
-          -o jsonpath='{.status.lastBackupName}' 2>/dev/null)
-        BACKUP_URL=""
-        if [ -n "$BACKUP_NAME" ]; then
-          BACKUP_URL=$(kubectl get backups.longhorn.io "$BACKUP_NAME" -n {{.LONGHORN_NS}} \
-            -o jsonpath='{.status.url}' 2>/dev/null)
-        fi
-
-        if [ -z "$BACKUP_URL" ]; then
-          echo "  ✗ No backup URL in BackupVolume $BV_NAME — skipping"
-          exit 0
-        fi
-
-        SIZE=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} "$BV_NAME" \
-          -o jsonpath='{.status.size}' 2>/dev/null)
-
-        echo "  backup: $BACKUP_URL"
-
-        # Check if Volume already exists
         if kubectl get volumes.longhorn.io {{.NAME}} -n {{.LONGHORN_NS}} &>/dev/null; then
           echo "  ✓ Volume already exists, skipping"
           exit 0
         fi
 
-        # Replica count matches the cluster being restored onto — capped at 3,
-        # Longhorn's own best-practice ceiling. Prod has been three nodes since
-        # 2026-09-04, so this yields 3 there and on a full DR drill alike; it
-        # only drops lower when restoring onto a partially rebuilt cluster.
+        # The BackupVolume of the volume that had this name when it was backed up.
+        LAST=$(kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}} -o json \
+          | jq -r --arg v "{{.NAME}}" '.items[] | select(.spec.volumeName == $v) | .status.lastBackupName // empty' | head -1)
+        URL=""
+        [ -n "$LAST" ] && URL=$(kubectl get backups.longhorn.io "$LAST" -n {{.LONGHORN_NS}} -o jsonpath='{.status.url}')
+        if [ -z "$URL" ]; then
+          # Fail, do not skip: a skipped volume comes back empty and looks fine.
+          echo "  ✗ No backup for {{.NAME}}. kubectl get backupvolumes.longhorn.io -n {{.LONGHORN_NS}}"
+          exit 1
+        fi
+        echo "  backup: $URL"
+
+        # Replica count matches the cluster being restored onto, capped at 3.
         NODE_COUNT=$(kubectl get nodes --no-headers | wc -l)
         REPLICAS=$(( NODE_COUNT < 3 ? NODE_COUNT : 3 ))
 
-        # Create Volume CRD in longhorn-system (NOT in default — manager ignores default)
+        # restoreVolumeRecurringJob carries the backup's recurring-job labels
+        # over, so the restored volume keeps being backed up.
         kubectl apply -f - <<EOF
         apiVersion: longhorn.io/v1beta2
         kind: Volume
@@ -298,7 +208,7 @@ tasks:
         spec:
           numberOfReplicas: $REPLICAS
           frontend: blockdev
-          fromBackup: "$BACKUP_URL"
+          fromBackup: "$URL"
           restoreVolumeRecurringJob: enabled
           accessMode: rwo
           dataEngine: v1
@@ -311,7 +221,7 @@ tasks:
     cmds:
       - |
         echo "→ Waiting for restore volume replicas to initialize..."
-        VOLUMES="jellyfin-restored prowlarr-restored radarr-restored sonarr-restored immich-postgres-restored n8n-restored"
+        VOLUMES="{{.VOLUMES}}"
         for i in $(seq 1 12); do
           ALL_READY=true
           for VOL in $VOLUMES; do
@@ -348,9 +258,9 @@ tasks:
     cmds:
       - |
         echo "→ Checking for PVCs bound ahead of the restore..."
-        yq -r 'select(.kind == "PersistentVolume")
+        yq ea -r 'select(.kind == "PersistentVolume")
                | [.metadata.name, .spec.claimRef.namespace, .spec.claimRef.name]
-               | @tsv' kubernetes/apps/storage/restore-pvs/pvs.yaml \
+               | @tsv' {{.PVS_FILE}} \
         | while IFS=$'\t' read -r PV NS PVC; do
             VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null || true)
             if [ -z "$VOL" ]; then
@@ -379,7 +289,7 @@ tasks:
         echo "  Waiting 10s for PVs to register..."
         sleep 10
         echo "  PV status:"
-        kubectl get pv 2>/dev/null | grep restored | awk '{print "   "$1, $5, $6}'
+        for VOL in {{.VOLUMES}}; do kubectl get pv "$VOL" --no-headers 2>/dev/null | awk '{print "   "$1, $5, $6}'; done
     silent: true
 
   fix-pvc-ownership:
@@ -394,9 +304,8 @@ tasks:
     cmds:
       - |
         echo "→ Fixing PVC field ownership to prevent Flux SSA volumeName conflicts..."
-        for pvc_item in "default:jellyfin" "default:prowlarr" "default:radarr" "default:sonarr" "default:immich-postgres" "default:n8n"; do
-          NS=${pvc_item%%:*}
-          PVC=${pvc_item##*:}
+        for PVC in {{.VOLUMES}}; do
+          NS=default
           VOL=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.volumeName}' 2>/dev/null)
           SIZE=$(kubectl get pvc "$PVC" -n "$NS" -o jsonpath='{.spec.resources.requests.storage}' 2>/dev/null)
           if [ -z "$VOL" ]; then
@@ -558,10 +467,10 @@ tasks:
     cmds:
       - |
         echo "=== Longhorn Volumes ==="
-        kubectl get volumes.longhorn.io -n {{.LONGHORN_NS}} 2>/dev/null | grep restored
+        for VOL in {{.VOLUMES}}; do kubectl get volumes.longhorn.io "$VOL" -n {{.LONGHORN_NS}} --no-headers 2>/dev/null; done
         echo ""
         echo "=== PV Bindings ==="
-        kubectl get pv 2>/dev/null | grep restored
+        for VOL in {{.VOLUMES}}; do kubectl get pv "$VOL" --no-headers 2>/dev/null; done
         echo ""
         echo "=== PVCs ==="
         kubectl get pvc -A 2>/dev/null | grep -v Bound | grep -v NAME
@@ -574,8 +483,7 @@ tasks:
     summary: |
       Run this AFTER task longhorn:restore, once Jellyfin pod is Running.
 
-      jellyfin-cache is backed up but stored under a dynamic Longhorn volume name,
-      so the restore task cannot find it. This task re-triggers image downloads
+      jellyfin-cache is not backed up, so it starts empty. This task re-triggers image downloads
       from TMDB/TVDB for all libraries (~10 min to complete in background).
 
       Reads the API key from the Jellyfin SQLite DB — no manual token needed.
