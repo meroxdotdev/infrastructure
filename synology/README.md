@@ -9,11 +9,16 @@ The NAS is becoming primary storage — see
 [docs/plan-nas-hot-r730-cold.md](../docs/plan-nas-hot-r730-cold.md). It is on
 24/7: no power schedule, no drive hibernation, *Restart automatically when
 power supply issue is fixed* on, and it is a NUT client of pve-1 (DSM → UPS →
-Synology UPS server `10.57.57.254`).
+Synology UPS server `10.57.57.254`). DSM notifies when Volume 1 has less than
+20% free.
+
+The library rotates itself: qBittorrent removes a torrent and its files after
+3 days of seeding (the library keeps its hardlink), and Radarr/Sonarr import
+by hardlink, never by copy.
 
 | Share | Holds | Recycle bin | Checksum |
 |---|---|---|---|
-| `media` | `library/` + `downloads/` — one share, or ARR hardlink imports break | off | on |
+| `media` | `Movies/`, `Shows/`, `Downloads/` — one share, or ARR hardlink imports break. **Quota 1.2 TB**, so the library can never eat the space backups need | off | on |
 | `backups` | the landing: one folder per producer, latest version only | off | on |
 | `homes` | Synology Drive; `merox/VMs/` holds VirtualBox images, outside Drive | default | — |
 | `NetBackup` | the old weekly pull from pve-2; deleted in phase 7 | — | — |
