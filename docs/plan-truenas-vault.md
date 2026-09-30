@@ -102,9 +102,10 @@ pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
       `/root/scripts/*.sh`, the Telegram bot token and chat id.
 - [ ] Every item from `/media/backups` is also on the NAS under `backups/`
       (phase 4 gate). `diff <(ls /media/backups) <(ls on NAS)`.
-- [ ] iDRAC: *IPMI over LAN* enabled, a new user `vaultwake` with **Operator**
-      privilege, password in the password manager. Test from pve-3:
-      `ipmitool -I lanplus -H <idrac> -U vaultwake -E chassis status`.
+- [ ] iDRAC: *IPMI over LAN* enabled. The wake uses the existing `root`
+      account (decided 2026-09-30, no separate Operator user); its password
+      sits in `/root/.ipmi-idrac` on pve-3, `chmod 600`. Test from pve-3:
+      `ipmitool -I lanplus -H <idrac> -U root -f /root/.ipmi-idrac chassis status`.
 - [ ] iDRAC virtual console opens (HTML5, firmware 2.84) — or have a USB stick
       and a monitor.
 
@@ -304,7 +305,7 @@ adds a snapshot of the same state.
 
 ```
 # /etc/cron.d/vault-wake on pve-3 — in git under proxmox/pve-3/etc/
-M H * * *  root  ipmitool -I lanplus -H <idrac> -U vaultwake -f /root/.ipmi-vaultwake chassis power on
+M H * * *  root  ipmitool -I lanplus -H <idrac> -U root -f /root/.ipmi-idrac chassis power on
 ```
 
 `M H` is `W`, filled in on pve-3 only: the line in git stays a placeholder and
