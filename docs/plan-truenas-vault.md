@@ -60,9 +60,10 @@ vault/
 with host paths inside them and nowhere else. They are available only while the
 vault is awake — anything that must run all the time belongs on the mini PCs.
 
-Powering it on by hand is safe: `touch /mnt/vault/system/HOLD` keeps it up past
-the nightly run, and the IPMI power-on at `W` is a no-op on a running host, so
-the nightly run happens next to whatever you are doing.
+Powering it on by hand is safe: answer **Keep on** to the Telegram question
+(see [the gate](#6--the-nightly-chain)) and it stays up. While it is up, the
+IPMI power-on at `W` is a no-op and the daily run starts from cron instead, so
+the backups happen next to whatever you are doing.
 
 ### Why ~40 minutes, not 2-3 hours or 6-8
 
@@ -248,7 +249,11 @@ Advanced → Init/Shutdown Scripts) starts it in the background once the pool
 is imported. Boot time varies by minutes; a cron at a fixed offset would
 either wait for nothing or start before the pool is there. Every boot runs
 the chain — a manual power-on included, which is harmless: it is one more
-backup, and the gate below does not power off while you hold it.
+backup, and the gate below asks before powering off.
+
+A host kept on past a day never boots at `W`, so a TrueNAS cron job at **`W` +
+10 min** starts the chain too. A lock file and a "ran today" stamp in
+`vault/system` make the two triggers one run per day.
 
 ```
 1. start ping → healthchecks.io
@@ -268,8 +273,15 @@ backup, and the gate below does not power off while you hold it.
 The **power-off gate** — shut down only when all of these hold:
 
 - no file `/mnt/vault/system/HOLD` (manual work — see [Restores](#restores))
-- no veto: 5 min before, Telegram gets "vault shuts down at hh:mm" with a
-  **Keep on** button; pressing it creates `HOLD`
+- **you said nothing**: every time, 5 min before, Telegram asks "vault shuts
+  down at hh:mm" with two buttons:
+  - **Keep on** → creates `HOLD` with an expiry: it stays up until the next
+    day's run, which asks again. Unanswered then, it powers off by itself.
+  - **Shut down now** → powers off immediately.
+
+  Silence means shut down: a missed message never leaves the vault on.
+  To power off a held vault early, the bot's `/off` command or TrueNAS UI →
+  Power → Shut Down; either removes `HOLD`.
 - no scrub running — past `W` + 2 h, `zpool scrub -p` pauses it; it resumes
   on the next boot, so a long scrub spreads over several nights by itself
 - no SMART self-test running — past `W` + 2 h, let it abort; TrueNAS alerts on the
@@ -360,8 +372,9 @@ scrub and SMART long completes or pauses cleanly.
 Manual on purpose. The vault holds no write credential into the NAS, and that
 stays true.
 
-**Keep it awake first:** wake it, then `touch /mnt/vault/system/HOLD`. Remove the
-file when done — the next night's gate powers it off.
+**Keep it awake first:** wake it, then answer **Keep on** (or `touch
+/mnt/vault/system/HOLD` by hand). When done, `/off` — or leave it, and the next
+day's run asks again.
 
 | Lost | From | How |
 |---|---|---|
