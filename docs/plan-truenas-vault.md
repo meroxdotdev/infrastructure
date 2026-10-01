@@ -73,7 +73,8 @@ the nightly run happens next to whatever you are doing.
 | rsync pull, one day of delta | a few min — today's weekly pull of the same set is 45 s–3 min |
 | snapshot | seconds |
 | restic → Oracle | ~5-10 min, dominated by `restic check` |
-| **Daily total** | **~20-30 min, round to 40** |
+| **Boot budget** | **10 min** from `W` to the chain's start ping, whatever POST measures — a slow POST is not an alert |
+| **Daily total** | **~30-35 min; planned as 45** |
 | Monthly: scrub ~1.5 T on 12 disks | ~1.5-2 h |
 | Monthly: SMART long test, 600 GB 10k SAS, all disks in parallel | ~1.5 h, runs beside the scrub |
 
@@ -337,7 +338,7 @@ Manual wake: same command, or iDRAC → Power → On.
 
 | Remove | Add |
 |---|---|
-| Prometheus targets on `10.57.57.250` (node_exporter, pve-exporter pve-2) | healthchecks `vault-nightly`: period 1 day, grace 4 h |
+| Prometheus targets on `10.57.57.250` (node_exporter, pve-exporter pve-2) | healthchecks `vault-nightly`: period 1 day, grace 4 h; plus `vault-wake`: the chain's start ping, grace **15 min** past `W` — a vault that did not boot is known within the hour, not the next day |
 | healthchecks `pve-push-synology`, `nightly-checks`, `restic-push` (pve-2) | healthchecks `vault-offline`: pinged by the power-off gate — a vault still up at `W` + 4 h is a failure too |
 | UPS panels bound to pve-2 | TrueNAS → Telegram for pool/SMART/scrub |
 
