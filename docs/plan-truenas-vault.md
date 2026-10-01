@@ -68,7 +68,8 @@ the nightly run happens next to whatever you are doing.
 
 | Step | Time, steady state |
 |---|---|
-| POST | 4-6 min (R730xd, measured on every reboot so far) |
+| POST | 4-6 min measured on Proxmox; ~2-3 min after the fast-POST settings in step 1 |
+| TrueNAS boot, pool import, middleware ready | ~2-3 min |
 | rsync pull, one day of delta | a few min — today's weekly pull of the same set is 45 s–3 min |
 | snapshot | seconds |
 | restic → Oracle | ~5-10 min, dominated by `restic check` |
@@ -117,6 +118,14 @@ pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
    - Boot mode UEFI.
    - *AC Power Recovery* → **Off**. After a power cut the vault must wait for
      its schedule, not come up by itself.
+   - **Fast, unattended POST** — every minute of POST is a minute of loud fans:
+     - System Memory Testing → **Disabled**;
+     - *F1/F2 Prompt on Error* → **Disabled**, so a warning never leaves the
+       vault waiting at a prompt until the backstop;
+     - every NIC's boot protocol → **None** (no PXE attempt);
+     - boot sequence → the two boot SSDs only;
+     - iDRAC → Lifecycle Controller → *Collect System Inventory on Restart* →
+       **Disabled** (the largest single saving, ~1-2 min).
    - Leave the H730P in **HBA** personality — it already is, all 14 disks are
      JBOD. TrueNAS sees them directly; `smartctl` already reads the SAS disks
      through it today. The TrueNAS forum rates this controller in HBA mode as
@@ -230,9 +239,15 @@ workstation.
 ## 6 — The nightly chain
 
 One script, in git at `truenas/scripts/vault-nightly.sh`, copied to
-`/mnt/vault/system/scripts/`. Run from the TrueNAS UI (System → Advanced → Cron
-Jobs) as root, **`W` + 5 min, daily**. Not on the root filesystem — TrueNAS replaces
-it on every update.
+`/mnt/vault/system/scripts/`. Not on the root filesystem — TrueNAS replaces it
+on every update.
+
+**Started by the boot, not by the clock.** A POSTINIT init script (System →
+Advanced → Init/Shutdown Scripts) starts it in the background once the pool
+is imported. Boot time varies by minutes; a cron at a fixed offset would
+either wait for nothing or start before the pool is there. Every boot runs
+the chain — a manual power-on included, which is harmless: it is one more
+backup, and the gate below does not power off while you hold it.
 
 ```
 1. start ping → healthchecks.io
@@ -261,7 +276,7 @@ The **power-off gate** — shut down only when all of these hold:
 
 then `midclt call system.shutdown`.
 
-A second TrueNAS cron job at **`W` + 3 h** runs the gate alone — the backstop if
+A TrueNAS cron job at **`W` + 3 h** runs the gate alone — the backstop if
 step 2-8 hangs.
 
 Why a script and not TrueNAS's own *Rsync Task*: in module mode the task has
@@ -287,7 +302,7 @@ Do not depend on whatever TrueNAS ships.
 | Scrub `vault` | first Sunday, `W` + 10 min |
 | S.M.A.R.T. | SHORT weekly Sunday, LONG first Sunday, both `W` + 10 min |
 | Alert services | Telegram; level WARNING+ |
-| Init script | POSTINIT: `/mnt/vault/system/scripts/fan-control.sh` (from `proxmox/pve-2/scripts/`, `ipmitool` is in TrueNAS) |
+| Init scripts | POSTINIT: `fan-control.sh` first, then `vault-nightly.sh` in the background, both from `/mnt/vault/system/scripts/` (from `proxmox/pve-2/scripts/`, `ipmitool` is in TrueNAS) |
 | SSH service | on, key-only, root login off |
 | SMB | shares `personal` and `work` only, *Hosts Allow* = the workstation |
 | NFS / iSCSI / S3 | **off** |
@@ -392,7 +407,7 @@ Local time, Europe/Bucharest. UTC jobs are shown with their summer local time.
 | NAS weekly pull `pull-from-pve2.sh` | DSM Task Scheduler | — | **deleted** |
 | NAS RTC wake / scheduled poweroff | DSM | — | **deleted** |
 | **Vault wake** | — | pve-3 at `W` | **new** |
-| **Vault chain + gate** | — | vault `W` + 5 min, backstop `W` + 3 h | **new** |
+| **Vault chain + gate** | — | vault POSTINIT, backstop cron `W` + 3 h | **new** |
 
 Net: 14 scripts and 7 cron lines on pve-2, plus 2 DSM tasks, become **one chain
 script, one wake line, and built-in TrueNAS tasks**.
