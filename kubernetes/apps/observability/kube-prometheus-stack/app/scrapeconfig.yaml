@@ -87,32 +87,6 @@ spec:
       replacement: *name
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
-# pve-2 (R730xd), standalone host - queried through pve-exporter's blackbox-
-# style /pve endpoint. `module: default` picks the matching section in
-# pve-exporter-secret's pve.yml.
-apiVersion: monitoring.coreos.com/v1alpha1
-kind: ScrapeConfig
-metadata:
-  name: &name pve-2
-spec:
-  staticConfigs:
-    - targets:
-        - 10.57.57.250
-  metricsPath: /pve
-  params:
-    module: ["default"]
-  relabelings:
-    - sourceLabels: [__address__]
-      targetLabel: __param_target
-    - sourceLabels: [__param_target]
-      targetLabel: instance
-    - targetLabel: __address__
-      replacement: pve-exporter.observability.svc.cluster.local:9221
-    - action: replace
-      targetLabel: job
-      replacement: *name
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
 # pve-1 (Beelink GTi13 Ultra). Added 2026-09-11 — until then pve-exporter
 # scraped only pve-2, so PveNodeDown and friends covered one host out of
 # three while all three carry a control plane (docs/architecture.md).
@@ -217,8 +191,6 @@ spec:
   staticConfigs:
     - targets: ["10.57.57.254:9100"]
       labels: { host: pve-1 }
-    - targets: ["10.57.57.250:9100"]
-      labels: { host: pve-2 }
     - targets: ["10.57.57.253:9100"]
       labels: { host: pve-3 }
   metricsPath: /metrics

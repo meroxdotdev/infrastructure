@@ -149,7 +149,7 @@ data:
         - Hosts:
             icon: mdi-server
             description: Proxmox guests and uptime
-            href: https://10.57.57.250:8006
+            href: https://dc.merox.dev
             widget:
               type: prometheusmetric
               url: http://kube-prometheus-stack-prometheus.observability:9090
@@ -163,8 +163,10 @@ data:
                   query: count(pve_up{id=~"(qemu|lxc)/.*"} == 0) or vector(0)
                   format:
                     type: number
-                - label: pve-2 uptime
-                  query: max(pve_uptime_seconds{id="node/pve-2"})
+                # The most recently rebooted host. A small number nobody
+                # planned is the thing to look into.
+                - label: Shortest uptime
+                  query: min(pve_uptime_seconds{id=~"node/.*"})
                   format:
                     type: duration
 
@@ -178,9 +180,9 @@ data:
         - Jellyfin:
             icon: jellyfin.png
             href: https://jellyfin.k8s.merox.dev
-        - Proxmox pve-2:
+        - Proxmox:
             icon: proxmox.png
-            href: https://10.57.57.250:8006
+            href: https://dc.merox.dev
         - Public dashboard:
             icon: mdi-earth
             href: https://homepage.cloud.merox.dev
