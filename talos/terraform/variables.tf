@@ -17,7 +17,7 @@ variable "proxmox_token_secret" {
 variable "proxmox_nodes" {
   description = "Proxmox node names to distribute VMs across."
   type        = list(string)
-  default     = ["pve-2", "pve-2", "pve-2"]
+  default     = ["pve-1"]
 }
 
 variable "talos_version" {
@@ -51,7 +51,7 @@ variable "network_bridge" {
 }
 
 variable "vmid_start" {
-  description = "Starting VMID for DR nodes (prod uses 800-805 on pve-2 and 810 on pve-1, DR uses 820+)"
+  description = "Starting VMID for DR nodes (prod uses 810-812, one per host; DR uses 820+)"
   type        = number
   default     = 820
 }
@@ -77,13 +77,13 @@ variable "vm_disk_gb" {
 variable "node_macs" {
   description = "Fixed MAC addresses for DR VMs — must match talconfig.yaml hardwareAddr. Set to prod MACs so DHCP gives same IPs and talconfig needs no patching."
   type        = list(string)
-  default     = ["bc:24:11:a7:ba:13", "bc:24:11:a5:4b:9e", "bc:24:11:96:87:40"]
+  default     = ["bc:24:11:00:57:81"]
 }
 
 variable "node_ips" {
-  description = "Static IPs for the 3 DR nodes — use prod IPs when prod cluster is stopped"
+  description = "Static IPs for the DR nodes — prod IPs, since prod is gone or stopped"
   type        = list(string)
-  default     = ["10.57.57.80", "10.57.57.82", "10.57.57.84"]
+  default     = ["10.57.57.80"]
 }
 
 variable "node_vip" {

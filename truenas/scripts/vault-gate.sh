@@ -1,7 +1,7 @@
 #!/bin/bash
 # The power-off gate. Called at the end of every vault-nightly.sh run, and by a
 # cron job at W + 3 h as the backstop for a run that hung. See
-# docs/plan-truenas-vault.md §6.
+# truenas/RUNBOOK.md.
 #
 # It powers the vault off unless one of these holds:
 #   - HOLD exists in vault/system. "Keep on" on Telegram writes it with

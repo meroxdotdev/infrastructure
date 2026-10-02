@@ -7,11 +7,12 @@ Restore the full K8s cluster from Longhorn S3 backups onto fresh Talos nodes.
 - **In a hurry:** [`docs/dr-quickstart.md`](docs/dr-quickstart.md) — same
   procedure, commands only.
 - **Rebuilding a host instead of the cluster:**
-  [pve-2](proxmox/pve-2/REINSTALL.md) · [pfSense](pfsense/REINSTALL.md)
+  [vault](truenas/RUNBOOK.md) · [pfSense](pfsense/REINSTALL.md) ·
+  [Synology](synology/README.md)
 
 **Tested end-to-end:** 2026-08-29 on **pve-1**, a different physical host —
 71 min of prod downtime, prod VM stopped and restarted clean afterward.
-Previously 2026-08-03 on pve-2/R730xd.
+Previously 2026-08-03 on the R730xd, which no longer runs Proxmox.
 
 ## Which host to target
 
@@ -19,10 +20,13 @@ Three nodes since 2026-09-04, one per host: VM 810 on `pve-1`, 811 on `pve-2`,
 812 on `pve-3`. Losing one leaves a quorum, so a single dead host is a
 reschedule, not a DR event. This runbook is for losing the cluster.
 
-| Target | Use it to answer | Cost |
+| Target | When | Cost |
 |---|---|---|
-| `pve-2` (R730xd) | "the cluster is gone, rebuild it" | None. 251 GB RAM, DR VMIDs start at 820 so they cannot collide |
-| `pve-1` (Beelink) | "pve-1 died, can we recover onto it after a rebuild?" | The live node here stops first. Whole homelab down for the drill |
+| `pve-1` (Beelink, 62 GB) | the default: the only host with RAM for a node that carries everything | VM 810 stops first. A drill takes the whole homelab down |
+| `pve-2` / `pve-3` (OptiPlex, 32 GB) | `pve-1` is the host that died | 32 GB leaves pods `Pending`; restore the core first and the rest when `pve-1` is back |
+
+The R730xd was the drill target until 2026-10-02 (251 GB, no live node on it).
+It is now the TrueNAS vault and runs no Proxmox.
 
 **Sizing:** a DR VM that carries the whole workload set needs
 `vm_memory_mb = 45056`, `vm_cores = 14`. 32 GiB leaves pods `Pending` on
@@ -57,7 +61,7 @@ VolumeSnapshots.
 
 The cost of that design is bookkeeping: a volume must be labelled for the
 nightly job, listed in `restore-all-volumes`, and given a PV in `pvs.yaml`.
-Drift between those three silently discards data — it cost the entire Immich
+Drift between those three silently discards data — it once cost a whole photo
 photo library. All three are now cross-checked automatically:
 `dr-preflight.sh` compares labels against the restore list,
 `unbind-premature-dynamic-pvcs` derives its work from `pvs.yaml`, and
@@ -91,9 +95,9 @@ photo library. All three are now cross-checked automatically:
 > # fill in proxmox_token_id and proxmox_token_secret
 > ```
 >
-> **Storage layout on pve-2:** `local-zfs` for `disk_storage`, `media-isos`
-> for `iso_storage` — the `local` storage there only has content=snippets,
-> no iso support. Working DR config: `proxmox_nodes = ["pve-2", "pve-2", "pve-2"]`.
+> **Storage layout on pve-1:** `cluster-storage` (LVM-thin) for
+> `disk_storage`, `local-data` for `iso_storage` — `local` is disabled there.
+> The example file is already filled in for it.
 
 ```bash
 task dr:create-vms          # one VM per MAC in terraform.tfvars
@@ -190,8 +194,8 @@ task dr:destroy-vms
 
 # Restart the prod nodes — or `task dr:restore-prod`, which does this and
 # clears the pods orphaned by the shutdown.
-# Three nodes since 2026-09-04, one per host: VM 810 on pve-1, 811 on pve-2,
-# 812 on pve-3. See talos/THREE-NODE.md.
+# Three nodes since 2026-09-04, one per host: VM 810 on pve-1, 811 on pve-2
+# (OptiPlex), 812 on pve-3. See talos/THREE-NODE.md.
 ```
 
 ---
@@ -209,27 +213,20 @@ for two days.
 
 ## Backup schedule
 
-The whole flow, and why it has the shape it has:
-[docs/plan-nas-hot-r730-cold.md](docs/plan-nas-hot-r730-cold.md). Short
-version, as of 2026-09-30:
-
 | Source | Lands on the NAS, `backups/` | When (local) |
 |---|---|---|
-| Longhorn, 10 volumes | `longhorn/` via Garage on pve-3 | 02:50 |
+| Longhorn, 7 volumes | `longhorn/` via Garage on pve-3 | 02:50 |
 | Garage metadata snapshots | `longhorn/meta-snapshots/` | every 6 h |
 | pfSense config | `pfsense/config.xml.gz` | 03:00 |
 | VPS services | `oracle-vps/` | 02:40 |
 
-The NAS keeps the latest version only. **Until phase 7** of the plan the
-R730xd is still the off-site path: pfSense and the VPS also send it a
-dated copy, it reads `longhorn/` from the NAS over a read-only NFS mount, and
-its nightly restic run pushes all of it to Oracle (append-only). After phase
-7 the vault replaces the R730xd in that role.
+The NAS keeps the latest version only. History is the vault's: it pulls
+`backups/` and `homes/` once a day, snapshots them (30 daily, 12 monthly) and
+pushes restic to Oracle, append-only — [truenas/README.md](truenas/README.md).
 
-Not backed up here, accepted as lost in DR: observability history, caches,
-and the film library (tier 3). Photos and documents are not in the cluster:
-they live on the NAS (Synology Photos, Synology Drive) and reach the vault and
-Oracle from there.
+Not backed up, accepted as lost in DR: observability history, caches, and the
+film library. Photos and documents are not in the cluster: they live on the
+NAS (Synology Photos, Synology Drive) and reach the vault and Oracle from there.
 
 ```bash
 # Last backup of each volume
@@ -248,7 +245,7 @@ cannot be read without the metadata — that is why the snapshots exist.
 |---|---|
 | pve-3 only | NAS: `data/` + newest meta snapshot |
 | the NAS only | Longhorn replicas are intact; nothing to restore. Rebuild the NAS, let the next backup run |
-| NAS and pve-3 | Oracle: restic path `/mnt/pve/nas-backups/longhorn` (after phase 7: the vault's snapshots first, then Oracle) |
+| NAS and pve-3 | the vault: `backup/nas/backups/longhorn/` in its snapshots; if the vault is gone too, Oracle (restic, host `vault`) |
 
 **Rebuild Garage on the recovered tree:**
 
@@ -272,8 +269,8 @@ task longhorn:restore
 ```
 
 Reading the restic repository needs no host from this site: on the VPS, as a
-sudoer, with the repo password from the password manager — see
-[proxmox/pve-2/README.md](proxmox/pve-2/README.md#pve-2--oracle-restic).
+sudoer, the same container the retention job runs —
+`docker run --rm -u 999:987 -v /srv/restic-repo/data:/repo -v /etc/restic/repo-password:/pw:ro -e RESTIC_REPOSITORY=/repo -e RESTIC_PASSWORD_FILE=/pw restic/restic:0.18.0 snapshots`.
 
 Drilled: a restore from the new store into a scratch volume, 2026-09-30
 (Prowlarr, config and SQLite database intact). **Not yet drilled:** rebuilding

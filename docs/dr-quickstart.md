@@ -14,9 +14,9 @@ Proxmox host, this repo. On macOS once:
 machine you rebuild onto depends on which one you still have. Set it once:
 
 ```bash
-PVE=10.57.57.254   # pve-1, Beelink — the usual target
-# PVE=10.57.57.250 # pve-2, R730xd — if pve-1 is what died
-# PVE=10.57.57.253 # pve-3, OptiPlex — 32 GB, tight but it boots
+PVE=10.57.57.254   # pve-1, Beelink — the usual target, 62 GB
+# PVE=10.57.57.252 # pve-2, OptiPlex — if pve-1 is what died: 32 GB, tight but it boots
+# PVE=10.57.57.253 # pve-3, OptiPlex — the same
 ```
 
 This used to be hardcoded to pve-1, which quietly assumed the one machine

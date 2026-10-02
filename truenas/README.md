@@ -2,8 +2,8 @@
 
 The offline copy. Off ~22 h a day; pve-3 wakes it at `W`, it pulls from the
 NAS, snapshots, pushes to Oracle, asks on Telegram, and powers itself off.
-Built 2026-10-02 per [docs/plan-truenas-vault.md](../docs/plan-truenas-vault.md),
-which holds the reasoning; this page is what is deployed.
+Built 2026-10-02. This page is what is deployed; [RUNBOOK.md](RUNBOOK.md)
+holds the reasoning and the rebuild.
 
 | | |
 |---|---|
@@ -11,7 +11,7 @@ which holds the reasoning; this page is what is deployed.
 | Address | `vault`, `10.57.57.250`, port `eno4`; iDRAC `10.57.57.249` |
 | Boot | `boot-pool`, mirror of two Intel D3-S4510 960 GB |
 | Pool | `vault`, one RAIDZ3 of 12× 600 GB SAS, encrypted, auto-unlock |
-| Access | SSH key-only as `truenas_admin`; web UI and SSH from the workstation only |
+| Access | SSH key-only as `truenas_admin`; SMB share `files` for `merox` only, from the workstation |
 
 ## Datasets
 

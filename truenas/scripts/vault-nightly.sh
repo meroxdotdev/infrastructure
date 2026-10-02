@@ -1,6 +1,6 @@
 #!/bin/bash
 # The vault's daily run: pull from the NAS, snapshot, push to Oracle, verify,
-# then hand over to the power-off gate. See docs/plan-truenas-vault.md §6.
+# then hand over to the power-off gate. See truenas/RUNBOOK.md.
 #
 # Two triggers, one run per day. vault-init.sh starts it at boot (the normal
 # case: pve-3 woke the vault at W). A cron job at W + 10 min starts it too, for
