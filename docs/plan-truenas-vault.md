@@ -151,8 +151,9 @@ pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
 `media` pool exists elsewhere: the dated pfSense/VPS history and `tools/n8n` in
 Oracle's restic snapshot of 2026-09-30, the three films on the NAS.
 
-1. **SMART long test on all 12 SAS disks first** (Storage → Disks → select all →
-   Manual Test → LONG, in parallel, ~1.5 h). Any disk with a failed test,
+1. **SMART long test on all 12 SAS disks first**, in parallel, ~70 min.
+   TrueNAS 25.10 removed SMART tests from the UI; System → Shell:
+   `for d in $(lsblk -dno NAME,MODEL | awk '/AL14SEB|HUC1018/{print $1}'); do sudo smartctl -t long /dev/$d; done`. Any disk with a failed test,
    pending or reallocated sectors, or grown defects stays out of the pool.
 2. Storage → Create Pool `vault`:
    - Data: **one RAIDZ3 vdev of 12 disks** (11× Toshiba AL14SEB060N, 1× HGST
@@ -314,7 +315,7 @@ Do not depend on whatever TrueNAS ships.
 |---|---|
 | Periodic snapshot × 5 | per the dataset table; schedule **disabled**, run by the chain (step 5); retention by TrueNAS |
 | Scrub `vault` | first Sunday, `W` + 10 min |
-| S.M.A.R.T. | SHORT weekly Sunday, LONG first Sunday, both `W` + 10 min |
+| S.M.A.R.T. | Not in the 25.10 UI any more. Cron job (System → Advanced → Cron Jobs), first Sunday `W` + 10 min: `midclt call disk.smart_test LONG '["*"]'` — the form TrueNAS's own migration of old SMART tasks produces |
 | Alert services | Telegram; level WARNING+ |
 | Init scripts | POSTINIT: `fan-control.sh` first, then `vault-nightly.sh` in the background, both from `/mnt/vault/system/scripts/` (from `proxmox/pve-2/scripts/`, `ipmitool` is in TrueNAS) |
 | SSH service | on, key-only, root login off |
