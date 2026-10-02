@@ -1,0 +1,16 @@
+# restic --exclude-file for vault-nightly.sh. What stays on the vault only.
+
+# Credentials: in the password manager, never off-site in the same place as
+# the data they unlock.
+/mnt/vault/system/secrets
+
+# Oracle has ~77 GiB free. Large and replaceable: VirtualBox images, films,
+# VM disks under personal/ and work/.
+/mnt/vault/backup/nas/homes/merox/VMs
+/mnt/vault/personal/Movies
+*.qcow2
+*.vmdk
+*.vdi
+
+# Run state: locks, the drill's scratch directory.
+/mnt/vault/system/run

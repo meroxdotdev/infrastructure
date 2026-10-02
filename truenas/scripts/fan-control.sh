@@ -1,4 +1,10 @@
 #!/bin/bash
+# On the vault since 2026-10-02: started in the background by vault-init.sh at
+# boot, so the fans drop to the floor minutes after POST instead of when the
+# nightly run ends. The R730xd no longer carries a Kubernetes VM, so the CPU
+# baseline the ladder below was tuned against is lower; the ladder is kept as
+# it was until it has been re-measured on TrueNAS.
+#
 # Hold the chassis fans near their floor while the box is idle, and hand
 # cooling back to iDRAC before that stops being safe.
 #
@@ -56,13 +62,14 @@
 # to automatic on its own; the loop reapplies within one cycle.
 #
 # Usage:
-#   fan-control.sh            # the loop, run by fan-control.service
+#   fan-control.sh            # the loop, started by vault-init.sh
 #   fan-control.sh --status   # sensors + live RPM. Stateless: it shows what a
 #                             # cold start would pick, not the running rung.
 #                             # The journal has the transitions.
 #   fan-control.sh --restore  # hand cooling back to iDRAC and exit
 #
-# TESTED ON: R730xd, iDRAC8 fw 2.84, PERC H730P, Proxmox 9. The raw commands
+# TESTED ON: R730xd, iDRAC8 fw 2.84, PERC H730P, Proxmox 9; TrueNAS 25.10
+# ships both ipmitool and storcli. The raw commands
 # exist on iDRAC 6/7/8 and iDRAC 9 up to 3.30.30.30; Dell removed them from
 # 3.34.34.34 on, so this does not carry to 14G.
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

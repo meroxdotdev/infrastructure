@@ -1,0 +1,10 @@
+# /etc/cron.d/vault-wake on pve-3. Wakes the vault (R730xd) at W through its
+# iDRAC, as the Operator user vaultwake: it can power on and read status, and
+# nothing else. `chassis power on` on a running host is a no-op, so a vault
+# kept on is never disturbed.
+#
+# M H is a placeholder: W stays out of this public repository. The real line
+# lives only on pve-3; keep it equal to W in the vault's vault.env.
+# -L OPERATOR: ipmitool asks for an Administrator session by default, which
+# iDRAC refuses to an Operator user.
+M H * * *  root  ipmitool -I lanplus -H 10.57.57.249 -U vaultwake -L OPERATOR -f /root/.ipmi-vaultwake chassis power on >/dev/null

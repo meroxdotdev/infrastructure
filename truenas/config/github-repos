@@ -1,0 +1,24 @@
+# git clone --mirror sources for vault-nightly.sh, one URL per line.
+# Own repositories only; forks are someone else's to keep. Public over
+# HTTPS, no credential. Private repositories would need a read-only token.
+https://github.com/meroxdotdev/archived.git
+https://github.com/meroxdotdev/astro-blog-starter-template.git
+https://github.com/meroxdotdev/beta.git
+https://github.com/meroxdotdev/cloudlab-merox.git
+https://github.com/meroxdotdev/develope.ro.git
+https://github.com/meroxdotdev/devx.git
+https://github.com/meroxdotdev/docs.merox.dev.git
+https://github.com/meroxdotdev/download.plative.ro.git
+https://github.com/meroxdotdev/homelab-as-code.git
+https://github.com/meroxdotdev/infrastructure.git
+https://github.com/meroxdotdev/kubernetes-one.git
+https://github.com/meroxdotdev/merox-agent.git
+https://github.com/meroxdotdev/merox-erudite.git
+https://github.com/meroxdotdev/merox.dev.git
+https://github.com/meroxdotdev/merox.docs.git
+https://github.com/meroxdotdev/meroxdotdev.github.io.git
+https://github.com/meroxdotdev/nixos.git
+https://github.com/meroxdotdev/site.git
+https://github.com/meroxdotdev/test.git
+https://github.com/meroxdotdev/tools.merox.dev.git
+https://github.com/meroxdotdev/vite-react-template.git

@@ -30,7 +30,7 @@ running copy, these are the reviewable ones:
 | [`etc/network-interfaces`](etc/network-interfaces) | bridges |
 | [`etc/authorized_keys`](etc/authorized_keys) | forced commands (pubkeys redacted) |
 | [`etc/jobs.cfg`](etc/jobs.cfg) | PVE job scheduler — no vzdump jobs; nothing on this host is dumped |
-| [`etc/fan-control.service`](etc/fan-control.service) | runs [`scripts/fan-control.sh`](scripts/fan-control.sh) — the chassis fans |
+| [`etc/fan-control.service`](etc/fan-control.service) | runs [`scripts/fan-control.sh`](../../truenas/scripts/fan-control.sh) — the chassis fans |
 | [`nextcloud/`](nextcloud/) | the Nextcloud VM: compose, firewall rules, runbook |
 
 Neighbours: [pfSense](../../pfsense/REINSTALL.md)
@@ -85,7 +85,7 @@ push and went out the following night instead.
 
 ## Fan control
 
-The chassis fans run on [`scripts/fan-control.sh`](scripts/fan-control.sh)
+The chassis fans run on [`scripts/fan-control.sh`](../../truenas/scripts/fan-control.sh)
 under `fan-control.service`, not on iDRAC. iDRAC has no quieter setting left —
 every thermal knob is at its minimum-cooling position and it still asks for
 ~3800 RPM with the pool parked. The floor is 1680 RPM, about -18 dB. Numbers
