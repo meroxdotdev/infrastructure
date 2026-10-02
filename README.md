@@ -47,6 +47,7 @@ TrueNAS sends disk and pool alerts to Telegram.
 | Homepage | inside.merox.dev — public contents page for the [homelab tour](https://merox.dev/blog/homelab-tour) |
 | Portainer | portainer.cloud.merox.dev |
 | restic rest-server | :8000, append-only |
+| Syncthing | encrypted member of the [Sync folder](docs/sync.md) |
 
 **Kubernetes** — `kubernetes/` → Flux
 
@@ -54,6 +55,7 @@ TrueNAS sends disk and pool alerts to Telegram.
 |---|---|
 | Jellyfin · Jellyseerr · Radarr · Sonarr · Prowlarr · qBittorrent | default |
 | n8n — one workflow, the news digest | default |
+| Syncthing — the 24/7 [Sync folder](docs/sync.md) | default |
 | Headlamp · Authentik outpost | default |
 | Homepage — `home.k8s.merox.dev`, the internal dashboard | default |
 | Prometheus · Grafana · Loki · Alloy · Alertmanager | observability |
