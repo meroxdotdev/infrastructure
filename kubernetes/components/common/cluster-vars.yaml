@@ -21,9 +21,8 @@ data:
   # -- Cilium LoadBalancer IPs (must be within the pool in cilium/app/networks.yaml)
   # LB_IP_GATEWAY_INTERNAL = cluster.yaml: cluster_gateway_addr
   LB_IP_GATEWAY_INTERNAL: "10.57.57.101"
-  # LB_IP_QBITTORRENT / LB_IP_PORTAINER / LB_IP_NETBOOTXYZ — app-specific, not in cluster.yaml
+  # LB_IP_QBITTORRENT / LB_IP_NETBOOTXYZ — app-specific, not in cluster.yaml
   LB_IP_QBITTORRENT: "10.57.57.102"
-  LB_IP_PORTAINER: "10.57.57.103"
   LB_IP_NETBOOTXYZ: "10.57.57.104"
   # LB_IP_JELLYFIN — dedicated IP for restricted Tailscale ACL access (the
   # guest device reaches Jellyfin only), separate from the
