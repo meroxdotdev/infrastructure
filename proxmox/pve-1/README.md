@@ -194,6 +194,16 @@ upsc ups@localhost ups.status     # expect OL
 upsc -c ups                       # connected secondaries
 ```
 
+**Settings stored in the UPS itself**, not in any file here:
+
+| Setting | Value | Why |
+|---|---|---|
+| `input.transfer.low` | 175 V (was 167; 175 is this model's ceiling) | 2026-10-02: a 5 s outage rebooted the NAS and pve-2 while pve-1 and pve-3 rode through. A quick battery test the same day passed under load with nothing rebooting, so the battery was ruled out; the likely cause is the sag before the cut, which the UPS let through down to 167 V. |
+
+Neither the test nor the setting needs a standing admin user. Add one to
+`upsd.users` for the minute it takes (`instcmds = test.battery.start.quick` or
+`actions = SET`), use it with `upscmd` / `upsrw`, then restore the file.
+
 The `nut-common-tmpfiles.conf` warning in `journalctl -u nut-monitor` is a
 Debian packaging artefact and is harmless.
 
