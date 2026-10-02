@@ -16,7 +16,7 @@ IPs and MACs stay. This page is for when they change.
 | Portainer EE license | Portainer account |
 | Hetzner API token | console.hetzner.cloud → Security → API Tokens |
 | DR SSH key | `~/.ssh/cloudlab_dr_test{,.pub}` — `ssh-keygen -t ed25519 -f ~/.ssh/cloudlab_dr_test -N ""` |
-| R730xd push key | `vault_vps_backup_ssh_key`; public half authorised on `root@pve-2` |
+| NAS push key | `vault_vps_backup_ssh_key`; public half in the NAS user `vps`'s `authorized_keys` |
 
 `vps/terraform/terraform.tfvars` is gitignored — recreate it:
 
@@ -41,7 +41,7 @@ cd vps/
 make vault-edit          # vault_tailscale_auth_key
 make terraform-init      # first time only
 make dr-full             # preflight + terraform + Ansible
-make dr-restore          # pulls service data back from pve-2
+make dr-restore          # pulls service data back from the NAS
 ```
 
 Terraform provisions the server; Ansible runs from your machine over SSH.
@@ -100,7 +100,6 @@ Longhorn backup target. What they cannot check:
 - [ ] Portainer admin password set
 - [ ] Guacamole default credentials changed
 - [ ] Joplin clients syncing
-- [ ] Garage S3 credentials saved to vault
 - [ ] Gateway reachable: `nmap -p 443 <LB_IP_GATEWAY_INTERNAL>`
 - [ ] Old server decommissioned, Tailscale node removed
 

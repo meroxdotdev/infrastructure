@@ -109,7 +109,7 @@ services:
       POSTGRES_DB: joplin
       # postgres 18+ refuses to initialize directly at a mounted
       # /var/lib/postgresql/data (pg_ctlcluster-style layout expected) -
-      # point PGDATA at a subdirectory instead, same fix as immich's postgres.
+      # point PGDATA at a subdirectory instead.
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - joplin_db_data:/var/lib/postgresql/data

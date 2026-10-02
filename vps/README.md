@@ -25,11 +25,10 @@ All web traffic goes through Cloudflare Tunnel — no open inbound ports.
 Its hostname routing table lives in the Cloudflare dashboard, not git — see
 [roles/cloudflared_setup/README.md](roles/cloudflared_setup/README.md).
 
-Garage S3 doesn't run on this VPS at all — it's an independent LXC on R730xd
-(`garage-setup.yml`, see
-[proxmox/pve-2/README.md](../proxmox/pve-2/README.md#garage-longhorns-backup-target)),
-untouched by anything in this directory. See
-[DR.md](../DR.md#r730xd--garage-total-loss-fallback) for its own recovery path.
+Garage S3 doesn't run on this VPS at all — it's CT 103 on pve-3, deployed by
+`garage-setup.yml` from here, with its data on the NAS. See
+[DR.md](../DR.md#longhorn-backup-store--total-loss-fallback) for its recovery
+path.
 
 The root `docker-compose.yml` + Homepage config (`config/`) used to live in a
 separate repo (`meroxdotdev/cloudlab-merox`, retired 2026-07-25) — now under
@@ -72,8 +71,8 @@ make help               # everything else
 updates the inventory with the new IP (and drops `ansible_connection=local`),
 waits for cloud-init, then runs the full deploy. Cloudflare Tunnel, Tailscale
 and Let's Encrypt reconnect automatically with the existing tokens. Afterwards
-restore data from R730xd: `make dr-restore` runs the full restore sequence
-(pull from R730xd, DB restore, extras restore) non-interactively — see
+restore data from the NAS: `make dr-restore` runs the full restore sequence
+(pull from the NAS, DB restore, extras restore) non-interactively — see
 [DEPLOY.md Phase 1](../DEPLOY.md) and [roles/vps_backup/README.md](roles/vps_backup/README.md).
 
 ## Conventions & layout

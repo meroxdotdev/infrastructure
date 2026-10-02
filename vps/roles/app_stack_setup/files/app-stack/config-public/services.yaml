@@ -34,10 +34,10 @@
         href: https://merox.dev/blog/proxmox-gpu-passthrough
         description: Iris Xe passed through. The only GPU
 
-    - pve-2 — Dell R730xd:
+    - pve-2 — OptiPlex 3050:
         icon: proxmox.png
-        href: https://merox.dev/blog/sas-disk-spindown
-        description: The backup vault
+        href: https://merox.dev/blog/homelab-tour#compute
+        description: Second etcd vote, power-loss-protected SSD
 
     - pve-3 — OptiPlex 3050:
         icon: proxmox.png
@@ -45,10 +45,15 @@
         description: Third etcd vote, power-loss-protected SSD
 
 - Storage:
-    - ZFS:
-        icon: mdi-harddisk
-        href: https://merox.dev/blog/sas-disk-spindown
-        description: Three pools, ~6 TB. Twelve SAS disks park when idle
+    - Synology NAS:
+        icon: synology.png
+        href: https://merox.dev/blog/homelab-tour
+        description: The live store — media, documents, photos, backups
+
+    - Vault — Dell R730xd:
+        icon: truenas.png
+        href: https://merox.dev/blog/homelab-tour
+        description: TrueNAS, RAIDZ3. Off except ten minutes a day
 
     - Longhorn:
         icon: longhorn.png
@@ -154,17 +159,17 @@
     - Longhorn → Garage:
         icon: longhorn.png
         href: https://merox.dev/blog/longhorn-backup-restore
-        description: Nightly, cluster volumes to S3 on pve-2
+        description: Nightly, cluster volumes to S3, stored on the NAS
 
-    - pve-2 → Oracle:
+    - NAS → vault:
+        icon: truenas.png
+        href: https://merox.dev/blog/3-2-1-backup-strategy
+        description: Daily read-only pull, ZFS snapshots for a year
+
+    - vault → Oracle:
         icon: mdi-backup-restore
         href: https://merox.dev/blog/synology-backup-oracle-cloud
-        description: Nightly restic, append-only. Off-site copy
-
-    - pve-2 → Synology:
-        icon: synology.png
-        href: https://merox.dev/blog/3-2-1-backup-strategy
-        description: Weekly pull, read-only. Asleep the rest of the week
+        description: Daily restic, append-only. Off-site copy
 
     - healthchecks.io:
         icon: mdi-heart-pulse

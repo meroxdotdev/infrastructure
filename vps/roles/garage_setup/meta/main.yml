@@ -1,7 +1,7 @@
 ---
 # traefik_setup creates the shared "network-cloud-merox" Docker network this
 # container attaches to. Only needed when this instance publishes through it
-# (garage_webui_enabled) — LAN-only deployments (e.g. the R730xd LXC) skip it
+# (garage_webui_enabled) — LAN-only deployments (CT 103 on pve-3) skip it
 # entirely.
 dependencies:
   - role: traefik_setup

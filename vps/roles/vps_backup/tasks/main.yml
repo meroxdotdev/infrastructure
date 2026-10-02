@@ -1,34 +1,6 @@
 ---
 # VPS backup plumbing: local staging of service state not covered by
-# Ansible/git, plus the nightly off-site sync to the Synology NAS.
-# Note: the matching password file on the NAS
-# (/var/services/homes/admin/.vps-rsync.pass) is NOT managed here — it's
-# provisioned once, manually (see role README).
-
-# The Synology HyperBackup leg (Synology -> this VPS's rsync daemon,
-# module "synology_backup") was retired 2026-07-26 - the offsite-to-Oracle
-# job it did is now covered end-to-end by R730xd's own restic-push-oracle.sh
-# (proven via a real restore drill, not just a successful push). rsyncd had
-# no other purpose on this VPS, so it stops here rather than leaving a
-# server-mode rsync daemon running for nothing.
-- name: Stop and disable rsync daemon (no longer needed post-HyperBackup)
-  service:
-    name: rsync
-    state: stopped
-    enabled: false
-  become: yes
-  failed_when: false
-  tags: backup
-
-- name: Remove rsyncd config and secrets (HyperBackup retired)
-  file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /etc/rsyncd.conf
-    - /etc/rsyncd.secrets
-  become: yes
-  tags: backup
+# Ansible/git, plus the nightly push to the NAS (DSM user `vps`, see README).
 
 - name: Ensure backup root exists
   file:

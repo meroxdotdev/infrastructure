@@ -2,7 +2,7 @@
 # Nightly pfSense config backup, run from the Cron package at 03:00.
 #
 # The NAS keeps the latest copy only; history is the vault's job (daily ZFS
-# snapshots) — see docs/plan-nas-hot-r730-cold.md. The upload is atomic: a
+# snapshots) — see docs/architecture.md. The upload is atomic: a
 # .part file renamed over the old one, so an interrupted run never leaves a
 # truncated config.xml.gz where a good one was.
 #

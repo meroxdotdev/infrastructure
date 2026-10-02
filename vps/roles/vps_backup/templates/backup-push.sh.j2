@@ -2,7 +2,7 @@
 # Push the VPS service backups (Authentik, Joplin, Guacamole, Traefik, Pi-hole,
 # Homepage, Portainer) to the NAS, the landing spot every producer writes to.
 # The NAS keeps the latest copy; history is the vault's job — see
-# docs/plan-nas-hot-r730-cold.md.
+# docs/architecture.md.
 #
 # DSM user `vps`: not an administrator, rsync + SFTP only, write access to
 # backups/ only, key accepted only from 10.57.57.1 (the VPS arrives through

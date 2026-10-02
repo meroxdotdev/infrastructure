@@ -15,12 +15,12 @@ cluster:
       # etcd's own tuning guide describes this failure exactly: "disk activity
       # from other processes may cause long fsync latencies. The upshot is etcd
       # may miss heartbeats, causing request timeouts and temporary leader
-      # loss." That is this cluster, on kubernetes-2 in particular: VM 811's
-      # zvol lives on rpool, whose two S4510s share the H730P with the twelve
-      # SAS disks sas-spindown.sh parks. A wake answers sense 2/04/01,
-      # megaraid_sas turns that into a blocking AEN poll, and every other queue
-      # on the controller waits behind it. The mechanism is documented at
-      # length in sas-spindown.sh's header.
+      # loss." That was this cluster while kubernetes-2 ran on the R730xd (until
+      # 2026-09-29): its disk shared the H730P with twelve SAS disks that were
+      # spun down, and every wake stalled the whole controller. Every member
+      # now has an SSD of its own, so these values carry margin the cluster no
+      # longer needs; returning to the defaults is a deliberate, watched change
+      # (EtcdSlowFsyncBurst), not one to make in passing.
       #
       # Measured over 2026-09-04..07, all three nodes: 346 WAL fsyncs over
       # 512ms, 38 over 1s, 4 over 2s, none over 4s. The 38 are the false

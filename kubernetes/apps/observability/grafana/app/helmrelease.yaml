@@ -210,9 +210,9 @@ spec:
           revision: 5
           datasource:
             - { name: DS_PROMETHEUS, value: Prometheus }
-        # Disabled - smartctl-exporter isn't deployed anywhere in this
-        # cluster (disk health is watched by proxmox/pve-2/scripts/
-        # sas-health-check.sh on pve-2 instead).
+        # Disabled - smartctl-exporter isn't deployed anywhere. The vault's
+        # disks report through TrueNAS alerts to Telegram; the hosts' SSDs
+        # through node_exporter's smartmon/nvme collectors.
         # smartctl-exporter:
         #   # renovate: depName="SMARTctl Exporter Dashboard"
         #   gnetId: 22604

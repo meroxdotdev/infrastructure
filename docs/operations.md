@@ -65,8 +65,7 @@ workload measures about 2.4 cores and 12 GiB, against three control planes
 that already accept pods. This runbook is kept because the traps below cost a
 day to find, not because adding a worker is on the roadmap.
 
-Worked example: `kubernetes-worker-1`, node address 10.57.57.84 — the address
-is already permitted in `pve-2`'s NFS exports. Pick a free VMID on whichever
+Worked example: `kubernetes-worker-1`, node address 10.57.57.84. Pick a free VMID on whichever
 host has room; 810, 811 and 812 are `kubernetes-1`, `-2` and `-3`, and .80,
 .82 and .83 are the live nodes.
 
@@ -254,13 +253,12 @@ needed on the Kubernetes side.
 
 #### NFS: the export ACL is per host
 
-`/etc/exports` on pve-2 lists client IPs one by one, not the subnet — see the
-comment at the top of
-[../proxmox/pve-2/etc/exports](../proxmox/pve-2/etc/exports). A new node is
-not on that list, so every inline NFS mount (Jellyfin, qbittorrent, radarr)
-fails to mount on it with a permission error that
-looks nothing like an ACL problem. Add the node's address to each export line
-and `exportfs -ra`, in the repo copy and on the host both.
+The NAS's `media` share has one NFS rule per client IP, not the subnet — see
+[../synology/README.md](../synology/README.md#nfs). A new node is not on that
+list, so every inline NFS mount (Jellyfin, qBittorrent, Radarr, Sonarr) fails
+on it with a permission error that looks nothing like an ACL problem. Add a
+rule for the node's address in DSM (Shared Folder → `media` → NFS
+Permissions), same settings as the existing ones.
 
 ### Removing a worker node
 

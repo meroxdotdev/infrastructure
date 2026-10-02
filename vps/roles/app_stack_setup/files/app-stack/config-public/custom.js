@@ -12,8 +12,8 @@
     var SPECS = [
         ['3 × Proxmox', 'hosts'],
         ['Talos + Flux', 'kubernetes'],
-        ['~6 TB', 'zfs pools'],
-        ['~165 W', 'draw'],
+        ['RAIDZ3', 'offline copy'],
+        ['~70 W', 'draw'],
         ['0', 'inbound ports'],
         ['3', 'backup copies']
     ];
@@ -27,9 +27,9 @@
         el.innerHTML =
             '<div class="intro-eyebrow">inside.merox.dev</div>' +
             '<h1 class="intro-title">The homelab I run after hours</h1>' +
-            '<p class="intro-lede">Three Proxmox hosts, one Talos node each — mini PC (GPU), ' +
-            'R730xd (disks), OptiPlex (etcd vote). Oracle Cloud VPS at the edge, one backup ' +
-            'chain underneath all three.</p>' +
+            '<p class="intro-lede">Three Proxmox hosts, one Talos node each — a mini PC with ' +
+            'the GPU and two OptiPlexes. A Synology NAS holds the data, an R730xd wakes daily ' +
+            'to keep the offline copy, and an Oracle Cloud VPS keeps the off-site one.</p>' +
             '<dl class="intro-specs">' +
             SPECS.map(function (s) {
                 return '<div><dt>' + s[1] + '</dt><dd>' + s[0] + '</dd></div>';

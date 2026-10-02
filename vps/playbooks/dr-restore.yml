@@ -1,20 +1,20 @@
 ---
 # DR: restore data onto a freshly provisioned VPS after `make setup` (site.yml)
-# and `app-stack.yml` have deployed all services. Pulls R730xd's backup
-# copies, restores Authentik/Joplin DBs, then restores
+# and `app-stack.yml` have deployed all services. Pulls the backup copies
+# back from the NAS, restores Authentik/Joplin DBs, then restores
 # Guacamole/Traefik/Pi-hole/Homepage/Portainer state.
-- name: DR — restore service state from R730xd backups
+- name: DR — restore service state from the NAS
   hosts: vps_servers
   become: yes
   gather_facts: no
 
   tasks:
-    - name: Pull backup copies back from R730xd (DBs, extras, Garage)
+    - name: Pull backup copies back from the NAS (DBs, extras)
       ansible.builtin.command: /usr/local/bin/restore-pull.sh
       register: pull_result
       changed_when: true
 
-    - name: Show R730xd pull output
+    - name: Show the pull output
       ansible.builtin.debug:
         var: pull_result.stdout_lines
 

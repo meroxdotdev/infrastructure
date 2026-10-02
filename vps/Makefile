@@ -21,7 +21,7 @@ help:
 	@echo "  dr-full            Pre-flight + provision Hetzner + full deploy (~15 min)"
 	@echo "  dr-verify-phase1   Verify VPS phase (run on the VPS)"
 	@echo "  dr-verify-phase2   Verify K8s phase (run from local machine)"
-	@echo "  dr-restore         DR: restore all data from R730xd (pull + DB + extras, non-interactive)"
+	@echo "  dr-restore         DR: restore all data from the NAS (pull + DB + extras, non-interactive)"
 	@echo "  terraform-apply    Provision server on Hetzner only"
 	@echo "  terraform-plan     Preview what Terraform will create"
 	@echo "  terraform-init     Initialize Terraform (first time only)"
@@ -127,7 +127,7 @@ authentik-test:
 authentik-backup:
 	ansible-playbook playbooks/authentik-backup.yml
 
-# --- Backups (DB dumps + VPS extras + nightly R730xd push) ---
+# --- Backups (DB dumps + VPS extras + nightly push to the NAS) ---
 db-backups-setup:
 	ansible-playbook playbooks/authentik-setup.yml --tags backup
 	ansible-playbook playbooks/site.yml --tags backup

@@ -13,9 +13,9 @@ reschedule in about six minutes, drilled by cutting its power —
 is **hardware transcoding**: the Iris Xe is only here, so Jellyfin stays
 `Pending` until this host is back.
 
-`pve-2` still keeps the disks — media and its NFS exports, the Garage S3 LXC
-that Longhorn backs into, Nextcloud, and every backup leg — and no amount of
-Kubernetes HA covers losing those.
+The data does not live on any of the three hosts: media, documents, photos
+and every backup's landing spot are on the NAS — see
+[../../synology/README.md](../../synology/README.md).
 
 PDM used to live here as VM 100. It moved to `pve-3` (CT 100) on 2026-09-04: a
 management plane that dies with the machine running the cluster is unavailable
@@ -44,9 +44,8 @@ Keep it that way. Putting VM images on the OS disk means one failure takes both
 Proxmox and the cluster.
 
 ⚠️ **This table had the two disks the wrong way round until 2026-09-07**, and
-the error had already been copied into `docs/plan-2026-09.md`, where Week 3's
-command block would have run `pvcreate` against the running hypervisor's own
-system disk. `talos/THREE-NODE.md` was right the whole time. Confirmed by serial:
+the error had already been copied into a plan whose command block would have
+run `pvcreate` against the running hypervisor's own system disk. `talos/THREE-NODE.md` was right the whole time. Confirmed by serial:
 `cluster-storage` is `nvme-CT1000P3PSSD8_24534D2A66C6` → `nvme1n1`; the `pve`
 volume group is on `nvme0n1p3`.
 
@@ -125,7 +124,7 @@ last column.
 |---|---|---|
 | `etc/systemd/system/cpu-power.service` | same | `systemctl daemon-reload && systemctl enable --now cpu-power` |
 | `etc/nut/nut.conf` | same | `apt install nut-client` **first** — see NUT below |
-| `etc/nut/upsmon.conf` | same | password is redacted here, fill it in from pve-2 |
+| `etc/nut/upsmon.conf` | same | password is redacted here; it is in `upsd.users` on this host |
 | `etc/modprobe.d/vfio.conf` | same | `update-initramfs -u` and reboot |
 | `etc/modprobe.d/blacklist.conf` | same | as above |
 | `etc/modprobe.d/zfs.conf` | same | ARC capped at 4 GB |
@@ -133,8 +132,7 @@ last column.
 | `etc/default-grub` | the `GRUB_CMDLINE_*` lines of `/etc/default/grub` | `update-grub` and reboot |
 | `etc/default-prometheus-node-exporter` | `/etc/default/prometheus-node-exporter` | `apt install prometheus-node-exporter` **first**, then `systemctl restart prometheus-node-exporter` — see [host-metrics.md](../../docs/host-metrics.md) |
 
-There is no drift check for this host. pve-2 has one because it carries dozens
-of files and every backup script; nine files did not justify a second
+There is no drift check for this host: a handful of files does not justify a
 mechanism. Add one if this grows.
 
 ## CPU power policy
@@ -166,8 +164,9 @@ appears at `0000:06:10.0`.
 ## NUT — this host is the primary
 
 The CyberPower VP700ELCD is on **this host's USB** since 2026-09-29. It moved
-off pve-2, the R730xd, which is becoming a vault that is off most of the day —
-a UPS master cannot live on a machine that is off.
+off the R730xd, which became the vault and is off most of the day — a UPS
+master cannot live on a machine that is off. The vault is not on the UPS at
+all: a power cut while it runs costs one daily run, which the next day repeats.
 
 | File | What |
 |---|---|

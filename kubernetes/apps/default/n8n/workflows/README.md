@@ -5,8 +5,7 @@ git instead of living only inside a Longhorn PVC.
 
 ⚠️ **Not applied by Flux.** n8n owns its own state; nothing here is reconciled.
 Editing a file in this directory changes nothing on the cluster — it is a
-snapshot for review, diffing and disaster recovery, in the same spirit as
-[`proxmox/pve-2/etc/`](../../../../../proxmox/pve-2/etc/). The running copy is
+snapshot for review, diffing and disaster recovery. The running copy is
 authoritative; re-export after changing anything in the n8n UI.
 
 ## What n8n is for now
@@ -26,11 +25,9 @@ to the same chat, with three more processes able to fail silently between an
 alert firing and the phone buzzing. The Ollama VM was its only consumer and went
 with it.
 
-The exports are not kept here: they describe a pipeline that should not be
-rebuilt. A full export of all eight workflows as they stood that day is on pve-2
-at `/media/backups/tools/n8n/workflows-2026-09-09.json`, inside the backup
-chain rather than in this public repository — the JSON carries the Telegram
-chat id and webhook paths.
+The exports are not kept anywhere: they describe a pipeline that should not be
+rebuilt. The last copy went with the R730xd's old restic history, pruned on
+2026-10-02.
 
 ## Re-importing
 

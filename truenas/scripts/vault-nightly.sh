@@ -115,7 +115,7 @@ for id in $(midclt call pool.snapshottask.query '[["enabled","=",true]]' |
 done
 
 # --- 5. Off-site -------------------------------------------------------------------
-# Same repository the R730xd pushed to, through rest-server --append-only: this
+# The off-site repository, through rest-server --append-only: this
 # host can add snapshots and cannot remove one. Retention runs on the VPS.
 # Content-defined chunking means the move to new paths uploads almost nothing.
 step "restic backup"

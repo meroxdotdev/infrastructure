@@ -115,8 +115,7 @@ colon verbatim, quotes included.
 ## Backup
 
 A daily cron job (`/usr/local/bin/backup-authentik.sh`, runs at 23:40 UTC —
-02:40 EEST, alongside the rest of the VPS/k8s/Nextcloud UTC-scheduled nightly
-backups) dumps PostgreSQL to `/srv/backups/authentik/` with 7-day retention.
+02:40 EEST, alongside the rest of the VPS's UTC-scheduled nightly backups) dumps PostgreSQL to `/srv/backups/authentik/` with 7-day retention.
 Deployed automatically by this role (re-run `make db-backups-setup` to
 (re)install it).
 

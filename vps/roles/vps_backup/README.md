@@ -4,8 +4,7 @@ Backups of the Oracle VPS's own services, and the landing spot for the
 estate's off-site restic repository. Cron-driven; times are UTC, the VPS's
 system timezone.
 
-Where this fits in the whole estate: [docs/architecture.md](../../../docs/architecture.md)
-and [docs/plan-nas-hot-r730-cold.md](../../../docs/plan-nas-hot-r730-cold.md).
+Where this fits in the whole estate: [docs/architecture.md](../../../docs/architecture.md).
 
 ## Nightly
 
@@ -45,14 +44,10 @@ Two healthchecks: `vps-nightly-backup` (the wrapper, URL
 (`vault_hc_restore_drill_url`). The scripts inside the wrapper do not ping;
 each exits non-zero, and that is the whole interface. Empty URLs are a no-op.
 
-## The restic landing user
+## The restic repository
 
-`restic-backup`: shell-less, chrooted, SFTP-only, home `/srv/restic-repo`. It
-receives the estate's off-site restic repository — today from the R730xd,
-after phase 7 from the vault. The public key is `vps_backup_restic_public_key`;
-the private half never lives on this VPS. The repository is append-only
-through `rest-server`, and retention runs here, where the data is trusted —
-see [docs/architecture.md](../../../docs/architecture.md#nothing-can-delete-its-own-backups).
+Not this role's: [restic_rest_server](../restic_rest_server/) owns the
+repository, its account and its retention. The vault pushes to it, append-only.
 
 ## Restore
 

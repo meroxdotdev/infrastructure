@@ -4,7 +4,7 @@ garage_docker_dir: /srv/docker/garage
 garage_version: "v2.1.0"
 garage_image: "dxflrs/garage:{{ garage_version }}"
 # Floats on :latest deliberately — nothing deploys it. The only Garage in the
-# estate is the LXC on pve-2, and garage-setup.yml turns the web UI off.
+# estate is CT 103 on pve-3, and garage-setup.yml turns the web UI off.
 # Pin this before enabling it anywhere.
 garage_webui_image: "khairul169/garage-webui:latest"
 garage_domain: "garage.cloud.merox.dev"
@@ -20,7 +20,7 @@ garage_bucket_name: "longhorn"
 garage_key_name: "longhorn-key"
 traefik_network_name: network-cloud-merox
 
-# LAN-only deployments (e.g. the R730xd instance) have no Traefik to publish
+# LAN-only deployments (CT 103 on pve-3) have no Traefik to publish
 # through — defaults to the VPS's existing behavior so this role stays a
 # no-op change for that host.
 # false, matching the only deployment there is. Longhorn talks to Garage over

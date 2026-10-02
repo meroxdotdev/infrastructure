@@ -1,28 +1,26 @@
 # restic_rest_server
 
-Serves the existing off-site restic repository over rest-server in
-`--append-only` mode, and moves retention off the machine that writes backups.
+Serves the off-site restic repository over rest-server in `--append-only`
+mode, and runs retention on this host — the only one allowed to delete.
 
 ## The problem it solves
 
-`restic-push-oracle.sh` on `pve-2` ran `backup`, then `forget --prune`, then
-`check`, over an SFTP chroot whose key lives on `pve-2`. Root on that host —
-ransomware, a wrong command, a container that escapes — could therefore delete
-the off-site copy. The weekly Synology leg is a push from the same host, and the
-third copy is local to it. Three copies, every one of them destroyable from the
-one machine most likely to be the problem.
+A backup client that can `forget --prune` can delete the off-site copy. Root on
+that client — ransomware, a wrong command, a container that escapes — would
+take the last copy with it. Until 2026-09-07 that was exactly the shape here:
+the backup host pushed over SFTP with full rights.
 
 ## The shape of the fix
 
-| | Before | After |
-|---|---|---|
-| `pve-2` writes backups | yes | yes |
-| `pve-2` can delete them | **yes** | **no — 403** |
-| Retention runs on | `pve-2` | `vps01`, over the filesystem |
-| Retention policy | counted (`--keep-daily 7`) | time-based (`--keep-within-*`) |
+| | |
+|---|---|
+| The vault writes backups | yes, as rest-server user `vault` |
+| The vault can delete them | **no — 403** |
+| Retention runs on | `vps01`, over the filesystem, as `restic-retention.service` |
+| Retention policy | time-based (`--keep-within-*`), never counted |
 
-Nothing was copied to stand this up. rest-server serves the same 67 GiB
-directory the SFTP chroot served; only the door changed.
+The account `restic-backup` owns the repository; rest-server and the retention
+container both run as it. It has no shell and no login.
 
 ## Why time-based retention
 
@@ -36,23 +34,18 @@ future, because every `--keep-within` window is measured from the newest
 snapshot rather than from now — one future-dated snapshot would otherwise drag
 the window forward and strand everything real outside it.
 
+## Users
+
+`/srv/docker/rest-server/auth/.htpasswd`, bcrypt, one line per client — today
+only `vault`. The password is generated on the client and only its hash comes
+here. The file must end in a newline before a line is appended, or the new
+entry merges into the previous one.
+
 ## Verified 2026-09-07
 
 ```
-DELETE on a data pack   -> 403      restic forget from pve-2 -> 403, 0/8 deleted
-DELETE on a lock        -> 200      SFTP from pve-2          -> Permission denied
-GET config              -> 200      backup + check from pve-2 -> exit 0
-wrong password          -> 401      repo after all of it      -> 13 snapshots, no errors
+DELETE on a data pack   -> 403
+DELETE on a lock        -> 200   (restic needs it to run at all)
+GET config              -> 200
+wrong password          -> 401
 ```
-
-## Rollback
-
-`/srv/restic-repo/.ssh/authorized_keys.disabled-2026-09-07` holds the SFTP key
-that was in use. Restoring it re-opens the old path; the repository is the same
-on both.
-
-## Not covered here
-
-The weekly Synology copy was flipped to a pull on 2026-09-07. `pve-2` now holds
-no credential for either target: it can add here and cannot delete, and the NAS
-reaches in over `rrsync -ro` rather than being pushed to.

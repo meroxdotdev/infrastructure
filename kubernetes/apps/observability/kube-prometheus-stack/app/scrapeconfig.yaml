@@ -87,11 +87,8 @@ spec:
       replacement: *name
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
-# pve-1 (Beelink GTi13 Ultra). Added 2026-09-11 — until then pve-exporter
-# scraped only pve-2, so PveNodeDown and friends covered one host out of
-# three while all three carry a control plane (docs/architecture.md).
-# Standalone hosts, so this needs its own API token and its own `pve-1`
-# section in pve-exporter-secret's pve.yml; it cannot share pve-2's.
+# pve-1 (Beelink GTi13 Ultra). Standalone hosts, so each needs its own API
+# token and its own section in pve-exporter-secret's pve.yml.
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: ScrapeConfig
 metadata:

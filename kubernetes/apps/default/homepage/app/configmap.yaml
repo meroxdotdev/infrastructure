@@ -8,12 +8,10 @@ data:
   # The internal dashboard. One question: does anything need me right now?
   # ==========================================================================
   # It runs in the cluster rather than on vps01 because that is where the data
-  # is. From the VPS, only SSH to pve-2 crosses the tailnet — 8006, 443 and
-  # even DNS on 53 are dropped by pfSense — so every widget pointed at
-  # Prometheus or the Proxmox API there had been silently dead, including the
-  # Alertmanager card added long before this one. Moving the dashboard was the
-  # alternative to opening those ports, and the plan's Week 4 is about closing
-  # segmentation gaps, not widening them.
+  # is. From the VPS, pfSense drops 8006, 443 and even DNS on 53 towards the
+  # LAN, so every widget pointed at Prometheus or the Proxmox API there had
+  # been silently dead. Moving the dashboard was the alternative to opening
+  # those ports, and the point is to close segmentation gaps, not widen them.
   #
   # vps01 keeps its own Homepage. That one is the public, curated view.
   settings.yaml: |

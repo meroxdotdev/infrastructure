@@ -22,7 +22,7 @@ August all sat on `pve`, so a single host reboot took every one of them down.
 | etcd | Quorum held on two members. The API stayed reachable through the VIP, which floated to a surviving node |
 | Workloads | 61 running pods on the dead node. `kubernetes-2` went 14 → 41, `kubernetes-3` 12 → 15 |
 | Volumes | 19 of 23 detached and reattached on their own. The other four belonged to pods that could not schedule |
-| Back up | Immich, Radarr, Sonarr, Prowlarr, qBittorrent, Jellyseerr, n8n, Flux and Grafana all 1/1 by 19:47 — **about six minutes** |
+| Back up | Radarr, Sonarr, Prowlarr, qBittorrent, Jellyseerr, n8n, Flux and Grafana all 1/1 by 19:47 — **about six minutes** |
 | Down | Jellyfin and jellyfin-public, `Pending` on `Insufficient gpu.intel.com/i915`. Expected: the iGPU is only on `pve-1` |
 | Recovery | Woken with a magic packet at 19:49, host up in 27 seconds, VM autostarted, node `Ready` and uncordoned by 19:52 |
 
@@ -40,7 +40,7 @@ That is no longer the arrangement — see [below](#longhorn-keeps-one-replica-pe
 | `pve-1` | Quorum holds. Pods reschedule onto `pve-2` and `pve-3`, and its Longhorn replicas are covered by the other two. **Jellyfin loses hardware transcoding** — the Iris Xe is only here. The UPS primary is here too: while pve-1 is down, nothing shuts the other hosts down on low battery. |
 | `pve-3` | Nothing. It holds a vote and a replica; both are redundant, and the two surviving nodes still have a copy of every volume. |
 | `pve-2` | Nothing. Same as `pve-3`: a vote and a replica, both redundant. |
-| R730xd | Not a node any more, but until the NAS migration finishes it still serves the media NFS exports, Garage and the Nextcloud VM. Those go with it; the cluster does not. See `docs/plan-nas-hot-r730-cold.md`. |
+| The NAS | No node is lost, but media and Longhorn's backup store are: Jellyfin and the ARR apps lose their library until it is back, and backups pause. |
 
 ## etcd sits on three very different disks
 
@@ -113,9 +113,9 @@ That is **2.8x** amplification from the zvol (`volblocksize=16K`, `ashift=12`,
 host, not in the guest. Real numbers, from SMART (34% used at 67.8 TB written):
 ~4.4 years before the third replica, ~3.2 with it.
 
-The rest of the fleet has no endurance question at all — all four Intel
-D3-S4510s (`pve-2`'s `rpool` mirror, `pve-3`'s etcd disk) read 0% wear after
-more than 9,000 hours.
+The rest of the fleet has no endurance question at all — the Intel D3-S4510s
+under `kubernetes-2` and `kubernetes-3` read 0% wear after more than 9,000
+hours.
 
 **`kubernetes-3` must not be tainted.** A `NoSchedule` taint there was tried
 and reverted on 2026-09-04: Longhorn's replica scheduler skips a tainted node
@@ -147,8 +147,7 @@ task talos:apply-node IP=10.57.57.83 MODE=auto   # applied without a reboot
 ```
 
 Nothing compares a node's running config against this repo, the same gap that
-let `talenv.yaml` sit six days ahead of the cluster. `nightly-checks.sh` does
-exactly this for `pve-2`; the nodes have no equivalent.
+let `talenv.yaml` sit six days ahead of the cluster.
 
 ## Upgrades are rolling again
 

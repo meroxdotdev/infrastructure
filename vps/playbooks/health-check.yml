@@ -79,8 +79,8 @@
       register: authentik_health
       ignore_errors: yes
 
-    # Garage runs on the R730xd LXC (garage-setup.yml, r730xd_garage
-    # inventory group), not on this host - nothing here to check.
+    # Garage runs in CT 103 on pve-3 (garage-setup.yml, `garage` inventory
+    # group), not on this host - nothing here to check.
 
     # Portainer binds to the Tailscale IP only (see docker-compose.yml), never
     # localhost - checking via the container's own IP instead.

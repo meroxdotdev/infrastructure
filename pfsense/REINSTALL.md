@@ -8,7 +8,8 @@ Gateway, DHCP and Tailscale subnet router. Losing it takes down the LAN
 **You need:**
 
 - pfSense installer
-- a config from `/media/backups/pfsense/` on pve-2 (nightly, 30-day retention)
+- the config: `backups/pfsense/config.xml.gz` on the NAS (nightly, latest only);
+  older versions in the vault's snapshots or Oracle
 - physical or serial console access
 
 ## What a config restore does not cover
@@ -30,8 +31,8 @@ rebuild day. Steps 3 and 4 exist for this.
 
 Install pfSense, then Diagnostics → Backup & Restore → restore
 `backups/pfsense/config.xml.gz` from the NAS (gunzip first if the UI wants
-plain XML). An older version: the vault's snapshots, or until phase 7 the dated
-copies in `/media/backups/pfsense/` on pve-2. Reboot.
+plain XML). An older version: the vault's snapshots
+(`backup/nas/backups/pfsense/`), or Oracle. Reboot.
 
 ## 2. Confirm the basics before moving on
 
@@ -85,21 +86,6 @@ On the NAS it is the only line in the `pfsense` user's
 restrict,from="10.57.57.1" ssh-ed25519 <new pubkey> pfsense-backup
 ```
 
-Until phase 7 the script also pushes to pve-2. There, add **one** line to
-`/root/.ssh/authorized_keys` — the forced command is what limits this key to
-dropping files in one directory:
-
-```
-command="/root/pfsense-backup-receive.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 <new pubkey> pfsense-backup-to-r730xd
-```
-
-⚠️ Exactly one line for this key. Two lines with the same key means SSH
-uses the first and silently ignores the second — that is how the 30-day
-prune sat dead until 2026-08-11. Pattern in
-[`proxmox/pve-2/etc/authorized_keys`](../proxmox/pve-2/etc/authorized_keys);
-receiver in
-[`proxmox/pve-2/scripts/pfsense-backup-receive.sh`](../proxmox/pve-2/scripts/pfsense-backup-receive.sh).
-
 ## 5. Verify the loop actually closes
 
 ```sh
@@ -107,7 +93,7 @@ receiver in
 ```
 
 ```bash
-ls -1t /media/backups/pfsense/ | head -2          # on pve-2 — a fresh timestamp
+ssh admin@10.57.57.201 'ls -l /volume1/backups/pfsense/'   # today's date on config.xml.gz
 ```
 
-Not done until a file with today's timestamp appears on pve.
+Not done until the file on the NAS carries today's timestamp.

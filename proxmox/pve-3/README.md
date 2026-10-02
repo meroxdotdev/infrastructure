@@ -97,7 +97,7 @@ members left long ago. With 1 vote against a quorum of 3, corosync had
 `/etc/pve` frozen read-only, so nothing could be created on it.
 
 - Left the cluster: corosync stopped, disabled, and its config removed
-- Node directories for `px-0`, `px-1`, `px-2` and the cluster's HA config
+- Node directories of three long-gone cluster members, and the cluster's HA config
 - Storage definitions cut from six to one (`local`); `local-lvm` added after
 - Orphan VM 104 (`kubernetes-controlplane-3`), pointing at a volume group that no longer existed
 - SSH keys cut from 13 to 2 — the rest were peer keys from decommissioned nodes

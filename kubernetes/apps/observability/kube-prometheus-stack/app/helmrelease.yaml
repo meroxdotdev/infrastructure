@@ -199,14 +199,14 @@ spec:
               # sample count; a raw count of "fsyncs that took over a second"
               # is what actually tracked the damage, day by day.
               #
-              # Threshold: healthy here is ~30/day, all inside the nightly
-              # backup hour when the spun-down SAS disks are legitimately woken
-              # (see proxmox/pve-2/spindown-setup.md). Pre-fix was 346/day and
-              # 203 in a single hour. 50/h clears the backup window and still
-              # catches a regression on the first bad hour.
+              # Threshold: the rule was born when etcd shared a controller with
+              # SAS disks that spun down (346 slow fsyncs a day, 203 in one
+              # hour). Every member now has its own SSD, two with power-loss
+              # protection, so a healthy hour is near zero; 50/h still flags
+              # a regression on the first bad hour without paging on a blip.
               - alert: EtcdSlowFsyncBurst
                 annotations:
-                  summary: "etcd: {{ $value | printf \"%.0f\" }} fsyncs over 1s in the last hour - check the H730P (SAS spin-down wakes stall the shared controller)."
+                  summary: "etcd: {{ $value | printf \"%.0f\" }} fsyncs over 1s in the last hour - check the node's disk (wear, latency) and what else writes to it."
                 expr: sum(increase(etcd_disk_wal_fsync_duration_seconds_count[1h])) - sum(increase(etcd_disk_wal_fsync_duration_seconds_bucket{le="1.024"}[1h])) > 50
                 for: 10m
                 labels:
@@ -325,15 +325,14 @@ spec:
                   severity: critical
       pve-rules:
         groups:
-          # Was `pve-2` while that was the only host scraped. All three are
-          # scraped since 2026-09-11; the rules were already written to
-          # join on (id, instance) for exactly this.
+          # One ScrapeConfig per host; the rules join on (id, instance) so
+          # the same guest ID on two hosts never collides.
           - name: pve
             rules:
               # pve_uptime_seconds resetting (not pve_up==0) is what actually
               # answers "did a VM/LXC restart" - pve_up==0 alone would also
               # fire permanently for guests that are just deliberately kept
-              # off (windows11, ubuntu-server on pve-2). `id` alone would
+              # off (windows11 on pve-1). `id` alone would
               # collide if a second Proxmox host is ever added (both would
               # have a "qemu/100") - join on (id, instance) or a rule
               # silently errors out on the shared ID instead of firing
@@ -405,7 +404,7 @@ spec:
               # Nothing watched the UPS until 2026-09-11 — NUT shuts every
               # host down on low battery and the only proof it was still
               # working was running `upsc` by hand. Metrics come from
-              # nut-exporter reading upsd on pve-2 over the LAN.
+              # nut-exporter reading upsd on pve-1 over the LAN.
               #
               # ups.status is a set of flags, so each is its own label on
               # network_ups_tools_ups_status rather than a value to compare.
@@ -464,9 +463,8 @@ spec:
               # Losing sight of the UPS is itself the alert: upsd not
               # answering usually means the driver died or the USB device
               # dropped for good, and that is also the path by which the
-              # automatic shutdown stops working. The device re-enumerates
-              # every ~11 s by design on this chassis (see
-              # proxmox/pve-2/known-issues.md), so 10m of silence, not 2.
+              # automatic shutdown stops working. CyberPower's USB HID
+              # re-enumerates briefly on some hosts, so 10m of silence, not 2.
               - alert: UpsUnreachable
                 annotations:
                   summary: "NUT on pve-1 has not answered for 10m — the UPS is unmonitored and may no longer shut the hosts down."
@@ -485,28 +483,5 @@ spec:
                   summary: "VPS (Oracle) unreachable via inside.merox.dev - may be down/rebooting."
                 expr: probe_success{job="blackbox-vps"} == 0
                 for: 3m
-                labels:
-                  severity: critical
-      # Off until 2026-09-11, and the comment that sat here said exactly why:
-      # node_zfs_zpool_state comes from node_exporter, which ran on the Talos
-      # guests (no ZFS) and not on the hosts that actually hold the pools.
-      # Enabled together with node_exporter on all three hosts — the install
-      # is docs/host-metrics.md. The rule has nothing to evaluate on a host
-      # without node_exporter, but that host is not quiet: its pve-node
-      # target is down, and kube-prometheus-stack's default TargetDown fires.
-      #
-      # This does not replace sas-health-check.sh on pve-2 — that mails on
-      # READ/WRITE/CKSUM error counters, which a pool reports while still
-      # ONLINE. This catches the state change the counters do not: DEGRADED,
-      # FAULTED, SUSPENDED. Different failure, same pool.
-      zfs-rules:
-        groups:
-          - name: zfs
-            rules:
-              - alert: ZfsUnexpectedPoolState
-                annotations:
-                  summary: "ZFS pool {{ $labels.zpool }} on {{ $labels.instance }} is {{ $labels.state }}, not online."
-                expr: node_zfs_zpool_state{state!="online"} > 0
-                for: 5m
                 labels:
                   severity: critical

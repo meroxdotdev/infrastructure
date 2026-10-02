@@ -68,12 +68,14 @@ talosctl -n <node-ip> services
 kubectl describe node <node-name>
 ```
 
-## Garage S3
+## Garage (Longhorn's backup target)
+
+CT 103 on pve-3, `10.57.57.62:3900`; its data directory is on the NAS.
 
 ```bash
-docker exec garage /garage status
-docker exec garage /garage bucket list
-kubectl -n longhorn-system get secret minio-secret
+ssh root@10.57.57.253 'pct exec 103 -- docker exec garage /garage status'
+ssh root@10.57.57.253 'pct exec 103 -- docker exec garage /garage bucket list'
+kubectl -n longhorn-system get backuptargets.longhorn.io default -o jsonpath='{.status.available}'
 ```
 
 

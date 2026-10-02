@@ -68,7 +68,7 @@ spec:
               limits:
                 # Pins Jellyfin to kubernetes-1 — only pve-1 has an
                 # Intel GPU. A /dev/dri hostPath was tried instead so it could
-                # fall back to pve-2; it cannot work, the container device cgroup
+                # fall back to another node; it cannot work, the container device cgroup
                 # denies open() on char 226:128 regardless of file mode. During
                 # pve-1 maintenance, drop this request to let Jellyfin run
                 # anywhere on software transcoding — see docs/gpu-transcoding.md.

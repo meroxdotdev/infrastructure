@@ -10,13 +10,12 @@ own API token and its own section in `pve.yml`.
 
 | Host | Address | Module in `pve.yml` |
 |---|---|---|
-| `pve-2` R730xd | `10.57.57.250` | `default` |
 | `pve-1` Beelink | `10.57.57.254` | `pve-1` |
 | `pve-3` OptiPlex | `10.57.57.253` | `pve-3` |
 
-`pve-2`'s module is called `default` because it was the only one when this was
-built. Renaming it would break the live scrape for no gain; new hosts are
-named after themselves.
+`pve-2` (the OptiPlex at `.252`) has no module yet — it needs its own API token
+first; see [its README](../../../../proxmox/pve-2/README.md). Modules are named
+after their host.
 
 ## Adding a host
 
