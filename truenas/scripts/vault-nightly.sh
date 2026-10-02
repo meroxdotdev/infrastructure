@@ -99,12 +99,12 @@ install -m 600 /data/pwenc_secret "$SYS/secrets/pwenc_secret"
 # TrueNAS owns naming and retention (a periodic task per dataset, plus a
 # monthly one on backup); this only says "now". Only the tasks due today: the
 # monthly task runs on its day of the month, not every night with a 12-month
-# lifetime. -job waits for each snapshot to exist.
+# lifetime. -j waits for each snapshot to exist.
 step "snapshots"
 for id in $(midclt call pool.snapshottask.query '[["enabled","=",true]]' |
             jq --arg d "$(date +%-d)" '.[] | select(.schedule.dom == "*" or
               (.schedule.dom | split(",") | index($d))) | .id'); do
-  midclt call -job pool.snapshottask.run "$id" >/dev/null
+  midclt call -j pool.snapshottask.run "$id" >/dev/null
 done
 
 # --- 5. Off-site -------------------------------------------------------------------
