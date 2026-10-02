@@ -1,0 +1,6 @@
+---
+syncthing_docker_dir: /srv/docker/syncthing
+# renovate: datasource=docker depName=syncthing/syncthing
+syncthing_image: "syncthing/syncthing:2.1.5"
+syncthing_listen_ip: 100.72.22.38   # tailnet address, never 0.0.0.0
+syncthing_uid: 1000
