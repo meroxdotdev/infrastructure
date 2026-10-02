@@ -282,9 +282,9 @@ The **power-off gate** — shut down only when all of these hold:
   - **Shut down now** → powers off immediately.
 
   Silence means shut down: a missed message never leaves the vault on.
-  To power off a held vault early: TrueNAS UI → Power → Shut Down. A dedicated
-  bot, not the alerting one: the gate reads its updates, and a second reader
-  would steal the button presses.
+  To power off a held vault early: TrueNAS UI → Power → Shut Down. The homelab
+  bot is shared with Alertmanager and n8n, which only send; the gate is its
+  only reader, and a webhook added later would break the buttons.
 - no scrub running — past `W` + 2 h, `zpool scrub -p` pauses it; it resumes
   on the next boot, so a long scrub spreads over several nights by itself
 - no resilver running — a replaced disk resilvers to the end, however long
