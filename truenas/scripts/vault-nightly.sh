@@ -35,9 +35,13 @@ STEP=start
 step() { STEP=$1; echo "$(date -Is) == $1"; }
 hc()   { curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "${2:-}" "$HC_URL$1" || true; }
 
+# Success is reaching the last line, not a zero exit status: a run killed by a
+# signal (a power cut, a reboot, a kill) runs this trap with a status that
+# can read as 0, and would otherwise be stamped and reported as done.
+COMPLETED=0
 finish() {
   local rc=$?
-  if [ "$rc" -eq 0 ]; then
+  if [ "$COMPLETED" = 1 ]; then
     date +%F > "$SYS/run/last-run"
     hc "" "ok"
   else
@@ -47,6 +51,7 @@ finish() {
   "$SYS/scripts/vault-gate.sh" || true
 }
 trap finish EXIT
+trap 'exit 143' TERM INT HUP
 
 # A "Keep on" from yesterday's question expires now; the gate below asks
 # afresh. A HOLD made by hand (empty file) stays until it is removed by hand.
@@ -151,3 +156,4 @@ if [ "$(date +%d)" = 01 ]; then
 fi
 
 step "done"
+COMPLETED=1
