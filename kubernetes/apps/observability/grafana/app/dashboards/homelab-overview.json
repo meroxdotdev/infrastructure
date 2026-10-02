@@ -353,7 +353,7 @@
       "id": 6,
       "type": "stat",
       "title": "Hosts",
-      "description": "Proxmox hosts answering. Each carries one control plane.",
+      "description": "Proxmox hosts answering, of those scraped: pve-1 and pve-3. pve-2 (the OptiPlex) has no pve-exporter module yet; raise green to 3 when it does.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -380,11 +380,11 @@
               },
               {
                 "color": "orange",
-                "value": 2
+                "value": 1
               },
               {
                 "color": "green",
-                "value": 3
+                "value": 2
               }
             ]
           }
@@ -494,8 +494,8 @@
     {
       "id": 8,
       "type": "stat",
-      "title": "ZFS pools",
-      "description": "Pools not ONLINE (degraded, faulted, suspended). Error counters on an online pool are sas-health-check.sh's job.",
+      "title": "NAS",
+      "description": "The Synology's SMB port. The one live store: media, Drive, Photos, every backup's landing.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -516,10 +516,15 @@
             {
               "type": "value",
               "options": {
-                "0": {
-                  "text": "Online",
+                "1": {
+                  "text": "Up",
                   "color": "green",
                   "index": 0
+                },
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 1
                 }
               }
             }
@@ -528,12 +533,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
               }
             ]
           }
@@ -565,7 +566,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(node_zfs_zpool_state{state!=\"online\"}) or vector(0)",
+          "expr": "probe_success{job=\"blackbox-nas\"}",
           "range": false,
           "instant": true,
           "refId": "A"
@@ -1042,8 +1043,8 @@
     {
       "id": 17,
       "type": "stat",
-      "title": "Off-site",
-      "description": "Last completed restic push to Oracle, nightly at 03:10, append-only. This is the copy that carries the Longhorn backups, the NAS landing and /media/photos. Healthchecks.io alerts if it stops; this tile shows it.",
+      "title": "Backup jobs",
+      "description": "Checks that healthchecks.io currently has down \u2014 the vault's daily run (pull, snapshots, restic to Oracle), the VPS backup, Oracle's retention, the drills. healthchecks.io pages on Telegram; this tile is the glance.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1059,8 +1060,19 @@
           "color": {
             "mode": "thresholds"
           },
-          "unit": "s",
-          "mappings": [],
+          "unit": "none",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "All up",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1069,17 +1081,11 @@
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 93600
-              },
-              {
                 "color": "red",
-                "value": 180000
+                "value": 1
               }
             ]
-          },
-          "decimals": 1,
-          "noValue": "no report"
+          }
         },
         "overrides": []
       },
@@ -1096,6 +1102,9 @@
           ],
           "fields": "",
           "values": false
+        },
+        "text": {
+          "valueSize": 26
         }
       },
       "targets": [
@@ -1105,7 +1114,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "time() - max(backup_last_success_timestamp_seconds{leg=\"offsite\"})",
+          "expr": "count(hc_check_up == 0) or (count(hc_check_up) * 0)",
           "range": false,
           "instant": true,
           "refId": "A"
@@ -2081,7 +2090,7 @@
       "id": 32,
       "type": "bargauge",
       "title": "Temperature",
-      "description": "Hottest hwmon sensor per host \u2014 CPU cores and NVMe. The R730xd's fans follow drive temperature, not this.",
+      "description": "Hottest hwmon sensor per host \u2014 CPU cores and NVMe.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2237,7 +2246,7 @@
       "id": 34,
       "type": "bargauge",
       "title": "SSD wear",
-      "description": "Rated endurance used. pve-1's nvme1n1 is the QLC drive that took 3.5x write amplification under a ZFS zvol until 2026-09-07 \u2014 the one to watch. SAS disks are not here: they are parked, and sas-health-check.sh reads them nightly.",
+      "description": "Rated endurance used. pve-1's nvme1n1 is the QLC drive that took 3.5x write amplification under a ZFS zvol until 2026-09-07 \u2014 the one to watch. The vault's disks report through TrueNAS, not here.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2472,14 +2481,14 @@
       "id": 38,
       "type": "stat",
       "title": "Estate draw",
-      "description": "Everything behind the UPS. Derived: it reports load only as a percentage of 390 W.",
+      "description": "Everything behind the UPS: the three hosts, the NAS and the network. Derived: it reports load only as a percentage of 390 W. The vault is not on the UPS.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 12,
         "x": 12,
         "y": 54
       },
@@ -2542,73 +2551,9 @@
     },
     {
       "id": 39,
-      "type": "stat",
-      "title": "R730xd",
-      "description": "PSU reading from iDRAC. 112 W is the tuned baseline with the SAS disks parked.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 54
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "unit": "watt",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "decimals": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "textMode": "value",
-        "wideLayout": true,
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "node_ipmi_power_watts{sensor=\"Pwr Consumption\"}",
-          "range": false,
-          "instant": true,
-          "refId": "A"
-        }
-      ]
-    },
-    {
-      "id": 40,
       "type": "timeseries",
       "title": "Draw history",
-      "description": "The gap between the two lines is pve-1, pve-3 and the switch.",
+      "description": "Everything behind the UPS.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2694,23 +2639,11 @@
           "instant": false,
           "refId": "A",
           "legendFormat": "estate (UPS)"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "editorMode": "code",
-          "expr": "node_ipmi_power_watts{sensor=\"Pwr Consumption\"}",
-          "range": true,
-          "instant": false,
-          "refId": "B",
-          "legendFormat": "R730xd (iDRAC)"
         }
       ]
     },
     {
-      "id": 41,
+      "id": 40,
       "type": "timeseries",
       "title": "Runtime history",
       "description": "Estimated on mains. Drifting down over months is how the battery announces its age.",
@@ -2818,6 +2751,6 @@
   "timezone": "browser",
   "title": "Homelab Overview",
   "uid": "homelab-overview",
-  "version": 5,
+  "version": 6,
   "weekStart": ""
 }

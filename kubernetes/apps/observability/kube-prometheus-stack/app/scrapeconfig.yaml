@@ -63,6 +63,32 @@ spec:
       replacement: *name
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# The NAS: the one live store (media, Drive, Photos, every backup's landing).
+# Its SMB port answering is the cheapest proof DSM is up; the NFS mounts in the
+# cluster would fail later and less clearly.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name blackbox-nas
+spec:
+  staticConfigs:
+    - targets:
+        - 10.57.57.201:445
+  metricsPath: /probe
+  params:
+    module: ["tcp_connect"]
+  relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: blackbox-exporter.observability.svc.cluster.local:9115
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
 # WAN throughput. The exporter runs the real test at most every 4 h and
 # answers every other scrape from cache, so scraping each minute costs
 # nothing and keeps the series from going stale between runs.

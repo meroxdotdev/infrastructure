@@ -2,7 +2,7 @@
 
 The one dashboard to open first. Everything else in this Grafana is a
 drill-down: Kubernetes Views, Proxmox via Prometheus, Node Exporter Full,
-Longhorn, ZFS. This page answers "is the estate healthy" in one screen and is
+Longhorn. This page answers "is the estate healthy" in one screen and is
 deliberately short - a panel earns its place only if a bad value on it would
 change what happens next. Rows run top to bottom by urgency: yes/no status, uptime,
 backups and certificates, Kubernetes, internet, hosts, power.
@@ -135,15 +135,14 @@ P.append(updown("Internet", 'max(probe_success{job="blackbox-wan"})', 6, 1, "Onl
 P.append(updown("VPS", 'probe_success{job="blackbox-vps"}', 9, 1, "Reachable", "DOWN",
                 desc="inside.merox.dev — the off-site backup target."))
 P.append(stat("Hosts", 'sum(pve_up{id=~"node/.*"})', 12, 1,
-              steps=[{"color": "red", "value": None}, {"color": "orange", "value": 2}, GREEN | {"value": 3}],
-              desc="Proxmox hosts answering. Each carries one control plane."))
+              steps=[{"color": "red", "value": None}, {"color": "orange", "value": 1}, GREEN | {"value": 2}],
+              desc=("Proxmox hosts answering, of those scraped: pve-1 and pve-3. pve-2 (the OptiPlex) "
+                    "has no pve-exporter module yet; raise green to 3 when it does.")))
 P.append(stat("K8s nodes", 'sum(kube_node_status_condition{condition="Ready",status="true"})', 15, 1,
               steps=[{"color": "red", "value": None}, {"color": "orange", "value": 2}, GREEN | {"value": 3}],
               desc="Ready nodes. Two is still a quorum; one is not."))
-P.append(stat("ZFS pools", 'sum(node_zfs_zpool_state{state!="online"}) or vector(0)', 18, 1,
-              mappings=[{"type": "value", "options": {"0": {"text": "Online", "color": "green", "index": 0}}}],
-              steps=[GREEN, {"color": "red", "value": 1}], text_size=26,
-              desc="Pools not ONLINE (degraded, faulted, suspended). Error counters on an online pool are sas-health-check.sh's job."))
+P.append(updown("NAS", 'probe_success{job="blackbox-nas"}', 18, 1, "Up", "DOWN",
+                desc="The Synology's SMB port. The one live store: media, Drive, Photos, every backup's landing."))
 P.append(stat("Stuck pods", 'sum(kube_pod_status_phase{phase=~"Pending|Failed|Unknown"}) or vector(0)', 21, 1,
               steps=[GREEN, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}],
               desc="Pending, Failed or Unknown."))
@@ -198,12 +197,14 @@ P.append(age("Local backup",
              0, 11, warn=86400, crit=129600,
              desc=("Oldest last-backup among the Longhorn volumes that are backed up — to Garage on "
                    "pve-3 (data on the NAS), nightly at 23:50. Per-volume detail is in the Longhorn dashboard.")))
-P.append(age("Off-site",
-             'time() - max(backup_last_success_timestamp_seconds{leg="offsite"})',
-             6, 11, warn=26 * 3600, crit=50 * 3600,
-             desc=("Last completed restic push to Oracle, nightly at 03:10, append-only. This is the "
-                   "copy that carries the Longhorn backups, the NAS landing and /media/photos. "
-                   "Healthchecks.io alerts if it stops; this tile shows it.")))
+# `* 0` rather than `vector(0)`: with no healthchecks series at all the tile
+# must read "No data", not "All up".
+P.append(stat("Backup jobs", 'count(hc_check_up == 0) or (count(hc_check_up) * 0)', 6, 11, w=6,
+              mappings=[{"type": "value", "options": {"0": {"text": "All up", "color": "green", "index": 0}}}],
+              steps=[GREEN, {"color": "red", "value": 1}], text_size=26,
+              desc=("Checks that healthchecks.io currently has down — the vault's daily run (pull, "
+                    "snapshots, restic to Oracle), the VPS backup, Oracle's retention, the drills. "
+                    "healthchecks.io pages on Telegram; this tile is the glance.")))
 P.append(stat("Certificates", 'min(certmanager_certificate_expiration_timestamp_seconds - time())',
               12, 11, w=12, unit="s", decimals=1,
               steps=[{"color": "red", "value": None}, {"color": "yellow", "value": 86400},
@@ -283,7 +284,7 @@ P.append(ts("Memory", targets(
 P.append(bargauge("Temperature", 'max by (host) (node_hwmon_temp_celsius{job="pve-node"})', "{{host}}",
                   16, 37, w=8, h=8, unit="celsius", decimals=0, maxv=100,
                   steps=[GREEN, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}],
-                  desc="Hottest hwmon sensor per host — CPU cores and NVMe. The R730xd's fans follow drive temperature, not this."))
+                  desc="Hottest hwmon sensor per host — CPU cores and NVMe."))
 P.append(bargauge(
     "Storage fill",
     'sort_desc(pve_disk_usage_bytes{id=~"storage/.*"} / pve_disk_size_bytes{id=~"storage/.*"})',
@@ -297,25 +298,23 @@ P.append(bargauge(
     "{{host}} {{disk}}", 12, 45, maxv=1,
     steps=[GREEN, {"color": "yellow", "value": 0.6}, {"color": "red", "value": 0.8}],
     desc=("Rated endurance used. pve-1's nvme1n1 is the QLC drive that took 3.5x write "
-          "amplification under a ZFS zvol until 2026-09-07 — the one to watch. SAS disks are "
-          "not here: they are parked, and sas-health-check.sh reads them nightly.")))
+          "amplification under a ZFS zvol until 2026-09-07 — the one to watch. The vault's "
+          "disks report through TrueNAS, not here.")))
 
 # 7 --------------------------------------------------------------- power
-R730 = 'node_ipmi_power_watts{sensor="Pwr Consumption"}'
 P.append(row("Power — CyberPower VP700ELCD", 53))
 P.append(stat("Battery", "network_ups_tools_battery_charge", 0, 54, w=6, unit="percent", decimals=0,
               steps=[{"color": "red", "value": None}, {"color": "yellow", "value": 40}, GREEN | {"value": 90}]))
 P.append(stat("Runtime left", "network_ups_tools_battery_runtime", 6, 54, w=6, unit="s", decimals=0,
               steps=[{"color": "red", "value": None}, {"color": "yellow", "value": 360}, GREEN | {"value": 480}],
               desc="NUT shuts every host down at 300 s (battery.runtime.low)."))
-P.append(stat("Estate draw", DRAW, 12, 54, w=6, unit="watt", decimals=0,
+P.append(stat("Estate draw", DRAW, 12, 54, w=12, unit="watt", decimals=0,
               steps=[GREEN, {"color": "yellow", "value": 280}, {"color": "red", "value": 330}],
-              desc="Everything behind the UPS. Derived: it reports load only as a percentage of 390 W."))
-P.append(stat("R730xd", R730, 18, 54, w=6, unit="watt", decimals=0, steps=[GREEN],
-              desc="PSU reading from iDRAC. 112 W is the tuned baseline with the SAS disks parked."))
-P.append(ts("Draw history", targets((DRAW, "estate (UPS)"), (R730, "R730xd (iDRAC)")),
+              desc=("Everything behind the UPS: the three hosts, the NAS and the network. Derived: it "
+                    "reports load only as a percentage of 390 W. The vault is not on the UPS.")))
+P.append(ts("Draw history", targets((DRAW, "estate (UPS)")),
             0, 58, unit="watt", decimals=0, minv=0,
-            desc="The gap between the two lines is pve-1, pve-3 and the switch."))
+            desc="Everything behind the UPS."))
 P.append(ts("Runtime history", targets(("network_ups_tools_battery_runtime", "runtime")),
             12, 58, unit="s", minv=0,
             desc="Estimated on mains. Drifting down over months is how the battery announces its age."))
@@ -329,7 +328,7 @@ dash = {
     "refresh": "1m", "schemaVersion": 39, "tags": ["homelab"],
     "templating": {"list": []}, "time": {"from": "now-24h", "to": "now"},
     "timepicker": {}, "timezone": "browser", "title": "Homelab Overview",
-    "uid": "homelab-overview", "version": 5, "weekStart": ""}
+    "uid": "homelab-overview", "version": 6, "weekStart": ""}
 
 # refuse to emit the bug that prompted this rewrite
 for p in P:
