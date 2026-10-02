@@ -9,7 +9,7 @@ offline. Small by design (~25 GB); finished work moves to Synology Drive.
 | MacBook | full, `~/Sync` | `100.68.215.121:22000` (tailnet only) | Homebrew `syncthing`, `brew services` |
 | homelab | full, `/var/syncthing/Sync` on a 40 Gi Longhorn volume | `10.57.57.103:22000` | [kubernetes/apps/default/syncthing](../kubernetes/apps/default/syncthing/app/helmrelease.yaml) |
 | vps01 | **encrypted** — Oracle stores ciphertext it cannot read | `100.72.22.38:22000` (tailnet only) | [vps/roles/syncthing_node](../vps/roles/syncthing_node/README.md) |
-| iPhone | what you open | dials the others | Möbius Sync |
+| iPhone | what you open (on-demand) | dials the others | Synctrain |
 
 ## Rules
 
@@ -31,8 +31,10 @@ the MacBook and the homelab dial the VPS. One direction is enough.
 
 ## Adding the iPhone
 
-1. App Store → **Möbius Sync**. Settings: turn off *Global Discovery*,
-   *Relaying* and *NAT traversal*. Note its device ID (Settings → This Device).
+1. App Store → **Synctrain** (free, open source, Syncthing 2, files on
+   demand; chosen over Möbius Sync, which is paid past 20 MB and still on the
+   old engine). Settings: turn off *Global Discovery*, *Relays* and *NAT
+   traversal*. Note its device ID.
 2. Add the iPhone's ID as a device on the MacBook and the homelab (their GUIs
    below), share `Sync` with it — **no** encryption password: it is trusted.
 3. On the iPhone, add the homelab (`tcp://10.57.57.103:22000`) and the VPS
