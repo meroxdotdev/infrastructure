@@ -234,11 +234,10 @@ read-only, to `10.57.57.250` only.
 **On Oracle (rest-server):** add htpasswd user `vault` (`vps_backup` role),
 keep `pve-2` until the first `vault` snapshot exists, then remove it.
 
-**After the gate**, on the VPS (the only host with delete rights):
-`restic forget --host pve-2 --keep-last 1 && restic prune`. The R730xd's
-snapshots hold the Nextcloud borg archive and copies the vault now carries in
-its new layout; the VPS disk has ~60 GB free and needs the room. The last one
-stays as the bridge between the two histories. Same
+**Done 2026-10-02**, the day the vault went live, at the owner's request
+rather than after the gate: every snapshot not from `vault` (13, hosts `pve`
+and `pve-2`) forgotten and pruned on the VPS, 61 GiB freed, `check` clean; the
+`pve-2` rest-server user removed. The repository holds only the vault's history. Same
 repository, same repo password — content-defined chunking means the first push
 from new paths uploads almost nothing.
 
