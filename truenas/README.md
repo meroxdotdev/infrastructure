@@ -17,10 +17,13 @@ which holds the reasoning; this page is what is deployed.
 
 | Dataset | Written by | Off-site |
 |---|---|---|
-| `backup/nas` | the nightly pull: NAS `backups/` and `homes/` | yes, except `homes/merox/VMs` |
-| `backup/github` | `git clone --mirror` of [config/github-repos](config/github-repos) | yes |
-| `personal`, `work` | you, over SMB | yes, except `personal/Movies` and VM disks |
-| `system` | these scripts, logs, config export, `secrets/` (0700) | yes, except `secrets/` |
+| `backup` | the nightly run only: `nas/` (NAS `backups/` and `homes/`), `github/` (mirrors of [config/github-repos](config/github-repos)). Never shared | yes, except `nas/homes/merox/VMs` |
+| `files` | you, over SMB: `Personal/`, `Job/`, `Clients/`, `Lab/`, the same four folders as Synology Drive | yes, except `Personal/Movies` and VM disks |
+| `system` | these scripts, logs, config export, `secrets/` (0700). Never shared | yes, except `secrets/` |
+
+Three datasets, one per writer: snapshots and retention are per dataset, and
+these three need different ones (30 daily + 12 monthly for `backup`, 30 daily
+for the other two).
 
 ## What runs
 

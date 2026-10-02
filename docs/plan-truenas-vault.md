@@ -188,13 +188,14 @@ hand once SMB is up; `tools/n8n` is restored from Oracle only if ever needed.
 
 | Dataset | Holds | Snapshots | In restic |
 |---|---|---|---|
-| `vault/backup/nas` | pull of NAS `backups/` and `homes/` | 30 daily + 12 monthly | yes, **except `homes/merox/VMs/`** (49 GB; Oracle has ~77 GiB) |
-| `vault/backup/github` | `git clone --mirror` of the repositories | 30 daily | yes |
-| `vault/personal` | personal projects, `Movies/` (three films) | 30 daily | yes, **except `Movies/` and VM disks** |
-| `vault/work` | professional projects | 30 daily | yes, except VM disks |
+| `vault/backup` | `nas/` (pull of NAS `backups/` and `homes/`), `github/` (mirrors) | 30 daily + 12 monthly | yes, **except `nas/homes/merox/VMs/`** (49 GB; Oracle has ~77 GiB) |
+| `vault/files` | yours over SMB: `Personal/`, `Job/`, `Clients/`, `Lab/` — the Drive layout | 30 daily | yes, **except `Personal/Movies/` and VM disks** |
 | `vault/system` | scripts, restic binary, secrets (0700), config exports, logs | 30 daily | yes, **except `secrets/`** |
 
-Record size: `1M` on `backup/nas` and `personal` (large sequential files);
+Three datasets, one per writer (the nightly run, you, the scripts), because
+snapshots and retention are set per dataset. Everything finer is a folder.
+
+Record size: `1M` on `backup` and `files` (large sequential files);
 default elsewhere.
 
 ## 5 — Credentials · ~30 min

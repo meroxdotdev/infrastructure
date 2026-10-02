@@ -5,9 +5,9 @@
 /mnt/vault/system/secrets
 
 # Oracle has ~77 GiB free. Large and replaceable: VirtualBox images, films,
-# VM disks under personal/ and work/.
+# VM disks anywhere under files/.
 /mnt/vault/backup/nas/homes/merox/VMs
-/mnt/vault/personal/Movies
+/mnt/vault/files/Personal/Movies
 *.qcow2
 *.vmdk
 *.vdi

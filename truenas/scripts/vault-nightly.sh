@@ -106,7 +106,7 @@ export RESTIC_REPOSITORY
 RESTIC=$SYS/bin/restic
 "$RESTIC" backup --host vault --tag nightly \
   --exclude-file "$SYS/config/restic-excludes" \
-  "$POOL/backup" "$POOL/personal" "$POOL/work" "$POOL/system"
+  "$POOL/backup" "$POOL/files" "$POOL/system"
 
 # Metadata every day; 5 % of the data itself on Sundays, the only check that
 # can fail on bit rot, at ~3 GiB of egress a week on a borrowed tenancy.
