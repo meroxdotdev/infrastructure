@@ -145,36 +145,45 @@ pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
 6. Console menu → network: `eno1` static `10.57.57.250/24`, gateway
    `10.57.57.1`, DNS `10.57.57.1`, hostname `vault`.
 
-## 3 — Pool · ~15 min
+## 3 — Pool · ~2 h, mostly the SMART test
 
-Import, not recreate. pve-2 runs OpenZFS 2.4.4; TrueNAS 26 ships OpenZFS 2.4,
-so every feature is supported. On a 25.10 release (OpenZFS 2.3) import still
-works: checked 2026-09-28, every **active** feature on `media` is pre-2.3, and
-the 2.4 ones are only *enabled*, which does not block import.
+**Created fresh, not imported** (decided 2026-10-02). Everything on the old
+`media` pool exists elsewhere: the dated pfSense/VPS history and `tools/n8n` in
+Oracle's restic snapshot of 2026-09-30, the three films on the NAS.
 
-```sh
-# TrueNAS shell, as root
-zpool import                        # must list "media", state ONLINE
-zpool import media vault            # rename on import
-zpool export vault                  # hand it to the middleware
-```
+1. **SMART long test on all 12 SAS disks first** (Storage → Disks → select all →
+   Manual Test → LONG, in parallel, ~1.5 h). Any disk with a failed test,
+   pending or reallocated sectors, or grown defects stays out of the pool.
+2. Storage → Create Pool `vault`:
+   - Data: **one RAIDZ3 vdev of 12 disks** (11× Toshiba AL14SEB060N, 1× HGST
+     HUC101860CSS204 — same size, mixing is fine);
+   - **Encryption on**, key-based (auto-unlock at boot). Download the key file
+     at once and store it in Passwords as `TrueNAS — vault pool key`;
+   - no cache, log, special or spare vdevs.
 
-Then UI → Storage → **Import Pool** → `vault`.
+Why RAIDZ3 × 12 and not 2× RAIDZ2 × 6: any three disks can fail, not "two per
+group"; 5.4 TB usable instead of 4.8; one vdev. The usual arguments against a
+wide RAIDZ3 do not apply here: resilvering 600 GB disks takes 1-2 h, not days,
+and the extra IOPS of two vdevs are invisible behind a 1 GbE link. dRAID is
+for vdevs with 10+ data disks per group and is not recommended by TrueNAS at
+this size.
 
-⚠️ Do **not** run *Upgrade Pool* when TrueNAS offers it. Nothing needs the new
-features, and it removes the option of reading these disks from Proxmox again.
+Why no hot spare: a spare only acts while the host is on, and the vault is off
+~22 h a day; it would spin and wear for nothing. One **cold spare** (an
+AL14SEB060N) sits in a drawer instead. A failed-disk alert means: wake the
+vault, swap the disk, `zpool replace`, keep it on (`HOLD`) until the resilver
+finishes.
 
-If import fails: the NAS already holds everything this pool holds. Wipe the 12
-SAS disks, create `vault` as 2× RAIDZ2 of 6, and let the first pull repopulate
-it (minutes: ~100 GB of backups, the three films copied by hand).
+Why encryption: a failed disk can be thrown away and the server sold without
+wiping 12 disks. The key is auto-unlocked, so the nightly run stays unattended.
 
-Pool settings: `compression=lz4` (inherited), `atime=off`.
+Pool settings: `compression=lz4` (default), `atime=off`.
 
 ## 4 — Datasets · ~15 min
 
-State on 2026-09-30, before the install: `media/backups` holds dated pfSense and
-VPS copies and `tools/n8n`; `media/library` holds three films; `media/isos` and
-`media/photos` are unused. Nextcloud's archive and the Kali VM are gone.
+Created in the UI (Datasets → Add Dataset), children inherit the pool's
+encryption. The three films are copied from the NAS into `personal/Movies` by
+hand once SMB is up; `tools/n8n` is restored from Oracle only if ever needed.
 
 | Dataset | Holds | Snapshots | In restic |
 |---|---|---|---|
@@ -184,17 +193,8 @@ VPS copies and `tools/n8n`; `media/library` holds three films; `media/isos` and
 | `vault/work` | professional projects | 30 daily | yes, except VM disks |
 | `vault/system` | scripts, restic binary, secrets (0700), config exports, logs | 30 daily | yes, **except `secrets/`** |
 
-```sh
-zfs rename vault/library vault/personal          # keeps the three films in place
-zfs create -p vault/backup/nas
-zfs create vault/backup/github vault/work vault/system
-mv /mnt/vault/backups/tools/n8n /mnt/vault/personal/
-zfs destroy -r vault/isos vault/photos           # re-downloadable / already in Synology Photos
-```
-
-`vault/backups` (the old dated copies) is destroyed after the first chain run
-has pulled into `vault/backup/nas` and pushed to Oracle — Oracle already holds
-its history.
+Record size: `1M` on `backup/nas` and `personal` (large sequential files);
+default elsewhere.
 
 ## 5 — Credentials · ~30 min
 
@@ -284,6 +284,7 @@ The **power-off gate** — shut down only when all of these hold:
   Power → Shut Down; either removes `HOLD`.
 - no scrub running — past `W` + 2 h, `zpool scrub -p` pauses it; it resumes
   on the next boot, so a long scrub spreads over several nights by itself
+- no resilver running — a replaced disk resilvers to the end, however long
 - no SMART self-test running — past `W` + 2 h, let it abort; TrueNAS alerts on the
   missed test and the next month retries
 
