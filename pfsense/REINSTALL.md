@@ -36,7 +36,26 @@ copies in `/media/backups/pfsense/` on pve-2. Reboot.
 ## 2. Confirm the basics before moving on
 
 Gateway `10.57.57.1`, DHCP handing out leases, WAN up, and the Tailscale
-subnet router advertising `10.57.57.0/24`. UDP 41641 must be forwarded
+subnet router advertising `10.57.57.0/24`.
+
+DNS, as the restored config should have it (set 2026-10-02):
+
+- Host overrides: eight names under `merox.dev` — `fw`, `nas`, `vault`,
+  `idrac`, `pve-1`, `pve-2`, `pve-3`, `dc`. Nothing else.
+- One domain override: `k8s.merox.dev` → `10.57.57.111`, the cluster's
+  k8s-gateway, which answers every `*.k8s` name itself. No per-app entries.
+- Unbound outgoing interfaces: **LAN and WAN**. WAN alone sends the override's
+  queries from the public address, and k8s-gateway never answers them.
+- System DNS servers: public resolvers only. k8s-gateway answers its own zone
+  and refuses everything else, so it is never a general resolver.
+- LAN DHCP pool `.202-.239`, below every static server address: the vault is
+  off most of the day, and a pool that included `.250` would hand its address
+  away.
+
+```sh
+drill @10.57.57.1 grafana.k8s.merox.dev   # 10.57.57.101
+drill @10.57.57.1 vault.merox.dev         # 10.57.57.250
+``` UDP 41641 must be forwarded
 WAN → `10.57.57.1:41641` — see
 [`docs/jellyfin-post-restore.md`](../docs/jellyfin-post-restore.md).
 
