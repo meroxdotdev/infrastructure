@@ -232,7 +232,13 @@ is not acceptable, the fallback is an NFS export of the three shares,
 read-only, to `10.57.57.250` only.
 
 **On Oracle (rest-server):** add htpasswd user `vault` (`vps_backup` role),
-keep `pve-2` until the first `vault` snapshot exists, then remove it. Same
+keep `pve-2` until the first `vault` snapshot exists, then remove it.
+
+**After the gate**, on the VPS (the only host with delete rights):
+`restic forget --host pve-2 --keep-last 1 && restic prune`. The R730xd's
+snapshots hold the Nextcloud borg archive and copies the vault now carries in
+its new layout; the VPS disk has ~60 GB free and needs the room. The last one
+stays as the bridge between the two histories. Same
 repository, same repo password — content-defined chunking means the first push
 from new paths uploads almost nothing.
 
