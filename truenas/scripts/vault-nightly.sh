@@ -96,10 +96,14 @@ sqlite3 /data/freenas-v1.db ".backup '$SYS/config/truenas-config.db'"
 install -m 600 /data/pwenc_secret "$SYS/secrets/pwenc_secret"
 
 # --- 4. Snapshots ----------------------------------------------------------------
-# TrueNAS owns naming and retention (one periodic task per dataset); this only
-# says "now". run returns before the snapshot exists, so wait for each one.
+# TrueNAS owns naming and retention (a periodic task per dataset, plus a
+# monthly one on backup); this only says "now". Only the tasks due today: the
+# monthly task runs on its day of the month, not every night with a 12-month
+# lifetime. -job waits for each snapshot to exist.
 step "snapshots"
-for id in $(midclt call pool.snapshottask.query '[["enabled","=",true]]' | jq '.[].id'); do
+for id in $(midclt call pool.snapshottask.query '[["enabled","=",true]]' |
+            jq --arg d "$(date +%-d)" '.[] | select(.schedule.dom == "*" or
+              (.schedule.dom | split(",") | index($d))) | .id'); do
   midclt call -job pool.snapshottask.run "$id" >/dev/null
 done
 
