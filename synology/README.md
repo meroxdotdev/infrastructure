@@ -20,7 +20,7 @@ by hardlink, never by copy.
 |---|---|---|---|
 | `media` | `Movies/`, `Shows/`, `Downloads/` — one share, or ARR hardlink imports break. **Quota 1.2 TB**, so the library can never eat the space backups need | off | on |
 | `backups` | the landing: one folder per producer, latest version only | off | on |
-| `homes` | Synology Drive; `merox/VMs/` holds VirtualBox images, outside Drive | default | — |
+| `homes` | Synology Drive and Synology Photos (personal spaces). The VirtualBox images moved to the vault on 2026-10-02 (`files/Personal/VMs`, vault-only) | default | — |
 | `NetBackup` | the old weekly pull from pve-2; deleted in phase 7 | — | — |
 
 ### NFS
