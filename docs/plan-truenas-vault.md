@@ -132,7 +132,7 @@ pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
      JBOD. TrueNAS sees them directly; `smartctl` already reads the SAS disks
      through it today. The TrueNAS forum rates this controller in HBA mode as
      working, not ideal — no action needed unless SMART tests fail in step 7.
-4. Note the MAC of the port in use (`eno1`, BCM57800) — same cable, same port.
+4. Note the MAC of the port in use (`eno4`, BCM57800 rNDC) — same cable, same port.
 
 ## 2 — Install · ~30 min
 
@@ -142,7 +142,7 @@ pulls the night before's backups, i.e. an RPO of ~16 h instead of ~1 h.
    SAS disk.
 4. Admin user `truenas_admin`, password in the password manager.
 5. Reboot, remove media.
-6. Console menu → network: `eno1` static `10.57.57.250/24`, gateway
+6. Console menu → network: `eno4` static `10.57.57.250/24`, gateway
    `10.57.57.1`, DNS `10.57.57.1`, hostname `vault`.
 
 ## 3 — Pool · ~2 h, mostly the SMART test
