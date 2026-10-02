@@ -13,7 +13,7 @@ of that is still true, stop here.
 
 A machine that is off unless it is copying. It wakes, pulls from the NAS,
 snapshots, pushes restic to Oracle, and powers itself off. It exports nothing
-but two SMB shares, `personal` and `work`, to the workstation only.
+but one SMB share, `files`, to the workstation only.
 
 | | |
 |---|---|
@@ -32,7 +32,7 @@ to stay safe.
 | Layer | Mechanism | What it stops |
 |---|---|---|
 | Reachability | Pull-only: no host holds a credential into the vault. TrueNAS *Allowed IP Addresses* limits UI and SSH to the workstation. 2FA on the admin | a compromised NAS, node or VPS cannot touch the vault |
-| Exposure | Powered off ~22 h/day. SMB only for `personal` and `work`, only from the workstation; `backup` and `system` are never shared. No NFS, iSCSI or S3 | nothing to attack most of the day; the machine copies are not reachable at all |
+| Exposure | Powered off ~22 h/day. SMB only for `files`, only from the workstation; `backup` and `system` are never shared. No NFS, iSCSI or S3 | nothing to attack most of the day; the machine copies are not reachable at all |
 | History | Native periodic snapshots, 30 daily + 12 monthly, retention by TrueNAS | an encrypted NAS gets pulled as a new version; the clean ones stay |
 | Blast radius | `rsync --max-delete=500`: past 500 deletions rsync stops deleting and exits 25 | a wiped or renamed-by-ransomware source is not mirrored; healthchecks alerts |
 | Off-site | restic to `rest-server --append-only`; retention runs on the VPS | even a fully compromised vault cannot delete Oracle's history |
@@ -48,16 +48,16 @@ Four top-level datasets, split by who writes them:
 
 ```
 vault/
-├── backup/      written only by the nightly chain, never shared
-│   ├── nas/       pull of the NAS: backups/ (Longhorn, pfSense, VPS), homes/ (Drive)
-│   └── github/    git mirrors of the repositories
-├── personal/    personal projects; also three films for when the NAS is down
-├── work/        professional projects
-└── system/      scripts, restic binary, secrets (0700), config exports, logs, HOLD
+├── backup/   written only by the nightly run, never shared
+│   ├── nas/      pull of the NAS: backups/ (Longhorn, pfSense, VPS), homes/ (Drive)
+│   └── github/   git mirrors of the repositories
+├── files/    yours, over SMB: Personal/ Job/ Clients/ Lab/ — the Drive layout;
+│             Personal/Movies holds three films for when the NAS is down
+└── system/   scripts, restic binary, secrets (0700), config exports, logs, HOLD
 ```
 
-`personal` and `work` are yours: SMB from the workstation, TrueNAS apps and VMs
-with host paths inside them and nowhere else. They are available only while the
+`files` is yours: SMB from the workstation, TrueNAS apps and VMs with host
+paths inside it and nowhere else. They are available only while the
 vault is awake — anything that must run all the time belongs on the mini PCs.
 
 Powering it on by hand is safe: answer **Keep on** to the Telegram question
@@ -183,7 +183,7 @@ Pool settings: `compression=lz4` (default), `atime=off`.
 ## 4 — Datasets · ~15 min
 
 Created in the UI (Datasets → Add Dataset), children inherit the pool's
-encryption. The three films are copied from the NAS into `personal/Movies` by
+encryption. The three films are copied from the NAS into `files/Personal/Movies` by
 hand once SMB is up; `tools/n8n` is restored from Oracle only if ever needed.
 
 | Dataset | Holds | Snapshots | In restic |
