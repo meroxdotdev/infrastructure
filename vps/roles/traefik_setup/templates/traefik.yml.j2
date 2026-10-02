@@ -14,15 +14,6 @@ api:
 # bindings, not here — see docker-compose.yml.j2, which explains why it cannot
 # be relaxed to 0.0.0.0.
 #
-# There used to be a second `public` entrypoint on :8443, published as host
-# :443, carrying studio.merox.dev alone. It was retired on 2026-09-08: that
-# hostname moved to edge-fra on 2026-08-30 and the split had been marked for
-# removal since. While it stood it owned host :443, so every tailnet client
-# asking for an internal hostname reached an entrypoint with no matching
-# router and got a 404 — which is how it was found, with Joplin failing to
-# sync from a phone. `git show 6b34494` has the split if it is ever needed
-# again; on a rebuilt edge it is edge_proxy's job, not this role's.
-#
 # asDefault stays: it is a no-op with a single entrypoint, but if a second one
 # is ever added here, a router that forgets to declare `entryPoints` binds to
 # every entrypoint. This keeps the failure mode "stays private".

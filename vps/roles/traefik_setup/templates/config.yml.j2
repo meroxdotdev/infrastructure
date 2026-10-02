@@ -2,11 +2,6 @@
 #
 # The docker-label routers reference `default-headers@file`, so a parse error
 # in this file takes all of them down, not just what is defined here.
-#
-# It used to also carry the studio.merox.dev routers on the `public`
-# entrypoint. Both were retired on 2026-09-08 together with that entrypoint —
-# the hostname is served from edge-fra, whose own copy of this file lives in
-# vps/roles/edge_proxy. See docs/jellyfin-public-exposure.md.
 http:
   middlewares:
     https-redirectscheme:

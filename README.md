@@ -19,7 +19,7 @@ Rebuild from nothing: ~35 min, needs this repo + `age.key` + the restic password
 | **Backup** | All sources → `/media/backups/` on pve-2 → restic to Oracle nightly + Synology pulls weekly. |
 | **Recovery** | [dr-quickstart.md](docs/dr-quickstart.md) — 8 commands, drilled on separate hardware. |
 
-**Nothing here is reachable from the internet.** [Why, and what was](docs/jellyfin-public-exposure.md).
+**Nothing here is reachable from the internet.** Public names go through the Cloudflare tunnel to the VPS; the homelab is reached over Tailscale only.
 
 **pve-2 can add to both backup targets and delete from neither.** Oracle is
 append-only; the NAS holds no credential pve-2 can use. Retention runs on each

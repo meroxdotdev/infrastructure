@@ -1,6 +1,6 @@
 # vps/ — Oracle Cloud (Ansible + Terraform)
 
-Ansible roles + Terraform for two Oracle hosts. Part of the
+Ansible roles + Terraform for the Oracle VPS. Part of the
 [meroxdotdev/infrastructure](https://github.com/meroxdotdev/infrastructure)
 repo — rebuild guide in [DEPLOY.md](../DEPLOY.md), service index in the
 [main README](../README.md).
@@ -8,14 +8,11 @@ repo — rebuild guide in [DEPLOY.md](../DEPLOY.md), service index in the
 | Host | Playbook | What it is |
 |---|---|---|
 | `vps01`, us-phoenix-1 | `site.yml` → `make setup` | The off-site stack. Everything behind the Cloudflare tunnel, no open inbound ports |
-| ~~`edge-fra`, eu-frankfurt-1~~ | `edge.yml` → `make edge-setup` | **Deleted 2026-09-08.** The role remains and would rebuild it; nothing runs it. [What it was](../docs/jellyfin-public-exposure.md) |
 
-Three deployment modes:
+Two deployment modes:
 
 - **vps01 (production):** Ansible runs *on the server itself*
   (`ansible_connection=local` — OCI blocks inbound SSH from arbitrary IPs).
-- **edge-fra:** over SSH from any machine on the tailnet. Tailscale is
-  outbound, so OCI's inbound rules do not apply.
 - **DR (Hetzner fallback):** `make dr-full` from any machine — Terraform
   provisions the server, then Ansible deploys over SSH. ~15 min.
 
@@ -67,15 +64,6 @@ make dr-restore         # DR: restore all data from NAS (non-interactive)
 
 make <service>-setup    # individual service, e.g. make authentik-setup
 make help               # everything else
-```
-
-edge-fra:
-
-```bash
-make edge-ping          # verify connectivity over the tailnet
-make edge-setup         # full deploy (~6 min, idempotent)
-make edge-check         # dry-run
-make edge-verify        # firewall, geoblock, cert, backend, isolation checks
 ```
 
 ## Disaster recovery

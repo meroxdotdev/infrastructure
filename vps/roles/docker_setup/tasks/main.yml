@@ -15,8 +15,9 @@
     update_cache: yes
   tags: ['docker', 'setup']
 
-# edge-fra is arm64. A hardcoded arch=amd64 fetches an index with no
-# installable packages, and docker-ce then fails with an unrelated-looking error.
+# Read rather than hardcoded: an arch=amd64 line on an arm64 host (Oracle's
+# Ampere shapes) fetches an index with no installable packages, and docker-ce
+# then fails with an unrelated-looking error.
 - name: Read the dpkg architecture
   ansible.builtin.command: dpkg --print-architecture
   register: dpkg_architecture

@@ -22,15 +22,6 @@ authentik_docker_dir:    /srv/docker/oracle-cloud/authentik
 
 # vps01 serves nothing to the internet directly. Everything public arrives
 # through the Cloudflare tunnel, and everything internal through the tailnet.
-# The jellyfin_* vars that used to live here moved out with the `public`
-# entrypoint on 2026-09-08 — they belong to edge_servers, which still has them.
-#
-# The two roles below existed only to guard that entrypoint. Turning them off
-# rather than deleting them from site.yml keeps one switch to flip if a public
-# listener is ever put back on this host; on a rebuilt edge, edge.yml enables
-# them there instead.
-geoblock_enabled: false
-fail2ban_jellyfin_enabled: false
 
 guacamole_domain: "rmt.merox.dev"
 guacamole_ip: "172.25.10.33"
@@ -54,9 +45,6 @@ tailscale_authkey_expires: "2027-06-14"
 # vault has: vault_tailscale_auth_key  →  role expects: tailscale_auth_key
 tailscale_auth_key: "{{ vault_tailscale_auth_key }}"
 
-# Used by fail2ban's ban action. Idle on vps01 while fail2ban_jellyfin_enabled
-# is false; kept because edge_servers reads the same vault key.
-fail2ban_notify_url: "{{ vault_fail2ban_notify_url }}"
 
 # vault has: authentik_pg_pass  →  role/template expects: authentik_db_password
 authentik_db_password: "{{ authentik_pg_pass }}"

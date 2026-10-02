@@ -101,5 +101,3 @@ sudo docker inspect traefik --format '{{json .NetworkSettings.Ports}}' | jq
 curl -sk --resolve <host>:443:100.72.22.38 -o /dev/null -w '%{http_code}\n' https://<host>/
 ```
 
-A whole-host version of this bug is written up in
-[jellyfin-public-exposure.md](jellyfin-public-exposure.md#what-it-cost-while-it-stood).

@@ -36,9 +36,7 @@ partial rebuild gets what exists. Do not hardcode it.
 `gpu.intel.com/i915`, advertised only by a node with the Iris Xe passed through.
 On a DR VM without it, it stays `Pending` by design.
 
-**Not part of DR at all:** nothing here is public. The Frankfurt edge was
-deleted on 2026-09-08 along with the Jellyfin instance it served —
-[what it was and the two lessons kept](docs/jellyfin-public-exposure.md).
+**Not part of DR at all:** nothing here is public.
 
 ---
 
