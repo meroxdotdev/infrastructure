@@ -36,7 +36,7 @@ for the other two).
 | `W` + 10 min | the same, for a vault kept on; one run per day | TrueNAS cron |
 | end of run | [vault-gate.sh](scripts/vault-gate.sh): asks on Telegram, then powers off | vault-nightly.sh |
 | `W` + 3 h | the gate alone, the backstop for a hung run | TrueNAS cron |
-| 1st Sunday | scrub; SMART long (`midclt call disk.smart_test LONG '["*"]'`) | TrueNAS task; cron |
+| Sundays | scrub when the last is 28+ days old; first Sunday also SMART long. The gate waits for both | vault-nightly.sh, step 7 |
 
 ## Deploying a change
 

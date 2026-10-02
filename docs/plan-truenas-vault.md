@@ -321,8 +321,7 @@ Do not depend on whatever TrueNAS ships.
 | Task | Setting |
 |---|---|
 | Periodic snapshot × 5 | per the dataset table; schedule **disabled**, run by the chain (step 5); retention by TrueNAS |
-| Scrub `vault` | first Sunday, `W` + 10 min |
-| S.M.A.R.T. | Not in the 25.10 UI any more. Cron job (System → Advanced → Cron Jobs), first Sunday `W` + 10 min: `midclt call disk.smart_test LONG '["*"]'` — the form TrueNAS's own migration of old SMART tasks produces |
+| Scrub, S.M.A.R.T. | Started by the nightly run (step 7), not by a schedule: Sundays `pool.scrub.run vault 28`, first Sunday `smartctl -t long` on every rotational disk. A fixed-time task raced the gate and could be powered off seconds after starting; `midclt call disk.smart_test` returns without starting anything in 25.10. The built-in scrub task is disabled |
 | Alert services | Telegram; level WARNING+ |
 | Init scripts | POSTINIT: `fan-control.sh` first, then `vault-nightly.sh` in the background, both from `/mnt/vault/system/scripts/` (from `proxmox/pve-2/scripts/`, `ipmitool` is in TrueNAS) |
 | SSH service | on, key-only, root login off |

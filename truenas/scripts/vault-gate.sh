@@ -43,7 +43,8 @@ while zpool status vault | grep -q "scrub in progress"; do
   sleep 60
 done
 
-sas_disks() { lsblk -dno NAME,MODEL | awk '/AL14SEB|HUC1018/{print $1}'; }
+# The pool disks are the rotational ones; the boot SSDs are not.
+sas_disks() { lsblk -dno NAME,ROTA | awk '$2 == 1 {print $1}'; }
 testing() { smartctl -l selftest "/dev/$1" | grep -q "in progress"; }
 for d in $(sas_disks); do
   while testing "$d"; do

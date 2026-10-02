@@ -155,5 +155,25 @@ if [ "$(date +%d)" = 01 ]; then
   rm -rf "$drill"
 fi
 
+# --- 7. Monthly maintenance --------------------------------------------------------
+# Started here, by the run, not by the clock: a cron job at a fixed minute
+# raced the gate, which could power off a test that had just begun. Started
+# from the run, they are always running when the gate looks, and it waits for
+# them (scrub paused, SMART aborted at W + 2 h).
+#   Sundays: scrub, if the last one is older than 28 days — once a month.
+#   First Sunday: SMART long test on every pool disk, ~70 min on these drives.
+if [ "$(date +%u)" = 7 ]; then
+  step "maintenance"
+  midclt call pool.scrub.run vault 28 >/dev/null
+  if [ "$(date +%-d)" -le 7 ]; then
+    # smartctl, not midclt disk.smart_test: that call is unsupported in 25.10
+    # and was seen to return without starting anything. Rotational disks are
+    # the pool; the boot SSDs are not (ROTA=0).
+    for d in $(lsblk -dno NAME,ROTA | awk '$2 == 1 {print $1}'); do
+      smartctl -t long "/dev/$d" >/dev/null
+    done
+  fi
+fi
+
 step "done"
 COMPLETED=1
