@@ -17,8 +17,8 @@ which holds the reasoning; this page is what is deployed.
 
 | Dataset | Written by | Off-site |
 |---|---|---|
-| `backup` | the nightly run only: `nas/` (NAS `backups/` and `homes/`), `github/` (mirrors of [config/github-repos](config/github-repos)). Never shared | yes, except `nas/homes/merox/VMs` |
-| `files` | you, over SMB: `Personal/`, `Job/`, `Clients/`, `Lab/`, the same four folders as Synology Drive | yes, except `Personal/Movies` and VM disks |
+| `backup` | the nightly run only: `nas/` (NAS `backups/` and `homes/`), `github/` (mirrors of [config/github-repos](config/github-repos)). Never shared | yes |
+| `files` | you, over SMB: `Personal/`, `Job/`, `Clients/`, `Lab/`, the same four folders as Synology Drive | yes, except `Personal/Movies` and `Personal/VMs` (the automotive VMs: vault-only, by choice) |
 | `system` | these scripts, logs, config export, `secrets/` (0700). Never shared | yes, except `secrets/` |
 
 Three datasets, one per writer: snapshots and retention are per dataset, and
@@ -55,7 +55,8 @@ checksum in [restic.sha256](restic.sha256).
 
 ```sh
 ssh truenas_admin@vault 'tail -40 /mnt/vault/system/logs/nightly-$(date +%F).log'
-ssh truenas_admin@vault 'sudo touch /mnt/vault/system/HOLD'   # keep on past today's run
+ssh truenas_admin@vault 'sudo touch /mnt/vault/system/HOLD'   # keep on until removed
+ssh truenas_admin@vault 'sudo rm /mnt/vault/system/HOLD'      # back to the daily cycle
 ```
 
 Secrets: `vault.env` (template [vault.env.example](vault.env.example)),

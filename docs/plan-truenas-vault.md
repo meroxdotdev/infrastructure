@@ -188,8 +188,8 @@ hand once SMB is up; `tools/n8n` is restored from Oracle only if ever needed.
 
 | Dataset | Holds | Snapshots | In restic |
 |---|---|---|---|
-| `vault/backup` | `nas/` (pull of NAS `backups/` and `homes/`), `github/` (mirrors) | 30 daily + 12 monthly | yes, **except `nas/homes/merox/VMs/`** (49 GB; Oracle has ~77 GiB) |
-| `vault/files` | yours over SMB: `Personal/`, `Job/`, `Clients/`, `Lab/` — the Drive layout | 30 daily | yes, **except `Personal/Movies/` and VM disks** |
+| `vault/backup` | `nas/` (pull of NAS `backups/` and `homes/`), `github/` (mirrors) | 30 daily + 12 monthly | yes |
+| `vault/files` | yours over SMB: `Personal/`, `Job/`, `Clients/`, `Lab/` — the Drive layout | 30 daily | yes, **except `Personal/Movies/` and `Personal/VMs/`** — the automotive VMs (49 GB) moved off the NAS 2026-10-02 and live on the vault only |
 | `vault/system` | scripts, restic binary, secrets (0700), config exports, logs | 30 daily | yes, **except `secrets/`** |
 
 Three datasets, one per writer (the nightly run, you, the scripts), because

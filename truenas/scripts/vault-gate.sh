@@ -4,9 +4,9 @@
 # docs/plan-truenas-vault.md §6.
 #
 # It powers the vault off unless one of these holds:
-#   - HOLD exists in vault/system. "Keep on" on Telegram writes it, so can you.
-#     vault-nightly.sh removes it at the start of the next run: a hold lasts
-#     until the next day's run, which asks again.
+#   - HOLD exists in vault/system. "Keep on" on Telegram writes it with
+#     "until-next-run", and the next day's run removes it and asks again.
+#     A HOLD made by hand (`touch`) stays until it is removed by hand.
 #   - a resilver is running. A replaced disk resilvers to the end, however long.
 # And it waits, up to W + 2 h, for a scrub or a SMART self-test; past that it
 # pauses the scrub (it resumes on the next boot) and aborts the test.
@@ -77,7 +77,7 @@ ask() {
       tg answerCallbackQuery -d callback_query_id="$(jq -r '.callback_query.id' <<<"$u")" >/dev/null || true
       case "$(jq -r '.callback_query.data' <<<"$u")" in
         keep)
-          touch "$SYS/HOLD"
+          echo until-next-run > "$SYS/HOLD"
           tg editMessageText -d chat_id="$TG_CHAT" -d message_id="$msg" \
             --data-urlencode text="🗄 Vault stays on until tomorrow's run" >/dev/null || true
           return 0 ;;

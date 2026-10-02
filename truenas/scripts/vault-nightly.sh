@@ -48,13 +48,20 @@ finish() {
 }
 trap finish EXIT
 
-# The hold of the previous run expires now; the gate below asks afresh.
-rm -f "$SYS/HOLD"
+# A "Keep on" from yesterday's question expires now; the gate below asks
+# afresh. A HOLD made by hand (empty file) stays until it is removed by hand.
+[ "$(cat "$SYS/HOLD" 2>/dev/null)" = until-next-run ] && rm -f "$SYS/HOLD"
 hc "/start"
 
 # --- 1. Pull from the NAS, read-only ------------------------------------------
 # DSM's rsync daemon as an ordinary user with read-only share permissions: the
-# vault can read the NAS, the NAS holds nothing that reaches the vault.
+# vault can read the NAS, the NAS holds nothing that reaches the vault. DSM
+# needs an "rsync account" for daemon mode (File Services → rsync); it uses the
+# same password as the DSM user, so there is one secret, not two.
+#
+# Excluded: DSM's own indexes and recycle bins, and what vault-pull rightly
+# cannot read — every user's .ssh/ and the admin home. Unreadable files make
+# rsync exit 23, which would fail the run every night.
 #
 # --max-delete=500: a source wiped or encrypted under a new name would delete
 # everything here. Past 500 deletions rsync stops deleting and exits 25, set -e
@@ -63,6 +70,7 @@ step "pull from NAS"
 for share in backups homes; do
   rsync -aH --delete --max-delete=500 --numeric-ids \
     --exclude '@eaDir/' --exclude '#recycle/' --exclude '.SynologyWorkingDirectory/' \
+    --exclude '.ssh/' --exclude '/admin/' \
     --password-file="$SYS/secrets/rsync-password" \
     "rsync://vault-pull@$NAS_HOST/$share/" "$POOL/backup/nas/$share/"
 done
@@ -101,6 +109,9 @@ done
 # Content-defined chunking means the move to new paths uploads almost nothing.
 step "restic backup"
 export RESTIC_PASSWORD_FILE="$SYS/secrets/restic-password"
+# On the pool, not in root's home on the boot pool: the cache is rebuilt from
+# the repository if lost, but it should not fill the boot mirror.
+export RESTIC_CACHE_DIR="$SYS/run/restic-cache"
 RESTIC_REPOSITORY="rest:http://vault:$(cat "$SYS/secrets/rest-password")@$ORACLE_HOST:8000/"
 export RESTIC_REPOSITORY
 RESTIC=$SYS/bin/restic
