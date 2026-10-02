@@ -281,8 +281,9 @@ The **power-off gate** — shut down only when all of these hold:
   - **Shut down now** → powers off immediately.
 
   Silence means shut down: a missed message never leaves the vault on.
-  To power off a held vault early, the bot's `/off` command or TrueNAS UI →
-  Power → Shut Down; either removes `HOLD`.
+  To power off a held vault early: TrueNAS UI → Power → Shut Down. A dedicated
+  bot, not the alerting one: the gate reads its updates, and a second reader
+  would steal the button presses.
 - no scrub running — past `W` + 2 h, `zpool scrub -p` pauses it; it resumes
   on the next boot, so a long scrub spreads over several nights by itself
 - no resilver running — a replaced disk resilvers to the end, however long
@@ -352,8 +353,8 @@ Manual wake: same command, or iDRAC → Power → On.
 
 | Remove | Add |
 |---|---|
-| Prometheus targets on `10.57.57.250` (node_exporter, pve-exporter pve-2) | healthchecks `vault-nightly`: period 1 day, grace 4 h; plus `vault-wake`: the chain's start ping, grace **15 min** past `W` — a vault that did not boot is known within the hour, not the next day |
-| healthchecks `pve-push-synology`, `nightly-checks`, `restic-push` (pve-2) | healthchecks `vault-offline`: pinged by the power-off gate — a vault still up at `W` + 4 h is a failure too |
+| Prometheus targets on `10.57.57.250` (node_exporter, pve-exporter pve-2) | healthchecks `vault-nightly`: cron schedule `W`, grace **60 min** — a vault that did not wake, or a run that failed, is known within the hour |
+| healthchecks `pve-push-synology`, `nightly-checks`, `restic-push` (pve-2) | — (one check is enough: a vault left on costs watts, not data, and the backstop at `W` + 3 h powers it off) |
 | UPS panels bound to pve-2 | TrueNAS → Telegram for pool/SMART/scrub |
 
 Rule 4 of [architecture.md](architecture.md) applies: an alert that assumes a
@@ -375,8 +376,8 @@ Manual on purpose. The vault holds no write credential into the NAS, and that
 stays true.
 
 **Keep it awake first:** wake it, then answer **Keep on** (or `touch
-/mnt/vault/system/HOLD` by hand). When done, `/off` — or leave it, and the next
-day's run asks again.
+/mnt/vault/system/HOLD` by hand). When done, shut it down from the UI — or leave
+it, and the next day's run asks again.
 
 | Lost | From | How |
 |---|---|---|
