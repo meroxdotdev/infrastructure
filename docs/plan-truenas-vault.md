@@ -321,9 +321,9 @@ Do not depend on whatever TrueNAS ships.
 | Alert services | Telegram; level WARNING+ |
 | Init scripts | POSTINIT: `fan-control.sh` first, then `vault-nightly.sh` in the background, both from `/mnt/vault/system/scripts/` (from `proxmox/pve-2/scripts/`, `ipmitool` is in TrueNAS) |
 | SSH service | on, key-only, root login off |
-| SMB | shares `personal` and `work` only, *Hosts Allow* = the workstation |
+| SMB | one share, `files`, *Hosts Allow* = the workstation |
 | NFS / iSCSI / S3 | **off** |
-| Apps, VMs | allowed, host paths only under `vault/personal` and `vault/work` |
+| Apps, VMs | allowed, host paths only under `vault/files` |
 | Allowed IP Addresses | the workstation only (System → General). Pin its address first: pfSense DHCP reservation, and *Private Wi-Fi Address* off for the home network — pfSense already holds three rules for the same MacBook under rotated addresses |
 | Admin 2FA | on |
 
