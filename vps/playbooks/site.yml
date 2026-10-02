@@ -51,6 +51,10 @@
     - role: vps_backup
       tags: ['backup', 'services']
 
+    # The append-only endpoint the vault pushes to, and its retention.
+    - role: restic_rest_server
+      tags: ['restic', 'backup', 'services']
+
     # Telegram when home drops off the tailnet — the only alert that can
     # leave while the home WAN is down.
     - role: homelab_watch

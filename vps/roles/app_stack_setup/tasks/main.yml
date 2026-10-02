@@ -67,15 +67,6 @@
   become: yes
   notify: Restart app stack
 
-# homelab-stats.sh no longer uses this key, so remove the now-orphaned
-# private key from disk rather than leaving stale credential material around.
-- name: Remove superseded UPS status SSH private key
-  ansible.builtin.file:
-    path: /root/.ssh/vps-to-px0-ups
-    state: absent
-  become: yes
-  no_log: true
-
 # homelab-stats collected iDRAC power, fan RPM and Proxmox pool usage from
 # this host every five minutes. From vps01 none of that is reachable: pfSense
 # drops 8006, 443 and DNS on 53 from the tailnet, so the script had been logging

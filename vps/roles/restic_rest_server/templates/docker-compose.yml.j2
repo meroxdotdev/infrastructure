@@ -20,9 +20,8 @@
 # Bound to the tailnet address deliberately. On 0.0.0.0 this would be an
 # internet-facing service on an Oracle tenancy that is not ours.
 #
-# user 999:987 is the restic-backup account that owns the repository, so files
-# written through here stay readable to the SFTP path during the changeover and
-# to the retention job afterwards.
+# Runs as the account that owns the repository, so what it writes stays
+# readable to the retention job.
 services:
   rest-server:
     image: {{ restic_rest_image }}

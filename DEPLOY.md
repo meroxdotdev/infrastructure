@@ -16,7 +16,7 @@ IPs and MACs stay. This page is for when they change.
 | Portainer EE license | Portainer account |
 | Hetzner API token | console.hetzner.cloud → Security → API Tokens |
 | DR SSH key | `~/.ssh/cloudlab_dr_test{,.pub}` — `ssh-keygen -t ed25519 -f ~/.ssh/cloudlab_dr_test -N ""` |
-| R730xd push key | `vault_oracle_vps_to_r730xd_ssh_key`; public half authorised on `root@pve-2` |
+| R730xd push key | `vault_vps_backup_ssh_key`; public half authorised on `root@pve-2` |
 
 `vps/terraform/terraform.tfvars` is gitignored — recreate it:
 

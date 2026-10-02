@@ -50,7 +50,7 @@
 
 - name: Deploy the backup push SSH private key
   copy:
-    content: "{{ vault_oracle_vps_to_r730xd_ssh_key }}"
+    content: "{{ vault_vps_backup_ssh_key }}"
     dest: "{{ vps_backup_ssh_key }}"
     owner: root
     group: root
@@ -130,105 +130,6 @@
     hour: "23"
     job: "/usr/local/bin/nightly-backup.sh >> /var/log/nightly-backup.log 2>&1"
     user: root
-  tags: backup
-
-# Renamed 2026-09-29 when the push moved to the NAS.
-- name: Remove the files the rename replaced
-  file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /usr/local/bin/backup-push-r730xd.sh
-    - /usr/local/bin/restore-pull-from-r730xd.sh
-    - /root/.ssh/oracle-vps-to-r730xd
-  tags: backup
-
-- name: Remove the three cron entries the wrapper replaced
-  cron:
-    name: "{{ item }}"
-    state: absent
-    user: root
-  loop:
-    - joplin-db-backup
-    - vps-extras-backup
-    - backup-push-r730xd
-  tags: backup
-
-# --- restic landing user: R730xd -> Oracle VPS, DSM-independent offsite leg ---
-# SFTP-only, chrooted, no shell - restic's sftp backend talks to this over SSH.
-# Private key lives on R730xd only (not managed here); see
-# proxmox/pve-2/README.md for the one-time push-side setup.
-
-- name: Create restic-backup system group
-  group:
-    name: "{{ vps_backup_restic_user }}"
-    system: true
-  tags: backup
-
-- name: Create restic-backup system user (no shell, SFTP-only)
-  user:
-    name: "{{ vps_backup_restic_user }}"
-    group: "{{ vps_backup_restic_user }}"
-    system: true
-    shell: /usr/sbin/nologin
-    home: "{{ vps_backup_restic_chroot }}"
-    create_home: false
-  tags: backup
-
-# sshd ChrootDirectory requires this exact dir (and every component above it)
-# to be owned by root and not writable by anyone else - the restic-backup
-# user's own writable space is the "data" subdir one level down.
-- name: Ensure restic chroot root exists (root-owned, sshd ChrootDirectory requirement)
-  file:
-    path: "{{ vps_backup_restic_chroot }}"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-  tags: backup
-
-- name: Ensure restic repo data dir exists (writable by restic-backup)
-  file:
-    path: "{{ vps_backup_restic_data_dir }}"
-    state: directory
-    owner: "{{ vps_backup_restic_user }}"
-    group: "{{ vps_backup_restic_user }}"
-    mode: "0700"
-  tags: backup
-
-- name: Ensure restic-backup .ssh dir exists (root-owned - sshd reads authorized_keys pre-chroot)
-  file:
-    path: "{{ vps_backup_restic_chroot }}/.ssh"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
-  tags: backup
-
-- name: "Deploy restic-backup authorized_keys (restricted: sftp only, no forwarding/pty)"
-  copy:
-    content: "restrict {{ vps_backup_restic_public_key }}\n"
-    dest: "{{ vps_backup_restic_chroot }}/.ssh/authorized_keys"
-    owner: root
-    group: root
-    mode: "0644"
-  tags: backup
-
-- name: Deploy sshd Match block for restic-backup (chroot + force internal-sftp)
-  copy:
-    content: |
-      Match User {{ vps_backup_restic_user }}
-          ChrootDirectory {{ vps_backup_restic_chroot }}
-          ForceCommand internal-sftp
-          AllowTcpForwarding no
-          X11Forwarding no
-          PermitTTY no
-          PasswordAuthentication no
-    dest: /etc/ssh/sshd_config.d/restic-backup.conf
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Reload sshd
   tags: backup
 
 - name: Deploy monthly restore drill script (proves dumps are actually restorable)

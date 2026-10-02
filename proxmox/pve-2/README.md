@@ -234,7 +234,7 @@ restrict,command="rrsync /media/backups/oracle-vps",from="10.57.57.1" ssh-ed2551
 Tailscale-routed traffic, so pve-2 never sees the VPS's Tailscale IP. Fails
 silently otherwise; debug via `journalctl -u ssh` (no auth.log on this
 host). Key rotation: regenerate on VPS, update
-`vault_oracle_vps_to_r730xd_ssh_key` in the vps Ansible vault.
+`vault_vps_backup_ssh_key` in the vps Ansible vault.
 
 ### Synology → pve-2
 

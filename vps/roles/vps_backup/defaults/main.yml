@@ -8,20 +8,10 @@ vps_backup_retention_days: 7
 vps_backup_nas_user: vps
 vps_backup_nas_host: 10.57.57.201
 vps_backup_nas_path: /volume1/backups/oracle-vps
-# Its private half is the vault variable vault_oracle_vps_to_r730xd_ssh_key,
+# Its private half is the vault variable vault_vps_backup_ssh_key,
 # named for its first destination.
 vps_backup_ssh_key: /root/.ssh/vps-backup
 
-# Restic landing spot for R730xd -> Oracle VPS, DSM/Synology-independent restore
-# path. R730xd pushes here directly over SFTP (restic's sftp backend) - not
-# ansible-managed on the R730xd side (pve-2 isn't in this inventory), only the
-# receiving side (this dedicated, chrooted, SFTP-only system user) is.
-# The private half of this keypair lives on R730xd only, not in this repo -
-# see proxmox/pve-2/README.md for the one-time provisioning steps.
-vps_backup_restic_user: restic-backup
-vps_backup_restic_chroot: /srv/restic-repo
-vps_backup_restic_data_dir: /srv/restic-repo/data
-vps_backup_restic_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfpCdCt+R3x/LTKky0SXsXxaFcDJnzRHdexHf4aEvmN restic-backup@r730xd"
 
 # Optional healthchecks.io ping URLs (dead-man's-switch, one per job). Empty
 # string = pinging silently skipped, so this is safe to deploy before the

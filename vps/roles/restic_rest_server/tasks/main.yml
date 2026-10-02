@@ -1,19 +1,39 @@
 ---
 # Prerequisite this role deliberately does not automate: the htpasswd entry.
 # Creating it needs the client's plaintext password, and the point of the
-# arrangement is that the password is generated on pve-2 and never leaves it —
+# arrangement is that the password is generated on the vault and never leaves it —
 # only the bcrypt hash is carried here. Generating it from Ansible would put the
 # plaintext on this host, which is the thing being avoided. See README.md.
-- name: Ensure the rest-server directories exist
+- name: Create the account that owns the repository
+  ansible.builtin.user:
+    name: "{{ restic_rest_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    home: "{{ restic_rest_repo_path }}"
+
+- name: Ensure the rest-server and repository directories exist
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
-    owner: "{{ restic_rest_owner.split(':')[0] }}"
-    group: "{{ restic_rest_owner.split(':')[1] }}"
-    mode: "0750"
+    owner: "{{ restic_rest_user }}"
+    group: "{{ restic_rest_user }}"
+    mode: "{{ item.mode }}"
   loop:
-    - "{{ restic_rest_docker_dir }}"
-    - "{{ restic_rest_docker_dir }}/auth"
+    - { path: "{{ restic_rest_docker_dir }}", mode: "0750" }
+    - { path: "{{ restic_rest_docker_dir }}/auth", mode: "0750" }
+    - { path: "{{ restic_rest_repo_path }}", mode: "0700" }
+
+# rest-server and the retention container run as this account by number:
+# a container sees uids, not names.
+- name: Read the repository owner's uid and gid
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ restic_rest_user }}"
+
+- name: Remember them as uid:gid
+  ansible.builtin.set_fact:
+    restic_rest_owner: "{{ getent_passwd[restic_rest_user][1] }}:{{ getent_passwd[restic_rest_user][2] }}"
 
 - name: Fail early when no htpasswd entry exists
   ansible.builtin.stat:
@@ -48,8 +68,8 @@
 # Retention. Runs here rather than on the client precisely because the client
 # cannot delete anything any more; see README.md.
 - name: Install the retention script
-  ansible.builtin.copy:
-    src: restic-retention.sh
+  ansible.builtin.template:
+    src: restic-retention.sh.j2
     dest: /usr/local/sbin/restic-retention.sh
     owner: root
     group: root

@@ -25,7 +25,7 @@ The Authentik dump (23:40, `authentik_setup` role) lands in the same
 rsync over SSH to the NAS as DSM user `vps`: not an administrator, rsync and
 SFTP only, write access to `backups/` only, 10 GB quota. Its key
 (`/root/.ssh/vps-backup`, private half in the vault variable
-`vault_oracle_vps_to_r730xd_ssh_key`) is accepted only from `10.57.57.1` —
+`vault_vps_backup_ssh_key`) is accepted only from `10.57.57.1` —
 the VPS reaches the LAN through the tailnet and pfSense NATs it. The tailnet
 grant is `tag:vps-proxy → 10.57.57.201 tcp:22`. User setup:
 [synology/README.md](../../../synology/README.md#users).
