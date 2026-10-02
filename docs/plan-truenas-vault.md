@@ -369,10 +369,11 @@ silence it.
 
 ## 10 — Gate
 
-Seven consecutive days: wakes at `W`, `vault-nightly` green, `restic
-snapshots --host vault` shows a new snapshot, the host is off by `W` + 1 h
-(`W` + 4 h on the first Sunday), zero manual steps. Then the first monthly day with
-scrub and SMART long completes or pauses cleanly.
+Two consecutive unattended days (shortened from seven on 2026-10-02, by the
+owner's decision: the full cycle had already been run end to end by hand).
+Each day: wakes at `W`, `vault-nightly` green, `restic snapshots --host vault`
+shows a new snapshot, the host is off within the hour, zero manual steps.
+The first monthly day with scrub and SMART long is watched when it comes.
 
 ---
 
