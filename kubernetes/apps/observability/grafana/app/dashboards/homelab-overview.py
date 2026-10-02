@@ -135,9 +135,8 @@ P.append(updown("Internet", 'max(probe_success{job="blackbox-wan"})', 6, 1, "Onl
 P.append(updown("VPS", 'probe_success{job="blackbox-vps"}', 9, 1, "Reachable", "DOWN",
                 desc="inside.merox.dev — the off-site backup target."))
 P.append(stat("Hosts", 'sum(pve_up{id=~"node/.*"})', 12, 1,
-              steps=[{"color": "red", "value": None}, {"color": "orange", "value": 1}, GREEN | {"value": 2}],
-              desc=("Proxmox hosts answering, of those scraped: pve-1 and pve-3. pve-2 (the OptiPlex) "
-                    "has no pve-exporter module yet; raise green to 3 when it does.")))
+              steps=[{"color": "red", "value": None}, {"color": "orange", "value": 2}, GREEN | {"value": 3}],
+              desc="Proxmox hosts answering. Each carries one control plane."))
 P.append(stat("K8s nodes", 'sum(kube_node_status_condition{condition="Ready",status="true"})', 15, 1,
               steps=[{"color": "red", "value": None}, {"color": "orange", "value": 2}, GREEN | {"value": 3}],
               desc="Ready nodes. Two is still a quorum; one is not."))
@@ -328,7 +327,7 @@ dash = {
     "refresh": "1m", "schemaVersion": 39, "tags": ["homelab"],
     "templating": {"list": []}, "time": {"from": "now-24h", "to": "now"},
     "timepicker": {}, "timezone": "browser", "title": "Homelab Overview",
-    "uid": "homelab-overview", "version": 6, "weekStart": ""}
+    "uid": "homelab-overview", "version": 7, "weekStart": ""}
 
 # refuse to emit the bug that prompted this rewrite
 for p in P:

@@ -54,15 +54,14 @@ files into the textfile directory:
 
 | File | What it adds | Where |
 |---|---|---|
-| `smartmon.prom` | SMART health and SSD wear | pve-3 |
-| `nvme.prom` | NVMe wear (`nvme_percentage_used_ratio`), media errors | pve-1, pve-3 |
-| `apt.prom` | pending upgrades, reboot required | pve-1, pve-3 |
+| `smartmon.prom` | SMART health and SSD wear | pve-2, pve-3 |
+| `nvme.prom` | NVMe wear (`nvme_percentage_used_ratio`), media errors | all three |
+| `apt.prom` | pending upgrades, reboot required | all three |
 
 The vault is not here and is not meant to be: it is off most of the day, and
 scraping a host that is usually down only produces a permanent alert. Its
 disks report through TrueNAS's own alerts to Telegram, its daily run through
-healthchecks.io. `pve-2` (the OptiPlex) has no node_exporter yet — see
-[its README](../proxmox/pve-2/README.md).
+healthchecks.io.
 
 The `zfs` and `hwmon` collectors are on by default and need no flag — they
 activate where the kernel exposes them; none of these hosts runs ZFS, so they
@@ -84,7 +83,7 @@ kubectl -n observability port-forward svc/prometheus-operated 9090:9090
 curl -s --data-urlencode 'query=up{job="pve-node"}' localhost:9090/api/v1/query
 ```
 
-One series per host, all `1`, each carrying a `host` label (`pve-1`, `pve-3`)
-set by the ScrapeConfig. The Grafana dashboard **Node Exporter Full**
+Three series, all `1`, each carrying a `host` label (`pve-1`, `pve-2`,
+`pve-3`) set by the ScrapeConfig. The Grafana dashboard **Node Exporter Full**
 picks the hosts up on its own once the job reports — it is driven by a job
 variable, not a hardcoded name.

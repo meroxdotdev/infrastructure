@@ -11,11 +11,11 @@ own API token and its own section in `pve.yml`.
 | Host | Address | Module in `pve.yml` |
 |---|---|---|
 | `pve-1` Beelink | `10.57.57.254` | `pve-1` |
+| `pve-2` OptiPlex | `10.57.57.252` | `pve-2` |
 | `pve-3` OptiPlex | `10.57.57.253` | `pve-3` |
 
-`pve-2` (the OptiPlex at `.252`) has no module yet — it needs its own API token
-first; see [its README](../../../../proxmox/pve-2/README.md). Modules are named
-after their host.
+Modules are named after their host. Each is a read-only `PVEAuditor` token,
+`prometheus@pve!prometheus`, created on that host.
 
 ## Adding a host
 

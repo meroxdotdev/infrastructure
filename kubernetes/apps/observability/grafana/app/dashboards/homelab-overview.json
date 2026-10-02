@@ -353,7 +353,7 @@
       "id": 6,
       "type": "stat",
       "title": "Hosts",
-      "description": "Proxmox hosts answering, of those scraped: pve-1 and pve-3. pve-2 (the OptiPlex) has no pve-exporter module yet; raise green to 3 when it does.",
+      "description": "Proxmox hosts answering. Each carries one control plane.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -380,11 +380,11 @@
               },
               {
                 "color": "orange",
-                "value": 1
+                "value": 2
               },
               {
                 "color": "green",
-                "value": 2
+                "value": 3
               }
             ]
           }
@@ -2751,6 +2751,6 @@
   "timezone": "browser",
   "title": "Homelab Overview",
   "uid": "homelab-overview",
-  "version": 6,
+  "version": 7,
   "weekStart": ""
 }

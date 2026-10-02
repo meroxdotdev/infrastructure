@@ -138,6 +138,30 @@ spec:
       replacement: *name
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
+# pve-2 (OptiPlex 3050, since 2026-09-29). Same reasoning as pve-1 above.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: &name pve-2
+spec:
+  staticConfigs:
+    - targets:
+        - 10.57.57.252
+  metricsPath: /pve
+  params:
+    module: ["pve-2"]
+  relabelings:
+    - sourceLabels: [__address__]
+      targetLabel: __param_target
+    - sourceLabels: [__param_target]
+      targetLabel: instance
+    - targetLabel: __address__
+      replacement: pve-exporter.observability.svc.cluster.local:9221
+    - action: replace
+      targetLabel: job
+      replacement: *name
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/scrapeconfig_v1alpha1.json
 # pve-3 (OptiPlex 3050). Same reasoning as pve-1 above.
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: ScrapeConfig
@@ -214,6 +238,8 @@ spec:
   staticConfigs:
     - targets: ["10.57.57.254:9100"]
       labels: { host: pve-1 }
+    - targets: ["10.57.57.252:9100"]
+      labels: { host: pve-2 }
     - targets: ["10.57.57.253:9100"]
       labels: { host: pve-3 }
   metricsPath: /metrics
