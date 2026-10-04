@@ -21,6 +21,3 @@ spec:
     - dnsName: "flux-webhook.${SECRET_DOMAIN}"  # GitHub → Flux receiver
       recordType: CNAME
       targets: ["external.${SECRET_DOMAIN}"]
-    - dnsName: "drive.${SECRET_DOMAIN}"         # Synology Drive, behind Cloudflare Access
-      recordType: CNAME
-      targets: ["external.${SECRET_DOMAIN}"]

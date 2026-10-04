@@ -11,7 +11,5 @@ resources:
   - ./cloudflare-dns/ks.yaml
   # Tunneling
   - ./cloudflare-tunnel/ks.yaml
-  # Public names in front of the LAN
-  - ./drive/ks.yaml
   # PXE boot
   - ./netboot-xyz/ks.yaml
