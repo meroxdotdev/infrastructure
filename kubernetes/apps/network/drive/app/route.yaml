@@ -1,0 +1,53 @@
+---
+# drive.merox.dev — Synology Drive (DSM) from a browser on someone else's
+# computer. The apps on the MacBook and iPhone do not use this: they reach the
+# NAS directly at 10.57.57.201 over the LAN or Tailscale.
+#
+# Exposed only behind Cloudflare Access, which is configured in the Cloudflare
+# dashboard (Zero Trust → Access → Applications → drive), not here: one-time
+# PIN to the owner's email, required country Romania, 6 h sessions. The Access
+# application existed before this route did, so DSM was never reachable
+# without it. Behind it, DSM's own login with 2FA.
+#
+# The backend is DSM's plain-HTTP port on the LAN: TLS ends at Cloudflare and
+# again at the gateway, and the last hop never leaves the house.
+apiVersion: v1
+kind: Service
+metadata:
+  name: nas-dsm
+spec:
+  ports:
+    - name: http
+      port: 5000
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: nas-dsm
+  labels:
+    kubernetes.io/service-name: nas-dsm
+addressType: IPv4
+ports:
+  - name: http
+    port: 5000
+    protocol: TCP
+endpoints:
+  - addresses:
+      - "${NAS_SERVER}"
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: drive
+spec:
+  hostnames:
+    - drive.merox.dev
+  parentRefs:
+    - name: external
+      namespace: kube-system
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: nas-dsm
+          port: 5000
