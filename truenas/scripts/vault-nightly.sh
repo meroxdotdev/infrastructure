@@ -71,14 +71,25 @@ hc "/start"
 # --max-delete=500: a source wiped or encrypted under a new name would delete
 # everything here. Past 500 deletions rsync stops deleting and exits 25, set -e
 # ends the run before any snapshot, and the last good one stays the newest.
+# A deliberate reorganisation on the NAS (moving thousands of photos between
+# folders) looks to rsync exactly like a wipe: thousands of deletions. After
+# checking that the deletions are moves, `touch $SYS/ALLOW-DELETES` lifts the
+# limit for one run; the run removes the file once the pull has succeeded.
 step "pull from NAS"
+MAX_DELETE=(--max-delete=500)
+if [ -e "$SYS/ALLOW-DELETES" ]; then
+  echo "$(date -Is) ALLOW-DELETES present: no deletion limit for this pull"
+  MAX_DELETE=()
+fi
 for share in backups homes; do
-  rsync -aH --delete --max-delete=500 --numeric-ids \
+  rsync -aH --delete "${MAX_DELETE[@]}" --numeric-ids \
     --exclude '@eaDir/' --exclude '#recycle/' --exclude '.SynologyWorkingDirectory/' \
     --exclude '.ssh/' --exclude '/admin/' \
     --password-file="$SYS/secrets/rsync-password" \
     "rsync://vault-pull@$NAS_HOST/$share/" "$POOL/backup/nas/$share/"
 done
+
+rm -f "$SYS/ALLOW-DELETES"
 
 # --- 2. Git mirrors --------------------------------------------------------------
 # One URL per line in config/github-repos. A mirror is a full copy of every ref,

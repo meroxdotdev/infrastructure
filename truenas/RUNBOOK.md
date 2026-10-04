@@ -224,6 +224,10 @@ a "ran today" stamp make the boot and the 13:10 cron one run per day.
 
 1. healthchecks `/start`
 2. rsync pull of NAS `backups` and `homes` → `backup/nas/`, `--max-delete=500`.
+   A deliberate mass move on the NAS trips it too (it did on 2026-10-03,
+   after the photos were refiled by country): check the dry-run's deletions
+   are moves, then `touch /mnt/vault/system/ALLOW-DELETES` — one run without
+   the limit, and the file is gone again.
    Excluded: DSM indexes and recycle bins, every `.ssh/`, the `admin` home —
    unreadable to `vault-pull`, and an unreadable file makes rsync exit 23
 3. `git clone --mirror` / `remote update` of [config/github-repos](config/github-repos)
