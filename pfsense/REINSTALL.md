@@ -41,8 +41,11 @@ subnet router advertising `10.57.57.0/24`.
 
 DNS, as the restored config should have it (set 2026-10-02):
 
-- Host overrides: eight names under `merox.dev` — `fw`, `nas`, `vault`,
-  `idrac`, `pve-1`, `pve-2`, `pve-3`, `dc`. Nothing else.
+- Host overrides: nine names under `merox.dev` — `fw`, `nas`, `vault`,
+  `idrac`, `pve-1`, `pve-2`, `pve-3`, `dc`, and `media` → `10.57.57.101`,
+  Jellyfin's own hostname through the cluster gateway. It is not under
+  `k8s.merox.dev`, so the delegation does not cover it; dropping it as
+  "stale" on 2026-10-02 broke Jellyfin for two days.
 - One domain override: `k8s.merox.dev` → `10.57.57.111`, the cluster's
   k8s-gateway, which answers every `*.k8s` name itself. No per-app entries.
 - Unbound outgoing interfaces: **LAN and WAN**. WAN alone sends the override's
