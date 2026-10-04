@@ -55,10 +55,6 @@
     - role: restic_rest_server
       tags: ['restic', 'backup', 'services']
 
-    # Always-on, encrypted-only member of the shared Sync folder.
-    - role: syncthing_node
-      tags: ['syncthing', 'services']
-
     # Telegram when home drops off the tailnet — the only alert that can
     # leave while the home WAN is down.
     - role: homelab_watch

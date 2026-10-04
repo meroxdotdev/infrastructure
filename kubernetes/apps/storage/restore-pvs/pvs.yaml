@@ -185,27 +185,3 @@ spec:
     volumeHandle: sonarr
   persistentVolumeReclaimPolicy: Retain
   storageClassName: longhorn
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: syncthing
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 40Gi
-  claimRef:
-    apiVersion: v1
-    kind: PersistentVolumeClaim
-    name: syncthing
-    namespace: default
-  csi:
-    driver: driver.longhorn.io
-    fsType: ext4
-    volumeAttributes:
-      numberOfReplicas: "3"
-      staleReplicaTimeout: "30"
-    volumeHandle: syncthing
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: longhorn

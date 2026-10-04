@@ -101,7 +101,6 @@ Cloudflare tunnel, everything else over the tailnet.
 | Guacamole | browser access to the estate without a client |
 | Portainer | a view of the VPS's containers; Ansible remains their owner |
 | homelab-watch | the watcher outside the estate: Telegram when home drops off the tailnet |
-| Syncthing | the always-on member of the [Sync folder](sync.md), holding it encrypted |
 
 ## What is deliberately not done
 

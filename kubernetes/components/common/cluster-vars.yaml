@@ -23,9 +23,6 @@ data:
   LB_IP_GATEWAY_INTERNAL: "10.57.57.101"
   # LB_IP_QBITTORRENT / LB_IP_NETBOOTXYZ — app-specific, not in cluster.yaml
   LB_IP_QBITTORRENT: "10.57.57.102"
-  # Syncthing's sync port (22000 tcp/udp), dialled by the MacBook and iPhone
-  # over the tailnet's subnet route.
-  LB_IP_SYNCTHING: "10.57.57.103"
   LB_IP_NETBOOTXYZ: "10.57.57.104"
   # LB_IP_JELLYFIN — dedicated IP for restricted Tailscale ACL access (the
   # guest device reaches Jellyfin only), separate from the
