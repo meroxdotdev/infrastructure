@@ -24,10 +24,40 @@ by hardlink, never by copy.
 | `photo` | Synology Photos' shared space — empty; every photo is in the personal space | — | — |
 | `NetBackup` | created by the rsync service and undeletable while it runs; empty, hidden, no access | — | — |
 
+Drive (`merox/Cloud`) has four folders, one per role: `Personal/`, `Work/`
+(the employer, and `Clients/<client>/`), `Lab/` (learning and side projects) and
+`Shared/` (what someone else can see). Reorganised on 2026-10-04; a move is
+seen by the vault as deletes, so it needs `ALLOW-DELETES` for one run.
+
 Photos are filed by country only: `Photos/<Country>/`, with the files directly
 inside, and `Photos/Diverse/` for everything without a GPS position. Done on
 2026-10-02 from each file's EXIF position, offline against GeoNames; Synology
 Photos' own *Places* view still groups by city.
+
+### `drive.merox.dev`
+
+Synology Drive in a browser on someone else's machine. Independent of the
+cluster: `cloudflared` runs on the NAS itself, so the name works while
+Kubernetes is down.
+
+| | |
+|---|---|
+| Tunnel | `nas` (Zero Trust → Networks → Tunnels), remotely managed |
+| Ingress | `drive.merox.dev` → `https://localhost:443`, origin server name and Host header `drive.merox.dev`, TLS not verified |
+| DSM | Login Portal → Applications → Synology Drive → customized domain `drive.merox.dev`: DSM serves the Drive portal on that name, never the DSM desktop |
+| Gate | Cloudflare WAF custom rule `drive-romania-only`: Block when the country is not RO |
+| Login | the user's own DSM account, non-admin, with 2FA |
+
+The container, started once by hand (the token is the tunnel's, kept in the
+Cloudflare dashboard and never here):
+
+```sh
+sudo /usr/local/bin/docker run -d --name cloudflared --restart unless-stopped \
+  --network host cloudflare/cloudflared:<version> tunnel --no-autoupdate run --token <token>
+```
+
+The Mac's Synology Drive client does not use this name: it syncs `Cloud/`
+from `10.57.57.201`, at home or over Tailscale.
 
 ### NFS
 

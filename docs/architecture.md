@@ -113,9 +113,10 @@ backups.
 **A hot spare in the vault.** It would act only while the vault is on, about
 ten minutes a day. A cold spare waits in a drawer instead.
 
-**Exposing the NAS.** It holds everything. Apps reach it over Tailscale; a
-browser on someone else's machine will go through Cloudflare Access with
-Authentik in front, never a bare DSM login.
+**Exposing the NAS.** It holds everything. Apps reach it over Tailscale. The
+one public name, `drive.merox.dev`, serves only the Synology Drive portal,
+from Romania only, to a non-admin account with 2FA — see
+[synology/README.md](../synology/README.md).
 
 **Netdata in place of Prometheus.** The custom rules encode findings that a
 template-driven agent cannot express — the etcd diagnosis of 2026-09-07 needed
