@@ -9,3 +9,18 @@ spec:
     - dnsName: "external.${SECRET_DOMAIN}"
       recordType: CNAME
       targets: ["440eddf2-4b18-4f47-84cf-5def4f62bc89.cfargotunnel.com"]
+    # Every public name, by hand: each one is a decision in a diff. They point
+    # at the tunnel's own name and reach the external gateway, where an
+    # HTTPRoute picks them up. external-dns's gateway source used to derive
+    # these from the routes; v0.23 (2026-10-03) stopped honouring the target
+    # annotation, deleted the working CNAMEs and tried A records to a LAN
+    # address instead, so the source was dropped and the list lives here.
+    - dnsName: "download.${SECRET_DOMAIN}"      # Jellyseerr, behind Authentik
+      recordType: CNAME
+      targets: ["external.${SECRET_DOMAIN}"]
+    - dnsName: "flux-webhook.${SECRET_DOMAIN}"  # GitHub → Flux receiver
+      recordType: CNAME
+      targets: ["external.${SECRET_DOMAIN}"]
+    - dnsName: "drive.${SECRET_DOMAIN}"         # Synology Drive, behind Cloudflare Access
+      recordType: CNAME
+      targets: ["external.${SECRET_DOMAIN}"]
