@@ -1,0 +1,82 @@
+---
+# Temporary: polls one eMAG product page every minute and pings Telegram once
+# the schema.org availability stops being PreOrder. Delete the whole
+# emag-watch directory after the alert fires.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emag-watch
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: emag-watch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: emag-watch
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: watch
+          image: curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+          env:
+            - name: URL
+              value: https://www.emag.ro/telefon-mobil-apple-iphone-18-pro-max-256gb-5g-glacier-mjxr4zd-a/pd/DW2N7G2BM/
+            - name: CHAT_ID
+              value: "7385893017"
+            - name: TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: emag-watch-telegram
+                  key: token
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
+              notify() {
+                curl -sf -o /dev/null "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+                  -d chat_id="$CHAT_ID" --data-urlencode text="$1"
+              }
+              state() {
+                curl -sfL --max-time 20 -A "$UA" "$URL" \
+                  | grep -oE '"availability": *"https?://schema.org/[A-Za-z]+"' \
+                  | head -n1 | sed -E 's#.*/([A-Za-z]+)"$#\1#'
+              }
+              notify "emag-watch started: $(state) - $URL"
+              misses=0
+              while true; do
+                s=$(state)
+                if [ -z "$s" ]; then
+                  misses=$((misses + 1))
+                  echo "$(date -u +%FT%TZ) no availability on page (miss $misses)"
+                  # 30 consecutive misses = blocked or page layout changed.
+                  [ "$misses" -eq 30 ] && notify "emag-watch is blind for 30 min (blocked or page changed) - $URL"
+                elif [ "$s" != "PreOrder" ]; then
+                  echo "$(date -u +%FT%TZ) availability changed to $s"
+                  notify "iPhone 18 Pro Max: $s on eMAG - $URL"
+                  exec sleep 2147483647
+                else
+                  misses=0
+                  echo "$(date -u +%FT%TZ) $s"
+                fi
+                sleep 60
+              done
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

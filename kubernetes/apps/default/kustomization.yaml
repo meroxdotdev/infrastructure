@@ -29,6 +29,7 @@ resources:
   # Photos
   # Automation
   - ./n8n/ks.yaml
+  - ./emag-watch/ks.yaml
   # Management
   - ./headlamp/ks.yaml
   - ./homepage/ks.yaml
