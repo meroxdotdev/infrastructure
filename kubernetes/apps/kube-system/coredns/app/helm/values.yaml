@@ -42,6 +42,27 @@ servers:
       - name: log
         configBlock: |-
           class error
+  # merox.dev the way the LAN sees it. The nodes resolve through public
+  # servers, which know neither pfSense's host overrides (fw, nas, dc, media)
+  # nor the k8s.merox.dev delegation to k8s-gateway, so a pod could not reach
+  # any internal name — Homepage's status dots were the first thing to need
+  # it. pfSense still forwards every public merox.dev name upstream.
+  # cert-manager is unaffected: its DNS-01 checks use DoH on 1.1.1.1 only.
+  - zones:
+      - zone: merox.dev
+        scheme: dns://
+    port: 53
+    plugins:
+      - name: errors
+      - name: forward
+        parameters: . 10.57.57.1
+      - name: cache
+        parameters: 30
+      - name: prometheus
+        parameters: 0.0.0.0:9153
+      - name: log
+        configBlock: |-
+          class error
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
