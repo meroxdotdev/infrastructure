@@ -45,6 +45,23 @@ spec:
               - secretRef:
                   name: homepage-secret
                   optional: true
+            lifecycle:
+              # The image ships a page pre-rendered at build time, with no
+              # config. Homepage regenerates it only when a browser that saw
+              # an older config hash asks it to, so after a plain restart —
+              # same config, rescheduled pod — every visitor got default
+              # settings: no layout, no status dots. Regenerate it once at
+              # start instead. Retries cover the seconds before Next listens.
+              postStart:
+                exec:
+                  command:
+                    - sh
+                    - -c
+                    - >-
+                      for i in $(seq 30); do
+                      wget -qO- --header 'Host: home.k8s.merox.dev'
+                      http://127.0.0.1:3000/api/revalidate && exit 0;
+                      sleep 2; done; exit 0
             probes:
               liveness: &probes
                 enabled: true
