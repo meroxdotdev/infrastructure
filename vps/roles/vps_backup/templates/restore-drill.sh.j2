@@ -31,9 +31,15 @@ drill_one() {
     -e POSTGRES_USER="$user" -e POSTGRES_PASSWORD=drill -e POSTGRES_DB="$db" \
     "$image" >/dev/null
 
+  # Over TCP, never the socket. The image's entrypoint first runs a temporary
+  # server on the unix socket only (listen_addresses=''), creates the DB, then
+  # stops it and starts the real one. A socket check passes during that first
+  # phase, and a restore started there is cut off when it stops — which is
+  # why the drill failed for Authentik one month and Joplin the next, with
+  # both dumps intact.
   local ready=0
-  for _ in $(seq 1 30); do
-    if docker exec "$ctr" pg_isready -U "$user" >/dev/null 2>&1; then ready=1; break; fi
+  for _ in $(seq 1 60); do
+    if docker exec "$ctr" pg_isready -h 127.0.0.1 -U "$user" >/dev/null 2>&1; then ready=1; break; fi
     sleep 1
   done
   if [ "$ready" -ne 1 ]; then
@@ -43,9 +49,15 @@ drill_one() {
     return
   fi
 
-  if ! zcat "$dump" | docker exec -i -e PGPASSWORD=drill "$ctr" psql -q -U "$user" -d "$db" \
-      >"/tmp/restore-drill-$svc.log" 2>&1; then
-    echo "✗ $svc: restore FAILED (see /tmp/restore-drill-$svc.log) — dump: $dump"
+  # ON_ERROR_STOP so a SQL error fails here, with its message in the log,
+  # instead of psql exiting 0 past it. PIPESTATUS names the stage that failed:
+  # the previous failures left no message at all.
+  zcat "$dump" | docker exec -i -e PGPASSWORD=drill "$ctr" \
+      psql -q -v ON_ERROR_STOP=1 -h 127.0.0.1 -U "$user" -d "$db" \
+      >"/tmp/restore-drill-$svc.log" 2>&1
+  local rc=("${PIPESTATUS[@]}")
+  if [ "${rc[0]}" -ne 0 ] || [ "${rc[1]}" -ne 0 ]; then
+    echo "✗ $svc: restore FAILED (zcat=${rc[0]} psql=${rc[1]}, see /tmp/restore-drill-$svc.log) — dump: $dump"
     docker stop "$ctr" >/dev/null 2>&1
     FAIL=1
     return
