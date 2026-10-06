@@ -42,8 +42,9 @@ spec:
             - |
               UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
               notify() {
-                curl -sf -o /dev/null "https://api.telegram.org/bot${TOKEN}/sendMessage" \
-                  -d chat_id="$CHAT_ID" --data-urlencode text="$1"
+                curl -sSf -g -o /dev/null "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+                  -d chat_id="$CHAT_ID" --data-urlencode text="$1" \
+                  || echo "$(date -u +%FT%TZ) telegram send failed"
               }
               state() {
                 curl -sfL --max-time 20 -A "$UA" "$URL" \
