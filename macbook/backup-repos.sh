@@ -1,5 +1,5 @@
 #!/bin/bash
-# Back up every git repository under ~/Projects to the NAS as one
+# Back up every git repository under ~/Projects into Synology Drive as one
 # bundle per repository: full history, all branches, and the uncommitted work
 # (tracked and untracked, .gitignore respected) as refs/backup/worktree.
 # A bundle is rewritten only when its refs change, so the vault and restic
@@ -13,9 +13,8 @@
 set -euo pipefail
 
 SRC=${SRC:-$HOME/Projects}
-STAGE=${STAGE:-$HOME/.local/share/repo-bundles}
-DEST=${DEST:-macbook@10.57.57.201:/volume1/backups/macbook/repos/}
-SSH_KEY=${SSH_KEY:-$HOME/.ssh/nas_macbook}
+DEST=${DEST:-$HOME/Library/CloudStorage/SynologyDrive-Cloud/Lab/Repos/macbook}
+STATE=${STATE:-$HOME/.local/state/repo-bundles}
 MIRRORS=$(dirname "$0")/../truenas/config/github-repos
 MAX_UNTRACKED_MB=50
 
@@ -63,7 +62,7 @@ covered() {
   [[ $origin != *github.com/meroxdotdev/* && $origin != *github.com/mer0x/* ]]
 }
 
-mkdir -p "$STAGE"
+mkdir -p "$DEST" "$STATE"
 keep=()
 for dir in "$SRC"/*/; do
   repo=${dir%/}
@@ -83,26 +82,25 @@ for dir in "$SRC"/*/; do
   fi
   keep+=("$name.bundle")
   sum=$(shasum <<<"$refs" | cut -d' ' -f1)
-  if [[ -f $STAGE/$name.bundle && $(cat "$STAGE/.$name.refs" 2>/dev/null) == "$sum" ]]; then
+  if [[ -f $DEST/$name.bundle && $(cat "$STATE/$name.refs" 2>/dev/null) == "$sum" ]]; then
     continue
   fi
-  git -C "$repo" bundle create "$STAGE/$name.bundle.tmp" --all 2>/dev/null
-  git -C "$repo" bundle verify -q "$STAGE/$name.bundle.tmp" >/dev/null 2>&1
-  mv "$STAGE/$name.bundle.tmp" "$STAGE/$name.bundle"
-  echo "$sum" >"$STAGE/.$name.refs"
-  log "bundled $name ($(du -h "$STAGE/$name.bundle" | cut -f1))"
+  # Built outside Drive and moved in whole, so Drive never uploads half a file.
+  git -C "$repo" bundle create "$STATE/$name.bundle" --all 2>/dev/null
+  git -C "$repo" bundle verify -q "$STATE/$name.bundle" >/dev/null 2>&1
+  mv "$STATE/$name.bundle" "$DEST/$name.bundle"
+  echo "$sum" >"$STATE/$name.refs"
+  log "bundled $name ($(du -h "$DEST/$name.bundle" | cut -f1))"
 done
 
 # Drop the bundles of repositories that no longer exist.
-for f in "$STAGE"/*.bundle; do
+for f in "$DEST"/*.bundle; do
   [[ -e $f ]] || continue
   b=$(basename "$f")
   if [[ ! " ${keep[*]} " == *" $b "* ]]; then
-    rm -f "$f" "$STAGE/.${b%.bundle}.refs"
+    rm -f "$f" "$STATE/${b%.bundle}.refs"
     log "removed $b"
   fi
 done
 
-rsync -rt --delete --exclude='.*' --no-perms --no-owner --no-group \
-  -e "ssh -i $SSH_KEY -o BatchMode=yes" "$STAGE/" "$DEST"
-log "synced $(du -sh "$STAGE" | cut -f1) to $DEST"
+log "done, $(du -sh "$DEST" | cut -f1) in $DEST"

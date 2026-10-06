@@ -8,7 +8,7 @@ you are on. The MacBook is the reference implementation ([macbook/](../macbook/R
 
 | What | Where | Backed up by |
 |---|---|---|
-| Code — anything with git | `~/Projects/<name>` (Windows: `%USERPROFILE%\Projects\<name>`), flat, one folder per repo | a daily job: one git bundle per repo → NAS `backups/<machine>/repos/` |
+| Code — anything with git | `~/Projects/<name>` (Windows: `%USERPROFILE%\Projects\<name>`), flat, one folder per repo | a daily job: one git bundle per repo into Drive `Lab/Repos/<machine>/` |
 | Everything else — documents, photos, files | Synology Drive, `Personal/` `Work/` `Lab/` `Shared/` | the Synology Drive client |
 | The machine itself | nothing, or the hypervisor's VM backup for a VM | — |
 
@@ -45,18 +45,17 @@ Port [backup-repos.sh](../macbook/backup-repos.sh) to the machine, keeping
 its behaviour:
 
 - one `<repo>.bundle` per repo (`git bundle create --all`), plus the
-  uncommitted work as `refs/backup/worktree`, written only when refs change;
+  uncommitted work as `refs/backup/worktree`, rewritten only when refs change;
+- built outside Drive, then moved into Drive `Lab/Repos/<machine>/` whole, so the Drive
+  client uploads it like any other file. No NAS user, no rsync;
 - skip a repo the machine adds nothing to (clean, nothing unpushed) when its
-  origin is in [github-repos](../truenas/config/github-repos) or is not the user's;
-- push with rsync over SSH to `<user>@10.57.57.201:/volume1/backups/<machine>/repos/`,
-  `--delete`, `--no-perms --no-owner --no-group`;
-- one DSM user per machine (SFTP + rsync, `backups` read/write, 1 GB quota),
-  created by the user — see the NAS setup in [macbook/README.md](../macbook/README.md).
+  origin is in [github-repos](../truenas/config/github-repos) or is not the user's.
 
-On Windows: Git for Windows ships bash, so the script runs unchanged under
-`bash.exe`; rsync is not included (use the cwRsync or MSYS2 `rsync` build, or
-`scp` the changed bundles and delete stale ones over `sftp`). Schedule it with
-Task Scheduler, daily, "run as soon as possible after a missed start".
+On Windows: Git for Windows ships bash, so the script runs under `bash.exe`
+with `SRC`/`DEST` pointed at `%USERPROFILE%\Projects` and the Drive folder.
+Schedule it with Task Scheduler, daily, "run as soon as possible after a missed
+start". Each machine owns its own `Lab/Repos/<machine>/`: the job deletes
+bundles there whose repo is gone, so two machines must never share a folder.
 
 ## How to work with the user
 
