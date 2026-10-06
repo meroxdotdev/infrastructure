@@ -48,6 +48,27 @@ servers:
   # any internal name — Homepage's status dots were the first thing to need
   # it. pfSense still forwards every public merox.dev name upstream.
   # cert-manager is unaffected: its DNS-01 checks use DoH on 1.1.1.1 only.
+  #
+  # k8s.merox.dev skips pfSense and asks k8s-gateway directly. Through
+  # pfSense, about one query in fifty came back SERVFAIL after 0.5-1.5 s:
+  # Unbound sends out of LAN and WAN alike (it must, see pfsense/REINSTALL.md)
+  # and k8s-gateway never answers the WAN ones. CoreDNS picks the most
+  # specific zone, so this block wins for every *.k8s name.
+  - zones:
+      - zone: k8s.merox.dev
+        scheme: dns://
+    port: 53
+    plugins:
+      - name: errors
+      - name: forward
+        parameters: . 10.57.57.111
+      - name: cache
+        parameters: 30
+      - name: prometheus
+        parameters: 0.0.0.0:9153
+      - name: log
+        configBlock: |-
+          class error
   - zones:
       - zone: merox.dev
         scheme: dns://
