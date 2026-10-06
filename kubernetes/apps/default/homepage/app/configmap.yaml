@@ -102,6 +102,12 @@ data:
     .service-block {
       background: rgb(15 23 42 / 0.45);
       font-variant-numeric: tabular-nums;
+      min-width: 4.75rem;
+    }
+    /* Four blocks fit a card from ~1300 px. Narrower, they spilled out of it
+       ("PODS STUC", half a UPS); now they wrap to two rows instead. */
+    .service-container {
+      flex-wrap: wrap;
     }
     /* The block above would otherwise paint over the highlight colours. */
     .service-block[data-highlight-level="warn"] {
