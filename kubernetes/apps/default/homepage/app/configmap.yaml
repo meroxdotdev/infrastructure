@@ -14,6 +14,11 @@ data:
   # those ports, and the point is to close segmentation gaps, not widen them.
   #
   # vps01 keeps its own Homepage. That one is the public, curated view.
+  #
+  # Two halves. The top row is status: sixteen numbers, neutral on a healthy
+  # day, amber or red only when they need you. Below it, every console the
+  # estate has, grouped by where it runs, each with a dot that is its own
+  # health check. Grafana's Homelab Overview is the drill-down, not this.
   settings.yaml: |
     title: Homelab
     description: Status first, links second
@@ -21,30 +26,46 @@ data:
     color: slate
     headerStyle: clean
     hideVersion: true
-    disableCollapse: false
+    disableUpdateCheck: true
+    disableCollapse: true
+    useEqualHeights: true
+    # A dot, not a millisecond figure: the question is up or down, and a
+    # column of changing numbers next to every link is noise.
+    statusStyle: dot
+    # Type anywhere on the page to jump to a service by name or description.
+    # This, not the bookmarks, is the fast way around.
+    quicklaunch:
+      searchDescriptions: true
+      hideVisitURL: true
+      provider: duckduckgo
     layout:
       Status:
         style: row
         columns: 4
-        icon: mdi-heart-pulse
-      Links:
+        header: false
+      Home:
+        icon: mdi-home-outline
+      Cluster:
+        icon: mdi-kubernetes
+      Media:
+        icon: mdi-play-circle-outline
+      Cloud:
+        icon: mdi-cloud-outline
+      Consoles:
         style: row
-        columns: 4
-        icon: mdi-link-variant
+        columns: 5
+        icon: mdi-open-in-new
 
   widgets.yaml: |
-    - resources:
-        label: Cluster
-        cpu: true
-        memory: true
-        expanded: true
+    # No `resources` widget: inside a pod it reports whichever node the pod
+    # landed on, which read as "Cluster" and was one node's numbers.
     - kubernetes:
         cluster:
           show: true
           cpu: true
           memory: true
           showLabel: true
-          label: k8s
+          label: cluster
         nodes:
           show: true
           cpu: true
@@ -68,122 +89,357 @@ data:
   # than degrading. All nine skeleton names must therefore exist, even empty.
   docker.yaml: ""
   proxmox.yaml: ""
-  custom.css: ""
   custom.js: ""
-  bookmarks.yaml: "[]"
+
+  custom.css: |
+    /* Quieter cards: no gradient, a hairline border, tabular figures so the
+       status numbers do not jitter as they refresh. */
+    .service-card {
+      background: rgb(30 41 59 / 0.35) !important;
+      border: 1px solid rgb(148 163 184 / 0.08);
+      box-shadow: none !important;
+    }
+    .service-block {
+      background: rgb(15 23 42 / 0.45);
+      font-variant-numeric: tabular-nums;
+    }
+    /* The block above would otherwise paint over the highlight colours. */
+    .service-block[data-highlight-level="warn"] {
+      background: rgb(245 158 11 / 0.16);
+      color: rgb(252 211 77);
+    }
+    .service-block[data-highlight-level="danger"] {
+      background: rgb(244 63 94 / 0.18);
+      color: rgb(253 164 175);
+    }
+
+  bookmarks.yaml: |
+    # Outside the estate: the accounts it depends on. No health dots — their
+    # status pages are someone else's job.
+    - Consoles:
+        - GitHub:
+            - icon: github.png
+              description: repo
+              href: https://github.com/meroxdotdev/infrastructure
+        - Cloudflare:
+            - icon: cloudflare.png
+              description: DNS, tunnel, Pages
+              href: https://dash.cloudflare.com
+        - Tailscale:
+            - icon: tailscale.png
+              description: tailnet
+              href: https://login.tailscale.com/admin/machines
+        - Oracle Cloud:
+            - icon: oracle-cloud.png
+              description: vps01
+              href: https://cloud.oracle.com
+        - healthchecks.io:
+            - icon: healthchecks.png
+              description: every scheduled job
+              href: https://healthchecks.io/projects/
 
   services.yaml: |
-    # Four cards, one question each. All four read flat on a healthy day, so a
-    # glance is enough and anything not flat is the thing to open.
-    #
     # Every query below was run against this Prometheus before being written
     # here. A card that always errors trains you to ignore the ones that mean
-    # something.
+    # something — the previous Flux counter read gotk_reconcile_condition, a
+    # metric this cluster stopped exporting, and showed a permanent green 0.
+    #
+    # Conventions, so a new metric fits without thought:
+    # - Reachability is a round trip in ms, empty when the probe fails. An
+    #   empty block renders "-", and "-" is highlighted danger everywhere.
+    # - Durations are hours, sizes are percent. One unit per block, written as
+    #   a suffix, so the highlight rules can parse the number back out.
+    # - Thresholds mirror the Prometheus alerts where one exists. The card is
+    #   the early look; the alert is still what pages.
+    # - Rules set only warn and danger, never good. Neutral is the healthy
+    #   state; a page of green is a page nobody reads.
     - Status:
-        - Backups:
-            icon: mdi-shield-check
-            description: Every scheduled job, one number
-            href: https://healthchecks.io/projects/
-            # No uuid, so this reports up/down across every check rather than
-            # one. The question is "did anything fail", not "how is restic
-            # doing". healthchecks.io is also the only source here that
-            # survives the house losing power.
+        - Attention:
+            icon: alertmanager.png
+            description: Is anything firing
+            href: https://alertmanager.k8s.merox.dev
             widget:
-              type: healthchecks
-              url: https://healthchecks.io
-              key: "{{HOMEPAGE_VAR_HEALTHCHECKS_KEY}}"
+              type: prometheusmetric
+              url: http://kube-prometheus-stack-prometheus.observability:9090
+              refreshInterval: 60000
+              # Counted per alert name, not per series: seven volumes with a
+              # stale backup are one problem, not seven.
+              metrics:
+                - label: Critical
+                  query: count(count by (alertname) (ALERTS{alertstate="firing",severity="critical"})) or vector(0)
+                  format: &count
+                    type: number
+                # Watchdog fires permanently by design, as the dead-man's
+                # switch proving Alertmanager is alive; InfoInhibitor is its
+                # sibling. Counting either would mean this never reads zero.
+                - label: Warning
+                  query: count(count by (alertname) (ALERTS{alertstate="firing",severity!="critical",alertname!~"Watchdog|InfoInhibitor"})) or vector(0)
+                  format: *count
+                - label: Flux
+                  query: count(flux_resource_info{ready="False"}) or vector(0)
+                  format: *count
+                - label: Pods stuck
+                  query: sum(kube_pod_status_phase{phase=~"Pending|Failed|Unknown"}) or vector(0)
+                  format: *count
+              highlight:
+                Critical: &any-danger
+                  numeric:
+                    - { level: danger, when: gte, value: 1 }
+                  string:
+                    - { level: danger, when: equals, value: "-" }
+                Warning:
+                  numeric:
+                    - { level: warn, when: gte, value: 1 }
+                  string:
+                    - { level: danger, when: equals, value: "-" }
+                Flux: *any-danger
+                Pods stuck: &any-warn
+                  numeric:
+                    - { level: warn, when: gte, value: 1 }
+                  string:
+                    - { level: danger, when: equals, value: "-" }
 
-        - Cluster:
-            icon: kubernetes.png
-            description: Alerts, nodes, Flux
-            href: https://headlamp.k8s.merox.dev
+        - Backups:
+            icon: mdi-shield-check-outline
+            description: Did every job run
+            href: https://healthchecks.io/projects/
+            widgets:
+              # No uuid, so this reports up/down across every check rather
+              # than one: the vault's daily run, the VPS backup, Oracle's
+              # retention, the drills. healthchecks.io is also the only source
+              # here that survives the house losing power.
+              - type: healthchecks
+                url: https://healthchecks.io
+                key: "{{HOMEPAGE_VAR_HEALTHCHECKS_KEY}}"
+                highlight:
+                  down: *any-danger
+              # Longhorn reports to Prometheus, not healthchecks.io. Alerting
+              # (LonghornBackupStale) fires at 36 h; amber at 26 h is one
+              # missed nightly run.
+              - type: prometheusmetric
+                url: http://kube-prometheus-stack-prometheus.observability:9090
+                refreshInterval: 300000
+                metrics:
+                  - label: Longhorn age
+                    query: max((time() - longhorn_volume_last_backup_at) and (longhorn_volume_last_backup_at != 0)) / 3600
+                    format:
+                      type: number
+                      suffix: " h"
+                      options: { maximumFractionDigits: 0 }
+                highlight:
+                  Longhorn age:
+                    numeric:
+                      - { level: danger, when: gte, value: 36 }
+                      - { level: warn, when: gte, value: 26 }
+                    string:
+                      - { level: danger, when: equals, value: "-" }
+
+        - Network:
+            icon: pfsense.png
+            description: Internet, off-site, power
+            href: https://fw.merox.dev:8443
             widget:
               type: prometheusmetric
               url: http://kube-prometheus-stack-prometheus.observability:9090
               refreshInterval: 60000
               metrics:
-                # Watchdog is excluded deliberately: it fires permanently by
-                # design, as the dead-man's switch proving Alertmanager is
-                # alive. Counting it would mean this never reads zero.
-                - label: Alerts
-                  query: count(ALERTS{alertstate="firing",alertname!="Watchdog"}) or vector(0)
+                # The nearer of 1.1.1.1 and 8.8.8.8; empty only when both fail.
+                - label: Internet
+                  query: min(probe_duration_seconds{job="blackbox-wan"} and probe_success{job="blackbox-wan"} == 1) * 1000
+                  format: &ms
+                    type: number
+                    suffix: " ms"
+                    options: { maximumFractionDigits: 0 }
+                # The last Ookla run, every 4 h. A failed run is left empty
+                # rather than read as 0.
+                - label: Download
+                  query: max(speedtest_download_bits_per_second and on(instance) speedtest_up == 1) / 1000000
                   format:
                     type: number
-                - label: Nodes ready
-                  query: count(kube_node_status_condition{condition="Ready",status="true"} == 1)
+                    suffix: " Mbps"
+                    options: { maximumFractionDigits: 0 }
+                - label: VPS
+                  query: max(probe_duration_seconds{job="blackbox-vps"} and probe_success{job="blackbox-vps"} == 1) * 1000
+                  format: *ms
+                # Runtime, not charge: charge reads 100 % until the moment it
+                # matters. NUT shuts every host down at 5 min.
+                - label: UPS
+                  query: network_ups_tools_battery_runtime / 60
                   format:
                     type: number
-                - label: Flux failing
-                  query: count(gotk_reconcile_condition{type="Ready",status="False"}) or vector(0)
-                  format:
-                    type: number
-
-        - Storage:
-            icon: mdi-database
-            description: Fullest pool, oldest backup
-            href: https://longhorn.k8s.merox.dev
-            widget:
-              type: prometheusmetric
-              url: http://kube-prometheus-stack-prometheus.observability:9090
-              refreshInterval: 300000
-              metrics:
-                # Every Proxmox storage on every host, worst one wins. Adding a
-                # host or a pool needs no change here.
-                - label: Fullest pool
-                  query: max(pve_disk_usage_bytes / pve_disk_size_bytes) * 100
-                  format:
-                    type: percent
-                # What LonghornBackupStale alerts on at 36h. Watching it climb
-                # is the early version of that alert.
-                - label: Oldest backup
-                  query: time() - min(longhorn_volume_last_backup_at != 0)
-                  format:
-                    type: duration
-                - label: Longhorn used
-                  query: min(longhorn_node_storage_usage_bytes / longhorn_node_storage_capacity_bytes) * 100
-                  format:
-                    type: percent
+                    suffix: " min"
+                    options: { maximumFractionDigits: 0 }
+              highlight:
+                Internet: &rtt
+                  numeric:
+                    - { level: danger, when: gte, value: 150 }
+                    - { level: warn, when: gte, value: 50 }
+                  string:
+                    - { level: danger, when: equals, value: "-" }
+                VPS: *rtt
+                Download:
+                  numeric:
+                    - { level: warn, when: lt, value: 300 }
+                UPS:
+                  numeric:
+                    - { level: danger, when: lt, value: 6 }
+                    - { level: warn, when: lt, value: 10 }
+                  string:
+                    - { level: danger, when: equals, value: "-" }
 
         - Hosts:
-            icon: mdi-server
-            description: Proxmox guests and uptime
+            icon: proxmox.png
+            description: Hosts, NAS, disks, heat
             href: https://dc.merox.dev
             widget:
               type: prometheusmetric
               url: http://kube-prometheus-stack-prometheus.observability:9090
               refreshInterval: 300000
               metrics:
-                - label: Guests running
-                  query: count(pve_up{id=~"(qemu|lxc)/.*"} == 1)
+                # Each host carries one control plane: two is still a quorum,
+                # one is not.
+                - label: Hosts up
+                  query: sum(pve_up{id=~"node/.*"})
+                  format: *count
+                # The NAS's SMB port. The one live store — media, Drive,
+                # Photos, every backup's landing.
+                - label: NAS
+                  query: max(probe_duration_seconds{job="blackbox-nas"} and probe_success{job="blackbox-nas"} == 1) * 1000
+                  format: *ms
+                # Every Proxmox storage on every host, worst one wins; the NAS
+                # backup share is among them. Adding a pool needs no change.
+                - label: Fullest
+                  query: max(pve_disk_usage_bytes{id=~"storage/.*"} / pve_disk_size_bytes{id=~"storage/.*"}) * 100
                   format:
                     type: number
-                - label: Guests stopped
-                  query: count(pve_up{id=~"(qemu|lxc)/.*"} == 0) or vector(0)
+                    suffix: "%"
+                    options: { maximumFractionDigits: 0 }
+                - label: Hottest
+                  query: max(node_hwmon_temp_celsius{job="pve-node"})
                   format:
                     type: number
-                # The most recently rebooted host. A small number nobody
-                # planned is the thing to look into.
-                - label: Shortest uptime
-                  query: min(pve_uptime_seconds{id=~"node/.*"})
-                  format:
-                    type: duration
+                    suffix: " °C"
+                    options: { maximumFractionDigits: 0 }
+              highlight:
+                Hosts up:
+                  numeric:
+                    - { level: danger, when: lt, value: 2 }
+                    - { level: warn, when: lt, value: 3 }
+                  string:
+                    - { level: danger, when: equals, value: "-" }
+                NAS:
+                  string:
+                    - { level: danger, when: equals, value: "-" }
+                # PveStorageNearFull fires at 80 %, Critical at 90 %.
+                Fullest:
+                  numeric:
+                    - { level: danger, when: gte, value: 90 }
+                    - { level: warn, when: gte, value: 80 }
+                Hottest:
+                  numeric:
+                    - { level: danger, when: gte, value: 85 }
+                    - { level: warn, when: gte, value: 70 }
 
-    - Links:
+    # The dots are checked from this pod, through the same gateway and DNS a
+    # browser on the LAN uses, so a red dot is a real outage and not a pod-
+    # network quirk. Two groups have none on purpose:
+    # - the vault is off ~22 h a day, so its dot would be red most of the time;
+    # - Cloud names resolve only through Pi-hole on the tailnet, which the
+    #   cluster does not use. The VPS block on the Network card covers them.
+    - Home:
+        - Proxmox:
+            icon: proxmox.png
+            description: PDM — all three hosts
+            href: https://dc.merox.dev
+            siteMonitor: https://dc.merox.dev
+        - pfSense:
+            icon: pfsense.png
+            href: https://fw.merox.dev:8443
+            siteMonitor: https://fw.merox.dev:8443
+        - NAS:
+            icon: synology.png
+            description: DSM
+            href: https://nas.merox.dev:5001
+            siteMonitor: https://nas.merox.dev:5001
+        - Drive:
+            icon: synology-drive.png
+            href: https://drive.merox.dev
+            siteMonitor: https://drive.merox.dev
+        - Vault:
+            icon: truenas.png
+            description: Off except its daily run
+            href: https://vault.merox.dev
+
+    - Cluster:
+        - Grafana:
+            icon: grafana.png
+            description: Homelab Overview
+            href: https://grafana.k8s.merox.dev/d/homelab-overview
+            siteMonitor: https://grafana.k8s.merox.dev
+        - Logs:
+            icon: loki.png
+            description: Loki, through Grafana Explore
+            href: https://grafana.k8s.merox.dev/explore
+        - Prometheus:
+            icon: prometheus.png
+            description: Ad-hoc queries
+            href: https://prometheus.k8s.merox.dev
+            siteMonitor: https://prometheus.k8s.merox.dev
+        - Headlamp:
+            icon: headlamp.png
+            href: https://headlamp.k8s.merox.dev
+            siteMonitor: https://headlamp.k8s.merox.dev
         - Longhorn:
             icon: longhorn.png
             href: https://longhorn.k8s.merox.dev
-        - Grafana:
-            icon: grafana.png
-            href: https://grafana.k8s.merox.dev
+            siteMonitor: https://longhorn.k8s.merox.dev
+        - n8n:
+            icon: n8n.png
+            href: https://n8n.k8s.merox.dev
+            siteMonitor: https://n8n.k8s.merox.dev
+
+    - Media:
         - Jellyfin:
             icon: jellyfin.png
-            href: https://jellyfin.k8s.merox.dev
-        - Proxmox:
-            icon: proxmox.png
-            href: https://dc.merox.dev
-        - Public dashboard:
-            icon: mdi-earth
-            href: https://homepage.cloud.merox.dev
-        - Alertmanager:
-            icon: alertmanager.png
-            href: https://alertmanager.k8s.merox.dev
+            href: https://media.merox.dev
+            siteMonitor: https://media.merox.dev
+        - Jellyseerr:
+            icon: jellyseerr.png
+            href: https://jellyseerr.k8s.merox.dev
+            siteMonitor: https://jellyseerr.k8s.merox.dev
+        - Sonarr:
+            icon: sonarr.png
+            href: https://sonarr.k8s.merox.dev
+            siteMonitor: https://sonarr.k8s.merox.dev
+        - Radarr:
+            icon: radarr.png
+            href: https://radarr.k8s.merox.dev
+            siteMonitor: https://radarr.k8s.merox.dev
+        - Prowlarr:
+            icon: prowlarr.png
+            href: https://prowlarr.k8s.merox.dev
+            siteMonitor: https://prowlarr.k8s.merox.dev
+        - qBittorrent:
+            icon: qbittorrent.png
+            href: https://qbittorrent.k8s.merox.dev
+            siteMonitor: https://qbittorrent.k8s.merox.dev
+
+    - Cloud:
+        - Authentik:
+            icon: authentik.png
+            href: https://sso.merox.dev/if/admin/
+        - Joplin:
+            icon: joplin.png
+            href: https://joplin.cloud.merox.dev
+        - Pi-hole:
+            icon: pi-hole.png
+            href: https://pihole.cloud.merox.dev/admin
+        - Guacamole:
+            icon: guacamole.png
+            href: https://rmt.merox.dev
+        - Portainer:
+            icon: portainer.png
+            href: https://portainer.cloud.merox.dev
+        - Traefik:
+            icon: traefik.png
+            href: https://traefik.cloud.merox.dev
