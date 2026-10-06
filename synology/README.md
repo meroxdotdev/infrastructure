@@ -19,7 +19,7 @@ by hardlink, never by copy.
 | Share | Holds | Recycle bin | Checksum |
 |---|---|---|---|
 | `media` | `Movies/`, `Shows/`, `Downloads/` — one share, or ARR hardlink imports break. **Quota 1.2 TB**, so the library can never eat the space backups need | off | on |
-| `backups` | the landing: `longhorn/` (Garage's data and metadata snapshots), `pfsense/`, `oracle-vps/` — latest version only, history is the vault's | off | on |
+| `backups` | the landing: `longhorn/` (Garage's data and metadata snapshots), `pfsense/`, `oracle-vps/`, `macbook/` — latest version only, history is the vault's | off | on |
 | `homes` | Synology Drive (`<user>/Cloud`, *My Drive*) and Synology Photos (`<user>/Photos`) | default | — |
 | `photo` | Synology Photos' shared space — empty; every photo is in the personal space | — | — |
 | `NetBackup` | created by the rsync service and undeletable while it runs; empty, hidden, no access | — | — |
@@ -86,6 +86,7 @@ One user per job, none in `administrators` except `admin`:
 | `merox`, `vicky` | Synology Drive, Synology Photos | — |
 | `pfsense` | SFTP only, `backups` read/write | 1 GB |
 | `vps` | SFTP + rsync, `backups` read/write | 10 GB |
+| `macbook` | SFTP + rsync, `backups` read/write, the Mac's git bundles ([macbook](../macbook/README.md)) | 1 GB |
 | `vault-pull` | rsync account only, `backups` and `homes` **read-only**, from `10.57.57.250` only | — |
 
 `pfsense` and `vps` authenticate with their backup keys, restricted to

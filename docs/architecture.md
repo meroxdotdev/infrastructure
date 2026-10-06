@@ -55,8 +55,9 @@ it.
 
 ```
 Longhorn ── Garage (pve-3) ─┐
-pfSense ────────────────────┼─→ NAS backups/ ─┐
-VPS services ───────────────┘                 ├─→ vault (pull, daily) ─→ Oracle (restic)
+pfSense ────────────────────┤
+VPS services ───────────────┼─→ NAS backups/ ─┐
+MacBook git bundles ────────┘                 ├─→ vault (pull, daily) ─→ Oracle (restic)
 Drive, Photos ── NAS homes/ ──────────────────┘     snapshots: 30 d + 12 m    append-only
 ```
 
