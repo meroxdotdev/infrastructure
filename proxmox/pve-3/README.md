@@ -121,6 +121,7 @@ A stale `Windows Boot Manager` entry remains in NVRAM from before. Harmless.
 | File | Host path | After copying |
 |---|---|---|
 | `etc/default-prometheus-node-exporter` | `/etc/default/prometheus-node-exporter` | `apt install prometheus-node-exporter` **first**, then `systemctl restart prometheus-node-exporter` — see [host-metrics.md](../../docs/host-metrics.md) |
+| `etc/systemd/system/pve-container@103.service.d/wait-nas.conf` | same | `systemctl daemon-reload`. CT 103 (Garage) waits up to 2 min for the NAS mount its data lives on; without it the start at boot loses the race with pvestatd and Longhorn has no backup target (2026-10-05) |
 
 ## Related
 
