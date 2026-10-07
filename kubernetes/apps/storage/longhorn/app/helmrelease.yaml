@@ -89,19 +89,32 @@ spec:
       # engine only — so limiting concurrency is the only lever there is. It
       # narrows the burst; it does not remove it.
       concurrentReplicaRebuildPerNodeLimit: "1"
-      guaranteedEngineManagerCPU: "20"
-      guaranteedReplicaManagerCPU: "20"
+      # 0 -> 1 (2026-10-07). At 0 a chart upgrade never moves volumes onto the
+      # new engine: after 1.12.1 -> 1.13.0 every volume stayed on 1.12.1, and
+      # the old instance-manager lived on beside the new one on kubernetes-1,
+      # requesting another 12% of the node (1.67 CPU) and firing
+      # KubeCPUOvercommit. A v1 live upgrade reuses the replica files in
+      # place, so no data crosses the network; one per node keeps it gradual.
+      concurrentAutomaticEngineUpgradePerNodeLimit: "1"
       nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
-      orphanAutoDeletion: "true"
+      # Was `orphanAutoDeletion: "true"`, a key 1.13 no longer reads, so the
+      # cleanup had silently been off.
+      orphanResourceAutoDeletion: "replica-data"
       replicaAutoBalance: "false"
       # 1 -> 25 (the upstream default). At 1% Longhorn kept scheduling until a
       # node disk was 99% full, and that disk lives inside the Talos VM's zvol
       # on rpool — the same pool as etcd. Found in the 2026-08-17 audit.
       storageMinimalAvailablePercentage: "25"
       storageReservedPercentageForDefaultDisk: "10"
+
+    # Not under defaultSettings: the chart ignores the backup keys there. They
+    # sat there unread until 2026-10-07, and the target only worked because
+    # its BackupTarget object had survived from an older release. A fresh
+    # install (a DR rebuild) would have come up with no backup target at all.
+    defaultBackupStore:
       backupTarget: "s3://longhorn@us-east-1/"
       backupTargetCredentialSecret: "minio-secret"
-      backupstorePollInterval: "300"
+      pollInterval: "300"
 
     persistence:
       defaultClass: true
