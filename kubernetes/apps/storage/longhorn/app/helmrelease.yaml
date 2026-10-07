@@ -95,6 +95,10 @@ spec:
       # requesting another 12% of the node (1.67 CPU) and firing
       # KubeCPUOvercommit. A v1 live upgrade reuses the replica files in
       # place, so no data crosses the network; one per node keeps it gradual.
+      # It does not retire the old instance-manager on its own: replicas move,
+      # but each engine swaps its binary inside the pod it already runs in.
+      # The old pod goes only once every volume it hosts is detached — scale
+      # the workload to 0 and back (a pod restart keeps the volume attached).
       concurrentAutomaticEngineUpgradePerNodeLimit: "1"
       nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
       # Was `orphanAutoDeletion: "true"`, a key 1.13 no longer reads, so the
