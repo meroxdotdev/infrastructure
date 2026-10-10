@@ -27,7 +27,7 @@ spec:
           app:
             image:
               repository: docker.io/prom/blackbox-exporter
-              tag: v0.28.0
+              tag: v0.29.0
             args:
               - "--config.file=/etc/blackbox_exporter/blackbox.yml"
             probes:
