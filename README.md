@@ -112,11 +112,13 @@ Everything else is reproducible: SOPS/age for K8s, Ansible Vault for the VPS,
 | Run day-to-day things | [docs/operations.md](docs/operations.md) |
 | Fix something broken | [docs/troubleshooting.md](docs/troubleshooting.md) · [DR known issues](docs/dr-known-issues.md) |
 | Rebuild the vault | [truenas/RUNBOOK.md](truenas/RUNBOOK.md) |
+| Restore from Oracle | [truenas/RUNBOOK.md](truenas/RUNBOOK.md#from-oracle) |
 
 **After a fire, rebuild in this order** — each layer needs the one before it:
 
 1. **pfSense** — no gateway means no internet and no restic. Console only.
-2. **NAS** — restored from the vault, or from Oracle if the vault is gone too.
+2. **NAS** — restored from the vault, or
+   [from Oracle](truenas/RUNBOOK.md#from-oracle) if the vault is gone too.
    Garage's store and every backup landing spot live on it.
 3. **Kubernetes** — from git; volumes come back from Longhorn's backups.
 

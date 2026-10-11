@@ -268,11 +268,81 @@ Manual on purpose: the vault holds no write credential into the NAS. Wake it,
 | A Longhorn volume | Garage on the NAS | Longhorn UI → Backup → Restore; the vault is not involved |
 | Garage's store | vault | rsync `backup/nas/backups/longhorn/` → NAS as the DSM admin, restart Garage, restore in Longhorn |
 | The NAS | vault | new disks → DSM → shares per [synology/README.md](../synology/README.md) → rsync each folder back as admin |
-| The NAS and the vault | Oracle | `restic restore` from any machine with the repository password |
+| The NAS and the vault | Oracle | [From Oracle](#from-oracle), below |
 | The vault's OS | anywhere | reinstall, import `vault` with the pool key, upload the config export, put `secrets/` back |
 
 Write-back always uses a temporary credential — the DSM admin over SSH,
 typed, never stored on the vault.
+
+### From Oracle
+
+The NAS and the vault are both gone. Nothing from this site is needed: a Mac
+on the tailnet and two passwords.
+
+| Need | Why |
+|---|---|
+| Tailscale up on the Mac | rest-server listens on the tailnet address only |
+| restic repository password | password manager |
+| rest-server password, user `vault` | password manager, `rest-password` |
+| 33 GiB free | the whole snapshot, 2026-10-11 |
+
+```sh
+brew install restic
+export RESTIC_REPOSITORY='rest:http://vault:<rest-password>@100.72.22.38:8000/'
+export RESTIC_PASSWORD='<repository password>'
+
+restic snapshots
+restic restore latest --host vault --target ~/restore
+```
+
+Everything lands under `~/restore/mnt/vault/`. For one part, add `--include`:
+
+| Part | `--include` | Size | Time |
+|---|---|---|---|
+| pfSense config | `/mnt/vault/backup/nas/backups/pfsense` | 63 KiB | seconds |
+| Garage's store | `/mnt/vault/backup/nas/backups/longhorn` | 0.5 GiB | ~2 min |
+| VPS services | `/mnt/vault/backup/nas/backups/oracle-vps` | 2.8 GiB | ~8 min |
+| Home folder | `/mnt/vault/backup/nas/homes` | 28.5 GiB | ~80 min |
+| Git mirrors | `/mnt/vault/backup/github` | 0.7 GiB | ~2 min |
+| Everything | | 32.7 GiB | ~90 min |
+
+Sizes from the snapshot of 2026-10-11; times computed from 51 Mbit/s, measured
+that day from Oracle to the Mac over one stream.
+
+The restore holds a lock, which is what keeps the VPS's prune from removing
+packs under it: a restore still running at 05:00 UTC makes that day's
+retention fail and say so on healthchecks. An interrupted restore leaves the
+lock behind — `restic unlock`.
+
+**Without the rest-server password:** restore on the VPS, which holds the
+repository password, and copy the result. SSH works over the tailnet only.
+
+```sh
+ssh ubuntu@100.72.22.38
+sudo systemctl stop restic-retention.timer    # no lock below, so no prune meanwhile
+sudo mkdir /srv/restore
+sudo docker run --rm \
+  -v /srv/restic-repo/data:/repo:ro -v /etc/restic/repo-password:/pw:ro \
+  -v /srv/restore:/restore \
+  -e RESTIC_REPOSITORY=/repo -e RESTIC_PASSWORD_FILE=/pw restic/restic:0.18.0 \
+  --no-lock restore latest --host vault --target /restore
+sudo systemctl start restic-retention.timer
+```
+
+Then, from the Mac, and `sudo rm -rf /srv/restore` on the VPS afterwards:
+
+```sh
+rsync -a --rsync-path='sudo rsync' ubuntu@100.72.22.38:/srv/restore/ ~/restore/
+```
+
+The VPS had 107 GB free on 2026-10-11.
+
+What comes next is on other pages: the NAS per
+[synology/README.md](../synology/README.md), Garage and the cluster per
+[DR.md](../DR.md#longhorn-backup-store--total-loss-fallback).
+
+Drilled 2026-10-11: the VPS path, `pfsense` only, into a scratch directory.
+**Not yet drilled:** a full restore to the Mac, and the rsync back from the VPS.
 
 ---
 

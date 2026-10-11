@@ -245,7 +245,7 @@ cannot be read without the metadata — that is why the snapshots exist.
 |---|---|
 | pve-3 only | NAS: `data/` + newest meta snapshot |
 | the NAS only | Longhorn replicas are intact; nothing to restore. Rebuild the NAS, let the next backup run |
-| NAS and pve-3 | the vault: `backup/nas/backups/longhorn/` in its snapshots; if the vault is gone too, Oracle (restic, host `vault`) |
+| NAS and pve-3 | the vault: `backup/nas/backups/longhorn/` in its snapshots; if the vault is gone too, [Oracle](truenas/RUNBOOK.md#from-oracle) (restic, host `vault`) |
 
 **Rebuild Garage on the recovered tree:**
 
