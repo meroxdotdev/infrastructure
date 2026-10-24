@@ -100,7 +100,7 @@ spec:
     sidecar:
       image:
         repository: ghcr.io/home-operations/k8s-sidecar
-        tag: 2.14.1@sha256:6daa733e73ffb67be9f33ca6fd4b46aad2b0c937ed8085cf51e2709f9848a923
+        tag: 2.14.1@sha256:22eccb80b828a956eb31214ed5a0358c9efcbf575f196c2b859ac00bfd5dcef4
       rules:
         searchNamespace: ALL
         # Add environment variables to point temp directory to /rules
