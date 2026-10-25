@@ -27,7 +27,7 @@ services:
       - "traefik.http.services.homepage-public.loadbalancer.server.port=3000"
 
   portainer:
-    image: portainer/portainer-ee@sha256:64593d0645eec314e84b93c03aba51db67c72ec12c760927335b52b1652765d7
+    image: portainer/portainer-ee@sha256:8166e2376756d1ad3194e336cd1707c28a5764af7acc8bb9f21a5f28d1903566
     container_name: portainer
     restart: unless-stopped
     dns:
