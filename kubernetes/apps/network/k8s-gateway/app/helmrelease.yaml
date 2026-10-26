@@ -10,8 +10,10 @@ spec:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
   ref:
-    tag: 3.7.2
-  url: oci://ghcr.io/k8s-gateway/charts/k8s-gateway
+    tag: 4.0.1
+  # The project moved to Codeberg. ghcr.io's last chart is 3.7.2, which is
+  # where Renovate sat, seeing nothing newer, until 2026-10-26.
+  url: oci://codeberg.org/k8s-gateway/charts/k8s-gateway
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/fluxcd-community/flux2-schemas/main/helmrelease-helm-v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -32,12 +34,35 @@ spec:
       retries: 3
   values:
     fullnameOverride: k8s-gateway
-    domain: "${SECRET_DOMAIN}"
-    ttl: 1
+    serviceType: LoadBalancer
     service:
-      type: LoadBalancer
-      port: 53
       annotations:
         lbipam.cilium.io/ips: "${LB_IP_K8S_GATEWAY}"
       externalTrafficPolicy: Cluster
-    watchedResources: ["HTTPRoute", "Service"]
+    # Chart 4.x takes the whole Corefile as `servers`; domain, ttl and
+    # watchedResources from 3.x became the k8s_gateway plugin block.
+    servers:
+      - zones:
+          - zone: .
+            scheme: dns://
+            use_tcp: true
+        port: 53
+        plugins:
+          - name: errors
+          - name: health
+            configBlock: |-
+              lameduck 5s
+          - name: ready
+          - name: k8s_gateway
+            parameters: "${SECRET_DOMAIN}"
+            configBlock: |-
+              apex k8s-gateway.network
+              ttl 1
+              resources Service HTTPRoute
+          - name: forward
+            parameters: . /etc/resolv.conf
+          - name: loop
+          - name: reload
+          - name: loadbalance
+          - name: prometheus
+            parameters: 0.0.0.0:9153

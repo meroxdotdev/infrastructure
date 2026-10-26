@@ -8,7 +8,7 @@ cni:
   # Required for pairing with Multus CNI
   exclusive: false
 cgroup:
-  automount:
+  autoMount:
     enabled: false
   hostRoot: /sys/fs/cgroup
 # NOTE: devices might need to be set if you have more than one active NIC on your hosts
@@ -47,7 +47,7 @@ operator:
     enabled: true
     serviceMonitor:
       enabled: true
-  replicas: 1
+  replicas: 2
   rollOutPods: true
 prometheus:
   enabled: true

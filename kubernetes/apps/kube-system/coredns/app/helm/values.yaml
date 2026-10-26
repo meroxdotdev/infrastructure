@@ -9,6 +9,7 @@ service:
   name: kube-dns
   clusterIP: "10.43.0.10"
 replicaCount: 2
+priorityClassName: system-cluster-critical
 servers:
   - zones:
       - zone: .
