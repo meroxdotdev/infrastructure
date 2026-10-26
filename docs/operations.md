@@ -324,14 +324,22 @@ Merging a `talos` PR changes nothing on the nodes. That is the next section.
 
 ### Upgrading Talos and Kubernetes
 
-**A patch** (1.14.4 → 1.14.5, 1.36.5 → 1.36.6): merge the Renovate PR, pull,
-then:
+**Before you start**, from the repo root: `age.key` and `kubeconfig` must be
+there, and every command goes through `task`, which sets `TALOSCONFIG`,
+`KUBECONFIG` and `SOPS_AGE_KEY_FILE`. A bare `talosctl` outside `task` (or
+without mise) falls back to `~/.talos/config`, a stale config whose CA no
+longer matches, and fails with `x509: certificate signed by unknown
+authority`.
+
+**A patch** (1.14.4 → 1.14.5, 1.36.5 → 1.36.6): merge the Renovate PR, then:
 
 ```bash
+git pull
 task talos:upgrade-cluster
 ```
 
-It does, in order, what was done by hand until 2026-10-26:
+About an hour for three nodes, nearly all of it waiting on Longhorn; it does
+not need watching. It does, in order, what was done by hand until 2026-10-26:
 
 1. Regenerates the configs and dry-runs them against every node. Only image
    tags may differ; anything else is drift and stops the run — review it with
@@ -347,10 +355,14 @@ It does, in order, what was done by hand until 2026-10-26:
 5. Applies the configs so what runs matches git, and checks the dry-run is
    empty.
 
-Nodes already on the target are skipped, so re-running after a stop is safe.
+If the cluster is not whole again within an hour (`TIMEOUT=<seconds>` to
+change it), it stops and prints what is still missing: a node, an etcd
+member, or the volumes still degraded. Nodes already on the target are
+skipped, so re-running after any stop is safe.
 
-**A minor** (Talos 1.14 → 1.15, Kubernetes 1.36 → 1.37) needs three checks
-before the merge, and they are the reason Renovate asks for approval:
+**A minor** (Talos 1.14 → 1.15, Kubernetes 1.36 → 1.37) gets no PR until you
+tick it on the Renovate Dashboard issue in GitHub. Do the three checks before
+ticking it:
 
 - [Talos support matrix](https://docs.siderolabs.com/talos/v1.14/getting-started/support-matrix):
   which Kubernetes versions the target Talos serves.
@@ -362,6 +374,12 @@ before the merge, and they are the reason Renovate asks for approval:
   `ghcr.io/siderolabs/installer`.
 
 Then the same `task talos:upgrade-cluster`.
+
+A Kubernetes minor has one more step. Renovate will not even offer one past
+`allowedVersions` on `ghcr.io/siderolabs/kubelet` in `.renovaterc.json5`
+(below 1.37 since 2026-10-26, because Cilium 1.20 stops at 1.36). Once a
+Cilium release lists the new minor as tested, raise that bound in the same
+commit that moves Cilium to it — Cilium first, then the kubelet PR appears.
 
 **If it stops on a drain**, the node is cordoned but not rebooted:
 
