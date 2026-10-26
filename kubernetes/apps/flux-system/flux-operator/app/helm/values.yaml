@@ -3,7 +3,8 @@ serviceMonitor:
   create: true
 # The built-in Flux Status web UI is on by default, and with it a NetworkPolicy
 # that opens its port to every pod in the cluster - around the flux-system
-# isolation in ../../network-policy.yaml. Nothing here uses it: home.k8s
-# counts not-ready Flux resources, Headlamp and `flux get` are the drill-down.
+# isolation in kubernetes/apps/flux-system/network-policy.yaml. Nothing here
+# uses it: home.k8s counts not-ready Flux resources, Headlamp and `flux get`
+# are the drill-down.
 web:
   enabled: false

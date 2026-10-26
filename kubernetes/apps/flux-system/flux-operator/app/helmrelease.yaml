@@ -16,6 +16,7 @@ spec:
     cleanupOnFail: true
     remediation:
       retries: 3
-  values:
-    serviceMonitor:
-      create: true
+  # Same file the bootstrap helmfile installs from, so the two cannot drift.
+  valuesFrom:
+    - kind: ConfigMap
+      name: flux-operator-values
