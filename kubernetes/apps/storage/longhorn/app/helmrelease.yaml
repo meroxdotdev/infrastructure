@@ -129,15 +129,6 @@ spec:
     ingress:
       enabled: false
 
-    # These default to 3 replicas *with pod anti-affinity*, so on a single node
-    # two of every one of them sit Pending forever. Not cosmetic: a Pending
-    # csi-attacher means volumes stop attaching.
-    csi:
-      attacherReplicaCount: 1
-      provisionerReplicaCount: 1
-      resizerReplicaCount: 1
-      snapshotterReplicaCount: 1
-
     longhornUI:
       replicas: 1
 
