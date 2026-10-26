@@ -23,7 +23,7 @@ variable "proxmox_nodes" {
 variable "talos_version" {
   description = "Talos version — must match talos/talenv.yaml"
   type        = string
-  default     = "v1.13.9"
+  default     = "v1.14.4"
 }
 
 variable "talos_image_id" {

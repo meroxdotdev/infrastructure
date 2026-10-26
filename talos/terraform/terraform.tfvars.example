@@ -27,4 +27,4 @@ node_vip  = "10.57.57.88"
 vm_cores      = 14
 vm_memory_mb  = 45056
 vm_disk_gb    = 250
-talos_version = "v1.13.9"
+talos_version = "v1.14.4"

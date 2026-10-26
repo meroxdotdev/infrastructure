@@ -2,7 +2,7 @@ cluster:
   apiServer:
     # Talos injects a default PodSecurity admission plugin (enforce: baseline)
     # into every generated config. An empty list here does NOT override it —
-    # talhelper's merge keeps the original non-empty list when the patch value
+    # the config-patch merge keeps the original non-empty list when the patch value
     # is empty. Overriding the nested `enforce` field instead works because
     # it's a non-empty single-item list merged by value.
     admissionControl:

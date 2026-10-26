@@ -17,6 +17,7 @@ task reconcile                              # force Flux sync
 
 task talos:generate-config                  # after editing talconfig.yaml
 task talos:apply-node IP=10.57.57.80        # apply config to a node
+task talos:upgrade-cluster                  # upgrade every node to talenv.yaml (see Maintenance)
 task talos:upgrade-node IP=10.57.57.80      # upgrade Talos on a node
 task talos:upgrade-k8s                      # upgrade Kubernetes version
 ```
@@ -85,8 +86,8 @@ talos:upgrade-node IP=10.57.57.80` then `task talos:upgrade-k8s`.
 plain (non-GPU) nodes used — no extensions:
 
 ```bash
-ssh root@10.57.57.254 'cd /local_data/template/iso && curl -Lo talos-v1.13.9-metal-amd64.iso \
-  https://factory.talos.dev/image/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510/v1.13.9/metal-amd64.iso'
+ssh root@10.57.57.254 'cd /local_data/template/iso && curl -Lo talos-v1.14.4-metal-amd64.iso \
+  https://factory.talos.dev/image/8d37fcc01bb9173406853e7fd97ad9eda40732043f88e09dafe55e53fcf4b510/v1.14.4/metal-amd64.iso'
 ```
 
 Name it with the version. The directory already holds ISOs from earlier
@@ -104,7 +105,7 @@ ssh root@10.57.57.254 'qm create 811 --name kubernetes-worker-1 --tags k8s \
   --net0 "virtio=BC:24:11:00:57:81,bridge=vmbr0,firewall=1" \
   --scsi0 "cluster-storage:250,format=raw,iothread=1,ssd=1" \
   --efidisk0 "cluster-storage:1,efitype=4m" \
-  --ide2 "local-data:iso/talos-v1.13.9-metal-amd64.iso,media=cdrom"'
+  --ide2 "local-data:iso/talos-v1.14.4-metal-amd64.iso,media=cdrom"'
 ```
 
 The MAC is not cosmetic. `networkInterfaces[].deviceSelector.hardwareAddr` in
@@ -314,9 +315,71 @@ Renovate runs every weekend and opens PRs automatically for:
 
 - Helm chart versions (all HelmReleases)
 - Container image tags (annotated with `# renovate:`)
-- Talos / Kubernetes versions (`.mise.toml`)
+- Talos / Kubernetes versions (`talos/talenv.yaml`, grouped as `talos`)
+- CLI tools (`.mise.toml`)
 
 Config: `.renovaterc.json5`
+
+Merging a `talos` PR changes nothing on the nodes. That is the next section.
+
+### Upgrading Talos and Kubernetes
+
+**A patch** (1.14.4 → 1.14.5, 1.36.5 → 1.36.6): merge the Renovate PR, pull,
+then:
+
+```bash
+task talos:upgrade-cluster
+```
+
+It does, in order, what was done by hand until 2026-10-26:
+
+1. Regenerates the configs and dry-runs them against every node. Only image
+   tags may differ; anything else is drift and stops the run — review it with
+   `task talos:apply-node` on its own, never inside an upgrade.
+2. Waits until the cluster is **whole**: every node `Ready`, all three etcd
+   members answering, and no attached Longhorn volume `degraded`.
+3. Upgrades one node (drain, reboot, uncordon), then waits for whole again
+   before the next. This wait is the step that matters: after a reboot that
+   node's replicas rebuild, one volume at a time, for 10-20 minutes. Draining
+   the next node during that window can take a volume's last healthy replica
+   with it.
+4. Runs `talosctl upgrade-k8s` if the Kubernetes version moved.
+5. Applies the configs so what runs matches git, and checks the dry-run is
+   empty.
+
+Nodes already on the target are skipped, so re-running after a stop is safe.
+
+**A minor** (Talos 1.14 → 1.15, Kubernetes 1.36 → 1.37) needs three checks
+before the merge, and they are the reason Renovate asks for approval:
+
+- [Talos support matrix](https://docs.siderolabs.com/talos/v1.14/getting-started/support-matrix):
+  which Kubernetes versions the target Talos serves.
+- [Cilium requirements](https://docs.cilium.io/en/stable/network/kubernetes/requirements/):
+  the Kubernetes versions the running Cilium is tested on. A CNI failure takes
+  the whole cluster, and a Kubernetes minor cannot be rolled back.
+- The release notes' upgrade notes: Talos 1.14 alone moved etcd metrics to
+  port 2383, set TLS 1.3 as the floor, and stopped publishing
+  `ghcr.io/siderolabs/installer`.
+
+Then the same `task talos:upgrade-cluster`.
+
+**If it stops on a drain**, the node is cordoned but not rebooted:
+
+```bash
+kubectl get pdb -A          # look for ALLOWED DISRUPTIONS 0
+kubectl uncordon <node>
+```
+
+A PDB with zero allowed disruptions on a one-replica Deployment can never be
+evicted — that was Longhorn's CSI sidecars on 2026-10-26. Fix the replica
+count, not the drain.
+
+**The config contract.** `configContract` in `talos/talconfig.yaml` is the
+machine-config format, not the Talos version, and it stays at v1.13 on purpose
+(the comment there says why). Moving it is a separate change: port
+`talos/patches/` to the multi-document format first.
+[onedr0p/cluster-template](https://github.com/onedr0p/cluster-template/tree/main/template/config/talos)
+already has every patch in that form.
 
 ### SOPS secret rotation
 

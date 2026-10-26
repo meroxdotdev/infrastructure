@@ -1,15 +1,15 @@
 # Talos Patching
 
-This directory contains Kustomization patches that are added to the talhelper configuration file.
+Strategic-merge patches that `scripts/talos-genconfig.sh` passes to
+`talosctl gen config`. `talconfig.yaml` lists which ones apply.
 
-<https://www.talos.dev/v1.7/talos-guides/configuration/patching/>
+<https://docs.siderolabs.com/talos/v1.13/configure-your-talos-cluster/system-configuration/patching>
 
 ## Patch Directories
 
-Under this `patches` directory, there are several sub-directories that can contain patches that are added to the talhelper configuration file.
-Each directory is optional and therefore might not created by default.
+- `global/`: patches applied to every node (`--config-patch`)
+- `controller/`: patches applied to control-plane nodes only (`--config-patch-control-plane`)
 
-- `global/`: patches that are applied to both the controller and worker configurations
-- `controller/`: patches that are applied to the controller configurations
-- `worker/`: patches that are applied to the worker configurations
-- `${node-hostname}/`: patches that are applied to the node with the specified name
+They target the v1alpha1 document, matching `configContract` in
+`talconfig.yaml`. Moving to the v1.14 contract means porting them to the
+multi-document format first.

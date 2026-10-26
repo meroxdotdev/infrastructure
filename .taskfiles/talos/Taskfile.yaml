@@ -2,31 +2,36 @@
 # yaml-language-server: $schema=https://taskfile.dev/schema.json
 version: '3'
 
+vars:
+  CONTROL_PLANE:
+    sh: yq '[.nodes[] | select(.controlPlane) | .ipAddress][0]' {{.TALOS_DIR}}/talconfig.yaml
+  ALL_NODES:
+    sh: yq '[.nodes[].ipAddress] | join(",")' {{.TALOS_DIR}}/talconfig.yaml
+
 tasks:
 
   generate-config:
     desc: Generate Talos configuration
-    dir: '{{.TALOS_DIR}}'
-    cmd: talhelper genconfig
+    cmd: bash {{.SCRIPTS_DIR}}/talos-genconfig.sh
     preconditions:
       - test -f {{.TALOS_DIR}}/talconfig.yaml
       - test -f {{.ROOT_DIR}}/.sops.yaml
       - test -f {{.SOPS_AGE_KEY_FILE}}
-      - which talhelper
+      - which talosctl sops yq
 
   apply-node:
     desc: Apply Talos config to a node [IP=required]
-    dir: '{{.TALOS_DIR}}'
-    cmd: talhelper gencommand apply --node {{.IP}} --extra-flags '--mode={{.MODE}}' | bash
+    cmd: talosctl apply-config --nodes {{.IP}} --file {{.TALOS_DIR}}/clusterconfig/kubernetes-{{.NODE}}.yaml --mode={{.MODE}}
     vars:
       MODE: '{{.MODE | default "auto"}}'
+      NODE:
+        sh: yq '.nodes[] | select(.ipAddress == "{{.IP}}") | .hostname' {{.TALOS_DIR}}/talconfig.yaml
     requires:
       vars: [IP]
     preconditions:
       - talosctl --nodes {{.IP}} get machineconfig
-      - talosctl config info
       - test -f {{.TALOSCONFIG}}
-      - which talhelper talosctl yq
+      - which talosctl yq
 
   upgrade-node:
     desc: Upgrade Talos on a single node [IP=required]
@@ -43,10 +48,15 @@ tasks:
       with `kubectl uncordon` and find out what changed rather than reaching
       for DRAIN=false.
 
+      The last time one hung (2026-10-26) the cause was Longhorn 1.13 putting
+      minAvailable=1 PDBs on csi-attacher and csi-provisioner while the
+      HelmRelease still ran them at one replica each, a leftover from the
+      single-node days. A one-replica Deployment under such a PDB can never be
+      evicted. They run three replicas now, one per node.
+
       Upgrade one node at a time and wait for it to rejoin etcd before
       starting the next.
-    dir: '{{.TALOS_DIR}}'
-    cmd: talhelper gencommand upgrade --node {{.IP}} --extra-flags "--image='{{.TALOS_IMAGE}}:{{.TALOS_VERSION}}' --drain={{.DRAIN}} --timeout=15m" | bash
+    cmd: talosctl upgrade --nodes {{.IP}} --image '{{.TALOS_IMAGE}}:{{.TALOS_VERSION}}' --drain={{.DRAIN}} --timeout=15m
     vars:
       DRAIN: '{{.DRAIN | default "true"}}'
       TALOS_IMAGE:
@@ -57,26 +67,36 @@ tasks:
       vars: [IP]
     preconditions:
       - talosctl --nodes {{.IP}} get machineconfig
-      - talosctl config info
       - test -f {{.TALOSCONFIG}}
-      - which kubectl talhelper talosctl yq
+      - which kubectl talosctl yq
+
+  upgrade-cluster:
+    desc: Upgrade every node to talenv.yaml, one at a time, waiting for Longhorn and etcd in between
+    summary: |
+      The routine path for a merged Renovate `talos` PR. Skips nodes already on
+      the target and stops on anything unexpected: config drift beyond image
+      tags, or a cluster that is not whole again within TIMEOUT seconds
+      (default 3600). Re-running after a stop is safe. A Talos or Kubernetes
+      minor still needs the checks in docs/operations.md before the merge.
+    cmd: bash {{.SCRIPTS_DIR}}/talos-upgrade-cluster.sh
+    preconditions:
+      - test -f {{.TALOSCONFIG}}
+      - which kubectl talosctl yq
 
   upgrade-k8s:
     desc: Upgrade Kubernetes
-    dir: '{{.TALOS_DIR}}'
-    cmd: talhelper gencommand upgrade-k8s --extra-flags "--to '{{.KUBERNETES_VERSION}}'" | bash
+    cmd: talosctl upgrade-k8s --nodes {{.CONTROL_PLANE}} --to {{.KUBERNETES_VERSION}}
     vars:
       KUBERNETES_VERSION:
         sh: yq '.kubernetesVersion' {{.TALOS_DIR}}/talenv.yaml
     preconditions:
-      - talosctl config info
       - test -f {{.TALOSCONFIG}}
-      - which talhelper talosctl yq
+      - which talosctl yq
 
   reset:
     desc: Resets nodes back to maintenance mode
-    dir: '{{.TALOS_DIR}}'
     prompt: This will destroy your cluster and reset the nodes back to maintenance mode... continue?
-    cmd: talhelper gencommand reset --extra-flags="--reboot {{- if eq .CLI_FORCE false }} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL{{ end }} --graceful=false --wait=false" | bash
+    cmd: talosctl reset --nodes {{.ALL_NODES}} --reboot {{- if eq .CLI_FORCE false }} --system-labels-to-wipe STATE --system-labels-to-wipe EPHEMERAL{{ end }} --graceful=false --wait=false
     preconditions:
-      - which talhelper
+      - test -f {{.TALOSCONFIG}}
+      - which talosctl

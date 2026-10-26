@@ -1,9 +1,17 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/budimanjojo/talhelper/master/pkg/config/schemas/talconfig.json
+# Rendered by scripts/talos-genconfig.sh (`task talos:generate-config`).
+# Versions live in talenv.yaml. The shape is talhelper's, kept when talhelper
+# was retired so the DR tasks reading this file did not have to change.
 ---
 clusterName: kubernetes
 
-talosVersion: "${talosVersion}"
-kubernetesVersion: "${kubernetesVersion}"
+# The machine-config format, not the Talos version the nodes run. Talos 1.14
+# moved most of v1alpha1 into separate documents (KubeAPIServerConfig,
+# KubeNodeConfig, ...); rendering with the 1.14 contract would rewrite every
+# node's config and turn on workload isolation, which the in-tree iSCSI path
+# Longhorn relies on does not survive. Nodes upgraded from 1.13 keep running
+# 1.13-contract configs - Sidero's supported path - and this pins that.
+# Moving to v1.14 is its own change: port patches/ to the new documents first.
+configContract: v1.13
 
 endpoint: https://10.57.57.88:6443
 additionalApiServerCertSans: &sans

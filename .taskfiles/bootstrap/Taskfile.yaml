@@ -8,8 +8,8 @@ tasks:
     desc: Bootstrap the Talos cluster
     dir: '{{.TALOS_DIR}}'
     cmds:
-      - '[ -f talsecret.sops.yaml ] || talhelper gensecret | sops --filename-override talos/talsecret.sops.yaml --encrypt /dev/stdin > talsecret.sops.yaml'
-      - talhelper genconfig
+      - '[ -f talsecret.sops.yaml ] || talosctl gen secrets --talos-version "$(yq .configContract talconfig.yaml)" -o - | sops --filename-override talos/talsecret.sops.yaml --encrypt /dev/stdin > talsecret.sops.yaml'
+      - task: :talos:generate-config
       - |
         # On a DR run the configs are already on the nodes (dr:apply-talos-configs
         # matched them by MAC while they were still on DHCP). Applying again with
@@ -18,7 +18,10 @@ tasks:
         if talosctl --nodes "$FIRST" get machineconfig >/dev/null 2>&1; then
           echo "→ Configs already applied, skipping insecure apply"
         else
-          talhelper gencommand apply --extra-flags="--insecure" | bash
+          for NODE in $(yq '.nodes[].hostname' talconfig.yaml); do
+            IP=$(yq ".nodes[] | select(.hostname == \"$NODE\") | .ipAddress" talconfig.yaml)
+            talosctl apply-config --insecure --nodes "$IP" --file "clusterconfig/kubernetes-$NODE.yaml"
+          done
         fi
       - |
         # Nodes install to disk and reboot first, so bootstrap is refused for a
@@ -26,17 +29,17 @@ tasks:
         # that is success, not a reason to keep looping.
         echo "→ Bootstrapping etcd (nodes reboot first, expect ~2 min of retries)..."
         for i in $(seq 1 60); do
-          OUT=$(talhelper gencommand bootstrap | bash 2>&1) && break
+          OUT=$(talosctl bootstrap --nodes "$(yq '.nodes[0].ipAddress' talconfig.yaml)" 2>&1) && break
           case "$OUT" in *AlreadyExists*) break ;; esac
           sleep 15
         done
         echo "  ✓ etcd bootstrapped"
-      - until talhelper gencommand kubeconfig --extra-flags="{{.ROOT_DIR}} --force" | bash; do sleep 10; done
+      - until talosctl kubeconfig --nodes "$(yq '.nodes[0].ipAddress' talconfig.yaml)" {{.ROOT_DIR}} --force; do sleep 10; done
     preconditions:
       - test -f {{.ROOT_DIR}}/.sops.yaml
       - test -f {{.SOPS_AGE_KEY_FILE}}
       - test -f {{.TALOS_DIR}}/talconfig.yaml
-      - which talhelper talosctl sops
+      - which talosctl sops yq
 
   apps:
     desc: Bootstrap apps into the Talos cluster

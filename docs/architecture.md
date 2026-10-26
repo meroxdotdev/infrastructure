@@ -105,7 +105,7 @@ Cloudflare tunnel, everything else over the tailnet.
 ## What is deliberately not done
 
 **Proxmox Backup Server.** No guest here is irreplaceable: the Talos nodes are
-rebuilt from Terraform, talhelper and Flux, and their data is in Longhorn's
+rebuilt from Terraform, talosctl and Flux, and their data is in Longhorn's
 backups.
 
 **Backing up the film library.** Tier 3, re-acquirable.

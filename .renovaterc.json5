@@ -11,7 +11,7 @@
   ],
   dependencyDashboard: true,
   dependencyDashboardTitle: "Renovate Dashboard 🤖",
-  dependencyDashboardHeader: "**Before approving the `talos` group:** Talos v1.13 serves Kubernetes **1.31-1.36** only — [support matrix](https://docs.siderolabs.com/talos/v1.13/getting-started/support-matrix). Reject any kubelet the running Talos minor cannot serve; this approval is the only gate. Merged unchecked on 2026-08-29, v1.37.0 would have left every node with a kubelet newer than its API server.",
+  dependencyDashboardHeader: "**Before approving the `talos` group:** Talos v1.14 serves Kubernetes **1.33-1.37** only — [support matrix](https://docs.siderolabs.com/talos/v1.14/getting-started/support-matrix). A Kubernetes minor also needs Cilium to list it as tested ([requirements](https://docs.cilium.io/en/stable/network/kubernetes/requirements/)) — Cilium 1.20 stops at 1.36, which is why kubelet is capped below 1.37 in `allowedVersions`.",
   schedule: ["every weekend"],
   ignorePaths: ["**/*.sops.*"],
   flux: {
@@ -31,20 +31,18 @@
   },
   packageRules: [
     {
-      description: "Talos and Kubernetes are one decision, not two. The Talos minor version fixes which Kubernetes versions can run at all (v1.13 -> 1.31-1.36), but Renovate sees two unrelated images. Group them so the support matrix is checked once, against both.",
-      matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/siderolabs/installer", "ghcr.io/siderolabs/kubelet"],
+      description: "Talos and Kubernetes are one decision, not two. The Talos minor version fixes which Kubernetes versions can run at all (v1.14 -> 1.33-1.37), but Renovate sees two unrelated packages. Group everything in talenv.yaml so the support matrix is checked once, against both. Talos is tracked as GitHub releases: ghcr.io/siderolabs/installer stopped being published with v1.14 (the nodes install from factory.talos.dev), so watching that image would have frozen Renovate at v1.13.x.",
+      matchFileNames: ["talos/talenv.yaml"],
       groupName: "talos",
     },
     {
-      description: "Before approving: check the Talos support matrix, and reject any kubelet the running Talos minor cannot serve. Renovate raised kubelet to v1.37.0 on 2026-08-29 (532e9c0) and it was merged unchecked; Talos 1.13.9 tops out at Kubernetes 1.36, so every node generated from talenv.yaml would have joined with a kubelet newer than the API server. Approval is the only gate - nothing else blocks an unsupported pair. Patch bumps (1.13.9 -> 1.13.10) still flow normally.",
-      matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/siderolabs/installer", "ghcr.io/siderolabs/kubelet"],
+      description: "Before approving: check the Talos support matrix, and reject any kubelet the running Talos minor cannot serve. Renovate raised kubelet to v1.37.0 on 2026-08-29 (532e9c0) and it was merged unchecked; Talos 1.13.9 tops out at Kubernetes 1.36, so every node generated from talenv.yaml would have joined with a kubelet newer than the API server. Approval is the only gate - nothing else blocks an unsupported pair. Patch bumps (1.14.4 -> 1.14.5) still flow normally.",
+      matchFileNames: ["talos/talenv.yaml"],
       matchUpdateTypes: ["major", "minor"],
       dependencyDashboardApproval: true,
     },
     {
-      description: "A hard ceiling, because approval is not a gate. Talos v1.13 serves Kubernetes 1.31-1.36 only, so a 1.37 kubelet is not a trade-off to weigh on a dashboard - it is a pair that cannot run, and the only correct answer is that Renovate never offers it. dependencyDashboardApproval was tried and failed twice: v1.37.0 merged unchecked on 2026-08-29 (532e9c0), pinned back in 9d956d2, then arrived again on 2026-09-05 in the grouped `talos` PR (da53820). Grouping is why the second one got through - a gated kubelet minor rides along on the ungated installer patch's branch, and the result reads like any other bump. It sat for two days until `talhelper genconfig` was run and refused outright, which means no machine config could be generated at all during that window. Same lesson as the Immich Postgres rule below: when a pair is invalid rather than risky, the honest setting is a constraint, not a question. Raise this bound in the same commit that moves the cluster to Talos 1.14, never before.",
+      description: "A hard ceiling, because approval is not a gate. dependencyDashboardApproval was tried and failed twice: v1.37.0 merged unchecked on 2026-08-29 (532e9c0), pinned back in 9d956d2, then arrived again on 2026-09-05 in the grouped `talos` PR (da53820). Grouping is why the second one got through - a gated kubelet minor rides along on the ungated Talos patch's branch, and the result reads like any other bump. Same lesson as the Immich Postgres rule below: when a pair is invalid or unvalidated rather than a judgement call, the honest setting is a constraint, not a question. Talos was the limit until 2026-10-26; the cluster then moved to Talos 1.14, which serves 1.37, and the limit became Cilium: 1.20.x lists Kubernetes 1.33-1.36 as tested, and a CNI failure takes the whole cluster with it while a Kubernetes minor cannot be rolled back. Raise this bound in the same commit that moves Cilium to a release that lists 1.37, never before.",
       matchDatasources: ["docker"],
       matchPackageNames: ["ghcr.io/siderolabs/kubelet"],
       allowedVersions: "<1.37.0",

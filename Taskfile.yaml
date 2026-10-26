@@ -50,7 +50,7 @@ tasks:
     summary: |
       Scans 10.57.57.0/24 for port 50000 (Talos maintenance mode), queries each
       node for its MAC address via talosctl --insecure, matches it to the correct
-      talhelper-generated config file, and applies the config.
+      generated config file, and applies the config.
 
       Required because: VMs boot with DHCP IPs in maintenance mode. Fixed MACs in
       Terraform + prod talconfig = no talconfig patching, but we still need to apply
@@ -102,7 +102,7 @@ tasks:
 
         echo ""
         echo "→ Generating Talos configs from talconfig.yaml..."
-        cd {{.TALOS_DIR}} && talhelper genconfig 2>&1 | grep -v "WARNING" || true && cd {{.ROOT_DIR}}
+        bash {{.SCRIPTS_DIR}}/talos-genconfig.sh
 
         echo ""
         echo "→ Matching MACs to configs and applying..."
