@@ -10,3 +10,6 @@ machine:
     # alike. Needs no fq qdisc (TCP paces internally since 4.13). Pods inherit
     # it at netns creation, so running workloads need a rollout restart.
     net.ipv4.tcp_congestion_control: "bbr"
+    # Same paths: keep the congestion window across idle gaps, so a quiet
+    # tunnel or stream does not restart from slow start on its next burst.
+    net.ipv4.tcp_slow_start_after_idle: "0"

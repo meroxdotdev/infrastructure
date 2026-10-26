@@ -2,6 +2,23 @@ machine:
   kubelet:
     extraConfig:
       serializeImagePulls: false
+      # Taken from onedr0p/cluster-template on 2026-10-26, each for a reason
+      # that holds here; the rest of its kubelet block did not.
+      # A crash-looping pod waits up to 60s between restarts instead of 5
+      # minutes, so apps come back within a minute of their dependency (the
+      # NAS, Postgres) returning after an outage.
+      crashLoopBackOff:
+        maxContainerRestartPeriod: 60s
+      # Without an age limit, images only go once the disk hits 85%; Renovate
+      # bumps had left 43 GB of them on kubernetes-1.
+      imageMaximumGCAge: 168h
+      # After a reboot every pod pulls at once; kubernetes-3 has three cores.
+      maxParallelImagePulls: 3
+      # Talos defaults to 30s/10s. A host shutdown (UPS, Proxmox) gives pods
+      # and Longhorn volumes time to stop cleanly; Proxmox waits 180s for a
+      # guest before forcing it.
+      shutdownGracePeriod: 90s
+      shutdownGracePeriodCriticalPods: 60s
     nodeIP:
       validSubnets:
         - 10.57.57.0/24
