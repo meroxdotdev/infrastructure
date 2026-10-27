@@ -1,0 +1,15 @@
+---
+# Prod's args, minus one. Prod passes --kubelet-insecure-tls because Talos'
+# kubelets serve self-signed certificates. Here every kubelet serving
+# certificate is signed by the cluster CA (02-pki.sh, or serverTLSBootstrap
+# under kubeadm), so metrics-server can verify them — and should.
+args:
+  - --kubelet-preferred-address-types=InternalIP,Hostname
+  - --kubelet-use-node-status-port
+  - --metric-resolution=15s
+  - --kubelet-request-timeout=2s
+metrics:
+  enabled: true
+serviceMonitor:
+  # Module 15.
+  enabled: false

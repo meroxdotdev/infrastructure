@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cert-manager.io/certificate_v1.json
+# One wildcard for every app, as in prod (kubernetes/apps/kube-system/cilium/
+# gateway/certificate.yaml). Switch issuerRef to letsencrypt-production once
+# that issuer works, and nothing else changes.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-wildcard
+spec:
+  secretName: lab-wildcard-tls
+  issuerRef:
+    name: lab-ca
+    kind: ClusterIssuer
+  commonName: "lab.merox.dev"
+  dnsNames: ["lab.merox.dev", "*.lab.merox.dev"]

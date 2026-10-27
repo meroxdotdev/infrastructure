@@ -1,0 +1,158 @@
+{
+  "title": "K8s Learn Lab",
+  "tagline": "De la un proces Linux la un cluster HA cu BGP, ArgoCD și CI/CD — construit cu mâna ta, apoi comparat linie cu linie cu infrastructura merox.dev. Fiecare modul: concept, analogie, laborator, verificare.",
+  "phases": [
+    { "id": "p0", "title": "Fundația", "description": "Unde ești, unde ajungi, și laboratorul pe care rulează tot restul." },
+    { "id": "p1", "title": "Linux, rețele, containere", "description": "Tot ce face Kubernetes e construit din aceste piese. Fără ele, restul e magie." },
+    { "id": "p2", "title": "Kubernetes the Hard Way", "description": "Trei VM-uri Ubuntu, fără kubeadm, fără Talos: fiecare certificat, fiecare unit systemd, de mână." },
+    { "id": "p3", "title": "Kubernetes în profunzime", "description": "Obiectele, controllerele, rețeaua cu BGP și împachetarea cu Helm/Kustomize." },
+    { "id": "p4", "title": "Platforma GitOps", "description": "ArgoCD preia clusterul: secrete, certificate, stocare, observabilitate — tot din Git." },
+    { "id": "p5", "title": "Livrare și operare", "description": "CI/CD, securitate, operațiuni de zi cu zi și proba finală: reconstruiești totul din Git." }
+  ],
+  "modules": [
+    {
+      "id": "00", "phase": "p0", "file": "docs/00-start.md", "hours": 2,
+      "title": "Start aici: harta drumului", "short": "Start aici",
+      "summary": "Cum funcționează cursul, harta repo-ului tău de producție și uneltele de pe stația de lucru.",
+      "objectives": ["Explici ce face fiecare director din repo-ul infrastructure", "Știi ce vei construi în lab și de ce diferă de prod", "Ai uneltele instalate și interfața pornită"],
+      "tags": ["orientare"]
+    },
+    {
+      "id": "01", "phase": "p0", "file": "docs/01-laborator.md", "hours": 4,
+      "title": "Laboratorul: Proxmox, OpenTofu, router FRR", "short": "Laboratorul",
+      "summary": "Patru VM-uri create din cod: trei noduri Kubernetes și un router/jumpbox într-o rețea izolată.",
+      "objectives": ["Creezi VM-uri cu OpenTofu și cloud-init pe Proxmox", "Configurezi un router Linux cu NAT (nftables)", "Explici rutarea asimetrică și de ce ruta stă pe stația ta"],
+      "prereqs": ["00"], "tags": ["proxmox", "terraform", "iac"]
+    },
+    {
+      "id": "02", "phase": "p1", "file": "docs/02-linux.md", "hours": 4,
+      "title": "Linux esențial pentru infrastructură", "short": "Linux esențial",
+      "summary": "Procese, systemd, jurnale, fișiere, permisiuni, SSH — cu ochii pe ce va face kubelet-ul.",
+      "objectives": ["Scrii un service și un timer systemd", "Depanezi un serviciu cu journalctl și systemctl", "Explici PID 1, semnale și de ce contează pentru containere"],
+      "prereqs": ["01"], "tags": ["linux", "systemd"]
+    },
+    {
+      "id": "03", "phase": "p1", "file": "docs/03-retelistica-linux.md", "hours": 5,
+      "title": "Rețelistică Linux: de la IP la rețeaua unui pod", "short": "Rețelistică Linux",
+      "summary": "CIDR, rute, ARP, bridge, network namespaces, veth, NAT și tcpdump — construiești rețeaua unui pod de mână.",
+      "objectives": ["Calculezi subrețele și citești o tabelă de rutare", "Legi două network namespaces printr-un bridge, ca un CNI", "Urmărești un pachet cu tcpdump și explici fiecare hop"],
+      "prereqs": ["02"], "tags": ["networking", "linux"]
+    },
+    {
+      "id": "04", "phase": "p1", "file": "docs/04-containere.md", "hours": 4,
+      "title": "Containere de la zero", "short": "Containere",
+      "summary": "Namespaces, cgroups v2, overlayfs, OCI, runc și containerd — un container construit fără Docker.",
+      "objectives": ["Pornești un proces izolat cu unshare și cgroups", "Explici straturile unei imagini OCI", "Scrii un Dockerfile minim, non-root, ca imaginile din prod"],
+      "prereqs": ["03"], "tags": ["containere", "linux"]
+    },
+    {
+      "id": "05", "phase": "p1", "file": "docs/05-pki-tls.md", "hours": 3,
+      "title": "PKI și TLS fără mistere", "short": "PKI & TLS",
+      "summary": "Chei, CSR-uri, CA, SAN, mTLS — tot ce trebuie ca să semnezi singur certificatele unui cluster.",
+      "objectives": ["Creezi un CA și semnezi un certificat cu SAN-uri", "Explici diferența dintre autentificare server și client (mTLS)", "Citești orice certificat cu openssl și găsești de ce e respins"],
+      "prereqs": ["04"], "tags": ["securitate", "tls"]
+    },
+    {
+      "id": "06", "phase": "p2", "file": "docs/06-hardway-pki-etcd.md", "hours": 5,
+      "title": "Hard Way I: PKI-ul clusterului și etcd HA", "short": "Hard Way I: etcd",
+      "summary": "Trei CA-uri, ~25 de certificate, kubeconfig-uri, și un cluster etcd cu trei membri pornit cu systemd.",
+      "objectives": ["Explici fiecare certificat al clusterului: cine îl prezintă, cui și de ce", "Pornești etcd cu 3 membri și verifici quorumul", "Explici Raft, quorum și de ce prod are election-timeout 5000"],
+      "prereqs": ["05"], "tags": ["kubernetes", "etcd", "pki"]
+    },
+    {
+      "id": "07", "phase": "p2", "file": "docs/07-hardway-control-plane.md", "hours": 5,
+      "title": "Hard Way II: control plane HA și VIP", "short": "Hard Way II: control plane",
+      "summary": "kube-apiserver, controller-manager și scheduler pe trei noduri, cu un VIP keepalived — echivalentul VIP-ului Talos.",
+      "objectives": ["Explici flag-urile importante ale fiecărei componente", "Construiești un VIP VRRP care urmează un apiserver sănătos", "Explici leader election și criptarea secretelor la rest"],
+      "prereqs": ["06"], "tags": ["kubernetes", "control-plane"]
+    },
+    {
+      "id": "08", "phase": "p2", "file": "docs/08-hardway-noduri-cilium.md", "hours": 6,
+      "title": "Hard Way III: containerd, kubelet, Cilium, CoreDNS", "short": "Hard Way III: noduri",
+      "summary": "Nodurile devin Ready: runtime, kubelet, CNI cu eBPF fără kube-proxy, DNS — și comparația cu Talos.",
+      "objectives": ["Explici drumul de la `kubectl run` la un proces pe nod", "Instalezi Cilium cu kube-proxy replacement și înțelegi fiecare valoare", "Explici ce face Talos în locul tău, linie cu linie"],
+      "prereqs": ["07"], "tags": ["kubernetes", "cilium", "kubelet"]
+    },
+    {
+      "id": "09", "phase": "p3", "file": "docs/09-obiecte-controllere.md", "hours": 6,
+      "title": "Obiecte, controllere și bucla de reconciliere", "short": "Obiecte & controllere",
+      "summary": "Pod, Deployment, StatefulSet, probe, resurse, scheduling, PDB — și ideea care stă la baza GitOps.",
+      "objectives": ["Explici bucla de reconciliere și ownerReferences", "Alegi probe și resurse corecte și explici clasele QoS", "Explici incidentele din prod: taint-ul de pe kubernetes-3 și PDB-ul care bloca drain-ul"],
+      "prereqs": ["08"], "tags": ["kubernetes", "workloads"]
+    },
+    {
+      "id": "10", "phase": "p3", "file": "docs/10-retelistica-k8s-bgp.md", "hours": 7,
+      "title": "Rețeaua Kubernetes: Services, BGP, Gateway API, politici", "short": "Rețea K8s & BGP",
+      "summary": "Cum devine un Service un pachet rutat, BGP între Cilium și FRR, LB IPAM, Gateway API și default-deny.",
+      "objectives": ["Explici ClusterIP/NodePort/LoadBalancer la nivel de eBPF", "Stabilești sesiuni BGP și vezi rutele ECMP pe router", "Scrii politici CiliumNetworkPolicy și le depanezi cu Hubble"],
+      "prereqs": ["09"], "tags": ["networking", "bgp", "cilium"]
+    },
+    {
+      "id": "11", "phase": "p3", "file": "docs/11-helm-kustomize.md", "hours": 4,
+      "title": "Helm și Kustomize", "short": "Helm & Kustomize",
+      "summary": "Chart-uri, values, app-template, bases, overlays, components și generatoare — cum e împachetat prod-ul.",
+      "objectives": ["Randezi un chart și citești ce produce", "Explici components/common din prod și de ce există", "Alegi între Helm și Kustomize pentru un caz dat"],
+      "prereqs": ["10"], "tags": ["helm", "kustomize"]
+    },
+    {
+      "id": "12", "phase": "p4", "file": "docs/12-gitops-argocd.md", "hours": 7,
+      "title": "GitOps cu ArgoCD", "short": "GitOps cu ArgoCD",
+      "summary": "Bootstrap, app-of-apps, AppProjects, sync waves, health, self-heal — și harta Flux ↔ ArgoCD pe repo-ul tău.",
+      "objectives": ["Bootstrapezi ArgoCD care apoi se gestionează singur", "Traduci orice obiect Flux din prod în echivalentul ArgoCD", "Explici de ce o aplicație e OutOfSync și repari fără să atingi clusterul"],
+      "prereqs": ["11"], "tags": ["gitops", "argocd"]
+    },
+    {
+      "id": "13", "phase": "p4", "file": "docs/13-secrete-certificate-dns.md", "hours": 5,
+      "title": "Secrete, certificate și DNS", "short": "Secrete, TLS, DNS",
+      "summary": "Sealed Secrets față de SOPS/age, cert-manager cu propriul CA și cu Let's Encrypt DNS-01, split DNS cu k8s-gateway.",
+      "objectives": ["Criptezi un secret pentru Git și explici cine îl poate decripta", "Emiți certificate cu cert-manager și urmărești o comandă ACME", "Rezolvi *.lab.merox.dev de pe Windows prin split DNS"],
+      "prereqs": ["12"], "tags": ["securitate", "cert-manager", "dns"]
+    },
+    {
+      "id": "14", "phase": "p4", "file": "docs/14-stocare.md", "hours": 5,
+      "title": "Stocare: CSI, Longhorn, backup", "short": "Stocare",
+      "summary": "PV, PVC, StorageClass, CSI, replici Longhorn, snapshot vs backup și un backup target S3 pe Garage.",
+      "objectives": ["Explici drumul de la PVC la un bloc pe disc", "Pierzi un nod și urmărești rebuild-ul replicilor", "Faci backup și restore real dintr-un S3, ca în DR-ul din prod"],
+      "prereqs": ["13"], "tags": ["storage", "longhorn"]
+    },
+    {
+      "id": "15", "phase": "p4", "file": "docs/15-observabilitate.md", "hours": 5,
+      "title": "Observabilitate: metrici, alerte, loguri", "short": "Observabilitate",
+      "summary": "Modelul Prometheus, PromQL, ServiceMonitor, alerte care chiar pot declanșa, Grafana și principiul „liniștea e alarma”.",
+      "objectives": ["Scrii PromQL pentru rate, histograme și saturație", "Creezi o alertă și o declanșezi intenționat", "Explici de ce alertele din prod sunt scrise cum sunt"],
+      "prereqs": ["14"], "tags": ["prometheus", "grafana"]
+    },
+    {
+      "id": "16", "phase": "p5", "file": "docs/16-ci-cd.md", "hours": 6,
+      "title": "CI/CD: GitHub Actions, imagini, Renovate", "short": "CI/CD",
+      "summary": "Validarea manifestelor, build și push de imagini semnate, CD prin Git și actualizări automate cu Renovate.",
+      "objectives": ["Scrii un workflow cu permisiuni minime și acțiuni fixate pe SHA", "Livrezi o schimbare de cod până în cluster doar cu git push", "Explici fiecare regulă din .renovaterc.json5 din prod"],
+      "prereqs": ["15"], "tags": ["ci-cd", "github-actions", "renovate"]
+    },
+    {
+      "id": "17", "phase": "p5", "file": "docs/17-securitate.md", "hours": 4,
+      "title": "Securitate în straturi", "short": "Securitate",
+      "summary": "Pod Security Admission, securityContext, RBAC minim, audit log, supply chain — ce protejează fiecare strat.",
+      "objectives": ["Rulezi un workload sub profilul restricted", "Scrii RBAC minim și îl verifici cu kubectl auth can-i", "Găsești în audit log cine a făcut o schimbare"],
+      "prereqs": ["16"], "tags": ["securitate", "rbac"]
+    },
+    {
+      "id": "18", "phase": "p5", "file": "docs/18-day2-operatiuni.md", "hours": 6,
+      "title": "Day-2: upgrade-uri, backup etcd, exerciții de avarie", "short": "Day-2",
+      "summary": "Upgrade nod cu nod respectând version skew, backup/restore etcd, pierderea unui nod și metoda de depanare.",
+      "objectives": ["Faci upgrade la Kubernetes fără downtime", "Restaurezi etcd dintr-un snapshot", "Repari 6 defecte introduse intenționat, cu o metodă, nu cu noroc"],
+      "prereqs": ["17"], "tags": ["operare", "upgrade", "dr"]
+    },
+    {
+      "id": "19", "phase": "p5", "file": "docs/19-capstone-dr.md", "hours": 6,
+      "title": "Capstone: totul din Git, de la zero", "short": "Capstone",
+      "summary": "Distrugi clusterul, îl refaci cu kubeadm în minute, ArgoCD readuce tot, Longhorn readuce datele. Apoi pașii următori.",
+      "objectives": ["Reconstruiești clusterul și platforma doar din Git și backup-uri", "Mapezi fiecare fază kubeadm pe ce ai făcut de mână", "Scrii propriul runbook DR, ca DR.md din prod"],
+      "prereqs": ["18"], "tags": ["capstone", "kubeadm", "dr"]
+    }
+  ],
+  "extras": [
+    { "id": "glossary", "file": "docs/glossary.md", "title": "Glosar", "summary": "Termenii cursului, pe scurt, cu analogii." },
+    { "id": "cheatsheet", "file": "docs/cheatsheet.md", "title": "Fișă de comenzi", "summary": "Comenzile pe care le vei folosi zilnic, grupate pe unelte." }
+  ]
+}

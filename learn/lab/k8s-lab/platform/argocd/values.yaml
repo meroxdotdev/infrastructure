@@ -1,0 +1,57 @@
+---
+# ArgoCD, read by bootstrap/helmfile.yaml and by the `argocd` Application.
+global:
+  domain: argocd.lab.merox.dev
+
+configs:
+  params:
+    # TLS ends at the Cilium Gateway, as for every app here; argocd-server
+    # behind it speaks plain HTTP.
+    server.insecure: true
+  cm:
+    # Track resources by annotation (the default since 3.0). Label tracking
+    # matched anything carrying app.kubernetes.io/instance — including the
+    # CiliumIdentity objects Cilium copies pod labels into, which ArgoCD then
+    # tried to prune.
+    application.resourceTrackingMethod: annotation
+    # How often to re-read Git without a webhook (module 12 adds the webhook).
+    timeout.reconciliation: 180s
+    # ArgoCD stopped computing the health of Application objects in 1.8. In an
+    # app of apps that makes sync waves pointless: the parent would start wave
+    # -13 without waiting for wave -15 to be Healthy. This restores it.
+    resource.customizations.health.argoproj.io_Application: |
+      hs = {}
+      hs.status = "Progressing"
+      hs.message = ""
+      if obj.status ~= nil and obj.status.health ~= nil then
+        hs.status = obj.status.health.status
+        if obj.status.health.message ~= nil then
+          hs.message = obj.status.health.message
+        end
+      end
+      return hs
+  # OCI Helm repositories must be declared; HTTP repos and public Git need nothing.
+  repositories:
+    coredns:
+      name: coredns
+      type: helm
+      url: ghcr.io/coredns/charts
+      enableOCI: "true"
+    k8s-gateway:
+      name: k8s-gateway
+      type: helm
+      url: codeberg.org/k8s-gateway/charts
+      enableOCI: "true"
+
+# One of each: a lab has no use for HA ArgoCD, and every replica costs memory.
+controller:
+  replicas: 1
+server:
+  replicas: 1
+repoServer:
+  replicas: 1
+applicationSet:
+  replicas: 1
+# SSO is not part of the lab; admin login only.
+dex:
+  enabled: false

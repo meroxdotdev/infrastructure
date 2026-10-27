@@ -1,0 +1,43 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/helmfile
+# What has to exist before ArgoCD can manage anything — the same idea as prod's
+# bootstrap/helmfile.yaml, which installs Cilium, CoreDNS and Flux.
+#
+# Release names and values files match the Applications in argocd/apps/
+# exactly. ArgoCD then adopts these releases instead of installing twice.
+
+helmDefaults:
+  cleanupOnFail: true
+  wait: true
+  waitForJobs: true
+  timeout: 600
+
+repositories:
+  - name: cilium
+    url: https://helm.cilium.io
+  - name: argo
+    url: https://argoproj.github.io/argo-helm
+
+releases:
+  - name: cilium
+    namespace: kube-system
+    chart: cilium/cilium
+    version: 1.20.4
+    values: ['../platform/cilium/values.yaml']
+
+  - name: coredns
+    namespace: kube-system
+    chart: oci://ghcr.io/coredns/charts/coredns
+    version: 1.49.0
+    values: ['../platform/coredns/values.yaml']
+    needs: ['kube-system/cilium']
+
+  - name: argocd
+    namespace: argocd
+    createNamespace: true
+    chart: argo/argo-cd
+    # Check for a newer chart before the first run (module 12, first task):
+    #   helm search repo argo/argo-cd --versions | head
+    version: 8.0.0
+    values: ['../platform/argocd/values.yaml']
+    needs: ['kube-system/coredns']

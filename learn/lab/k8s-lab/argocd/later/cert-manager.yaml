@@ -1,0 +1,47 @@
+---
+# Module 13. Turn on with:  git mv argocd/later/cert-manager.yaml argocd/apps/
+#
+# The issuers in platform/cert-manager/config carry their own sync waves, so
+# within this one Application they are applied after the chart is Healthy —
+# the webhook that validates them has to be running first.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-9"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: https://charts.jetstack.io
+      chart: cert-manager
+      targetRevision: v1.21.3
+      helm:
+        releaseName: cert-manager
+        valueFiles:
+          - $values/platform/cert-manager/values.yaml
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      path: platform/cert-manager/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 5m

@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/gateway.networking.k8s.io/httproute_v1.json
+# The Longhorn UI has no login. Prod puts the same route behind the internal
+# Gateway only, reachable over Tailscale; here, only from the home LAN.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: longhorn
+spec:
+  parentRefs:
+    - name: internal
+      namespace: kube-system
+      sectionName: https
+  hostnames: ["longhorn.lab.merox.dev"]
+  rules:
+    - backendRefs:
+        - name: longhorn-frontend
+          port: 80

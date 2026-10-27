@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/monitoring.coreos.com/servicemonitor_v1.json
+# Tells the Prometheus operator: scrape every endpoint of a Service labelled
+# lab-app, on the port named http, at /metrics.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: lab-app
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lab-app
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

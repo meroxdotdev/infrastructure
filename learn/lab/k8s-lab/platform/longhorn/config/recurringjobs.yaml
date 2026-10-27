@@ -1,0 +1,29 @@
+---
+# A trimmed copy of prod's kubernetes/apps/storage/longhorn/recurringjob/recurringjob.yaml.
+# Opt-in per PVC, by label:
+#   recurring-job.longhorn.io/source: enabled
+#   recurring-job-group.longhorn.io/backup: enabled
+#
+# Snapshots live on the same replicas as the data: fast to roll back, gone
+# with the disks. Backups leave the cluster for Garage: slow, but they survive.
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: snapshot-6h
+spec:
+  cron: "0 */6 * * *"
+  task: snapshot
+  groups: ["backup"]
+  retain: 4
+  concurrency: 1
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: backup-daily
+spec:
+  cron: "30 2 * * *"
+  task: backup
+  groups: ["backup"]
+  retain: 3
+  concurrency: 1

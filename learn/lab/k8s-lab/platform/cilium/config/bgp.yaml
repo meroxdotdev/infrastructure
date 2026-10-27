@@ -1,0 +1,69 @@
+---
+# Cilium BGP control plane, three objects (module 10 draws them):
+#   ClusterConfig  — which nodes speak BGP, as which AS, to which peers
+#   PeerConfig     — how to talk to a peer: timers, graceful restart, families
+#   Advertisement  — what to announce, selected by label from the PeerConfig
+#
+# If `kubectl apply` says "no matches for kind": kubectl api-resources | grep -i bgp
+# and use the apiVersion listed there.
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: lab
+spec:
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/os: linux
+  bgpInstances:
+    - name: lab-65001
+      localASN: 65001
+      peers:
+        - name: lab-gw
+          peerASN: 65000
+          peerAddress: 10.10.0.1
+          peerConfigRef:
+            name: lab-gw
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: lab-gw
+spec:
+  timers:
+    # Must agree with `neighbor K8S timers 3 9` on lab-gw (frr.conf).
+    keepAliveTimeSeconds: 3
+    holdTimeSeconds: 9
+  gracefulRestart:
+    # A restarting cilium-agent keeps its routes on the router for 15s
+    # instead of withdrawing them and dropping every connection.
+    enabled: true
+    restartTimeSeconds: 15
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: bgp
+---
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: lab
+  labels:
+    advertise: bgp
+spec:
+  advertisements:
+    # Each node announces its own /24 of pod addresses: from your PC, through
+    # lab-gw, a pod IP becomes directly reachable.
+    - advertisementType: PodCIDR
+    # Every LoadBalancer IP, as a /32, from every node that can serve it.
+    # The selector is required; "NotIn a value nobody uses" means "all".
+    - advertisementType: Service
+      service:
+        addresses:
+          - LoadBalancerIP
+      selector:
+        matchExpressions:
+          - key: bgp.lab/never
+            operator: NotIn
+            values: ["true"]

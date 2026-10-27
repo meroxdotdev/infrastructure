@@ -1,0 +1,64 @@
+---
+# Simptom: după politică, `client` nu mai ajunge la `server`. Trebuie să
+# ajungă — și nimic altceva nu trebuie să ajungă la server.
+# Test:  kubectl -n drill exec deploy/client -- wget -qO- -T 3 http://server
+# Indiciu: hubble observe -n drill --verdict DROPPED
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: server }
+  template:
+    metadata:
+      labels: { app: server }
+    spec:
+      containers:
+        - name: web
+          image: traefik/whoami:v1.11.0
+          args: ["--port=8080"]
+          ports: [{ name: http, containerPort: 8080 }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+spec:
+  selector: { app: server }
+  ports:
+    - port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: client }
+  template:
+    metadata:
+      labels: { app: client, role: frontend }
+    spec:
+      containers:
+        - name: sh
+          image: busybox:1.37
+          command: ["sleep", "infinity"]
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: server-ingress
+spec:
+  endpointSelector:
+    matchLabels: { app: server }
+  ingress:
+    - fromEndpoints:
+        - matchLabels: { role: frontend }
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP

@@ -1,0 +1,14 @@
+---
+# A drain may evict one lab-app pod at a time. Compare prod's 2026-10-26
+# incident (.taskfiles/talos/Taskfile.yaml, upgrade-node): a minAvailable=1 PDB
+# on a one-replica Deployment allows zero disruptions, and the drain waits
+# forever. maxUnavailable says what may go, which stays true at any scale.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: lab-app
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lab-app

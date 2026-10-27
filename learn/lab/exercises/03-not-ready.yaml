@@ -1,0 +1,24 @@
+---
+# Simptom: Running, dar 0/1 READY, și nu primește trafic.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notready
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: notready }
+  template:
+    metadata:
+      labels: { app: notready }
+    spec:
+      containers:
+        - name: web
+          image: traefik/whoami:v1.11.0
+          args: ["--port=8080"]
+          ports: [{ name: http, containerPort: 8080 }]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            periodSeconds: 3

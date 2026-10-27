@@ -1,0 +1,31 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# Module 16: git mv apps-later/lab-app apps/lab-app — the ApplicationSet picks
+# it up. CI (.github/workflows/lab-app.yaml) rewrites `images` below on every
+# build: that commit is the deployment.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: lab-app
+resources:
+  - ./deployment.yaml
+  - ./service.yaml
+  - ./httproute.yaml
+  - ./pdb.yaml
+  - ./networkpolicy.yaml
+  # Module 15/16, once kube-prometheus-stack runs:
+  # - ./servicemonitor.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: k8s-lab
+# The ConfigMap's name gets a hash of its content (lab-app-7c9f…), and the
+# Deployment's reference is rewritten to match. Change a value and the pod
+# template changes, so pods roll — what prod gets from Reloader instead.
+configMapGenerator:
+  - name: lab-app
+    literals:
+      - MESSAGE=salut din lab
+      - SHUTDOWN_DELAY=5s
+images:
+  - name: lab-app
+    newName: ghcr.io/meroxdotdev/lab-app
+    newTag: latest

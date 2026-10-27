@@ -1,0 +1,42 @@
+---
+# One Application per directory under apps/, generated. Adding a workload is
+# creating a directory; removing the directory removes the Application and,
+# through the finalizer, everything it deployed.
+#
+# Prod does the same by hand: one ks.yaml per app, listed in a kustomization.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/meroxdotdev/k8s-lab.git
+        revision: main
+        directories:
+          - path: apps/*
+  template:
+    metadata:
+      name: "{{ .path.basename }}"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: apps
+      source:
+        repoURL: https://github.com/meroxdotdev/k8s-lab.git
+        targetRevision: main
+        path: "{{ .path.path }}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{ .path.basename }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

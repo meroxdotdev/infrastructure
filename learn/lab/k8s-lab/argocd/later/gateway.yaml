@@ -1,0 +1,25 @@
+---
+# Module 13. Turn on with:  git mv argocd/later/gateway.yaml argocd/apps/
+# Needs cert-manager (the wildcard certificate) and Cilium's GatewayClass.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gateway
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-6"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      path: platform/gateway
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

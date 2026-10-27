@@ -1,0 +1,38 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/monitoring.coreos.com/prometheusrule_v1.json
+# The lab's own alerts. Module 15 writes more and fires each one on purpose:
+# an alert that has never fired is an alert you do not know works (prod's
+# docs/architecture.md, rule 4).
+#
+# Wave 1: after the chart, whose admission webhook validates PrometheusRules.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: lab-rules
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  groups:
+    - name: lab.bgp
+      rules:
+        # A session down means routes through that node are gone from lab-gw,
+        # even if the node itself is fine. Needs Cilium's metrics scraped
+        # (module 15 turns the ServiceMonitors on). Check the label names in
+        # Prometheus before trusting the summary.
+        - alert: CiliumBGPSessionDown
+          expr: cilium_bgp_control_plane_session_state == 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "BGP session down on {{ $labels.instance }}"
+    - name: lab.etcd
+      rules:
+        # Prod's EtcdSlowFsyncBurst, simplified: fsync latency is what limits etcd.
+        - alert: EtcdSlowFsync
+          expr: histogram_quantile(0.99, sum by (instance, le) (rate(etcd_disk_wal_fsync_duration_seconds_bucket[5m]))) > 0.1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "etcd on {{ $labels.instance }}: p99 WAL fsync above 100ms"

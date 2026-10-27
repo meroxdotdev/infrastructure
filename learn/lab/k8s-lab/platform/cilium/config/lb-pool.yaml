@@ -1,0 +1,14 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumloadbalancerippool_v2alpha1.json
+# Where `type: LoadBalancer` Services get their addresses. Prod's pool is the
+# node subnet itself (10.57.57.0/24), because ARP can only announce an address
+# on the segment it is in. With BGP the pool can be any range — it is routed,
+# not resolved — so it is a separate /24 the router learns about.
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: lab-pool
+spec:
+  allowFirstLastIPs: "No"
+  blocks:
+    - cidr: 10.10.100.0/24

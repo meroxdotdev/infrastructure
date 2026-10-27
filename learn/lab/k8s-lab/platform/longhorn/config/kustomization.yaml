@@ -1,0 +1,9 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./recurringjobs.yaml
+  - ./httproute.yaml
+  # Module 14: seal garage-credentials.example.yaml, then uncomment.
+  # - ./garage-credentials.sealed.yaml

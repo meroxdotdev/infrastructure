@@ -1,0 +1,11 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# The first workload: small enough to read in a minute, real enough to show
+# load balancing (it prints which pod answered).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: whoami
+resources:
+  - ./deployment.yaml
+  - ./service.yaml
+  - ./httproute.yaml

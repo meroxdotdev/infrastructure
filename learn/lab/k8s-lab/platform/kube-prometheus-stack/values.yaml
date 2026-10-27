@@ -1,0 +1,103 @@
+---
+# Prod: kubernetes/apps/observability/kube-prometheus-stack/app/helmrelease.yaml.
+# Prod runs Grafana as its own release; the lab keeps the bundled one.
+crds:
+  enabled: true
+cleanPrometheusOperatorObjectNames: true
+
+# The control plane runs as systemd units (hard way) or static pods (kubeadm)
+# on the nodes' own addresses: there are no pods for a selector to find, so
+# the endpoints are listed. Same addresses in both cases.
+kubeEtcd:
+  endpoints: [10.10.0.11, 10.10.0.12, 10.10.0.13]
+  service:
+    port: 2381
+    targetPort: 2381
+  serviceMonitor:
+    scheme: http
+kubeControllerManager:
+  endpoints: [10.10.0.11, 10.10.0.12, 10.10.0.13]
+  service:
+    port: 10257
+    targetPort: 10257
+  serviceMonitor:
+    https: true
+    insecureSkipVerify: true
+kubeScheduler:
+  endpoints: [10.10.0.11, 10.10.0.12, 10.10.0.13]
+  service:
+    port: 10259
+    targetPort: 10259
+  serviceMonitor:
+    https: true
+    insecureSkipVerify: true
+# Cilium replaced it; there is nothing to scrape.
+kubeProxy:
+  enabled: false
+
+prometheus:
+  route:
+    main:
+      enabled: true
+      hostnames: ["prometheus.lab.merox.dev"]
+      parentRefs:
+        - name: internal
+          namespace: kube-system
+          sectionName: https
+  prometheusSpec:
+    # Pick up every ServiceMonitor/PodMonitor/PrometheusRule in the cluster,
+    # not only those labelled for this release. Prod does the same.
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+    retention: 7d
+    # Below the PVC, or the volume fills before the size guard fires — prod
+    # once had 20GB of retention on a 15Gi disk.
+    retentionSize: 8GB
+    resources:
+      requests:
+        cpu: 100m
+        memory: 400Mi
+      limits:
+        memory: 1500Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  route:
+    main:
+      enabled: true
+      hostnames: ["alertmanager.lab.merox.dev"]
+      parentRefs:
+        - name: internal
+          namespace: kube-system
+          sectionName: https
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          resources:
+            requests:
+              storage: 1Gi
+
+grafana:
+  enabled: true
+  fullnameOverride: grafana
+  # Default login admin / prom-operator. Module 15's first task replaces it
+  # with a SealedSecret.
+  defaultDashboardsTimezone: Europe/Bucharest
+  persistence:
+    enabled: false
+
+prometheus-node-exporter:
+  fullnameOverride: node-exporter
+kube-state-metrics:
+  fullnameOverride: kube-state-metrics

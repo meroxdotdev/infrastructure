@@ -1,0 +1,31 @@
+---
+# Simptom: `kubectl drain <nodul cu pod-ul>` se blochează la nesfârșit.
+# Rulează:  kubectl drain $(kubectl -n drill get pod -l app=single -o jsonpath='{.items[0].spec.nodeName}') \
+#             --ignore-daemonsets --delete-emptydir-data --timeout=60s
+# Prod a avut exact asta pe 2026-10-26 — .taskfiles/talos/Taskfile.yaml, upgrade-node.
+# Nu uita: kubectl uncordon <nod> la final.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: single
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: single }
+  template:
+    metadata:
+      labels: { app: single }
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.37
+          command: ["sleep", "infinity"]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: single
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: single }

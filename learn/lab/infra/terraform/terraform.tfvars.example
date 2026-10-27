@@ -1,0 +1,13 @@
+# cp terraform.tfvars.example terraform.tfvars — terraform.tfvars is gitignored.
+proxmox_url       = "https://10.57.57.254:8006"
+proxmox_api_token = "root@pam!k8s-lab=00000000-0000-0000-0000-000000000000"
+proxmox_node      = "pve-1"
+
+iso_datastore  = "local"
+disk_datastore = "local-lvm"
+
+router_wan_ip = "10.57.57.90"   # free, outside pfSense's DHCP range
+home_gateway  = "10.57.57.1"
+
+# node_memory_mb = 4096         # if the host is short on RAM; see variables.tf
+# lab_vlan_id    = 10           # option B, see docs/01-laborator.md

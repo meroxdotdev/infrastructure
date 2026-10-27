@@ -1,0 +1,34 @@
+---
+# Cilium's own custom resources: the LoadBalancer IP pool and BGP. A separate
+# Application because their CRDs are registered by the Cilium operator at
+# start-up, not shipped in the chart — they exist only once wave -15 is Healthy.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-12"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      path: platform/cilium/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m

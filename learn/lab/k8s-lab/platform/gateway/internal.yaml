@@ -1,0 +1,34 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/gateway.networking.k8s.io/gateway_v1.json
+# Prod's `internal` Gateway, for the lab. Cilium turns it into a LoadBalancer
+# Service (cilium-gateway-internal), LB IPAM gives it the address below, BGP
+# announces it, and Envoy on every node terminates TLS.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: internal
+spec:
+  gatewayClassName: cilium
+  addresses:
+    - type: IPAddress
+      value: 10.10.100.10
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.lab.merox.dev"
+      # Only the redirect route below, from this namespace, may use port 80.
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.lab.merox.dev"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        certificateRefs:
+          - kind: Secret
+            name: lab-wildcard-tls

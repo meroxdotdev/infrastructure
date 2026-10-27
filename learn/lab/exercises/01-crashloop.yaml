@@ -1,0 +1,18 @@
+---
+# Simptom: CrashLoopBackOff. Indiciu: ce scrie procesul înainte să moară?
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crashloop
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: crashloop }
+  template:
+    metadata:
+      labels: { app: crashloop }
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.37
+          command: ["sh", "-c", "echo starting; test -n \"$DATABASE_URL\" || { echo 'DATABASE_URL not set' >&2; exit 1; }; sleep 3600"]

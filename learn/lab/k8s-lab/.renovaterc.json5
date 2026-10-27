@@ -1,0 +1,62 @@
+{
+  // The lab's Renovate. Compare with the infrastructure repo's .renovaterc.json5:
+  // same ideas, fewer rules, plus the argocd manager Flux repos do not need.
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommits",
+    ":dependencyDashboard",
+  ],
+  timezone: "Europe/Bucharest",
+  schedule: ["every weekend"],
+
+  // Chart versions in Application manifests (targetRevision next to chart).
+  argocd: {
+    managerFilePatterns: ["/^argocd/.+\\.ya?ml$/"],
+  },
+  // Images in plain manifests and in Helm values files.
+  kubernetes: {
+    managerFilePatterns: ["/^(apps|apps-later|platform)/.+\\.ya?ml$/"],
+  },
+  "helm-values": {
+    managerFilePatterns: ["/^platform/.+/values\\.ya?ml$/"],
+  },
+
+  customManagers: [
+    {
+      // Same annotation format as the infrastructure repo:
+      //   # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
+      //   GATEWAY_API_VERSION=v1.6.3
+      customType: "regex",
+      description: "Annotated pins in scripts, env and YAML",
+      managerFilePatterns: ["/\\.(sh|env|ya?ml)$/"],
+      matchStrings: [
+        "datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)( repository=(?<registryUrl>\\S+))?\\n.+(:\\s|=)(&\\S+\\s)?[\"']?(?<currentValue>[^\\s\"']+)",
+        "datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\n.+/(?<currentValue>(v|\\d)[^/]+)",
+      ],
+    },
+  ],
+
+  packageRules: [
+    {
+      description: "Cilium and Kubernetes are one decision (see learn/lab/versions.env). Never automerge the CNI.",
+      matchPackageNames: ["cilium", "/cilium/"],
+      groupName: "cilium",
+      automerge: false,
+    },
+    {
+      description: "GitHub Actions: minor/patch/digest automerge after 3 days, as in the infrastructure repo",
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      automerge: true,
+      automergeType: "branch",
+      minimumReleaseAge: "3 days",
+    },
+    {
+      description: "A major chart bump is read before it is merged: upgrade notes live in its release",
+      matchUpdateTypes: ["major"],
+      dependencyDashboardApproval: true,
+    },
+  ],
+}

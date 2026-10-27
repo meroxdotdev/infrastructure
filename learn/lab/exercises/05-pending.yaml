@@ -1,0 +1,23 @@
+---
+# Simptom: Pending, fără nicio eroare de container — nici nu a pornit.
+# Indiciu: cine decide unde rulează un pod, și unde își scrie motivele?
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pending
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: pending }
+  template:
+    metadata:
+      labels: { app: pending }
+    spec:
+      nodeSelector:
+        disktype: nvme
+      containers:
+        - name: app
+          image: busybox:1.37
+          command: ["sleep", "3600"]
+          resources:
+            requests: { cpu: "64", memory: 1Gi }

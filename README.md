@@ -113,6 +113,7 @@ Everything else is reproducible: SOPS/age for K8s, Ansible Vault for the VPS,
 | Fix something broken | [docs/troubleshooting.md](docs/troubleshooting.md) · [DR known issues](docs/dr-known-issues.md) |
 | Rebuild the vault | [truenas/RUNBOOK.md](truenas/RUNBOOK.md) |
 | Restore from Oracle | [truenas/RUNBOOK.md](truenas/RUNBOOK.md#from-oracle) |
+| Learn how all of this works, by building it again | [learn/](learn/README.md) — `python learn/serve.py` |
 
 **After a fire, rebuild in this order** — each layer needs the one before it:
 

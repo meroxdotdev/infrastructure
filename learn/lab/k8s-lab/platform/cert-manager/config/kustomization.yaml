@@ -1,0 +1,9 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./lab-ca.yaml
+  # Optional, module 13: real Let's Encrypt certificates through Cloudflare DNS-01.
+  # - ./letsencrypt.yaml
+  # - ./cloudflare-token.sealed.yaml

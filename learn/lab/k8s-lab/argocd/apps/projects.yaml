@@ -1,0 +1,42 @@
+---
+# AppProjects are the fence around Applications: which repos they may read,
+# where they may deploy, which kinds they may create. Wave -100: they must
+# exist before any Application that names them.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-100"
+spec:
+  description: Cluster infrastructure. Trusted, so it may touch anything.
+  sourceRepos: ["*"]
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-100"
+spec:
+  description: Workloads. Only this repo, never the system namespaces, no cluster-scoped objects but their namespace.
+  sourceRepos:
+    - https://github.com/meroxdotdev/k8s-lab.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "!kube-system"
+    - server: https://kubernetes.default.svc
+      namespace: "!argocd"
+    - server: https://kubernetes.default.svc
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace

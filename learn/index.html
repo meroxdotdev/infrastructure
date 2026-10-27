@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>K8s Learn Lab</title>
+  <meta name="description" content="Curs practic: Linux, rețele, Kubernetes the Hard Way, BGP, ArgoCD și CI/CD — construit pe repo-ul merox.dev infrastructure.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23326ce5' d='M16 2 4 8v16l12 6 12-6V8z'/%3E%3Cpath fill='%23fff' d='M16 9a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm0 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Meniu" title="Meniu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <a class="brand" href="#/">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path class="hex" d="M16 2 4 8v16l12 6 12-6V8z"/><path class="ring" d="M16 9a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm0 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>
+      <span>K8s Learn Lab</span>
+    </a>
+    <div class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="searchInput" type="search" placeholder="Caută în lecții  ( / )" autocomplete="off" spellcheck="false">
+    </div>
+    <nav class="top-links">
+      <a href="#/x/glossary">Glosar</a>
+      <a href="#/x/cheatsheet">Comenzi</a>
+    </nav>
+    <button class="icon-btn" id="themeBtn" aria-label="Schimbă tema" title="Schimbă tema">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+    </button>
+  </header>
+
+  <div class="layout">
+    <nav id="sidebar" class="sidebar" aria-label="Module"></nav>
+    <main id="main" class="main" tabindex="-1">
+      <div class="loading">Se încarcă…</div>
+    </main>
+    <aside id="toc" class="toc" aria-label="Cuprins"></aside>
+  </div>
+  <div id="scrim" class="scrim" hidden></div>
+
+  <div id="modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <code id="modalTitle"></code>
+        <div class="modal-actions">
+          <a id="modalRaw" target="_blank" rel="noopener">raw</a>
+          <button class="icon-btn" id="modalClose" aria-label="Închide">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
+
+  <noscript>Interfața are nevoie de JavaScript. Lecțiile sunt Markdown simplu, în learn/docs/.</noscript>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

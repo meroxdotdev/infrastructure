@@ -1,0 +1,48 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+# Every PR: render each Application exactly as ArgoCD would, then validate
+# the output against the Kubernetes and CRD schemas. The lab's flux-local.
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.ref }}
+  cancel-in-progress: true
+
+# Nothing by default; each job asks for exactly what it uses.
+permissions: {}
+
+jobs:
+  manifests:
+    name: Render + kubeconform
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # renovate: datasource=github-releases depName=yannh/kubeconform
+      KUBECONFORM_VERSION: v0.8.0
+      # renovate: datasource=github-releases depName=helm/helm
+      HELM_VERSION: v4.3.1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install kubeconform and helm
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin kubeconform
+          curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin --strip-components=1 linux-amd64/helm
+
+      - name: Lint YAML
+        run: |
+          pipx run yamllint --strict -d '{extends: relaxed, rules: {line-length: {max: 200}}}' .
+
+      - name: Render and validate
+        run: bash scripts/validate.sh

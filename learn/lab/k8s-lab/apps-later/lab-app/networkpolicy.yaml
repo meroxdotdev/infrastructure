@@ -1,0 +1,34 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cilium.io/ciliumnetworkpolicy_v2.json
+# The moment a pod is selected by an ingress policy, everything not allowed
+# here is dropped. Same shape as prod's kubernetes/apps/default/network-policy.yaml,
+# scoped to one app. Debug with:  hubble observe -n lab-app --verdict DROPPED
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: lab-app
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: lab-app
+  ingress:
+    # kubelet probes come from the node itself.
+    - fromEntities:
+        - host
+    # The Cilium Gateway's Envoy is the `ingress` entity, not `world` —
+    # prod's jellyfin was dropped for exactly this until it was added.
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    # Prometheus. The port is the pod's (8080), never the Service's (80):
+    # policies see the packet after the Service address is translated.
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP

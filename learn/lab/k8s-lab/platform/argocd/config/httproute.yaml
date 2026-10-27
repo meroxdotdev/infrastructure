@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/gateway.networking.k8s.io/httproute_v1.json
+# argocd.lab.merox.dev, once the Gateway exists (module 13). Until then:
+#   kubectl -n argocd port-forward svc/argocd-server 8080:80
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-server
+spec:
+  parentRefs:
+    - name: internal
+      namespace: kube-system
+      sectionName: https
+  hostnames: ["argocd.lab.merox.dev"]
+  rules:
+    - backendRefs:
+        - name: argocd-server
+          port: 80

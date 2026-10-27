@@ -1,0 +1,8 @@
+# The lab's Terraform holds a Proxmox API token and its state holds everything
+# Terraform knows. Same rule as talos/terraform: never commit either.
+lab/infra/terraform/terraform.tfvars
+lab/infra/terraform/.terraform/
+lab/infra/terraform/.terraform.lock.hcl
+lab/infra/terraform/*.tfstate*
+# Progress exports from the web UI
+k8s-learn-progress-*.json

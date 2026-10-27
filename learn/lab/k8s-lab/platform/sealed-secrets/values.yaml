@@ -1,0 +1,12 @@
+---
+# kubeseal looks for a controller named sealed-secrets-controller in
+# kube-system unless told otherwise. Naming it that way means `kubeseal`
+# works with no flags.
+fullnameOverride: sealed-secrets-controller
+# The sealing key is renewed every 30 days by default; old keys are kept, so
+# old SealedSecrets still decrypt. Back up *all* of them (module 13).
+keyrenewperiod: "720h"
+metrics:
+  serviceMonitor:
+    # Module 15.
+    enabled: false

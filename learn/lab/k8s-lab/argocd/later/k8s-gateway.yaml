@@ -1,0 +1,34 @@
+---
+# Module 13. Turn on with:  git mv argocd/later/k8s-gateway.yaml argocd/apps/
+# Prod: kubernetes/apps/network/k8s-gateway. Same chart, same Corefile shape.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: k8s-gateway
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: codeberg.org/k8s-gateway/charts
+      chart: k8s-gateway
+      targetRevision: 4.0.1
+      helm:
+        releaseName: k8s-gateway
+        valueFiles:
+          - $values/platform/k8s-gateway/values.yaml
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: network
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -13,7 +13,10 @@
   dependencyDashboardTitle: "Renovate Dashboard 🤖",
   dependencyDashboardHeader: "**Before approving the `talos` group:** Talos v1.14 serves Kubernetes **1.33-1.37** only — [support matrix](https://docs.siderolabs.com/talos/v1.14/getting-started/support-matrix). A Kubernetes minor also needs Cilium to list it as tested ([requirements](https://docs.cilium.io/en/stable/network/kubernetes/requirements/)) — Cilium 1.20 stops at 1.36, which is why kubelet is capped below 1.37 in `allowedVersions`.",
   schedule: ["every weekend"],
-  ignorePaths: ["**/*.sops.*"],
+  // learn/lab/k8s-lab is a template for a separate repo with its own
+  // .renovaterc.json5 and an argocd manager this config lacks: bumped from here,
+  // its helmfile would move while its Applications stayed behind.
+  ignorePaths: ["**/*.sops.*", "learn/lab/k8s-lab/**"],
   flux: {
     managerFilePatterns: ["/(^|/)kubernetes/.+\\.ya?ml(?:\\.j2)?$/"],
   },

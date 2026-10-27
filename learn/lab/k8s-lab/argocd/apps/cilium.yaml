@@ -1,0 +1,36 @@
+---
+# Two sources: the chart from Cilium's Helm repo, the values from this repo.
+# `ref: values` names the Git source; `$values/...` reads a file from it.
+#
+# No resources-finalizer on purpose: deleting this Application must leave the
+# CNI running. With the finalizer, `kubectl delete app cilium` would take the
+# network of every pod in the cluster with it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-15"
+spec:
+  project: platform
+  sources:
+    - repoURL: https://helm.cilium.io
+      chart: cilium
+      targetRevision: 1.20.4
+      helm:
+        releaseName: cilium
+        valueFiles:
+          - $values/platform/cilium/values.yaml
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true

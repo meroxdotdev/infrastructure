@@ -1,0 +1,28 @@
+---
+# CRDs first: everything that declares a Gateway or HTTPRoute needs these
+# types to exist. bootstrap.sh applied them once; from here ArgoCD owns them.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gateway-api-crds
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+spec:
+  project: platform
+  sources:
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      path: platform/gateway-api
+  destination:
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      # Never prune a CRD automatically: deleting it deletes every object of
+      # that type in the cluster, everywhere.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      # These CRDs are larger than the 256 KiB annotation client-side apply
+      # keeps; server-side apply keeps no such annotation.
+      - ServerSideApply=true

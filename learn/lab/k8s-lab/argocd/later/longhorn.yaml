@@ -1,0 +1,45 @@
+---
+# Module 14. Turn on with:  git mv argocd/later/longhorn.yaml argocd/apps/
+#
+# No finalizer: deleting the Application must not delete the storage system
+# out from under every volume in the cluster. Longhorn also refuses to be
+# uninstalled unless its deleting-confirmation-flag setting is true.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+spec:
+  project: platform
+  sources:
+    - repoURL: https://charts.longhorn.io
+      chart: longhorn
+      targetRevision: 1.13.0
+      helm:
+        releaseName: longhorn
+        valueFiles:
+          - $values/platform/longhorn/values.yaml
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      path: platform/longhorn/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

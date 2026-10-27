@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lab-app
+  labels:
+    app.kubernetes.io/name: lab-app
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  # Never fewer than 3 ready during a rollout: add one, wait for it, remove one.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lab-app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lab-app
+    spec:
+      automountServiceAccountToken: false
+      # Longer than the app's SHUTDOWN_DELAY plus its drain, or the kubelet
+      # SIGKILLs it mid-request.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: lab-app
+      containers:
+        - name: app
+          # Rewritten by kustomize `images` to ghcr.io/…/lab-app@sha256:…
+          image: lab-app
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: lab-app
+          # Readiness: "send me traffic". Fails first on SIGTERM.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 2
+            failureThreshold: 1
+          # Liveness: "restart me". Only for a process that is stuck, so it
+          # checks nothing but the process itself — never a dependency.
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

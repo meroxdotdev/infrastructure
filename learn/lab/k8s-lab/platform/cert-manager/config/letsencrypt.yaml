@@ -1,0 +1,47 @@
+---
+# yaml-language-server: $schema=https://datreeio.github.io/CRDs-catalog/cert-manager.io/clusterissuer_v1.json
+# Optional (module 13): prod's ClusterIssuer, kubernetes/apps/cert-manager/
+# cert-manager/app/clusterissuer.yaml, for lab.merox.dev. DNS-01 works for
+# names that resolve to private IPs: Let's Encrypt checks a TXT record in
+# public DNS, never the service itself.
+#
+# Start with staging — its rate limits forgive mistakes; production's do not.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-token
+              key: api-token
+        selector:
+          dnsZones: ["merox.dev"]
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-production
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-token
+              key: api-token
+        selector:
+          dnsZones: ["merox.dev"]

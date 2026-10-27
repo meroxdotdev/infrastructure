@@ -1,0 +1,9 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# Kustomize can take a URL as a resource: the CRDs are not copied into Git,
+# only pinned. Prod applies the same file from scripts/bootstrap-apps.sh.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
+  - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.3/experimental-install.yaml

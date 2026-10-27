@@ -1,0 +1,39 @@
+---
+# Module 15. Turn on with:  git mv argocd/later/kube-prometheus-stack.yaml argocd/apps/
+# Needs Longhorn (Prometheus and Alertmanager keep their data on PVCs).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 92.13.1
+      helm:
+        releaseName: kube-prometheus-stack
+        valueFiles:
+          - $values/platform/kube-prometheus-stack/values.yaml
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/meroxdotdev/k8s-lab.git
+      targetRevision: main
+      path: platform/kube-prometheus-stack/config
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # The Prometheus CRDs are far over client-side apply's annotation limit.
+      - ServerSideApply=true

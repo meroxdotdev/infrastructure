@@ -1,0 +1,14 @@
+---
+# Prod: kubernetes/apps/cert-manager/cert-manager/app/helm/values.yaml.
+crds:
+  enabled: true
+replicaCount: 1
+# DNS-01 self-checks through DoH, never through the cluster's or the LAN's
+# resolver — those may see a different (split-horizon) answer. Same as prod.
+dns01RecursiveNameservers: https://1.1.1.1:443/dns-query,https://1.0.0.1:443/dns-query
+dns01RecursiveNameserversOnly: true
+prometheus:
+  enabled: true
+  servicemonitor:
+    # Module 15.
+    enabled: false

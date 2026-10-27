@@ -1,0 +1,46 @@
+---
+# Prod: kubernetes/apps/storage/longhorn/app/helmrelease.yaml. Its comments
+# are the best Longhorn notes you have — each setting below is there with the
+# incident or measurement that chose it.
+
+# ArgoCD does not run Helm's pre-upgrade hooks the way Helm does; Longhorn's
+# docs say to turn this check off when a GitOps tool deploys the chart.
+preUpgradeChecker:
+  jobEnabled: false
+
+defaultSettings:
+  # One replica per node: a volume survives losing any one machine.
+  defaultReplicaCount: "3"
+  defaultDataLocality: disabled
+  replicaAutoBalance: "false"
+  # Stop scheduling replicas while a disk still has 25% free (prod raised this
+  # from 1% after finding a disk could fill to 99%).
+  storageMinimalAvailablePercentage: "25"
+  storageReservedPercentageForDefaultDisk: "10"
+  # One rebuild at a time per node: rebuilds share the network with etcd.
+  concurrentReplicaRebuildPerNodeLimit: "1"
+  concurrentAutomaticEngineUpgradePerNodeLimit: "1"
+  # A dead node's pods are deleted so their volumes can attach elsewhere.
+  nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+  orphanResourceAutoDeletion: replica-data
+
+# Not under defaultSettings — the chart ignores backup keys there (prod found
+# out the hard way, see its comment).
+defaultBackupStore:
+  # Garage on lab-gw (setup-garage.sh): bucket `longhorn`, region `garage`.
+  backupTarget: "s3://longhorn@garage/"
+  backupTargetCredentialSecret: "garage-credentials"
+  pollInterval: "300"
+
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 3
+  reclaimPolicy: Delete
+
+longhornUI:
+  replicas: 1
+
+metrics:
+  serviceMonitor:
+    # Module 15.
+    enabled: false

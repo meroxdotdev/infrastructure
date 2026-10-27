@@ -1,0 +1,23 @@
+---
+# Simptom: restart-uri repetate; logurile nu spun nimic util.
+# Indiciu: kubectl describe pod — secțiunea Last State. Apoi: dmesg pe nod.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hungry
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: hungry }
+  template:
+    metadata:
+      labels: { app: hungry }
+    spec:
+      containers:
+        - name: app
+          image: python:3.13-alpine
+          # Allocates 100 MiB and holds it.
+          command: ["python", "-c", "b = bytearray(100 * 1024 * 1024); import time; time.sleep(3600)"]
+          resources:
+            requests: { memory: 32Mi }
+            limits: { memory: 64Mi }

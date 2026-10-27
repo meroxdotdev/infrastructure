@@ -1,0 +1,71 @@
+# Module 19 — the same cluster as the hard way, in one file. Every field here
+# maps to something you did by hand; docs/19-capstone-dr.md has the table.
+#
+#   sudo kubeadm init --config kubeadm-config.yaml --upload-certs        (on k8s-1)
+#
+# --upload-certs stores the CA and the other shared keys in a Secret,
+# encrypted with a key kubeadm prints; the other control planes download them
+# when they join. By hand, you scp'd them (02-pki.sh + 05-control-plane.sh).
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 10.10.0.11
+  bindPort: 6443
+nodeRegistration:
+  name: k8s-1
+  criSocket: unix:///run/containerd/containerd.sock
+  # No NoSchedule taint: control planes also run workloads, as in prod.
+  taints: []
+  kubeletExtraArgs:
+    - name: node-ip
+      value: 10.10.0.11
+# Cilium replaces kube-proxy; CoreDNS comes from Helm, as in the hard way.
+skipPhases:
+  - addon/kube-proxy
+  - addon/coredns
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+clusterName: lab
+kubernetesVersion: v1.36.5
+# The VIP. Every kubeconfig kubeadm writes points here, not at one node.
+controlPlaneEndpoint: "10.10.0.10:6443"
+networking:
+  podSubnet: 10.244.0.0/16
+  serviceSubnet: 10.96.0.0/12
+  dnsDomain: cluster.local
+apiServer:
+  certSANs:
+    - 10.10.0.10
+    - api.lab.merox.dev
+    - 127.0.0.1
+  extraArgs:
+    - name: enable-aggregator-routing
+      value: "true"
+controllerManager:
+  extraArgs:
+    - name: bind-address
+      value: 0.0.0.0
+scheduler:
+  extraArgs:
+    - name: bind-address
+      value: 0.0.0.0
+etcd:
+  local:
+    extraArgs:
+      - name: listen-metrics-urls
+        value: http://0.0.0.0:2381
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+resolvConf: /run/systemd/resolve/resolv.conf
+# Serving certificate signed by the cluster CA through a CSR you approve —
+# the kubeadm-native replacement for 02-pki.sh's kubelet-<node>-serving.
+serverTLSBootstrap: true
+serializeImagePulls: false
+maxParallelImagePulls: 3
+imageMaximumGCAge: 168h
+shutdownGracePeriod: 90s
+shutdownGracePeriodCriticalPods: 60s

@@ -1,0 +1,48 @@
+---
+# The lab's own certificate authority, in three steps — the same chain you
+# built by hand with openssl in module 05:
+#
+#   selfsigned (issuer) ──signs──▶ lab-root-ca (a CA certificate)
+#   lab-ca (issuer, backed by lab-root-ca) ──signs──▶ every app certificate
+#
+# The sync waves run them in that order, after the chart (wave 0) is Healthy.
+# Trust the root once on your PC and every *.lab.merox.dev page is green:
+#   kubectl -n cert-manager get secret lab-root-ca -o jsonpath='{.data.ca\.crt}' | base64 -d > lab-root-ca.crt
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lab-root-ca
+  namespace: cert-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  isCA: true
+  commonName: k8s-lab root CA
+  secretName: lab-root-ca
+  duration: 87600h # 10 years
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: lab-ca
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  # A ClusterIssuer reads its Secret from cert-manager's own namespace.
+  ca:
+    secretName: lab-root-ca

@@ -1,0 +1,20 @@
+---
+# Simptom: ImagePullBackOff. Un singur defect — cel mai frecvent din lume.
+# Indiciu: pe nod, `sudo crictl pull <imagine>` îți arată eroarea brută a
+# registry-ului, fără interpretarea kubelet-ului.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: image }
+  template:
+    metadata:
+      labels: { app: image }
+    spec:
+      containers:
+        - name: app
+          image: traefik/whoami:1.11.0
+          args: ["--port=8080"]

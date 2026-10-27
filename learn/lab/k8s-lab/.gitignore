@@ -1,0 +1,6 @@
+kubeconfig
+*.kubeconfig
+*.key
+# kubeseal input: the plaintext Secret before sealing. Only *.sealed.yaml is committed.
+*.secret.yaml
+.DS_Store
