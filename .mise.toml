@@ -6,7 +6,7 @@ SOPS_CONFIG = "{{config_root}}/.sops.yaml"
 TALOSCONFIG = "{{config_root}}/talos/clusterconfig/talosconfig"
 
 [tools]
-"python" = "3.15.1"
+"python" = "3.15.2"
 "aqua:cilium/cilium-cli" = "0.20.2"
 "aqua:cli/cli" = "2.103.3"
 "aqua:cloudflare/cloudflared" = "2026.10.7"
