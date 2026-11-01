@@ -14,4 +14,4 @@ traefik_network_name: network-cloud-merox
 authentik_backup_retention_days: 7
 
 # renovate: datasource=docker depName=redis
-authentik_redis_version: "8.10.1"
+authentik_redis_version: "8.10.3"
