@@ -63,14 +63,6 @@
       register: homepage_health
       ignore_errors: yes
 
-    - name: Check Joplin sync server API
-      uri:
-        url: "http://localhost:22300/api/ping"
-        status_code: 200
-        timeout: 5
-      register: joplin_health
-      ignore_errors: yes
-
     - name: Check Authentik health
       uri:
         url: "http://localhost:9000/-/health/live/"
@@ -113,7 +105,6 @@
           - "Traefik:       {{ 'OK' if traefik_health is success else 'FAIL' }}"
           - "Pi-hole DNS:   {{ 'OK' if pihole_dns.rc == 0 else 'FAIL' }}"
           - "Homepage:      {{ 'OK' if homepage_health is success else 'FAIL' }}"
-          - "Joplin:        {{ 'OK' if joplin_health is success else 'FAIL (Ansible role deploys separately)' }}"
           - "Authentik:     {{ 'OK' if authentik_health is success else 'FAIL' }}"
           - "Portainer:     {{ 'OK' if portainer_health is success else 'FAIL (may need admin password set)' }}"
           - "Tailscale:     {{ tailscale_status.stdout | default('FAIL') }}"

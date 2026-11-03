@@ -45,7 +45,7 @@ make health-check       # verify all services are running
 make setup              # full redeploy (idempotent)
 make update             # OS package updates only
 make check              # dry-run (--check --diff)
-make restore            # interactive restore wizard (Joplin / Authentik / all)
+make restore            # interactive Authentik DB restore
 make cleanup            # remove unused Docker images/volumes
 make dr-full            # provision fallback VPS + cloud-init deploys everything (~15 min)
 ```

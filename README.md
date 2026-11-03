@@ -42,7 +42,6 @@ TrueNAS sends disk and pool alerts to Telegram.
 | Authentik | sso.merox.dev |
 | Traefik | traefik.cloud.merox.dev |
 | Pi-hole + Unbound | pihole.cloud.merox.dev/admin |
-| Joplin | joplin.cloud.merox.dev |
 | Guacamole | rmt.merox.dev |
 | Homepage | inside.merox.dev — public contents page for the [homelab tour](https://merox.dev/blog/homelab-tour) |
 | Portainer | portainer.cloud.merox.dev |

@@ -19,7 +19,7 @@ Two deployment modes:
 ## Stack
 
 Traefik (reverse proxy + ACME), Pi-hole + Unbound, Authentik SSO, Portainer EE,
-Homepage, Joplin Server + Postgres, Guacamole — one role per service under
+Homepage, Guacamole — one role per service under
 `roles/`, full URL table in the [main README](../README.md#everything-at-a-glance).
 All web traffic goes through Cloudflare Tunnel — no open inbound ports.
 Its hostname routing table lives in the Cloudflare dashboard, not git — see
@@ -56,7 +56,7 @@ make setup              # full deploy (~12 min, idempotent)
 make update             # OS package updates only
 make health-check       # verify all services
 make cleanup            # prune unused Docker images/volumes
-make restore            # interactive DB restore wizard (Authentik / Joplin)
+make restore            # interactive Authentik DB restore
 make backup-sync-now    # run extras backup + NAS sync immediately
 make dr-full            # provision Hetzner fallback + deploy everything
 make dr-restore         # DR: restore all data from NAS (non-interactive)

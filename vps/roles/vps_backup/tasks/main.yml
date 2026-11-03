@@ -39,7 +39,7 @@
     mode: "0700"
   tags: backup
 
-- name: Deploy DB restore script (authentik/joplin, interactive or --yes)
+- name: Deploy DB restore script (authentik, interactive or --yes)
   template:
     src: restore-db.sh.j2
     dest: /usr/local/bin/restore-db.sh
@@ -75,15 +75,6 @@
     mode: "0700"
   tags: backup
 
-- name: Deploy Joplin DB backup script
-  template:
-    src: backup-joplin.sh.j2
-    dest: /usr/local/bin/backup-joplin.sh
-    owner: root
-    group: root
-    mode: "0700"
-  tags: backup
-
 - name: Install nightly backup chain wrapper
   template:
     src: nightly-backup.sh.j2
@@ -93,9 +84,9 @@
     mode: "0700"
   tags: backup
 
-# Was three cron entries and three healthchecks for one 15-minute sequence.
+# Was separate cron entries and healthchecks for one 15-minute sequence.
 # They fail as a unit and are investigated as a unit.
-- name: Schedule the nightly backup chain (Joplin, extras, push to the NAS)
+- name: Schedule the nightly backup chain (extras, push to the NAS)
   cron:
     name: "nightly-backup"
     minute: "45"

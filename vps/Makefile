@@ -8,7 +8,7 @@
         cleanup check-resources health-check \
         terraform-init terraform-plan terraform-apply terraform-destroy dr-full dr-preflight \
         dr-verify-phase1 dr-verify-phase2 \
-        restore restore-authentik restore-joplin \
+        restore \
         restore-pull restore-extras restore-auto dr-restore \
         vault-edit vault-show-required view-vault
 
@@ -48,8 +48,8 @@ help:
 	@echo "  db-backups-setup   Deploy backup scripts + crons (DB dumps, extras, NAS sync)"
 	@echo "  backup-sync-now    Run extras backup + NAS sync immediately"
 	@echo "  restore-pull       DR: pull the latest VPS backups back from the NAS into /srv/backups"
-	@echo "  restore            Restore Authentik + Joplin DBs from latest dump (interactive)"
-	@echo "  restore-auto       DR: restore Authentik + Joplin DBs from latest dump (non-interactive)"
+	@echo "  restore            Restore the Authentik DB from its latest dump (interactive)"
+	@echo "  restore-auto       DR: restore the Authentik DB from its latest dump (non-interactive)"
 	@echo "  restore-extras     DR: restore Guacamole/Traefik/Pi-hole/Homepage/Portainer/etc from /srv/backups (non-interactive)"
 	@echo ""
 	@echo "Vault:"
@@ -115,7 +115,7 @@ app-stack-setup:
 	ansible-playbook playbooks/app-stack.yml
 
 app-stack-test:
-	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer|joplin'"
+	ansible vps_servers -m shell -a "docker ps | grep -E 'homepage|pihole|portainer'"
 
 # --- Authentik SSO ---
 authentik-setup:
@@ -136,19 +136,13 @@ backup-sync-now:
 	/usr/local/bin/nightly-backup.sh
 
 restore:
-	/usr/local/bin/restore-db.sh all
-
-restore-authentik:
 	/usr/local/bin/restore-db.sh authentik
-
-restore-joplin:
-	/usr/local/bin/restore-db.sh joplin
 
 restore-pull:
 	/usr/local/bin/restore-pull.sh
 
 restore-auto:
-	/usr/local/bin/restore-db.sh --yes all
+	/usr/local/bin/restore-db.sh --yes authentik
 
 restore-extras:
 	/usr/local/bin/restore-extras.sh
@@ -223,7 +217,7 @@ view-vault:
 	ansible-vault view inventories/production/group_vars/all/vault.yml
 
 vault-show-required:
-	@echo "The vault (make vault-edit) holds exactly these 17 keys:"
+	@echo "The vault (make vault-edit) holds exactly these 16 keys:"
 	@echo ""
 	@echo "  cloudflare_api_token           DNS-01 for Traefik's certificates"
 	@echo "  cloudflare_email"
@@ -232,7 +226,6 @@ vault-show-required:
 	@echo "  authentik_pg_pass              openssl rand -base64 36"
 	@echo "  authentik_secret_key           openssl rand -base64 60"
 	@echo "  pihole_webpassword"
-	@echo "  joplin_db_password"
 	@echo "  garage_rpc_secret              openssl rand -hex 32 (garage-setup.yml)"
 	@echo "  garage_admin_token             openssl rand -hex 32"
 	@echo "  vault_tailscale_auth_key"

@@ -1,10 +1,10 @@
 #!/bin/bash
 # The nightly backup chain, one ping.
 #
-# Joplin dump, then the extras tar, then the push to the NAS — a single
-# 15-minute sequence that used to carry three healthchecks. They fail as a
-# unit and are investigated as a unit, so three checks were three places to
-# look for one answer. If the push succeeds, everything before it did too.
+# The extras tar, then the push to the NAS — one sequence that used to carry
+# a healthcheck per step. They fail as a unit and are investigated as a unit,
+# so separate checks were several places to look for one answer. If the push
+# succeeds, everything before it did too.
 #
 # Each step exits non-zero on failure (they all run set -euo pipefail); that
 # exit code is the whole interface. None of them ping anything themselves.
@@ -13,7 +13,7 @@ set -uo pipefail
 HC_URL="{{ vps_backup_hc_nightly_url | default('') }}"
 FAILED=""
 
-for s in backup-joplin backup-vps-extras backup-push; do
+for s in backup-vps-extras backup-push; do
   if ! /usr/local/bin/$s.sh >> /var/log/nightly-backup.log 2>&1; then
     FAILED="$FAILED $s"
     break          # the push has nothing to send if a producer failed
@@ -27,5 +27,5 @@ if [ -n "$FAILED" ]; then
   exit 1
 fi
 
-echo "$(date '+%F %T') ok (joplin, extras, push to the NAS)"
+echo "$(date '+%F %T') ok (extras, push to the NAS)"
 [ -n "$HC_URL" ] && curl -fsS -m 10 --retry 3 -o /dev/null "$HC_URL" || true

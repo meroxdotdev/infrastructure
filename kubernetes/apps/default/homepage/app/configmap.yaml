@@ -438,9 +438,6 @@ data:
         - Authentik:
             icon: authentik.png
             href: https://sso.merox.dev/if/admin/
-        - Joplin:
-            icon: joplin.png
-            href: https://joplin.cloud.merox.dev
         - Pi-hole:
             icon: pi-hole.png
             href: https://pihole.cloud.merox.dev/admin

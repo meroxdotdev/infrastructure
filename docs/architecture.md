@@ -33,7 +33,7 @@ The rule is about **what is lost, and what recreating it costs**:
 
 | Tier | Meaning | Copies | Examples here |
 |---|---|---|---|
-| **1 — Irreplaceable** | Gone is gone. | 3, one off-site, verified | Drive documents, photos, Joplin notes, pfSense config |
+| **1 — Irreplaceable** | Gone is gone. | 3, one off-site, verified | Drive documents, photos, pfSense config |
 | **2 — Expensive** | Rebuildable in principle. Hours or days in practice. | 2, one off-site | ARR configs, Jellyfin state, Authentik users, n8n |
 | **3 — Free** | A command or a commit reproduces it exactly. | none | Anything Flux/Ansible/Terraform emits, caches, Prometheus TSDB, Loki, the film library |
 
@@ -94,7 +94,6 @@ Cloudflare tunnel, everything else over the tailnet.
 | Service | Why |
 |---|---|
 | Authentik (server, worker, postgres, redis) | SSO |
-| Joplin (server, db) | notes — tier 1 data |
 | `rest-server` | the append-only backup endpoint |
 | Traefik | nothing above is reachable without it |
 | Pi-hole + Unbound | DNS for the tailnet |

@@ -1,7 +1,7 @@
 ---
 # DR: restore data onto a freshly provisioned VPS after `make setup` (site.yml)
 # and `app-stack.yml` have deployed all services. Pulls the backup copies
-# back from the NAS, restores Authentik/Joplin DBs, then restores
+# back from the NAS, restores the Authentik DB, then restores
 # Guacamole/Traefik/Pi-hole/Homepage/Portainer state.
 - name: DR — restore service state from the NAS
   hosts: vps_servers
@@ -18,8 +18,8 @@
       ansible.builtin.debug:
         var: pull_result.stdout_lines
 
-    - name: Restore Authentik + Joplin databases (non-interactive)
-      ansible.builtin.command: /usr/local/bin/restore-db.sh --yes all
+    - name: Restore the Authentik database (non-interactive)
+      ansible.builtin.command: /usr/local/bin/restore-db.sh --yes authentik
       register: db_result
       changed_when: true
 

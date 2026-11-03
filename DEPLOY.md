@@ -32,7 +32,7 @@ allowed_ips         = ["<your-home-ip>/32"]   # never 0.0.0.0/0
 ## Phase 1 — VPS (~15 min)
 
 Deploys SSH hardening, fail2ban, Docker, Tailscale, Traefik, Cloudflare Tunnel,
-Pi-hole + Unbound, Portainer, Homepage, Joplin, Guacamole, Authentik.
+Pi-hole + Unbound, Portainer, Homepage, Guacamole, Authentik.
 
 Check the Tailscale key first — a stale one fails halfway through:
 
@@ -99,7 +99,6 @@ Longhorn backup target. What they cannot check:
 
 - [ ] Portainer admin password set
 - [ ] Guacamole default credentials changed
-- [ ] Joplin clients syncing
 - [ ] Gateway reachable: `nmap -p 443 <LB_IP_GATEWAY_INTERNAL>`
 - [ ] Old server decommissioned, Tailscale node removed
 

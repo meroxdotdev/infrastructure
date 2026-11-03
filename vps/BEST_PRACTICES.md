@@ -76,9 +76,7 @@ make setup   # first run: applies changes; subsequent runs: verifies state
 | .51 | free (was dozzle, not carried over in the 2026-07-26 app-stack migration) |
 | .52 | unbound |
 | .53 | pihole |
-| .60 | joplin-db |
-| .61 | joplin-server |
-| .62-64 | free |
+| .60-64 | free (.60/.61 were Joplin, removed 2026-11-03) |
 | .70 | authentik-postgresql |
 | .71 | authentik-redis |
 | .72 | authentik-server |

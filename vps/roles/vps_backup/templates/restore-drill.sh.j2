@@ -1,7 +1,7 @@
 #!/bin/bash
-# Monthly restore drill: proves the latest Authentik/Joplin dumps are actually
+# Monthly restore drill: proves the latest Authentik dump is actually
 # restorable, not just that pg_dump/gzip exited 0. Spins up a throwaway
-# postgres container per service (no host port, --rm cleans it and its
+# postgres container (no host port, --rm cleans it and its
 # anonymous data volume), imports the newest dump, checks the restored schema
 # has tables, tears down. Never touches the live DBs or containers.
 # Deployed by ansible (vps_backup role).
@@ -35,8 +35,7 @@ drill_one() {
   # server on the unix socket only (listen_addresses=''), creates the DB, then
   # stops it and starts the real one. A socket check passes during that first
   # phase, and a restore started there is cut off when it stops — which is
-  # why the drill failed for Authentik one month and Joplin the next, with
-  # both dumps intact.
+  # why the drill once failed with the dump intact.
   local ready=0
   for _ in $(seq 1 60); do
     if docker exec "$ctr" pg_isready -h 127.0.0.1 -U "$user" >/dev/null 2>&1; then ready=1; break; fi
@@ -77,7 +76,6 @@ drill_one() {
 }
 
 drill_one authentik postgres:16-alpine authentik authentik
-drill_one joplin postgres:18 joplin joplin
 
 if [ "$FAIL" -eq 0 ]; then
   ping_hc ""

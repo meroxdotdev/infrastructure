@@ -44,7 +44,7 @@ Idempotent — safe to re-run. On subsequent runs it only updates changed files 
 ## Upgrade
 
 **Pulling the containers on the host does nothing.** Every other service in
-this stack (homepage, pihole, joplin, portainer, unbound) runs `:latest`, so
+this stack (homepage, pihole, portainer, unbound) runs `:latest`, so
 `docker compose pull && up -d` moves them. Authentik is the one service pinned
 to an exact tag — `ghcr.io/goauthentik/server:{{ authentik_version }}` — so a
 pull re-fetches the *same* image and the UI keeps reporting the old version

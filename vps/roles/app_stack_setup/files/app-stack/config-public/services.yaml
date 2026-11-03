@@ -103,11 +103,6 @@
         description: Indexing and download, VPN-routed
 
 - Photos & Platform:
-    - Joplin:
-        icon: joplin.png
-        href: https://merox.dev/blog/homelab-tour#vps
-        description: Notes sync, PostgreSQL-backed
-
     - n8n:
         icon: n8n.png
         href: https://merox.dev/blog/homelab-ai-agent

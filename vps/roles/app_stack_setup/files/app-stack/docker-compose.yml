@@ -99,53 +99,8 @@ services:
       - "traefik.http.routers.pihole.tls.certresolver=cloudflare"
       - "traefik.http.services.pihole.loadbalancer.server.port=80"
 
-  joplin-db:
-    image: postgres:18
-    container_name: joplin-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_PASSWORD: ${JOPLIN_DB_PASSWORD}
-      POSTGRES_USER: joplin
-      POSTGRES_DB: joplin
-      # postgres 18+ refuses to initialize directly at a mounted
-      # /var/lib/postgresql/data (pg_ctlcluster-style layout expected) -
-      # point PGDATA at a subdirectory instead.
-      PGDATA: /var/lib/postgresql/data/pgdata
-    volumes:
-      - joplin_db_data:/var/lib/postgresql/data
-    networks:
-      network-cloud-merox:
-        ipv4_address: 172.25.10.60
-
-  joplin-server:
-    image: joplin/server:3.7.3
-    container_name: joplin-server
-    restart: unless-stopped
-    depends_on:
-      - joplin-db
-    environment:
-      APP_PORT: 22300
-      APP_BASE_URL: "https://joplin.cloud.merox.dev"
-      DB_CLIENT: pg
-      POSTGRES_PASSWORD: ${JOPLIN_DB_PASSWORD}
-      POSTGRES_DATABASE: joplin
-      POSTGRES_USER: joplin
-      POSTGRES_PORT: 5432
-      POSTGRES_HOST: joplin-db
-    networks:
-      network-cloud-merox:
-        ipv4_address: 172.25.10.61
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.joplin.rule=Host(`joplin.cloud.merox.dev`)"
-      - "traefik.http.routers.joplin.entrypoints=https"
-      - "traefik.http.routers.joplin.tls.certresolver=cloudflare"
-      - "traefik.http.services.joplin.loadbalancer.server.port=22300"
-      - "traefik.docker.network=network-cloud-merox"
-
 volumes:
   portainer_data:
-  joplin_db_data:
 
 networks:
   network-cloud-merox:

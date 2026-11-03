@@ -10,11 +10,10 @@ Where this fits in the whole estate: [docs/architecture.md](../../../docs/archit
 
 | Script | Cron (UTC) | What it does |
 |---|---|---|
-| `nightly-backup.sh` | 23:45 | Runs the three below in order and pings healthchecks once. Stops at the first failure — the push has nothing to send if a producer died. |
-| `backup-joplin.sh` | by the wrapper | Joplin DB dump into `/srv/backups/`. |
+| `nightly-backup.sh` | 23:45 | Runs the two below in order and pings healthchecks once. Stops at the first failure — the push has nothing to send if a producer died. |
 | `backup-vps-extras.sh` | by the wrapper | Tars service state not covered by Ansible/git into `/srv/backups/`: Guacamole connections, Traefik `acme.json`, Pi-hole config (history/gravity DBs excluded), Homepage config (kubeconfigs excluded), Portainer state. 7-day retention. |
 | `backup-push.sh` | by the wrapper | Pushes `/srv/backups/` to the NAS, `backups/oracle-vps/`. |
-| `restore-drill.sh` | monthly, 1st @ 04:00 | Imports the newest Authentik and Joplin dumps into throwaway containers and checks the schema has tables. Never touches live DBs. |
+| `restore-drill.sh` | monthly, 1st @ 04:00 | Imports the newest Authentik dump into a throwaway container and checks the schema has tables. Never touches live DBs. |
 
 The Authentik dump (23:40, `authentik_setup` role) lands in the same
 `/srv/backups/` and rides along in the push.
@@ -58,8 +57,8 @@ repository, its account and its retention. The vault pushes to it, append-only.
    `/srv/backups/`. An older copy comes from the vault's snapshots; if the NAS
    and the vault are both gone, from the `oracle-vps/` path in the restic
    repository on this VPS ([DR.md](../../../DR.md)).
-2. `make restore-auto` — drops and re-imports Authentik and Joplin from their
-   latest dumps (`make restore` asks per service).
+2. `make restore-auto` — drops and re-imports Authentik from its latest dump
+   (`make restore` asks first).
 3. `make restore-extras` — untars the newest archive of each extra service over
    its directory and restarts it. If the VPS got a new tailnet IP, it also
    repoints Pi-hole's `*.cloud.merox.dev` records.

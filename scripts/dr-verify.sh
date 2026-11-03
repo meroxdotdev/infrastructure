@@ -115,14 +115,6 @@ verify_phase1() {
     # Homepage (exposed on host 127.0.0.1:3000)
     http_ok "Homepage" "http://localhost:3000"
 
-    # Joplin: /api/ping rejects requests from non-APP_BASE_URL origins — check port is open instead
-    JOPLIN_IP=$(docker inspect joplin-server --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null | head -1)
-    if [ -n "$JOPLIN_IP" ] && nc -z -w3 "$JOPLIN_IP" 22300 2>/dev/null; then
-        ok "Joplin API port open"
-    else
-        fail "Joplin API port not reachable (${JOPLIN_IP:-no IP}:22300)"
-    fi
-
     # Authentik: check metrics port 9300 (always up when server is healthy)
     container_http_ok "Authentik" "authentik-server" 9300 "/metrics"
 
