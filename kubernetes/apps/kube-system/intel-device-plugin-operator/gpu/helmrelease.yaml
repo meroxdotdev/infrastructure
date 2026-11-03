@@ -1,14 +1,3 @@
-
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/source.toolkit.fluxcd.io/helmrepository_v1.json
-apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
-metadata:
-  name: intel
-spec:
-  interval: 1h
-  url: https://intel.github.io/helm-charts/
-
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -22,6 +11,7 @@ spec:
       chart: intel-device-plugins-gpu
       version: "0.34.1"
       sourceRef:
+        # Defined once in ../app; this Kustomization dependsOn that one.
         kind: HelmRepository
         name: intel
         namespace: kube-system
