@@ -1,7 +1,7 @@
 # 2026-11-08 — `kubernetes-1`: one vCPU stuck in the kernel, etcd stalls
 
 **Status: mitigated 2026-11-10 16:18 UTC; permanent fix (`vga: none` on VM 810)
-not yet applied.** Diagnosed from Prometheus, Loki, `talosctl` and the QEMU
+set the same day, pending until the VM's next start, then to verify.** Diagnosed from Prometheus, Loki, `talosctl` and the QEMU
 monitor on `pve-1`. All times are UTC (Romania is UTC+2).
 
 ## Symptom
@@ -140,7 +140,7 @@ qm sendkey 810 alt-f1        # on pve-1
 Within one blit, `system` CPU on every vCPU dropped to ~2.5 %. This lasts until
 the VM boots again, or until someone presses Alt+F2 in the Proxmox console.
 
-## Permanent fix — to apply
+## Permanent fix — set, pending the next start
 
 Remove the emulated VGA from VM 810. The node has a real GPU, is managed
 through `talosctl`, and nothing documented needs its console.
@@ -170,7 +170,8 @@ schematic and an upgrade, and still leaves every kernel log line costing a
 
 Not done yet:
 
-0. **Apply the permanent fix above** (`qm set 810 --vga none`).
+0. **Verify the permanent fix after the next cold boot** (`vga: none` set
+   2026-11-10, shows as pending in `qm pending 810`).
 1. **Find out why two hosts on the UPS lost power at 16:37 on 2026-11-08**, and
    `pve-3` the next morning. If these were not deliberate, the UPS did not do
    its job, and that is what exposed this bug: it needed a cold boot. Check
