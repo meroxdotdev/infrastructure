@@ -271,6 +271,19 @@ spec:
                 for: 10m
                 labels:
                   severity: warning
+              # 2026-11-08: a kworker on kubernetes-1 held one vCPU at 100%
+              # system for two days and surfaced only as the two etcd alerts
+              # above, which name the victim, not the cause. One core pinned in
+              # the kernel is never normal here. Backtested over 30 days on
+              # all nodes and hosts: fires only during that incident.
+              # docs/incidents/2026-11-08-kubernetes-1-pegged-vcpu.md
+              - alert: NodeCpuStuckInKernel
+                annotations:
+                  summary: "{{ $labels.instance }}: cpu {{ $labels.cpu }} at {{ $value | humanizePercentage }} system for 15m - find the task (/proc/*/stat, field 39 is the CPU)."
+                expr: rate(node_cpu_seconds_total{mode="system"}[10m]) > 0.9
+                for: 15m
+                labels:
+                  severity: warning
       longhorn-backup-rules:
         groups:
           - name: longhorn-backup

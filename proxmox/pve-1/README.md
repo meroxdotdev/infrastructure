@@ -31,23 +31,32 @@ memory *requests* are about 11 GiB and 32 GiB is comfortable.
 | | |
 |---|---|
 | CPU / RAM | i9-13900HK (6P+8E, 20 threads), 62 GB DDR5 |
-| `nvme0n1` | Proxmox root, LVM/ext4, plus `/local_data`. **1% worn**, 3.7 TB written |
-| `nvme1n1` | `cluster-storage`, LVM-thin, single disk, no redundancy. **34% worn**, 68 TB written |
+| `…87CA` | Proxmox root, LVM/ext4, plus `/local_data`. **1% worn**, 3.7 TB written |
+| `…66C6` | `cluster-storage`, LVM-thin, single disk, no redundancy. **34% worn**, 68 TB written |
 | Network | 2x 2.5 GbE Intel I226 (`enp89s0` in use, `enp90s0` unused). Links at **1 GbE** — the switch is the ceiling, not the NIC |
 | GPU | Iris Xe, bound to `vfio-pci`, passed to VM 810 |
 | Power | 0.83 W package idle after tuning |
 
 **Both NVMe are Crucial P3 Plus — QLC, DRAM-less.** The split matters: the OS
-is on `nvme0n1` (1% worn), and `cluster-storage` — VM 810, which is etcd plus a
-Longhorn replica — is on `nvme1n1`, which has burned a third of its endurance.
+is on serial `24534D2A87CA` (1% worn), and `cluster-storage` — VM 810, which is
+etcd plus a Longhorn replica — is on `24534D2A66C6`, which has burned a third of
+its endurance.
 Keep it that way. Putting VM images on the OS disk means one failure takes both
 Proxmox and the cluster.
 
 ⚠️ **This table had the two disks the wrong way round until 2026-09-07**, and
 the error had already been copied into a plan whose command block would have
 run `pvcreate` against the running hypervisor's own system disk. `talos/THREE-NODE.md` was right the whole time. Confirmed by serial:
-`cluster-storage` is `nvme-CT1000P3PSSD8_24534D2A66C6` → `nvme1n1`; the `pve`
-volume group is on `nvme0n1p3`.
+`cluster-storage` is `nvme-CT1000P3PSSD8_24534D2A66C6` (`nvme1n1` that day); the `pve`
+volume group is on the other disk, partition 3.
+
+**`nvme0n1` and `nvme1n1` swap between boots** — `cluster-storage` was
+`nvme1n1` on 2026-09-07 and `nvme0n1` on 2026-11-10. Never act on the kernel
+name; resolve it from the serial first:
+
+```bash
+for d in /sys/block/nvme?n1; do echo "${d##*/} $(cat $d/device/serial)"; done
+```
 
 ## `cluster-storage` is LVM-thin, not ZFS, since 2026-09-07
 
@@ -81,7 +90,7 @@ cluster node. One disk, one purpose.
 
 **Expected:** ~104 GB/day → ~40 GB/day, taking remaining endurance from roughly
 three years to nine. Measure on the host, never in the guest:
-`grep ' nvme1n1 ' /proc/diskstats`. That mistake once put this disk's life at
+`grep " $(basename $(readlink /dev/disk/by-id/nvme-CT1000P3PSSD8_24534D2A66C6)) " /proc/diskstats`. That mistake once put this disk's life at
 "fourteen years".
 
 ## BIOS

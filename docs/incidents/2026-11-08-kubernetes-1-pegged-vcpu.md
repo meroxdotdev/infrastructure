@@ -63,9 +63,9 @@ timeouts crosses 1 % and the next quiet stretch drops back under it.
 | When | What |
 |---|---|
 | 2026-11-08 09:52–09:56 | Renovate PRs #900–#909 merge. No change in the node's CPU or fsyncs afterwards. |
-| 2026-11-08 ~16:37 | `pve-1` and `pve-2` go down together. `nvme_unsafe_shutdowns_total` +1 on every NVMe in both. The UPS exporter recorded no on-battery state (it is scraped through `pve-1`, so a gap proves little). |
+| 2026-11-08 ~16:37 | `pve-1` and `pve-2` go down together. Powered off by hand, deliberately (`nvme_unsafe_shutdowns_total` +1 on every NVMe in both). |
 | 2026-11-08 16:48 | First samples after boot: cpu 6 of `kubernetes-1` already at 99.7 % system, slow fsyncs begin. Kernel on the host is still `7.0.14-25-pve`. |
-| 2026-11-09 ~07:20 | `pve-3` goes down uncleanly too (unsafe shutdown +1). `kubernetes-3` is fine afterwards. |
+| 2026-11-09 ~07:20 | `pve-3` powered off by hand too. `kubernetes-3` is fine afterwards. |
 | 2026-11-09 16:50–17:35 | All three hosts reboot into `7.0.14-28-pve`. On `kubernetes-1` the held CPU moves from 6 to 10; nothing else changes. |
 | 2026-11-10 ~16:00 | `talosctl` and the QEMU monitor identify the busy task: `kworker/10:0+events`, copying the boot framebuffer at ~760 KB/s. |
 | 2026-11-10 16:18 | Console switched to tty1. System CPU back to ~2.5 % per vCPU. |
@@ -86,7 +86,7 @@ timeouts crosses 1 % and the next quiet stretch drops back under it.
   09:52–09:56 on 2026-11-08, among them kube-prometheus-stack 92 → 93,
   prometheus-operator-crds 33, coredns and the `bpg/proxmox` Terraform provider.
   System CPU on the node stayed at 0.35 cores for the seven hours between those
-  merges and the power cut, so none of them started it on a running node. What
+  merges and the power-off, so none of them started it on a running node. What
   that does not exclude is one of them behaving differently on a fresh boot;
   low suspicion, but `processes --sort cpu` settles it either way.
 - **A reboot as the fix.** The VM has been restarted once since; it came back
@@ -124,7 +124,7 @@ but their VGA keeps decoding, so the same blit costs microseconds. Only
 
 Why only from 2026-11-08: the condition needs a **cold** boot, where OVMF
 creates the boot framebuffer. The warm boot of 2026-10-26 14:49 (Talos upgrade,
-kexec) ran clean for 13 days; the power cut and the host reboot of 2026-11-09
+kexec) ran clean for 13 days; the hard power-off and the host reboot of 2026-11-09
 were both cold. The cold boot of 2026-10-09, on Talos 1.13, held one CPU at
 13 % `system`, probably the same chain at a slower repaint rate. That last part
 is inference.
@@ -169,32 +169,16 @@ schematic and an upgrade, and still leaves every kernel log line costing a
 
 ## So it does not happen again
 
-Not done yet:
-
-1. **Find out why two hosts on the UPS lost power at 16:37 on 2026-11-08**, and
-   `pve-3` the next morning. If these were not deliberate, the UPS did not do
-   its job, and that is what exposed this bug: it needed a cold boot. Check
-   `journalctl -u nut-monitor` and `last -x` on each host. The 2026-10-02 sag
-   note in the pve-1 README is the same family of problem.
-2. **Alert on a CPU held in the kernel.** Nothing watches for it, so this
-   surfaced as two days of etcd alerts instead of one alert naming the cause.
-   Sketch, to be tested against these two days of data before merging:
-
-   ```yaml
-   - alert: NodeCpuStuckInKernel
-     expr: rate(node_cpu_seconds_total{mode="system"}[10m]) > 0.9
-     for: 15m
-     labels:
-       severity: warning
-   ```
-3. **Ship Talos kernel and service logs to Loki.** Loki has pod logs only;
-   neither `dmesg` nor the `etcd` service is there, which is why this could not
-   be finished from metrics. `kptr_restrict=2` also hides kernel symbols, so
-   the work function was identified from registers, not by name.
-4. The disk table in [../../proxmox/pve-1/README.md](../../proxmox/pve-1/README.md)
-   has the two NVMe names the wrong way round again: `cluster-storage`
-   (serial `24534D2A66C6`, 38 % worn) is `nvme0n1` today, and was three days
-   ago. Go by serial, as that README already says.
+- **Done:** `NodeCpuStuckInKernel` in
+  [kube-prometheus-stack](../../kubernetes/apps/observability/kube-prometheus-stack/app/helmrelease.yaml):
+  any CPU over 90 % `system` for 15 minutes. Backtested over 30 days on all
+  nodes and hosts, it fires only during this incident.
+- **Done:** the pve-1 README names the NVMe disks by serial. `nvme0n1` and
+  `nvme1n1` swap between boots.
+- **Open, optional:** ship Talos kernel and service logs to Loki. Loki has pod
+  logs only, so `dmesg` and the `etcd` service needed `talosctl`. With
+  `kptr_restrict=2` hiding kernel symbols, the work function was identified
+  from registers, not by name.
 
 ## Queries
 
