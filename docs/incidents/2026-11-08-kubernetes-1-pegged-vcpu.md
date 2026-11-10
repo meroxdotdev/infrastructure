@@ -1,9 +1,8 @@
 # 2026-11-08 — `kubernetes-1`: one vCPU stuck in the kernel, etcd stalls
 
-**Status: open, diagnosed to the mechanism, not to the culprit.** Written
-2026-11-10 ~10:15 UTC as a handoff. Nothing was changed on the cluster or the
-hosts; everything below was read from Prometheus and Loki. All times are UTC
-(Romania is UTC+2).
+**Status: mitigated 2026-11-10 16:18 UTC; permanent fix (`vga: none` on VM 810)
+not yet applied.** Diagnosed from Prometheus, Loki, `talosctl` and the QEMU
+monitor on `pve-1`. All times are UTC (Romania is UTC+2).
 
 ## Symptom
 
@@ -39,7 +38,9 @@ The cause of the stalls is one vCPU held in kernel mode:
   (`node_schedstat_waiting_seconds_total`).
 - It was **cpu 6** from the first boot (2026-11-08 16:48) until the reboot of
   2026-11-09 17:30, and **cpu 10** since. So it is not tied to one vCPU or one
-  interrupt line; it starts again at every boot.
+  interrupt line; it starts again at every cold boot. It is a work item that
+  gets requeued, not a fixed spin: when one blit finished on 2026-11-10 the
+  next one started on cpu 6.
 
 The working explanation for the fsync shape: the disk finishes on time, but
 whatever completes the fsync is sometimes queued on the held CPU and waits
@@ -66,6 +67,8 @@ timeouts crosses 1 % and the next quiet stretch drops back under it.
 | 2026-11-08 16:48 | First samples after boot: cpu 6 of `kubernetes-1` already at 99.7 % system, slow fsyncs begin. Kernel on the host is still `7.0.14-25-pve`. |
 | 2026-11-09 ~07:20 | `pve-3` goes down uncleanly too (unsafe shutdown +1). `kubernetes-3` is fine afterwards. |
 | 2026-11-09 16:50–17:35 | All three hosts reboot into `7.0.14-28-pve`. On `kubernetes-1` the held CPU moves from 6 to 10; nothing else changes. |
+| 2026-11-10 ~16:00 | `talosctl` and the QEMU monitor identify the busy task: `kworker/10:0+events`, copying the boot framebuffer at ~760 KB/s. |
+| 2026-11-10 16:18 | Console switched to tty1. System CPU back to ~2.5 % per vCPU. |
 
 ## Ruled out
 
@@ -88,60 +91,89 @@ timeouts crosses 1 % and the next quiet stretch drops back under it.
 - **A reboot as the fix.** The VM has been restarted once since; it came back
   the same.
 
-## Not known
+## Root cause
 
-Which kernel thread or code path is holding the CPU. Candidates, none
-supported by evidence yet: XFS on `/var` (`sda4`) left inconsistent by the
-power cut on a drive with no power-loss protection; a driver, the passed-through
-Iris Xe being the one thing only this node has; a flood of kernel messages to a
-slow console.
+A framebuffer copy that the hypervisor traps byte by byte, re-triggered for
+ever by the Talos dashboard.
 
-An earlier guess in this investigation was "wipe `EPHEMERAL` and rejoin", from
-the 2026-09-07 note in [../../proxmox/pve-1/README.md](../../proxmox/pve-1/README.md).
-**Do not do that yet.** That incident was a user-space spin; this one is in the
-kernel, and a wipe is only the right fix if the filesystem is the culprit.
+1. VM 810 has two display devices: QEMU's emulated VGA (`00:01.0`, OVMF's boot
+   framebuffer, 1280×800) and the passed-through Iris Xe (`06:10.0`).
+2. On a cold boot, `simpledrm` takes the boot framebuffer at `0x80000000`
+   (`BOOTFB` in `/proc/iomem`) and fbcon renders tty2 to it.
+3. When `i915` probes, the VGA arbiter turns off decoding on the emulated VGA:
+   its `PCI_COMMAND` reads `0x0004` on `kubernetes-1` against `0x0007` on
+   `kubernetes-2`, and `info pci` in the QEMU monitor shows its BAR0
+   `not mapped`. `simpledrm` keeps writing there anyway.
+4. Every write to that unmapped range is a VM exit to QEMU: measured at
+   **~760 KB/s**, so one full-screen blit (4,096,000 bytes) takes **~5.4 s**.
+5. The Talos dashboard repaints tty2 about 6 times a second. The fbdev damage
+   worker (`kworker/N:M+events`) never catches up and copies full frames back to
+   back. That is the 100 % `system` CPU, and the WAL fsync completions queued
+   behind it are the etcd stalls.
 
-## Next step
+Evidence for the blit: vCPU 10 sampled from the QEMU monitor sat on one
+instruction (`rep movsb`) in 39 of 40 samples, with `RCX` counting down inside
+a 0x1400-byte (1280 × 4) line and `RDI` walking a 0x3e8000-byte buffer, then
+wrapping. The stack held a `drm_rect` of `(0,0)–(1280,800)` and the fourcc
+`XR24`. `/proc/69/sched` showed 7 voluntary context switches in 22 h.
 
-Needs `talosctl` (v1.14.4, `TALOSCONFIG=talos/clusterconfig/talosconfig`).
-Read-only:
+The other two nodes run the same chain (simpledrm, fbcon, dashboard on tty2)
+but their VGA keeps decoding, so the same blit costs microseconds. Only
+`kubernetes-1` has a second, real GPU for the arbiter to hand VGA to.
+
+Why only from 2026-11-08: the condition needs a **cold** boot, where OVMF
+creates the boot framebuffer. The warm boot of 2026-10-26 14:49 (Talos upgrade,
+kexec) ran clean for 13 days; the power cut and the host reboot of 2026-11-09
+were both cold. The cold boot of 2026-10-09, on Talos 1.13, held one CPU at
+13 % `system`, probably the same chain at a slower repaint rate. That last part
+is inference.
+
+## Mitigation (2026-11-10 16:18)
+
+The console was switched from tty2 (the dashboard) to tty1 (the kernel log),
+which fbcon only repaints when the kernel logs:
 
 ```bash
-talosctl -n 10.57.57.80 processes --sort cpu     # what holds the core
-talosctl -n 10.57.57.80 dmesg                    # XFS, I/O, i915, soft lockups, RCU stalls
-talosctl -n 10.57.57.80 read /proc/interrupts    # only if the two above are quiet
-talosctl -n 10.57.57.80 etcd status
-talosctl -n 10.57.57.80 etcd alarm list
+qm sendkey 810 alt-f1        # on pve-1
 ```
 
-On `pve-1`, also read-only:
+Within one blit, `system` CPU on every vCPU dropped to ~2.5 %. This lasts until
+the VM boots again, or until someone presses Alt+F2 in the Proxmox console.
+
+## Permanent fix — to apply
+
+Remove the emulated VGA from VM 810. The node has a real GPU, is managed
+through `talosctl`, and nothing documented needs its console.
 
 ```bash
-journalctl -k -b | grep -iE 'nvme|i/o error|thin|vfio|kvm'
-lvs -a -o+seg_monitor,lv_health_status cluster-storage   # thin pool state after the power cut
-qm config 810
+qm set 810 --vga none        # on pve-1; takes effect on the next start
 ```
 
-Then, depending on what holds the core:
+Takes effect on the next cold start, which is exactly when the bug triggers,
+so no restart is needed to apply it. Without a boot framebuffer, `simpledrm`
+does not load and the dashboard writes to a dummy console. Cost: the Proxmox
+console of VM 810 goes blank.
 
-| Finding | Fix |
-|---|---|
-| An XFS thread (`xfsaild`, `xfs-*` workers), or XFS errors in `dmesg` | Wipe `EPHEMERAL` on `kubernetes-1` and let it rejoin. Follow the Longhorn order in the pve-1 README; the node holds one replica of every volume, so check the other two replicas are healthy first. |
-| `i915` / the passed-through GPU | Detach `hostpci0` from VM 810, confirm the CPU is released, then find why before re-attaching. Jellyfin loses hardware transcoding meanwhile. |
-| Console / `printk` flood | Fix whatever is logging; the flood is the symptom. |
-| LVM-thin pool flagged `needs_check` or errors on the host | Repair on the host, with the VM off. Not a guest problem. |
-| Something else | Stop and read before acting. |
+Verify after the next cold boot:
 
-Whichever it is, verify with the queries below: system CPU on the node back to
-~0.33 cores and slow fsyncs at zero for a full hour.
+```bash
+talosctl -n 10.57.57.80 read /proc/iomem | grep -c BOOTFB      # 0
+```
+
+and the queries below: system CPU ~0.33 cores, slow fsyncs at zero for an hour.
+
+Rejected: `talos.dashboard.disabled=1` as a kernel argument. It needs a new
+schematic and an upgrade, and still leaves every kernel log line costing a
+5-second trapped blit.
 
 ## So it does not happen again
 
-To do once the culprit is known — not done yet:
+Not done yet:
 
+0. **Apply the permanent fix above** (`qm set 810 --vga none`).
 1. **Find out why two hosts on the UPS lost power at 16:37 on 2026-11-08**, and
    `pve-3` the next morning. If these were not deliberate, the UPS did not do
-   its job, and that is the root cause of this incident. Check
+   its job, and that is what exposed this bug: it needed a cold boot. Check
    `journalctl -u nut-monitor` and `last -x` on each host. The 2026-10-02 sag
    note in the pve-1 README is the same family of problem.
 2. **Alert on a CPU held in the kernel.** Nothing watches for it, so this
@@ -157,7 +189,8 @@ To do once the culprit is known — not done yet:
    ```
 3. **Ship Talos kernel and service logs to Loki.** Loki has pod logs only;
    neither `dmesg` nor the `etcd` service is there, which is why this could not
-   be finished from metrics.
+   be finished from metrics. `kptr_restrict=2` also hides kernel symbols, so
+   the work function was identified from registers, not by name.
 4. The disk table in [../../proxmox/pve-1/README.md](../../proxmox/pve-1/README.md)
    has the two NVMe names the wrong way round again: `cluster-storage`
    (serial `24534D2A66C6`, 38 % worn) is `nvme0n1` today, and was three days

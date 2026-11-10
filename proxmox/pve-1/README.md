@@ -161,6 +161,12 @@ qm set 810 --hostpci0 0000:00:02.0
 The VM needs `--machine q35` and `--bios ovmf`. Inside the guest the device
 appears at `0000:06:10.0`.
 
+It also needs `--vga none`. With QEMU's emulated VGA next to the iGPU, a cold
+boot leaves `simpledrm` writing to a framebuffer the VGA arbiter has switched
+off. Every write traps to QEMU, and the Talos dashboard's repaints hold a vCPU
+at 100 % and stall etcd —
+[../../docs/incidents/2026-11-08-kubernetes-1-pegged-vcpu.md](../../docs/incidents/2026-11-08-kubernetes-1-pegged-vcpu.md).
+
 ## NUT — this host is the primary
 
 The CyberPower VP700ELCD is on **this host's USB** since 2026-09-29. It moved
