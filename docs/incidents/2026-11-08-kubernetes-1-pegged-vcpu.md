@@ -1,7 +1,7 @@
 # 2026-11-08 — `kubernetes-1`: one vCPU stuck in the kernel, etcd stalls
 
-**Status: mitigated 2026-11-10 16:18 UTC; permanent fix (`vga: none` on VM 810)
-set the same day, pending until the VM's next start, then to verify.** Diagnosed from Prometheus, Loki, `talosctl` and the QEMU
+**Status: fixed 2026-11-10 16:34 UTC** — `vga: none` on VM 810, verified on a
+cold boot. Diagnosed from Prometheus, Loki, `talosctl` and the QEMU
 monitor on `pve-1`. All times are UTC (Romania is UTC+2).
 
 ## Symptom
@@ -69,6 +69,7 @@ timeouts crosses 1 % and the next quiet stretch drops back under it.
 | 2026-11-09 16:50–17:35 | All three hosts reboot into `7.0.14-28-pve`. On `kubernetes-1` the held CPU moves from 6 to 10; nothing else changes. |
 | 2026-11-10 ~16:00 | `talosctl` and the QEMU monitor identify the busy task: `kworker/10:0+events`, copying the boot framebuffer at ~760 KB/s. |
 | 2026-11-10 16:18 | Console switched to tty1. System CPU back to ~2.5 % per vCPU. |
+| 2026-11-10 16:34 | VM 810 cold-booted with `vga: none`. No boot framebuffer; clean since. |
 
 ## Ruled out
 
@@ -140,7 +141,7 @@ qm sendkey 810 alt-f1        # on pve-1
 Within one blit, `system` CPU on every vCPU dropped to ~2.5 %. This lasts until
 the VM boots again, or until someone presses Alt+F2 in the Proxmox console.
 
-## Permanent fix — set, pending the next start
+## Permanent fix
 
 Remove the emulated VGA from VM 810. The node has a real GPU, is managed
 through `talosctl`, and nothing documented needs its console.
@@ -149,18 +150,18 @@ through `talosctl`, and nothing documented needs its console.
 qm set 810 --vga none        # on pve-1; takes effect on the next start
 ```
 
-Takes effect on the next cold start, which is exactly when the bug triggers,
-so no restart is needed to apply it. Without a boot framebuffer, `simpledrm`
+Without a boot framebuffer, `simpledrm`
 does not load and the dashboard writes to a dummy console. Cost: the Proxmox
 console of VM 810 goes blank.
 
-Verify after the next cold boot:
+Verified after the cold boot of 2026-11-10 16:34 (`talosctl shutdown`, then
+`qm start 810`; an ACPI `qm shutdown` timed out, since Talos ignores the power
+button here):
 
-```bash
-talosctl -n 10.57.57.80 read /proc/iomem | grep -c BOOTFB      # 0
-```
-
-and the queries below: system CPU ~0.33 cores, slow fsyncs at zero for an hour.
+- `/proc/iomem` has no `BOOTFB`, and `simpledrm` does not load.
+- System CPU on the node is 0.26 cores, with no vCPU above 2.2 %.
+- Zero WAL fsyncs over 1 s on all three members.
+- Jellyfin is back on the iGPU (`gpu.intel.com/i915` allocatable).
 
 Rejected: `talos.dashboard.disabled=1` as a kernel argument. It needs a new
 schematic and an upgrade, and still leaves every kernel log line costing a
@@ -170,8 +171,6 @@ schematic and an upgrade, and still leaves every kernel log line costing a
 
 Not done yet:
 
-0. **Verify the permanent fix after the next cold boot** (`vga: none` set
-   2026-11-10, shows as pending in `qm pending 810`).
 1. **Find out why two hosts on the UPS lost power at 16:37 on 2026-11-08**, and
    `pve-3` the next morning. If these were not deliberate, the UPS did not do
    its job, and that is what exposed this bug: it needed a cold boot. Check
