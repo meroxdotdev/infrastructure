@@ -17,7 +17,7 @@ holds the reasoning and the rebuild.
 
 | Dataset | Written by | Off-site |
 |---|---|---|
-| `backup` | the nightly run only: `nas/` (NAS `backups/` and `homes/`), `github/` (mirrors of [config/github-repos](config/github-repos)). Never shared | yes |
+| `backup` | the nightly run only: `nas/` (NAS `backups/` and `homes/`), `github/` (mirrors of [config/github-repos](config/github-repos)). Never shared | yes, except `nas/backups/ps5` (vault-only, by choice) |
 | `files` | you, over SMB: `Personal/`, `Job/`, `Clients/`, `Lab/`, the same four folders as Synology Drive | yes, except `Personal/Movies` and `Personal/VMs` (the automotive VMs: vault-only, by choice) |
 | `system` | these scripts, logs, config export, `secrets/` (0700). Never shared | yes, except `secrets/` |
 

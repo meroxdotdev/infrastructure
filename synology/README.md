@@ -19,7 +19,7 @@ by hardlink, never by copy.
 | Share | Holds | Recycle bin | Checksum |
 |---|---|---|---|
 | `media` | `Movies/`, `Shows/`, `Downloads/` — one share, or ARR hardlink imports break. **Quota 1.2 TB**, so the library can never eat the space backups need | off | on |
-| `backups` | the landing: `longhorn/` (Garage's data and metadata snapshots), `pfsense/`, `oracle-vps/` — latest version only, history is the vault's | off | on |
+| `backups` | the landing: `longhorn/` (Garage's data and metadata snapshots), `pfsense/`, `oracle-vps/`, `ps5/` (the console's USB backup, `PS5/EXPORT/BACKUP/<date>/` as the console writes it, copied by hand) — latest version only, history is the vault's | off | on |
 | `homes` | Synology Drive (`<user>/Cloud`, *My Drive*) and Synology Photos (`<user>/Photos`) | default | — |
 | `photo` | Synology Photos' shared space — empty; every photo is in the personal space | — | — |
 | `NetBackup` | created by the rsync service and undeletable while it runs; empty, hidden, no access | — | — |
@@ -105,3 +105,37 @@ Traps found while setting this up:
 - `rsync -a` replaces DSM's ACL with Unix modes; push with
   `--no-perms --no-owner --no-group --chmod=D755,F644`.
 - Legacy `scp -O` does not work for a non-admin user; plain `scp` (SFTP) does.
+- `chmod` on a folder that carries an ACL drops the ACL, and DSM shows no
+  `+` on it afterwards. Set modes on the files under it, never on the folder.
+
+### PS5 backup
+
+By hand, on the console's schedule (after a long session, or monthly). The
+console writes `PS5/EXPORT/BACKUP/<YYYYMMDDhhmm>_00/archive*.dat`: an
+encrypted archive in 4 GB parts, ~13 GB on 2026-11-20. It is pulled by the
+vault and kept off Oracle ([restic-excludes](../truenas/config/restic-excludes)),
+because restic dedupes nothing between two encrypted copies.
+
+1. PS5: Settings → System → System Software → Back Up and Restore → Back Up
+   Your PS5, onto an exFAT or FAT32 stick. Not one formatted as extended
+   storage. Trophies are not included, so sync them first.
+2. Plug the stick into the NAS: it mounts at `/volumeUSB1/usbshare1-1`.
+3. As `admin`, replace the copy. Only the latest one is kept; the vault's
+   snapshots are the history:
+
+   ```sh
+   rm -rf /volume1/backups/ps5/PS5
+   rsync -rt --no-perms --no-owner --no-group --chmod=D755,F644 \
+     /volumeUSB1/usbshare1-1/PS5 /volume1/backups/ps5/
+   ```
+
+4. Compare `sha256sum` of both copies, then delete `PS5/` from the stick and
+   eject it in DSM → External Devices.
+
+Restore: copy `PS5/` to the root of an exFAT stick, then on the console go to
+Restore Your PS5. This erases the console. Its system software must be the
+same version as at backup time, or newer. Afterwards, turn Console Sharing
+and Offline Play back on.
+
+`du` misreads the console's files on the USB exFAT mount (132M for 13 GB);
+use `du --apparent-size` or `ls -l`.

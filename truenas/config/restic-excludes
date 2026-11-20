@@ -13,5 +13,10 @@
 *.vmdk
 *.vdi
 
+# The PS5 console backup (NAS backups/ps5, ~13 GB a copy): encrypted by the
+# console, so restic dedupes nothing between copies. NAS + vault only, by
+# choice; the vault's snapshots are its history.
+/mnt/vault/backup/nas/backups/ps5
+
 # Run state: locks, the drill's scratch directory.
 /mnt/vault/system/run
