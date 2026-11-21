@@ -7,7 +7,7 @@
 # The destination is `channel`, which takes the chat id (a negative number for
 # a group, or @username), and the bot token comes from `secretRef` under the
 # key `token`.
-apiVersion: notification.toolkit.fluxcd.io/v1beta3
+apiVersion: notification.toolkit.fluxcd.io/v1
 kind: Provider
 metadata:
   name: telegram
