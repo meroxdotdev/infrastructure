@@ -19,7 +19,7 @@ by hardlink, never by copy.
 | Share | Holds | Recycle bin | Checksum |
 |---|---|---|---|
 | `media` | `Movies/`, `Shows/`, `Downloads/` — one share, or ARR hardlink imports break. **Quota 1.2 TB**, so the library can never eat the space backups need | off | on |
-| `backups` | the landing: `longhorn/` (Garage's data and metadata snapshots), `pfsense/`, `oracle-vps/`, `ps5/` (the console's USB backup, `PS5/EXPORT/BACKUP/<date>/` as the console writes it, copied by hand) — latest version only, history is the vault's | off | on |
+| `backups` | the landing: `longhorn/` (Garage's data and metadata snapshots), `pfsense/`, `oracle-vps/`, `ps5/` (the console's USB backups, one labelled folder each, copied by hand) — latest version only, history is the vault's; `ps5/` keeps every copy | off | on |
 | `homes` | Synology Drive (`<user>/Cloud`, *My Drive*) and Synology Photos (`<user>/Photos`) | default | — |
 | `photo` | Synology Photos' shared space — empty; every photo is in the personal space | — | — |
 | `NetBackup` | created by the rsync service and undeletable while it runs; empty, hidden, no access | — | — |
@@ -120,19 +120,26 @@ because restic dedupes nothing between two encrypted copies.
    Your PS5, onto an exFAT or FAT32 stick. Not one formatted as extended
    storage. Trophies are not included, so sync them first.
 2. Plug the stick into the NAS: it mounts at `/volumeUSB1/usbshare1-1`.
-3. As `admin`, replace the copy. Only the latest one is kept; the vault's
-   snapshots are the history:
+3. As `admin`, copy it into a new folder named for the date and what the
+   save holds, so copies tell apart at a glance. Every copy is kept; delete
+   old ones by hand when they stop mattering:
 
    ```sh
-   rm -rf /volume1/backups/ps5/PS5
+   dest=/volume1/backups/ps5/2026-11-22_gta6-47pct
+   mkdir -p "$dest"
    rsync -rt --no-perms --no-owner --no-group --chmod=D755,F644 \
-     /volumeUSB1/usbshare1-1/PS5 /volume1/backups/ps5/
+     /volumeUSB1/usbshare1-1/PS5 "$dest/"
    ```
 
 4. Compare `sha256sum` of both copies, then delete `PS5/` from the stick and
    eject it in DSM → External Devices.
 
-Restore: copy `PS5/` to the root of an exFAT stick, then on the console go to
+| Folder | GTA VI progress |
+|---|---|
+| `2026-11-20_gta6-18pct` | ~18% |
+| `2026-11-22_gta6-47pct` | 47% |
+
+Restore: copy the chosen folder's `PS5/` to the root of an exFAT stick, then on the console go to
 Restore Your PS5. This erases the console. Its system software must be the
 same version as at backup time, or newer. Afterwards, turn Console Sharing
 and Offline Play back on.
