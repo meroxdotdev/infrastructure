@@ -7,7 +7,6 @@ Deploys [Authentik](https://goauthentik.io/) SSO on the Oracle Cloud Docker serv
 | Container | Image | IP |
 |---|---|---|
 | authentik-postgresql | postgres:16-alpine | 172.25.10.70 |
-| authentik-redis | redis:alpine | 172.25.10.71 |
 | authentik-server | ghcr.io/goauthentik/server | 172.25.10.72 |
 | authentik-worker | ghcr.io/goauthentik/server | 172.25.10.73 |
 
@@ -141,14 +140,16 @@ docker restart authentik-server authentik-worker
 2. Configure Google OAuth source: Admin → Directory → Federation & Social Login → Add → Google
 3. Configure Traefik forward auth for each service: add label `traefik.http.routers.<name>.middlewares=middlewares-authentik@file`
 
+No Redis: authentik dropped it in 2025.10 (cache, tasks, sessions and
+WebSocket moved to PostgreSQL). Removed here on 2026-11-27.
+
 ## Architecture
 
 ```
 Internet
   └── Cloudflare Tunnel (one) → systemd cloudflared on Oracle
         └── http://172.25.10.72:9000 → authentik-server
-              ├── authentik-postgresql (172.25.10.70)
-              └── authentik-redis     (172.25.10.71)
+              └── authentik-postgresql (172.25.10.70)
 
 Traefik forward auth (for Oracle services):
   Request → Traefik → middlewares-authentik@file
@@ -171,6 +172,10 @@ written 2026-09-05, and the containers had been running since before that change
 each holding the old password in its own environment. Recreating them for an
 unrelated reason — pinning image tags — was what surfaced it. A reboot or a
 Docker upgrade would have done the same thing on its own schedule.
+
+Again on 2026-11-27, when the Redis removal recreated the containers: SSO was
+down ~5 min until the fix below. After it, the database holds the vault's
+`authentik_db_password`, so the next recreate is a no-op.
 
 Fix by making the database agree with `.env`, not the other way round:
 

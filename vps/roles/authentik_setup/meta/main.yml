@@ -1,6 +1,6 @@
 ---
 galaxy_info:
   author: merox
-  description: Deploy Authentik SSO with PostgreSQL and Redis
+  description: Deploy Authentik SSO with PostgreSQL
   min_ansible_version: "2.14"
 dependencies: []

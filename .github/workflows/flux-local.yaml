@@ -19,18 +19,13 @@ jobs:
     permissions:
       contents: read
     outputs:
-      any_changed: ${{ steps.changed-files.outputs.any_changed }}
+      changed-files: ${{ steps.changed-files.outputs.changed_files }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
       - name: Get Changed Files
         id: changed-files
-        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        uses: bjw-s-labs/action-changed-files@147be9638332cf68fd60714a610509d7a9360d60 # v0.7.0
         with:
-          files: kubernetes/**
+          patterns: kubernetes/**/*
 
   test:
     name: Flux Local Test
@@ -38,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    if: ${{ needs.pre-job.outputs.any_changed == 'true' }}
+    if: ${{ needs.pre-job.outputs.changed-files != '[]' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -62,7 +57,7 @@ jobs:
         resources: ["helmrelease", "kustomization"]
       max-parallel: 4
       fail-fast: false
-    if: ${{ needs.pre-job.outputs.any_changed == 'true' }}
+    if: ${{ needs.pre-job.outputs.changed-files != '[]' }}
     steps:
       - name: Checkout Pull Request Branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

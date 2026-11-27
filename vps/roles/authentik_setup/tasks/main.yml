@@ -28,6 +28,8 @@
     files:
       - docker-compose.yml
     state: present
+    # Removes containers dropped from the file (authentik-redis, 2026-11-27).
+    remove_orphans: true
 
 - name: Wait for Authentik server to be ready
   wait_for:

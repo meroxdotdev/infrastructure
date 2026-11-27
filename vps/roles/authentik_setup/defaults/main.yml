@@ -7,11 +7,7 @@ authentik_port: 9000
 authentik_db_user: "authentik"
 authentik_db_name: "authentik"
 authentik_pg_ip: "172.25.10.70"
-authentik_redis_ip: "172.25.10.71"
 authentik_server_ip: "172.25.10.72"
 authentik_worker_ip: "172.25.10.73"
 traefik_network_name: network-cloud-merox
 authentik_backup_retention_days: 7
-
-# renovate: datasource=docker depName=redis
-authentik_redis_version: "8.10.3"

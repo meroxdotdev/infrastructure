@@ -93,7 +93,7 @@ Cloudflare tunnel, everything else over the tailnet.
 
 | Service | Why |
 |---|---|
-| Authentik (server, worker, postgres, redis) | SSO |
+| Authentik (server, worker, postgres) | SSO |
 | `rest-server` | the append-only backup endpoint |
 | Traefik | nothing above is reachable without it |
 | Pi-hole + Unbound | DNS for the tailnet |

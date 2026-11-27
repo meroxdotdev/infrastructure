@@ -78,7 +78,7 @@ make setup   # first run: applies changes; subsequent runs: verifies state
 | .53 | pihole |
 | .60-64 | free (.60/.61 were Joplin, removed 2026-11-03) |
 | .70 | authentik-postgresql |
-| .71 | authentik-redis |
+| .71 | free (authentik-redis, removed 2026-11-27) |
 | .72 | authentik-server |
 | .73 | authentik-worker |
 | .74+ | free |

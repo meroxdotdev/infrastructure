@@ -171,6 +171,22 @@ spec:
                 for: 1h
                 labels:
                   severity: critical
+      flux-rules:
+        groups:
+          - name: flux
+            rules:
+              # Flux's own Alert sends one Telegram message per failure event
+              # and stays quiet after that. On 2026-11-22 the flux-instance
+              # HelmRelease stalled (upgrade timeout, no release to roll back
+              # to) and stayed that way for five days after a single message.
+              # This repeats every 12 h until the resource is Ready again.
+              - alert: FluxResourceNotReady
+                annotations:
+                  summary: "Flux {{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} not Ready for 1 h: {{ $labels.reason }}"
+                expr: flux_resource_info{ready="False", suspended="False"} == 1
+                for: 1h
+                labels:
+                  severity: warning
       dockerhub-rules:
         groups:
           - name: dockerhub
