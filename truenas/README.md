@@ -11,14 +11,14 @@ holds the reasoning and the rebuild.
 | Address | `vault`, `10.57.57.250`, port `eno4`; iDRAC `10.57.57.249` |
 | Boot | `boot-pool`, mirror of two Intel D3-S4510 960 GB |
 | Pool | `vault`, one RAIDZ3 of 12× 600 GB SAS, encrypted, auto-unlock |
-| Access | SSH key-only as `truenas_admin`; SMB share `files` for `merox` only, from the workstation |
+| Access | SSH key-only as `truenas_admin`; SMB for `merox` only, from the workstation: `files` read-write, `backup` read-only |
 
 ## Datasets
 
 | Dataset | Written by | Off-site |
 |---|---|---|
-| `backup` | the nightly run only: `nas/` (NAS `backups/` and `homes/`), `github/` (mirrors of [config/github-repos](config/github-repos)). Never shared | yes, except `nas/backups/ps5` (vault-only, by choice) |
-| `files` | you, over SMB: `Personal/`, `Job/`, `Clients/`, `Lab/`, the same four folders as Synology Drive | yes, except `Personal/Movies` and `Personal/VMs` (the automotive VMs: vault-only, by choice) |
+| `backup` | the nightly run only: `nas/` (NAS `backups/` and `homes/`), `github/` (mirrors of [config/github-repos](config/github-repos)). Shared read-only, for browsing and restores | yes, except `nas/backups/ps5` (vault-only, by choice) |
+| `files` | you, over SMB: `Personal/VMs`, data too large for the NAS | no: `Personal/VMs` (the automotive VMs: vault-only, by choice) |
 | `system` | these scripts, logs, config export, `secrets/` (0700). Never shared | yes, except `secrets/` |
 
 Three datasets, one per writer: snapshots and retention are per dataset, and

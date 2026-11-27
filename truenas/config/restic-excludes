@@ -4,10 +4,9 @@
 # the data they unlock.
 /mnt/vault/system/secrets
 
-# Oracle has ~77 GiB free. Large and replaceable: films, VM disks. The
-# automotive VMs (Personal/VMs, 49 GB) live on the vault only, by choice:
-# not critical, and RAIDZ3 is their protection.
-/mnt/vault/files/Personal/Movies
+# Oracle has ~77 GiB free. Large and replaceable: VM disks. The automotive
+# VMs (Personal/VMs, 40 GB) live on the vault only, by choice: not critical,
+# and RAIDZ3 is their protection.
 /mnt/vault/files/Personal/VMs
 *.qcow2
 *.vmdk

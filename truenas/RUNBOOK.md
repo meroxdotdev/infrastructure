@@ -26,7 +26,7 @@ and powers itself off. Nothing holds a credential into it.
 | Layer | Mechanism | What it stops |
 |---|---|---|
 | Reachability | Pull-only; nothing holds a credential into the vault | a compromised NAS, node or VPS cannot touch it |
-| Exposure | Off ~22 h a day. One SMB share, `files`, to the workstation only; `backup` and `system` never shared | nothing to attack most of the day |
+| Exposure | Off ~22 h a day. SMB to the workstation only: `files` read-write, `backup` read-only; `system` never shared | nothing to attack most of the day |
 | History | TrueNAS snapshots, 30 daily (+ 12 monthly on `backup`) | an encrypted NAS is pulled as a new version; the clean ones stay |
 | Blast radius | `rsync --max-delete=500` exits 25, the run stops before any snapshot | a wiped or renamed source is not mirrored |
 | Off-site | restic to rest-server `--append-only`; retention runs on the VPS | even a compromised vault cannot delete Oracle's history |
@@ -149,7 +149,7 @@ at its own prompt — pasting a block feeds the next line in as the password.
 | Dataset | Preset | Record size | Holds | Snapshots | Off-site |
 |---|---|---|---|---|---|
 | `backup` | Generic | 1M | `nas/` (pull of NAS `backups/`, `homes/`), `github/` | 30 daily + 12 monthly | yes |
-| `files` | SMB | 1M | `Personal/ Job/ Clients/ Lab/` — the Drive layout | 30 daily | yes, except `Personal/Movies`, `Personal/VMs` |
+| `files` | SMB | 1M | `Personal/VMs` — data too large for the NAS | 30 daily | no: `Personal/VMs` |
 | `system` | Generic | default | scripts, logs, config export, `secrets/` (0700) | 30 daily | yes, except `secrets/` |
 
 One dataset per writer — the nightly run, you, the scripts — because
@@ -165,6 +165,13 @@ preset): *Hosts Allow* `10.57.97.57` (the MacBook's DHCP reservation) and
 Apple-style character encoding on, before anything is written. ACL: owner and
 group `merox`, drop `builtin_users` (it would grant every future SMB user
 modify), recursive.
+
+Share `backup` on `/mnt/vault/backup`: *Export Read Only*, the same *Hosts
+Allow*. Leave its permissions alone: rsync restores the DSM owners every night,
+and everything is world-readable and owner-writable, so `merox` reads and
+cannot write. Nothing is written over SMB here: the nightly mirror runs with
+`--delete`, and the vault is off when a device would back up. Devices back up
+to the NAS `backups/` share; the vault pulls it.
 
 ### 5 — Credentials and the NAS
 
@@ -260,11 +267,19 @@ Whatever happens, [vault-gate.sh](scripts/vault-gate.sh) runs at the end:
 ## Restores
 
 Manual on purpose: the vault holds no write credential into the NAS. Wake it,
-`touch /mnt/vault/system/HOLD`, remove it when done.
+`touch /mnt/vault/system/HOLD` — without it the gate powers off ~10 min after
+the run — and remove it when done. pve-3 gone: the power button, or the iDRAC
+at `10.57.57.249`.
+
+Everything under `backup/` is plain files, readable from the Mac on the
+read-only `backup` share, except `nas/backups/longhorn/`: Garage's block store,
+zstd chunks named by hash; 30 195 of its 32 877 folders are empty.
+Nothing in it is usable without a Garage and its `meta-snapshots`.
 
 | Lost | From | How |
 |---|---|---|
-| A file | vault snapshot | `/mnt/vault/backup/nas/.zfs/snapshot/<name>/homes/…` → copy to the Mac → back through Drive |
+| A file | vault | latest: the `backup` share in Finder; older: `/mnt/vault/backup/.zfs/snapshot/<name>/nas/homes/…` over SSH → back through Drive |
+| A repository | vault | `git clone /mnt/vault/backup/github/<repo>.git` |
 | A Longhorn volume | Garage on the NAS | Longhorn UI → Backup → Restore; the vault is not involved |
 | Garage's store | vault | rsync `backup/nas/backups/longhorn/` → NAS as the DSM admin, restart Garage, restore in Longhorn |
 | The NAS | vault | new disks → DSM → shares per [synology/README.md](../synology/README.md) → rsync each folder back as admin |
@@ -350,4 +365,3 @@ Drilled 2026-10-11: the VPS path, `pfsense` only, into a scratch directory.
 
 - 2FA on `truenas_admin` and *Allowed IP Addresses* for the UI — deferred by
   the owner on 2026-10-02.
-- The three films for a NAS outage, into `files/Personal/Movies` by hand.
