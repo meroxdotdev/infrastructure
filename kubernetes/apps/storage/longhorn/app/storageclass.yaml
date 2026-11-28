@@ -1,0 +1,33 @@
+---
+# One replica, kept on the node the pod runs on. For data that is cheap to
+# lose and expensive to write: today only Prometheus.
+#
+# Every Longhorn replica writes the volume in full on its own node, so with the
+# default class's three replicas each machine absorbed Prometheus' ~13 GB/day of
+# WAL and compaction (7-day average, 2026-11-28). On pve-1 that lands on a
+# consumer QLC NVMe (Crucial P3, nvme1n1), worn to 39% and gaining about 1% every
+# 18 days. A single replica writes that volume once, on one machine.
+#
+# The trade-off is on purpose: if the node holding the replica dies, the volume
+# is faulted until that node returns, or until the PVC is deleted and starts
+# empty. Nothing on this class is backed up, so no data is lost that would
+# otherwise have been kept.
+#
+# best-effort, not strict-local: the replica follows the pod when it moves, so
+# where the pod is allowed to run decides which disk takes the writes. Pin that
+# on the workload (see the Prometheus affinity in kube-prometheus-stack).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-single
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "1"
+  dataLocality: best-effort
+  staleReplicaTimeout: "30"
+  fsType: ext4
+  dataEngine: v1
+  disableRevisionCounter: "true"

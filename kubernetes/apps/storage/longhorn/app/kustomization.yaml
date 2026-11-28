@@ -6,3 +6,4 @@ resources:
 - ./httproute.yaml
 - ./minio-secret.sops.yaml
 - ./networkpolicy.yaml
+- ./storageclass.yaml

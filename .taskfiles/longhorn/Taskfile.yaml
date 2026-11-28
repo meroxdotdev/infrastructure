@@ -409,7 +409,7 @@ tasks:
         fi
 
         create_fresh_pvc() {
-          local PVC=$1 SIZE=$2
+          local PVC=$1 SIZE=$2 CLASS=$3
           if kubectl get pvc "$PVC" -n observability &>/dev/null; then
             echo "  ✓ $PVC already exists"
             return
@@ -422,7 +422,7 @@ tasks:
           namespace: observability
         spec:
           accessModes: [ReadWriteOnce]
-          storageClassName: longhorn
+          storageClassName: $CLASS
           resources:
             requests:
               storage: $SIZE
@@ -430,12 +430,12 @@ tasks:
           echo "  ✓ $PVC created (fresh, no backup)"
         }
 
-        # Must match the Prometheus volumeClaimTemplate in
+        # Size and class must match the volumeClaimTemplates in
         # kubernetes/apps/observability/kube-prometheus-stack/app/helmrelease.yaml.
         # A disk smaller than the retentionSize there does not fail at restore
         # time — it fills up weeks later and Prometheus crashes on a full disk.
-        create_fresh_pvc "prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0" "40Gi"
-        create_fresh_pvc "alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0" "1Gi"
+        create_fresh_pvc "prometheus-kube-prometheus-stack-db-prometheus-kube-prometheus-stack-0" "40Gi" "longhorn-single"
+        create_fresh_pvc "alertmanager-kube-prometheus-stack-db-alertmanager-kube-prometheus-stack-0" "1Gi" "longhorn"
     silent: true
 
   reconcile-apps:
