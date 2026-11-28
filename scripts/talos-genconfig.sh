@@ -56,8 +56,9 @@ for i in $(seq 0 $(($(yq '.nodes | length' talconfig.yaml) - 1))); do
     # as the multi-document config Talos 1.13+ expects.
     TALOS_VERSION="${TALOS_VERSION}" yq 'eval(strenv(N)) as $n | {"machine": {
         "install": {"disk": $n.installDisk, "image": $n.talosImageURL + ":" + strenv(TALOS_VERSION)},
-        "nodeLabels": $n.nodeLabels
-    }} | ... comments=""' talconfig.yaml > "${WORK}/node.yaml"
+        "nodeLabels": $n.nodeLabels,
+        "nodeAnnotations": $n.nodeAnnotations
+    }} | del(.machine.nodeAnnotations | select(. == null)) | ... comments=""' talconfig.yaml > "${WORK}/node.yaml"
     echo "---" >> "${WORK}/node.yaml"
     yq 'eval(strenv(N)) as $n | {"apiVersion": "v1alpha1", "kind": "HostnameConfig",
         "auto": "off", "hostname": $n.hostname}' talconfig.yaml >> "${WORK}/node.yaml"

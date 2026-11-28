@@ -113,27 +113,12 @@ spec:
             memory: 250Mi
           limits:
             memory: 2000Mi
-        # Kept off kubernetes-1. Its disk is pve-1's consumer QLC NVMe, while
-        # kubernetes-2 and -3 sit on Intel S46x0 datacenter SSDs. With
-        # longhorn-single the volume's one replica follows the pod
-        # (best-effort locality), so this rule decides which disk takes
-        # Prometheus' writes. If kubernetes-2 and -3 are both down, Prometheus
-        # stays Pending; it is down then anyway, because its replica is on one
-        # of them.
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: kubernetes.io/hostname
-                      operator: NotIn
-                      values: ["kubernetes-1"]
         storageSpec:
           volumeClaimTemplate:
             spec:
-              # One replica, not three: see
+              # Two replicas on the SSD nodes, none on pve-1's QLC NVMe: see
               # kubernetes/apps/storage/longhorn/app/storageclass.yaml.
-              storageClassName: longhorn-single
+              storageClassName: longhorn-ssd
               resources:
                 requests:
                   storage: 40Gi

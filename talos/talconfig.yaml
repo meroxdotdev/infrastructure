@@ -80,6 +80,13 @@ nodes:
     talosImageURL: factory.talos.dev/installer/36cd6536eaec8ba802be2d38974108359069cedba8857302f69792b26b87c010
     nodeLabels:
       node.kubernetes.io/exclude-from-external-load-balancers: ""
+    # Longhorn reads this when it creates its node object and has no tags yet,
+    # so a rebuilt cluster gets the tag back without a hand step. The
+    # longhorn-ssd class places replicas only on nodes tagged `ssd`: this
+    # node and kubernetes-3 sit on Intel D3-S4510s, kubernetes-1 on pve-1's
+    # consumer QLC. See kubernetes/apps/storage/longhorn/app/storageclass.yaml.
+    nodeAnnotations:
+      node.longhorn.io/default-node-tags: '["ssd"]'
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:9d:5b:96"
@@ -116,6 +123,13 @@ nodes:
     talosImageURL: factory.talos.dev/installer/36cd6536eaec8ba802be2d38974108359069cedba8857302f69792b26b87c010
     nodeLabels:
       node.kubernetes.io/exclude-from-external-load-balancers: ""
+    # Longhorn reads this when it creates its node object and has no tags yet,
+    # so a rebuilt cluster gets the tag back without a hand step. The
+    # longhorn-ssd class places replicas only on nodes tagged `ssd`: this
+    # node and kubernetes-3 sit on Intel D3-S4510s, kubernetes-1 on pve-1's
+    # consumer QLC. See kubernetes/apps/storage/longhorn/app/storageclass.yaml.
+    nodeAnnotations:
+      node.longhorn.io/default-node-tags: '["ssd"]'
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:24:46:05"

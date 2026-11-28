@@ -1,32 +1,37 @@
 ---
-# One replica, kept on the node the pod runs on. For data that is cheap to
-# lose and expensive to write: today only Prometheus.
+# Two replicas, only on nodes Longhorn has tagged `ssd`: kubernetes-2 and
+# kubernetes-3, both on Intel D3-S4510 datacenter SSDs. For data that is cheap
+# to lose and expensive to write: today only Prometheus.
 #
 # Every Longhorn replica writes the volume in full on its own node, so with the
 # default class's three replicas each machine absorbed Prometheus' ~13 GB/day of
 # WAL and compaction (7-day average, 2026-11-28). On pve-1 that lands on a
 # consumer QLC NVMe (Crucial P3, nvme1n1), worn to 39% and gaining about 1% every
-# 18 days. A single replica writes that volume once, on one machine.
+# 18 days. Here pve-1 takes none of it, and the volume still survives losing
+# either SSD node. One replica was tried first and dropped the same day: losing
+# its node would have stopped Prometheus, and with it every alert, exactly when
+# a node is down.
 #
-# The trade-off is on purpose: if the node holding the replica dies, the volume
-# is faulted until that node returns, or until the PVC is deleted and starts
-# empty. Nothing on this class is backed up, so no data is lost that would
-# otherwise have been kept.
+# The tags come from the node.longhorn.io/default-node-tags annotation in
+# talos/talconfig.yaml, which Longhorn applies to a node that has no tags yet,
+# so a rebuilt cluster gets them back on its own. If both SSD nodes are gone a
+# new replica has nowhere to go and the volume stays degraded. That is
+# accepted: nothing on this class is backed up, so there is no data to lose.
 #
-# best-effort, not strict-local: the replica follows the pod when it moves, so
-# where the pod is allowed to run decides which disk takes the writes. Pin that
-# on the workload (see the Prometheus affinity in kube-prometheus-stack).
+# Where the pod runs does not matter for wear: the engine follows the pod, the
+# replicas stay where the class allows.
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: longhorn-single
+  name: longhorn-ssd
 provisioner: driver.longhorn.io
 allowVolumeExpansion: true
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 parameters:
-  numberOfReplicas: "1"
-  dataLocality: best-effort
+  numberOfReplicas: "2"
+  nodeSelector: "ssd"
+  dataLocality: disabled
   staleReplicaTimeout: "30"
   fsType: ext4
   dataEngine: v1
